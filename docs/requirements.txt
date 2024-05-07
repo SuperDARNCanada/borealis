@@ -1,4 +1,4 @@
-sphinx>=2.1.2
+sphinx==5.3.0
 breathe
 numpy
 scipy
@@ -13,7 +13,7 @@ posix_ipc
 latex
 inotify
 matplotlib
-sphinx-rtd-theme<0.5
-structlog
+sphinx-rtd-theme==0.5.1
+structlog<=24.1.0
 h5py
 pydantic<=1.10.13

@@ -8,91 +8,117 @@
     :copyright: 2019 SuperDARN Canada
 """
 
-import zmq
-import threading
-import pickle
-import queue
+import inspect
 import json
+from pathlib import Path
+import pickle
+import sys
 import zlib
-import pydarnio
-import numpy as np
+
 from backscatter import fitacf
+import numpy as np
+import pydarnio
+import structlog
+import zmq
 
-from utils.options import Options
-from utils import socket_operations as so
+
+def convert_and_fit_record(rawacf_record):
+    """Converts a rawacf record to DMAP format and fits using backscatter, returning the results"""
+    # We only grab the first slice. This means the first slice of any that are SEQUENCE or CONCURRENT interfaced.
+    first_key = sorted(list(rawacf_record.keys()))[0]
+    log.info("converting record", record=first_key)
+    converted = (pydarnio.BorealisConvert.
+                 _BorealisConvert__convert_rawacf_record(0, (first_key, rawacf_record[first_key]), ""))
+
+    fitted_records = []
+    for rec in converted:
+        fit_data = fitacf._fit(rec)
+        fitted_records.append(fit_data.copy())
+
+    return fitted_records
 
 
-def main():
-    options = Options()
+def realtime_server(recv_socket, server_socket):
+    """Receives data from a socket, converts to fitacf, then serves over another socket.
 
-    borealis_sockets = so.create_sockets([options.rt_to_dw_identity], options.router_address)
-    data_write_to_realtime = borealis_sockets[0]
+    :param   recv_socket: Socket to receive data over. Must be an appropriate zmq socket type for receiving.
+    :type    recv_socket: zmq.Socket
+    :param server_socket: Socket to serve fitted data over. Must be an appropriate zmq socket type for sending.
+    :type  server_socket: zmq.Socket
+    """
+    while True:
+        try:
+            rawacf_pickled = so.recv_bytes_from_any_iden(recv_socket)  # This is blocking
+        except (zmq.ContextTerminated, zmq.ZMQError):  # No way to recover from this
+            recv_socket.close()
+            server_socket.close()
+            return
 
-    context = zmq.Context().instance()
-    realtime_socket = context.socket(zmq.PUB)
-    realtime_socket.bind(options.realtime_address)
+        rawacf_data = pickle.loads(rawacf_pickled)
 
-    q = queue.Queue()
+        try:
+            fitted_recs = convert_and_fit_record(rawacf_data)
+        except Exception as e:
+            log.critical("error processing record", exception=e)
+            continue
 
-    def get_temp_file_from_datawrite():
-        while True:
-            rawacf_pickled = so.recv_bytes(data_write_to_realtime, options.dw_to_rt_identity, log)
-            rawacf_data = pickle.loads(rawacf_pickled)
+        for rec in fitted_recs:
+            # Can't jsonify numpy, so we convert to native types for serving over the web
+            for k, v in rec.items():
+                if hasattr(v, 'dtype'):
+                    if isinstance(v, np.ndarray):
+                        rec[k] = v.tolist()
+                    else:
+                        rec[k] = v.item()
 
-            # TODO: Make sure we only process the first slice for simultaneous multi-slice data for now
+            publishable_data = zlib.compress(json.dumps(rec).encode('utf-8'))
             try:
-                record = sorted(list(rawacf_data.keys()))[0]
-                log.info("using pydarnio to convert", record=record)
-                converted = pydarnio.BorealisConvert.\
-                    _BorealisConvert__convert_rawacf_record(0, (record, rawacf_data[record]), "")
-            except pydarnio.borealis_exceptions.BorealisConvert2RawacfError:
-                log.info("error converting")
-                continue
-
-            for rec in converted:
-                fit_data = fitacf._fit(rec)
-                tmp = fit_data.copy()
-
-                # Can't jsonify numpy so we convert to native types for realtime purposes.
-                for k, v in fit_data.items():
-                    if hasattr(v, 'dtype'):
-                        if isinstance(v, np.ndarray):
-                            tmp[k] = v.tolist()
-                        else:
-                            tmp[k] = v.item()
-
-                q.put(tmp)
-
-    def handle_remote_connection():
-        """
-        Compresses and serializes the data to send to the server.
-        """
-
-        while True:
-            data_dict = q.get()
-            serialized = json.dumps(data_dict)
-            compressed = zlib.compress(serialized.encode('utf-8'))
-            realtime_socket.send(compressed)
-
-    threads = [threading.Thread(target=get_temp_file_from_datawrite),
-               threading.Thread(target=handle_remote_connection)]
-
-    for thread in threads:
-        thread.daemon = True
-        thread.start()
-
-    for thread in threads:
-        thread.join()
+                # Serve the data over the websocket. This is non-blocking in a background thread that zmq handles
+                server_socket.send(publishable_data)
+            except (zmq.ContextTerminated, zmq.ZMQError):  # No way to recover from this
+                recv_socket.close()
+                server_socket.close()
+                return
 
 
 if __name__ == '__main__':
-    from utils import log_config
+    from utils import log_config, socket_operations as so
+    from utils.options import Options
 
     log = log_config.log()
     log.info(f"REALTIME BOOTED")
+
+    options = Options()
+    context = zmq.Context().instance()
+
+    # Socket for receiving data from data_write
+    data_write_socket = so.create_sockets([options.rt_to_dw_identity], options.router_address)[0]
+
+    # Socket for serving data over the web
+    publish_socket = context.socket(zmq.PUB)
+    publish_socket.setsockopt(zmq.LINGER, 0)  # milliseconds to wait for message to send when closing socket
+
     try:
-        main()
+        publish_socket.bind(options.realtime_address)
+    except zmq.ZMQError as e:  # Raised if the address is invalid (e.g. if device doesn't exist)
+        log.critical("REALTIME CRASHED", error=e)
+        log.exception("REALTIME CRASHED", exception=e)
+        data_write_socket.close()
+        publish_socket.close()
+
+    try:
+        realtime_server(data_write_socket, publish_socket)
         log.info(f"REALTIME EXITED")
+    except KeyboardInterrupt:
+        log.critical("REALTIME INTERRUPTED")
     except Exception as main_exception:
         log.critical("REALTIME CRASHED", error=main_exception)
         log.exception("REALTIME CRASHED", exception=main_exception)
+
+else:
+    from .utils import socket_operations as so
+    from .utils.options import Options
+
+    caller = Path(inspect.stack()[-1].filename)
+    module_name = caller.name.split('.')[0]
+    log = structlog.getLogger(module_name)

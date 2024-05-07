@@ -4,7 +4,7 @@
     experiment_handler process
     ~~~~~~~~~~~~~~~~~~~~~~~~~~
     This program runs a given experiment. It will use the experiment's build_scans method to
-    create the iterable ScanClassBase objects that will be used by the radar_control block,
+    create the iterable InterfaceClassBase objects that will be used by the radar_control block,
     then it will pass the experiment to the radar_control block to run.
 
     It will be passed some data to use in its update method at the end of every integration time.
@@ -14,22 +14,21 @@
     :copyright: 2018 SuperDARN Canada
     :author: Marci Detwiller
 """
-
-import zmq
-import sys
 import argparse
-import inspect
 import importlib
-import threading
+import inspect
+from pathlib import Path
 import pickle
+import sys
+import threading
+
+import structlog
+import zmq
+
 from utils.options import Options
 from utils import socket_operations
 from experiment_prototype.experiment_exception import ExperimentException
 from experiment_prototype.experiment_prototype import ExperimentPrototype
-
-from utils import log_config
-log = log_config.log(log_level='NOTSET', console=False, logfile=False, aggregator=False)
-
 
 
 def usage_msg():
@@ -48,7 +47,7 @@ def usage_msg():
     argument. It will search for the module in the BOREALISPATH/experiment_prototype
     package. It will retrieve the class from within the module (your experiment).
 
-    It will use the experiment's build_scans method to create the iterable ScanClassBase
+    It will use the experiment's build_scans method to create the iterable InterfaceClassBase
     objects that will be used by the radar_control block, then it will pass the
     experiment to the radar_control block to run.
 
@@ -128,9 +127,9 @@ def retrieve_experiment(experiment_module_name):
     # this is the experiment class that we need to run.
     experiment = experiment_classes[0][1]
 
-    log.info("retrieving experiment from module",
-             experiment_class=experiment_classes[0][0],
-             experiment_module=experiment_mod)
+    log.verbose("retrieving experiment from module",
+                experiment_class=experiment_classes[0][0],
+                experiment_module=experiment_mod)
 
     return experiment
 
@@ -165,7 +164,7 @@ def experiment_handler(semaphore, args):
     This process begins with setup of sockets and retrieving the experiment class from the module.
     It then waits for a message of type RadarStatus to come in from the radar_control block. If
     the status is 'EXPNEEDED', meaning an experiment is needed, experiment_handler will build the
-    scan iterable objects (of class ScanClassBase) and will pass them to radar_control. Other
+    scan iterable objects (of class InterfaceClassBase) and will pass them to radar_control. Other
     statuses will be implemented in the future.
 
     In the future, the update method will be implemented where the experiment can be modified by
@@ -289,3 +288,8 @@ if __name__ == "__main__":
     except Exception as main_exception:
         log.critical("EXPERIMENT_HANDLER CRASHED", error=main_exception)
         log.exception("EXPERIMENT_HANDLER CRASHED", exception=main_exception)
+
+else:
+    caller = Path(inspect.stack()[-1].filename)
+    module_name = caller.name.split('.')[0]
+    log = structlog.getLogger(module_name)

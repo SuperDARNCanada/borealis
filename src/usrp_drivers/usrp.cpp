@@ -46,8 +46,8 @@ USRP::USRP(const DriverOptions& driver_options, float tx_rate, float rx_rate)
   set_usrp_clock_source(driver_options.get_ref());
   set_tx_subdev(driver_options.get_tx_subdev());
   set_main_rx_subdev(driver_options.get_main_rx_subdev());
-  set_interferometer_rx_subdev(driver_options.get_interferometer_rx_subdev(),
-                                driver_options.get_interferometer_antennas().size());
+//  set_interferometer_rx_subdev(driver_options.get_interferometer_rx_subdev(),
+//                               driver_options.get_interferometer_antennas().size());
   set_time_source(driver_options.get_pps(), driver_options.get_clk_addr());
   check_ref_locked();
   set_atr_gpios();
@@ -196,26 +196,35 @@ void USRP::set_main_rx_subdev(std::string main_subdev)
   usrp_->set_rx_subdev_spec(main_subdev);
 }
 
-// TODO: REVIEW #43 It would be best if we could have in the config file a map of direct antenna to USRP box/subdev/channel so you can change the interferometer to a different set of boxes for example. Also if a rx daughterboard stopped working and you needed to move both main and int to a totally different box for receive, then you could do that. This would be useful for both rx and tx channels.
+// TODO: REVIEW #43 It would be best if we could have in the config file a map of direct antenna to USRP
+//       box/subdev/channel so you can change the interferometer to a different set of boxes for example. Also if a
+//       rx daughterboard stopped working and you needed to move both main and int to a totally different box for
+//       receive, then you could do that. This would be useful for both rx and tx channels.
 // REPLY OKAY, but maybe we should leave it for now. That's easier said than done.
-/**
- * @brief      Sets the interferometer receive subdev.
- *
- * @param[in]  interferometer_subdev         A string for a valid receive subdev.
- * @param[in]  interferometer_antenna_count  The interferometer antenna count.
- *
- * Override the subdev spec of the first mboards to receive on a second channel for
- * the interferometer.
- */
-void USRP::set_interferometer_rx_subdev(std::string interferometer_subdev,
-                                          uint32_t interferometer_antenna_count)
-{
-
-  for(uint32_t i=0; i<interferometer_antenna_count; i++) {
-    usrp_->set_rx_subdev_spec(interferometer_subdev, i);
-  }
-
-}
+// Comment April 2024: Config file format now maps N200 channels to antennas. This function is however incorrect, as the
+//       assumption that the interferometer antennas are connected to the first N N200s is no longer valid. All config
+//       files currently set both the main and intf rx subdevs to "A:A A:B", which simply means to use both LFRX
+//       daughterboard channels as the two rx channels for the device. If the N200 connections are configured
+//       differently, then the subdev spec would need to be changed, which would change the channel numbers of the
+//       multi-USRP object and thus all the hard-coded channel number configuration calculated in DriverOptions.
+///**
+// * @brief      Sets the interferometer receive subdev.
+// *
+// * @param[in]  interferometer_subdev         A string for a valid receive subdev.
+// * @param[in]  interferometer_antenna_count  The interferometer antenna count.
+// *
+// * Override the subdev spec of the first mboards to receive on a second channel for
+// * the interferometer.
+// */
+//void USRP::set_interferometer_rx_subdev(std::string interferometer_subdev,
+//                                          uint32_t interferometer_antenna_count)
+//{
+//
+//  for(uint32_t i=0; i<interferometer_antenna_count; i++) {
+//    usrp_->set_rx_subdev_spec(interferometer_subdev, i);
+//  }
+//
+//}
 
 /**
  * @brief      Sets the receive sample rate.

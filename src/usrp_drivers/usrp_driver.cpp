@@ -1,7 +1,7 @@
 /*Copyright 2016 SuperDARN*/
 #include <unistd.h>
 #include <stdint.h>
-#include <uhd/utils/thread_priority.hpp>
+#include <uhd/utils/thread.hpp>
 #include <uhd/utils/safe_main.hpp>
 #include <uhd/utils/static.hpp>
 #include <uhd/usrp/multi_usrp.hpp>
@@ -36,7 +36,15 @@
 
 //Delay needed for before any set_time_commands will work.
 #define SET_TIME_COMMAND_DELAY 5e-3 // seconds
-#define TUNING_DELAY 300e-3 // seconds
+// Tuning delay time provides how long the USRP device will
+// wait for the device to settle after sending a tuning request.
+// If the device retunes a local oscillator, this should be on the
+// order of 1-2 seconds. The LF daughter boards do not have a lo
+// and therefore can have a much smaller tuning delay. The value 
+// chosen below was determined via trial and error, and has been 
+// set small enough that the delay is less than the time required
+// to execute the tuning request.
+#define TUNING_DELAY 1e-3 // seconds
 
 
 // struct containing clocks: one for usrp_time (from the N200s, supplied by Octoclock-G)
@@ -67,13 +75,13 @@ std::vector<std::vector<std::complex<float>>> make_tx_samples(
   // channel_samples_size() will get you # of channels (protobuf in c++)
   std::vector<std::vector<std::complex<float>>> samples(driver_packet.channel_samples_size());
 
-  for (uint32_t channel=0; channel<driver_packet.channel_samples_size(); channel++) {
+  for (int channel=0; channel<driver_packet.channel_samples_size(); channel++) {
     // Get the number of real samples in this particular channel (_size() is from protobuf)
     auto num_samps = driver_packet.channel_samples(channel).real_size();
     std::vector<std::complex<float>> v(num_samps);
     // Type for smp? protobuf object, containing repeated double real and double imag
     auto smp = driver_packet.channel_samples(channel);
-    for (uint32_t smp_num = 0; smp_num < num_samps; smp_num++) {
+    for (int smp_num = 0; smp_num < num_samps; smp_num++) {
       v[smp_num] = std::complex<float>(smp.real(smp_num), smp.imag(smp_num));
     }
     samples[channel] = v;
@@ -128,7 +136,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
   uint32_t sqn_num = 0;
   uint32_t expected_sqn_num = 0;
 
-  uint32_t num_recv_samples;
+  uint32_t num_recv_samples = 0;
 
   size_t ringbuffer_size;
 
@@ -145,16 +153,20 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 
   zmq::message_t request;
 
-  start_trigger.recv(&request);
+  start_trigger.recv(request, zmq::recv_flags::none);
   memcpy(&ringbuffer_size, static_cast<size_t*>(request.data()), request.size());
 
-  start_trigger.recv(&request);
+  start_trigger.recv(request, zmq::recv_flags::none);
   memcpy(&initialization_time, static_cast<uhd::time_spec_t*>(request.data()), request.size());
 
+  auto driver_ready_msg = std::string("DRIVER_READY");
+  SEND_REPLY(driver_to_radar_control, driver_options.get_radctrl_to_driver_identity(),
+    driver_ready_msg);
 
-   /*This loop accepts pulse by pulse from the radar_control. It parses the samples, configures the
-    *USRP, sets up the timing, and then sends samples/timing to the USRPs.
-    */
+  /*
+  * This loop accepts pulse by pulse from the radar_control. It parses the samples, configures the
+  * USRP, sets up the timing, and then sends samples/timing to the USRPs.
+  */
   while (1)
   {
     auto more_pulses = true;
@@ -514,7 +526,6 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
 
   uhd::rx_metadata_t meta;
 
-  uint32_t buffer_inc = 0;
   uint32_t timeout_count = 0;
   uint32_t overflow_count = 0;
   uint32_t overflow_oos_count = 0;
@@ -527,17 +538,17 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
 
   zmq::message_t ring_size(sizeof(ringbuffer_size));
   memcpy(ring_size.data(), &ringbuffer_size, sizeof(ringbuffer_size));
-  start_trigger.send(ring_size);
+  start_trigger.send(ring_size, zmq::send_flags::none);
 
   //This loop receives 1 pulse sequence worth of samples.
   auto first_time = true;
   while (1) {
     // 3.0 is the timeout in seconds for the recv call, arbitrary number
-    size_t num_rx_samples = rx_stream->recv(buffer_ptrs, usrp_buffer_size, meta, 3.0, true);
+    rx_stream->recv(buffer_ptrs, usrp_buffer_size, meta, 3.0, true);
     if (first_time) {
       zmq::message_t start_time(sizeof(meta.time_spec));
       memcpy(start_time.data(), &meta.time_spec, sizeof(meta.time_spec));
-      start_trigger.send(start_time);
+      start_trigger.send(start_time, zmq::send_flags::none);
       first_time = false;
     }
     borealis_clocks.system_time = std::chrono::system_clock::now();
@@ -642,11 +653,6 @@ int32_t UHD_SAFE_MAIN(int32_t argc, char *argv[]) {
                             tune_delay);
   usrp_d.set_rx_center_freq(driver_packet.rxcenterfreq(), driver_options.get_receive_channels(),
                             tune_delay);
-
-
-  auto driver_ready_msg = std::string("DRIVER_READY");
-  SEND_REPLY(driver_to_radar_control, driver_options.get_radctrl_to_driver_identity(),
-    driver_ready_msg);
 
   driver_to_radar_control.close();
   std::vector<std::thread> threads;

@@ -18,7 +18,6 @@ import argparse
 BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(f"{BOREALISPATH}/scheduler")
 import scd_utils
-import email_utils
 
 
 SWG_GIT_REPO_DIR = 'schedules'
@@ -106,7 +105,7 @@ class SWG(object):
             cmd = f"git -C {self.scd_dir}/{SWG_GIT_REPO_DIR} rev-parse"
             sp.check_output(cmd, shell=True)
 
-        except sp.CalledProcessError as e:
+        except sp.CalledProcessError:
             cmd = f'cd {self.scd_dir}; git clone {SWG_GIT_REPO}'
 
             sp.call(cmd, shell=True)
@@ -231,8 +230,7 @@ class SWG(object):
                 mode_to_use = modes["discretionary_time"]
 
             if not mode_to_use or not mode_type:
-                print(f"SWG line couldn't be parsed, continuing: {line}")
-                continue
+                raise ValueError(f"SWG line couldn't be parsed: {line}")
             param = {f"yyyymmdd": f"{year}{month}{start_day}",
                      f"hhmm": f"{start_hr}:00",
                      "experiment": mode_to_use,
@@ -247,7 +245,6 @@ def main():
     """ """
     parser = argparse.ArgumentParser(description="Automatically schedules new events from the SWG")
     parser.add_argument('--scd-dir', required=True, help='The scd working directory')
-    parser.add_argument('--emails-filepath', help='A list of emails to send logs to')
     parser.add_argument('--force', action="store_true", help='Force an update to the schedules '
                                                              'for the next month')
     parser.add_argument('--first-run', action="store_true", 
@@ -261,13 +258,6 @@ def main():
     scd_dir = args.scd_dir
     scd_logs = scd_dir + "/logs"
 
-    if args.emails_filepath is None:
-        emails_filepath = f"{scd_dir}/emails.txt"
-    else:
-        emails_filepath = args.emails_filepath
-
-    emailer = email_utils.Emailer(emails_filepath)
-
     if not os.path.exists(scd_dir):
         os.makedirs(scd_dir)
 
@@ -275,7 +265,7 @@ def main():
         os.makedirs(scd_logs)
 
     sites = list(EXPERIMENTS.keys())
-    site_scds = [scd_utils.SCDUtils(f"{scd_dir}/{s}.scd") for s in sites]
+    site_scds = [scd_utils.SCDUtils(f"{scd_dir}/{s}.scd", s) for s in sites]
     swg = SWG(scd_dir)
 
     force_next_month = args.force
@@ -307,7 +297,9 @@ def main():
             for se, site_scd in zip(site_experiments, site_scds):
                 for ex in se:
                     try:
-                        print(f"add_line date: {ex['yyyymmdd']}, with experiment: {ex['experiment']}, mode: {ex['scheduling_mode']}")
+                        print(f"add_line date: {ex['yyyymmdd']}, "
+                              f"with experiment: {ex['experiment']}, "
+                              f"mode: {ex['scheduling_mode']}")
                         site_scd.add_line(ex['yyyymmdd'], ex['hhmm'], ex['experiment'], ex["scheduling_mode"])
                     except ValueError as err:
                         error_msg = f"{today.strftime('%c')} {site_scd.scd_filename}: Unable to add line:\n" \
@@ -320,7 +312,7 @@ def main():
 
                         errors = True
                         break
-                    except FileNotFoundError as e:
+                    except FileNotFoundError:
                         error_msg = f"SCD filename: {site_scd.scd_filename} is missing!!!\n"
 
                         with open(scd_logs + scd_error_log, 'a') as f:
@@ -329,7 +321,6 @@ def main():
                         errors = True
                         break
 
-            subject = "Scheduling report for swg lines"
             if not errors:
                 success_msg = "All swg lines successfully scheduled.\n"
                 for site, site_scd in zip(sites, site_scds):
@@ -346,8 +337,6 @@ def main():
 
                 with open(scd_logs + scd_error_log, 'a') as f:
                     f.write(success_msg)
-
-            emailer.email_log(subject, scd_logs + scd_error_log)
 
             if args.first_run:
                 break

@@ -8,12 +8,11 @@ std::vector<zmq::socket_t> create_sockets(zmq::context_t &context,
                                           std::vector<std::string> identities,
                                           std::string router_address) {
 
-  //zmq::context_t context(1); // 1 is context num. Only need one per program as per examples
   std::vector<zmq::socket_t> new_sockets;
 
   for (auto &iden : identities) {
     new_sockets.push_back(zmq::socket_t(context, ZMQ_DEALER));
-    new_sockets.back().setsockopt(ZMQ_IDENTITY, iden.c_str(), iden.length());
+    new_sockets.back().set(zmq::sockopt::routing_id, iden);
     new_sockets.back().connect(router_address);
   }
 
@@ -46,7 +45,7 @@ void send_data(zmq::socket_t &socket, std::string recv_iden, std::string &data_m
 void router(zmq::context_t &context, std::string router_address)
 {
   zmq::socket_t router(context, ZMQ_ROUTER);
-  router.setsockopt(ZMQ_ROUTER_MANDATORY, 1);
+  router.set(zmq::sockopt::router_mandatory, 1);
   router.bind(router_address);
 
   while(1) {

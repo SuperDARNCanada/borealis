@@ -75,37 +75,33 @@ bindkey ^[[1;5C focus right
 bindkey ^[[1;5A focus up
 bindkey ^[[1;5B focus down
 
-#Realtime produces no real useful output at this time so we have it in a hidden window. It can
-#still be switched to within screen if needed.
-screen -t "Brian" bash -c "{START_BRIAN}"
+screen -t "N200 Driver" bash -c "{START_USRP_DRIVER}"       # Top left
+split -v
+split -v
 split
-
-split -v
-focus right
-screen -t "N200 Driver" bash -c "{START_USRP_DRIVER}"
-
-split -v
-focus right
-screen -t "Signal Processing" bash -c "{START_DSP}"
-
-focus down
-screen -t "Data Write" bash -c "{START_DATAWRITE}"
-
-split -v
-focus right
-screen -t "Experiment Handler" bash -c "{START_EXPHAN}"
-
-split -v
-focus right
-screen -t "Radar Control" bash -c "{START_RADCTRL}"
-
-split -v
-focus right
-screen -t "Realtime" bash -c "{START_RT}"
+focus
+screen -t "Signal Processing" bash -c "{START_DSP}"         # Bottom left
+focus
+screen -t "Radar Control" bash -c "{START_RADCTRL}"         # Top middle
+split
+focus
+screen -t "Data Write" bash -c "{START_DATAWRITE}"          # Bottom middle
+focus
+screen -t "Experiment Handler" bash -c "{START_EXPHAN}"     # Right top
+split
+"{REALTIME}"
+focus
+screen -t "Brian" bash -c "{START_BRIAN}"                   # Right bottom
+focus
 
 detach
 """
 
+realtime_window = """
+split
+focus
+screen -t "Realtime" bash -c "{START_RT}"                   # Right middle
+"""
 
 def steamed_hams_parser():
     """
@@ -126,6 +122,8 @@ def steamed_hams_parser():
     parser.add_argument("--embargo", action="store_true", help="Embargo the file (makes the CPID negative)")
     parser.add_argument("--kwargs", nargs='+', default='',
                         help="Keyword arguments for the experiment. Each must be formatted as kw=val")
+    parser.add_argument("--realtime-off", action="store_true",
+                        help="Disable the realtime FITACF3 and data server module")
 
     return parser
 
@@ -195,23 +193,33 @@ if args.embargo:
     modules['experiment_handler'] += " --embargo"
 if args.kwargs:
     modules['experiment_handler'] += " --kwargs " + kwargs
-    
+
+if args.realtime_off:
+    modules["brian"] += " --realtime-off"
+
 # Bypass the python wrapper to run cuda-gdb
 if mode == "debug":
     modules['usrp_driver'] = f"source mode {mode}; {c_debug_opts} usrp_driver"
 
 # Set up the screenrc file and populate it
 log_dir = "/data/borealis_logs/"    # Temporary fix to give us access to exactly what's printed to console from Borealis
-screenrc = BOREALISSCREENRC.format(
-    START_RT=modules['realtime'] + " 2>&1 | tee " + log_dir + "realtime.log",
-    START_BRIAN=modules['brian'] + " 2>&1 | tee " + log_dir + "brian.log",
-    START_USRP_DRIVER=modules['usrp_driver'] + " 2>&1 | tee " + log_dir + "usrp_driver.log",
-    START_DSP=modules['rx_signal_processing'] + " 2>&1 | tee " + log_dir + "rx_signal_processing.log",
-    START_DATAWRITE=modules['data_write'] + " 2>&1 | tee " + log_dir + "data_write.log",
-    START_EXPHAN=modules['experiment_handler'] + " 2>&1 | tee " + log_dir + "experiment_handler.log",
-    START_RADCTRL=modules['radar_control'] + " 2>&1 | tee " + log_dir + "radar_control.log",
-)
+format_dict = {
+    "START_BRIAN": modules['brian'] + " 2>&1 | tee " + log_dir + "brian.log",
+    "START_USRP_DRIVER": modules['usrp_driver'] + " 2>&1 | tee " + log_dir + "usrp_driver.log",
+    "START_DSP": modules['rx_signal_processing'] + " 2>&1 | tee " + log_dir + "rx_signal_processing.log",
+    "START_DATAWRITE": modules['data_write'] + " 2>&1 | tee " + log_dir + "data_write.log",
+    "START_EXPHAN": modules['experiment_handler'] + " 2>&1 | tee " + log_dir + "experiment_handler.log",
+    "START_RADCTRL": modules['radar_control'] + " 2>&1 | tee " + log_dir + "radar_control.log",
+}
 
+# Ready the command for adding a realtime window, if it is not disabled.
+if args.realtime_off:
+    format_dict["REALTIME"] = ""
+else:
+    format_dict["REALTIME"] = realtime_window.format(START_RT=modules['realtime'] + " 2>&1 | tee " + log_dir + "realtime.log")
+
+# Add the commands to the script and write to file
+screenrc = BOREALISSCREENRC.format(**format_dict)
 screenrc_file = os.environ['BOREALISPATH'] + "/borealisscreenrc"
 with open(screenrc_file, 'w') as f:
     f.write(screenrc)

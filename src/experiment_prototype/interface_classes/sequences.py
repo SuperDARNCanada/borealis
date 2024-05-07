@@ -3,7 +3,7 @@
 """
     sequences
     ~~~~~~~~~
-    This is the module containing the Sequence class. The Sequence class contains the ScanClassBase
+    This is the module containing the Sequence class. The Sequence class contains the InterfaceClassBase
     members, as well as a list of pulse dictionaries, the total_combined_pulses in the sequence,
     power_divider, last_pulse_len, ssdelay, seqtime, which together give sstime (scope synce time,
     or time for receiving, and numberofreceivesamples to sample during the receiving window
@@ -25,9 +25,9 @@ import numpy as np
 import structlog
 
 # local
-from experiment_prototype.experiment_utils.sample_building import get_samples, get_phase_shift
-from experiment_prototype.scan_classes.scan_class_base import ScanClassBase
+from experiment_prototype.interface_classes.interface_class_base import InterfaceClassBase
 from experiment_prototype.experiment_exception import ExperimentException
+from utils.signals import get_samples, get_phase_shift
 
 # Obtain the module name that imported this log_config
 caller = Path(inspect.stack()[-1].filename)
@@ -35,7 +35,7 @@ module_name = caller.name.split('.')[0]
 log = structlog.getLogger(module_name)
 
 
-class Sequence(ScanClassBase):
+class Sequence(InterfaceClassBase):
     """
     Set up the sequence class.
 
@@ -97,7 +97,7 @@ class Sequence(ScanClassBase):
     """
 
     def __init__(self, seqn_keys, sequence_slice_dict, sequence_interface, transmit_metadata):
-        ScanClassBase.__init__(self, seqn_keys, sequence_slice_dict, sequence_interface, transmit_metadata)
+        InterfaceClassBase.__init__(self, seqn_keys, sequence_slice_dict, sequence_interface, transmit_metadata)
 
         self.decimation_scheme = self.slice_dict[self.slice_ids[0]].decimation_scheme
         for slice_id in self.slice_ids:
@@ -111,11 +111,13 @@ class Sequence(ScanClassBase):
             dm_rate *= stage.dm_rate
 
         txrate = self.transmit_metadata['txrate']
-        txctrfreq = self.transmit_metadata['txctrfreq']
         main_antenna_count = self.transmit_metadata['main_antenna_count']
         main_antenna_spacing = self.transmit_metadata['main_antenna_spacing']
         intf_antenna_count = self.transmit_metadata['intf_antenna_count']
         intf_antenna_spacing = self.transmit_metadata['intf_antenna_spacing']
+        self.tx_main_antennas = self.transmit_metadata['tx_main_antennas']
+        self.rx_main_antennas = self.transmit_metadata['rx_main_antennas']
+        self.rx_intf_antennas = self.transmit_metadata['rx_intf_antennas']
         pulse_ramp_time = self.transmit_metadata['pulse_ramp_time']
         max_usrp_dac_amplitude = self.transmit_metadata['max_usrp_dac_amplitude']
         tr_window_time = self.transmit_metadata['tr_window_time']
@@ -124,6 +126,11 @@ class Sequence(ScanClassBase):
         self.basic_slice_pulses = {}
         self.rx_beam_phases = {}
         self.tx_main_phase_shifts = {}
+        self.rx_main_antenna_indices = {}
+        self.rx_intf_antenna_indices = {}
+        self.tx_antenna_indices = {}
+        self.txctrfreq = self.slice_dict[self.slice_ids[0]].txctrfreq
+        self.rxctrfreq = self.slice_dict[self.slice_ids[0]].rxctrfreq
         single_pulse_timing = []
 
         # For each slice calculate beamformed samples and place into the basic_slice_pulses
@@ -131,9 +138,8 @@ class Sequence(ScanClassBase):
         for slice_id in self.slice_ids:
             exp_slice = self.slice_dict[slice_id]
             freq_khz = float(exp_slice.freq)
-            wave_freq = freq_khz - txctrfreq
+            wave_freq = freq_khz - self.txctrfreq
             wave_freq_hz = wave_freq * 1000
-
 
             # Now we set up the phases for receive side
             if exp_slice.rx_antenna_pattern is not None:
@@ -148,7 +154,25 @@ class Sequence(ScanClassBase):
                 rx_intf_phase_shift = get_phase_shift(exp_slice.beam_angle, freq_khz, intf_antenna_count,
                                                       intf_antenna_spacing, intf_offset[0])
 
-            self.rx_beam_phases[slice_id] = {'main': rx_main_phase_shift, 'intf': rx_intf_phase_shift}
+            # The antenna indices for receiving by this slice
+            slice_rx_main_antennas = exp_slice.rx_main_antennas
+            slice_rx_intf_antennas = exp_slice.rx_intf_antennas
+
+            # The index of the antennas for this slice, within the list of all antennas from the config file
+            main_indices = [self.rx_main_antennas.index(ant) for ant in slice_rx_main_antennas]
+            intf_indices = [self.rx_intf_antennas.index(ant) for ant in slice_rx_intf_antennas]
+            self.rx_main_antenna_indices[slice_id] = main_indices
+            self.rx_intf_antenna_indices[slice_id] = intf_indices
+
+            # Zero out the complex phase for any antenna that isn't used in this slice
+            main_phases = np.zeros((rx_main_phase_shift.shape[0], len(self.rx_main_antennas)),
+                                   dtype=rx_main_phase_shift.dtype)
+            intf_phases = np.zeros((rx_intf_phase_shift.shape[0], len(self.rx_intf_antennas)),
+                                   dtype=rx_intf_phase_shift.dtype)
+            main_phases[:, main_indices] = rx_main_phase_shift[:, slice_rx_main_antennas]
+            intf_phases[:, intf_indices] = rx_intf_phase_shift[:, slice_rx_intf_antennas]
+
+            self.rx_beam_phases[slice_id] = {'main': main_phases, 'intf': intf_phases}
 
             # Set up the tx pulses if transmitting
             if not exp_slice.rxonly:
@@ -163,22 +187,33 @@ class Sequence(ScanClassBase):
                     tx_main_phase_shift = get_phase_shift(exp_slice.beam_angle, freq_khz, main_antenna_count,
                                                           main_antenna_spacing)
 
-                # main_phase_shift: [num_beams, num_antennas]
+                # The antennas used for transmitting this slice
+                slice_tx_antennas = exp_slice.tx_antennas
+
+                # The index of the antennas for this slice, within the list of all antennas from the config file
+                tx_indices = [self.tx_main_antennas.index(ant) for ant in slice_tx_antennas]
+                self.tx_antenna_indices[slice_id] = tx_indices
+
+                # Zero out the complex phase of any antenna that isn't used in this slice
+                tx_phases = np.zeros((tx_main_phase_shift.shape[0], len(self.tx_main_antennas)),
+                                     dtype=tx_main_phase_shift.dtype)
+                tx_phases[:, tx_indices] = tx_main_phase_shift[:, slice_tx_antennas]
+
+                # tx_phases:        [num_beams, num_antennas]
                 # basic_samples:    [num_samples]
                 # phased_samps_for_beams: [num_beams, num_antennas, num_samples]
-                log.info("slice information",
-                         slice_id=slice_id,
-                         tx_main_phases=tx_main_phase_shift,
-                         tx_main_magnitudes=np.abs(tx_main_phase_shift),
-                         tx_main_angles=np.rad2deg(np.angle(tx_main_phase_shift)))
-                phased_samps_for_beams = np.einsum('ij,k->ijk', tx_main_phase_shift, basic_samples)
+                log.verbose("slice information",
+                            slice_id=slice_id,
+                            tx_main_phases=tx_phases,
+                            tx_main_magnitudes=np.abs(tx_phases),
+                            tx_main_angles=np.rad2deg(np.angle(tx_phases)))
+                phased_samps_for_beams = np.einsum('ij,k->ijk', tx_phases, basic_samples)
                 self.basic_slice_pulses[slice_id] = phased_samps_for_beams
             else:
                 self.basic_slice_pulses[slice_id] = []
-                tx_main_phase_shift = np.zeros((rx_main_phase_shift.shape[0], len(exp_slice.tx_antennas)),
+                tx_phases = np.zeros((rx_main_phase_shift.shape[0], len(self.tx_main_antennas)),
                                                dtype=np.complex64)
-            self.tx_main_phase_shifts[slice_id] = tx_main_phase_shift
-
+            self.tx_main_phase_shifts[slice_id] = tx_phases
 
             for pulse_time in exp_slice.pulse_sequence:
                 pulse_timing_us = pulse_time * exp_slice.tau_spacing + exp_slice.seqoffset
@@ -327,7 +362,7 @@ class Sequence(ScanClassBase):
         for i, cpm in enumerate(combined_pulses_metadata):
             # message = f"Pulse {i}: start time(us) {cpm['start_time_us']}  start sample {cpm['pulse_sample_start']}"
             # message += f"          pulse length(us) {cpm['total_pulse_len']}  pulse num samples {cpm['total_num_samps']}"
-            log.info("pulse information", **cpm)
+            log.verbose("pulse information", **cpm)
 
         self.combined_pulses_metadata = combined_pulses_metadata
 
@@ -377,7 +412,7 @@ class Sequence(ScanClassBase):
 
         # create debug dict for tx samples.
         debug_dict = {'txrate': txrate,
-                      'txctrfreq': txctrfreq,
+                      'txctrfreq': self.txctrfreq,
                       'pulse_timing': [],
                       'pulse_sample_start': [],
                       'sequence_samples': {},
@@ -425,15 +460,13 @@ class Sequence(ScanClassBase):
         :returns:   The transmit sequence and related data to use for debug.
         :rtype:     dict
         """
-        main_antenna_count = self.transmit_metadata['main_antenna_count']
-        main_antennas = self.transmit_metadata['main_antennas']
         txrate = self.transmit_metadata['txrate']
 
         buffer_len = int(txrate * self.sstime * 1e-6)
         # This is going to act as buffer for mixing pulses. It is the length of the receive samples
         # since we know this will be large enough to hold samples at any pulse position. There will
         # be a buffer for each antenna.
-        sequence = np.zeros([main_antenna_count, buffer_len], dtype=np.complex64)
+        sequence = np.zeros([len(self.tx_main_antennas), buffer_len], dtype=np.complex64)
 
         for slice_id in self.slice_ids:
             exp_slice = self.slice_dict[slice_id]
@@ -472,11 +505,12 @@ class Sequence(ScanClassBase):
                     if component_info['slice_id'] == slice_id:
                         pulse_sample_start = component_info['pulse_sample_start']
                         pulse_samples_len = component_info['pulse_num_samps']
-                        tx_antennas = self.slice_dict[slice_id].tx_antennas
-
                         start = pulse['tr_window_num_samps'] + pulse_sample_start
                         end = start + pulse_samples_len
-                        sequence[tx_antennas, start:end] += samples[i, tx_antennas, :]
+
+                        # samples: [pulses, tx_antenna_count, samples]
+                        # sequence: [tx_antenna_count, buffer_len]
+                        sequence[:, start:end] += samples[i, :, :]
 
         # copy the encoded and combined samples into the metadata for the sequence.
         pulse_data = []
@@ -486,7 +520,7 @@ class Sequence(ScanClassBase):
             num_samples = pulse['total_num_samps']
             start = pulse_sample_start
             end = start + num_samples + 2 * pulse['tr_window_num_samps']
-            samples = sequence[main_antennas, start:end]    # Only keep around the samples for active N200s
+            samples = sequence[:, start:end]
 
             new_pulse_info = copy.deepcopy(pulse['pulse_transmit_data'])
             new_pulse_info['samples_array'] = samples
@@ -502,7 +536,7 @@ class Sequence(ScanClassBase):
         if __debug__:
             debug_dict = copy.deepcopy(self.debug_dict)
             debug_dict['sequence_samples'] = sequence
-            debug_dict['decimated_samples'] = sequence[main_antennas, ::debug_dict['dmrate']]
+            debug_dict['decimated_samples'] = sequence[:, ::debug_dict['dmrate']]
         else:
             debug_dict = None
 

@@ -105,6 +105,7 @@ from transmitters #6 and #12 not contributing to the system. The effects are imm
 the higher power sidelobes. The main lobe gain is reduced from 16.66dB to 16.13dB. The main lobe
 remains the same shape but is slightly smaller (~1 degree) in elevation angle.
 
+
 .. _NTP:
 
 ---

@@ -6,284 +6,37 @@
     :copyright: 2020 SuperDARN Canada
     :author: Keith Kotyk
 """
+import copy
+import math
+import mmap
+from multiprocessing import shared_memory
 import os
+import pickle
 import sys
-import time
 import threading
+import time
+
 import numpy as np
 import posix_ipc as ipc
-from multiprocessing import shared_memory
-import mmap
-import math
-import copy
-import pickle
-from functools import reduce
 
 try:
-    import cupy as cp
-except:
+    import cupy as xp
+except ImportError:
     cupy_available = False
+    import numpy as xp
 else:
     cupy_available = True
 
-if cupy_available:
-    import cupy as xp
-else:
-    import numpy as xp
 
 sys.path.append(os.environ['BOREALISPATH'])
+
 if __debug__:
     from build.debug.src.utils.protobuf.rxsamplesmetadata_pb2 import RxSamplesMetadata
 else:
     from build.release.src.utils.protobuf.rxsamplesmetadata_pb2 import RxSamplesMetadata
 
 from utils.message_formats import ProcessedSequenceMessage, DebugDataStage, OutputDataset
-from utils.options import Options
-from utils import socket_operations as so
-
-
-def windowed_view(ndarray, window_len, step):
-    """
-    Creates a strided and windowed view of the ndarray. This allows us to skip samples that will
-    otherwise be dropped without missing samples needed for the convolutions windows. The strides
-    will also not extend out of bounds meaning we do not need to pad extra samples and then drop bad
-    samples after the fact.
-
-    :param      ndarray:     The input ndarray
-    :type       ndarray:     ndarray
-    :param      window_len:  The window length(filter length)
-    :type       window_len:  int
-    :param      step:        The step(dm rate)
-    :type       step:        int
-
-    :returns:   The array with a new view.
-    :rtype:     ndarray
-    """
-
-    nrows = ((ndarray.shape[-1] - window_len) // step) + 1
-    last_dim_stride = ndarray.strides[-1]
-    new_shape = ndarray.shape[:-1] + (nrows, window_len)
-    new_strides = list(ndarray.strides + (last_dim_stride,))
-    new_strides[-2] *= step
-    return xp.lib.stride_tricks.as_strided(ndarray, shape=new_shape, strides=new_strides)
-
-
-class DSP(object):
-    """
-    This class performs the DSP functions of Borealis
-
-    :param      input_samples:  The wideband samples to operate on.
-    :type       input_samples:  ndarray
-    :param      rx_rate:        The wideband rx rate.
-    :type       rx_rate:        float
-    :param      dm_rates:       The decimation rates at each stage.
-    :type       dm_rates:       list
-    :param      filter_taps:    The filter taps to use at each stage.
-    :type       filter_taps:    ndarray
-    :param      mixing_freqs:   The freqs used to mix to baseband.
-    :type       mixing_freqs:   list
-    :param      beam_phases:    The phases used to beamform the final decimated samples.
-    :type       beam_phases:    list
-    """
-
-    def __init__(self, input_samples, rx_rate, dm_rates, filter_taps, mixing_freqs, beam_phases):
-        super(DSP, self).__init__()
-        self.filters = None
-        self.filter_outputs = []
-        self.beamformed_samples = None
-        self.shared_mem = {}
-
-        self.create_filters(filter_taps, mixing_freqs, rx_rate)
-
-        self.apply_bandpass_decimate(input_samples, self.filters[0], mixing_freqs, dm_rates[0], rx_rate)
-
-        for i in range(1, len(self.filters)):
-            self.apply_lowpass_decimate(self.filter_outputs[i - 1], self.filters[i], dm_rates[i])
-
-        # Create shared memory for antennas_iq data
-        antennas_iq_samples = self.filter_outputs[-1]
-        ant_shm = shared_memory.SharedMemory(create=True, size=antennas_iq_samples.nbytes)
-        self.antennas_iq_samples = np.ndarray(antennas_iq_samples.shape, dtype=np.complex64, buffer=ant_shm.buf)
-
-        # Move the antennas_iq samples to the CPU for beamforming
-        if cupy_available:
-            self.antennas_iq_samples[...] = xp.asnumpy(antennas_iq_samples)[...]
-        else:
-            self.antennas_iq_samples[...] = antennas_iq_samples[...]
-        self.shared_mem['antennas_iq'] = ant_shm
-
-        self.beamform_samples(self.antennas_iq_samples, beam_phases)
-
-    def create_filters(self, filter_taps, mixing_freqs, rx_rate):
-        """
-        Creates and shapes the filters arrays using the original sets of filter taps. The first
-        stage filters are mixed to bandpass and the low pass filters are reshaped. The filters
-        coefficients are typically symmetric, with the exception of the first-stage bandpass
-        filters. As a result, the mixing frequency should be the negative of the frequency that is
-        actually being extracted. For example, with 12 MHz center frequency and a 10.5 MHz transmit
-        frequency, the mixing frequency should be 1.5 MHz.
-
-        :param      filter_taps:   The filters taps from the experiment decimation scheme.
-        :type       filter_taps:   list
-        :param      mixing_freqs:  The frequencies used to mix the first stage filter for bandpass.
-                                   Calculated as (center freq - rx freq), as filter coefficients are
-                                   cross-correlated with samples instead of convolved.
-        :type       mixing_freqs:  list
-        :param      rx_rate:       The rf rx rate.
-        :type       rx_rate:       float
-        """
-        filters = []
-        n = len(mixing_freqs)
-        m = filter_taps[0].shape[0]
-        bandpass = np.zeros((n, m), dtype=np.complex64)
-        s = np.arange(m, dtype=np.complex64)
-        for idx, f in enumerate(mixing_freqs):
-            bandpass[idx, :] = filter_taps[0] * np.exp(s * 2j * np.pi * f / rx_rate)
-        filters.append(bandpass)
-
-        for t in filter_taps[1:]:
-            filters.append(t[np.newaxis, :])
-
-        self.filters = filters
-
-    def apply_bandpass_decimate(self, input_samples, bp_filters, mixing_freqs, dm_rate, rx_rate):
-        """
-        Apply a Frerking bandpass filter to the input samples. Several different frequencies can be
-        centered on simultaneously. Downsampling is done in parallel via a strided window view of
-        the input samples.
-
-        :param      input_samples:  The input raw rf samples for each antenna.
-        :type       input_samples:  ndarray [num_antennas, num_samples]
-        :param      bp_filters:     The bandpass filter(s).
-        :type       bp_filters:     ndarray [num_slices, num_taps]
-        :param      mixing_freqs:   The frequencies used to mix the first stage filter for bandpass.
-        :type       mixing_freqs:   list
-        :param      dm_rate:        The decimation rate of this stage
-        :type       dm_rate:        int
-        :param      rx_rate:        The rf rx rate.
-        :type       rx_rate:        float
-        """
-        # We need to force the input into the GPU to be float16, float32, or complex64 so that the einsum result is
-        # complex64 and NOT complex128. The GPU is significantly slower (10x++) working with complex128 numbers.
-        # We do not require the additional precision.
-        bp_filters = xp.array(bp_filters, dtype=xp.complex64)
-        input_samples = windowed_view(input_samples, bp_filters.shape[-1], dm_rate)
-
-        # [num_slices, num_taps]
-        # [num_antennas, num_output_samples, num_taps]
-        filtered = xp.einsum('ij,klj->ikl', bp_filters, input_samples)
-
-        # Apply the phase correction for the Frerking method.
-        ph = xp.arange(filtered.shape[-1], dtype=np.float32)[xp.newaxis, :]
-        freqs = xp.array(mixing_freqs)[:, xp.newaxis]
-
-        # [1, num_output_samples]
-        # [num_slices, 1]
-        ph = xp.fmod(ph * 2.0 * xp.pi * freqs / rx_rate * dm_rate, 2.0 * xp.pi)
-        ph = xp.exp(1j * ph.astype(xp.float32))
-
-        # [num_slices, num_antennas, num_output_samples]
-        # [num_slices, 1, num_output_samples]
-        corrected = filtered * ph[:, xp.newaxis, :]
-
-        self.filter_outputs.append(corrected)
-
-    def apply_lowpass_decimate(self, input_samples, lp_filter, dm_rate):
-        """
-        Apply a lowpass filter to the baseband input samples. Downsampling is done in parallel via a
-        strided window view of the input samples.
-
-        :param      input_samples:  Baseband input samples
-        :type       input_samples:  ndarray [num_slices, num_antennas, num_samples]
-        :param      lp:             Lowpass filter taps
-        :type       lp:             ndarray [1, num_taps]
-        :param      dm_rate:        The decimation rate of this stage.
-        :type       dm_rate:        int
-        """
-        # We need to force the input into the GPU to be float16, float32, or complex64 so that the einsum result is
-        # complex64 and NOT complex128. The GPU is significantly slower (10x++) working with complex128 numbers.
-        # We do not require the additional precision.
-        lp_filter = xp.array(lp_filter, dtype=xp.complex64)
-        input_samples = windowed_view(input_samples, lp_filter.shape[-1], dm_rate)
-
-        # [1, num_taps]
-        # [num_slices, num_antennas, num_output_samples, num_taps]
-        filtered = xp.einsum('ij,klmj->klm', lp_filter, input_samples)
-
-        self.filter_outputs.append(filtered)
-
-    def beamform_samples(self, filtered_samples, beam_phases):
-        """
-        Beamform the filtered samples for multiple beams simultaneously.
-
-        :param      filtered_samples:  The filtered input samples.
-        :type       filtered_samples:  ndarray [num_slices, num_antennas, num_samples]
-        :param      beam_phases:       The beam phases used to phase each antenna's samples before
-                                       combining.
-        :type       beam_phases:       ndarray [num_slices, num_beams, num_antennas]
-        """
-        # [num_slices, num_beams, num_antennas]
-        beam_phases = np.array(beam_phases)
-
-        # [num_slices, num_beams, num_samples]
-        final_shape = (filtered_samples.shape[0], beam_phases.shape[1], filtered_samples.shape[2])
-        final_size = np.dtype(np.complex64).itemsize * reduce(lambda a, b: a * b, final_shape)
-        bf_shm = shared_memory.SharedMemory(create=True, size=final_size)
-        self.beamformed_samples = np.ndarray(final_shape, dtype=np.complex64, buffer=bf_shm.buf)
-        self.beamformed_samples[...] = np.einsum('ijk,ilj->ilk', filtered_samples, beam_phases)
-
-        self.shared_mem['bfiq'] = bf_shm
-
-    @staticmethod
-    def correlations_from_samples(beamformed_samples_1, beamformed_samples_2, output_sample_rate, slice_index_details):
-        """
-        Correlate two sets of beamformed samples together. Correlation matrices are used and indices
-        corresponding to lag pulse pairs are extracted.
-
-        :param      beamformed_samples_1:  The first beamformed samples.
-        :type       beamformed_samples_1:  ndarray [num_slices, num_beams, num_samples]
-        :param      beamformed_samples_2:  The second beamformed samples.
-        :type       beamformed_samples_2:  ndarray [num_slices, num_beams, num_samples]
-        :param      slice_index_details:   Details used to extract indices for each slice.
-        :type       slice_index_details:   list
-
-        :returns:   Correlations for slices.
-        :rtype:     list
-        """
-        values = []
-        for s, slice_info in enumerate(slice_index_details):
-            if slice_info['lags'].size == 0:
-                values.append(np.array([]))
-                continue
-
-            range_off = np.arange(slice_info['num_range_gates'], dtype=np.int32) + slice_info['first_range_off']
-            tau_in_samples = slice_info['tau_spacing'] * 1e-6 * output_sample_rate
-            lag_pulses_as_samples = np.array(slice_info['lags'], np.int32) * np.int32(tau_in_samples)
-
-            # [num_range_gates, 1, 1]
-            # [1, num_lags, 2]
-            samples_for_all_range_lags = (range_off[..., np.newaxis, np.newaxis] +
-                                          lag_pulses_as_samples[np.newaxis, :, :])
-
-            # [num_range_gates, num_lags, 2]
-            row = samples_for_all_range_lags[..., 1].astype(np.int32)
-
-            # [num_range_gates, num_lags, 2]
-            col = samples_for_all_range_lags[..., 0].astype(np.int32)
-
-            values_for_slice = np.empty((beamformed_samples_1.shape[1], row.shape[0], row.shape[1]), dtype=np.complex64)
-
-            for lag in range(row.shape[1]):
-                values_for_slice[:, :, lag] = np.einsum('ij,ij->ji',
-                                                        beamformed_samples_1[s, :, row[:, lag]],
-                                                        beamformed_samples_2[s, :, col[:, lag]].conj())
-
-            # [num_beams, num_range_gates, num_lags]
-            values_for_slice = np.einsum('ijk,k->ijk', values_for_slice, slice_info['lag_phase_offsets'])
-
-            values.append(values_for_slice)
-
-        return values
+from utils.signals import DSP
 
 
 def fill_datawrite_message(processed_data, slice_details, data_outputs):
@@ -348,7 +101,7 @@ def main():
 
     ringbuffer = None
 
-    total_antennas = len(options.main_antennas) + len(options.intf_antennas)
+    total_antennas = len(options.rx_main_antennas) + len(options.rx_intf_antennas)
 
     threads = []
     first_time = True
@@ -372,6 +125,7 @@ def main():
         mixing_freqs = []
         main_beam_angles = []
         intf_beam_angles = []
+        intf_antennas = set()
 
         # Parse out details and force the data type so that Cupy can optimize with standardized
         # data types.
@@ -379,11 +133,7 @@ def main():
         for i, chan in enumerate(sqn_meta_message.rx_channels):
             detail = {}
 
-            # This is the negative of what you would normally expect (i.e. -1 * offset of rxfreq
-            # from center freq) because the filter taps do not get flipped when convolving. I.e. we
-            # do the cross-correlation instead of convolution, to save some computational complexity
-            # from flipping the filter sequence. It works out to the same result.
-            mixing_freqs.append(rx_center_freq - chan.rx_freq)
+            mixing_freqs.append(chan.rx_freq - rx_center_freq)
 
             detail['slice_id'] = chan.slice_id
             detail['slice_num'] = i
@@ -392,6 +142,7 @@ def main():
             detail['tau_spacing'] = np.uint32(chan.tau_spacing)
             detail['num_range_gates'] = np.uint32(chan.num_ranges)
             detail['first_range_off'] = np.uint32(chan.first_range / chan.range_sep)
+
             lag_phase_offsets = []
 
             lags = []
@@ -404,8 +155,8 @@ def main():
             detail['lags'] = np.array(lags, dtype=np.uint32)
             detail['num_lags'] = len(lags)
 
-            main_beams = chan.beam_phases[:, :len(options.main_antennas)]
-            intf_beams = chan.beam_phases[:, len(options.main_antennas):]
+            main_beams = chan.beam_phases[:, :len(options.rx_main_antennas)]
+            intf_beams = chan.beam_phases[:, len(options.rx_main_antennas):]
 
             detail['num_beams'] = main_beams.shape[0]
 
@@ -413,23 +164,24 @@ def main():
             main_beam_angles.append(main_beams)
             intf_beam_angles.append(intf_beams)
 
+            intf_antennas.update(set(chan.rx_intf_antennas))     # Keep track of all intf antennas for the sequence
+
         # Different slices can have a different amount of beams used. Slices that use fewer beams
         # than the max number of beams are padded with zeros so that matrix calculations can be
         # used. The extra beams that are processed will be not be parsed for data writing.
         max_num_beams = max([x.shape[0] for x in main_beam_angles])
+        padded_main_phases = np.zeros((len(sqn_meta_message.rx_channels),
+                                       max_num_beams,
+                                       len(options.rx_main_antennas)), dtype=np.complex64)
+        padded_intf_phases = np.zeros((len(sqn_meta_message.rx_channels),
+                                       max_num_beams,
+                                       len(options.rx_intf_antennas)), dtype=np.complex64)
 
-        def pad_beams(angles, ant_count):
-            for x in angles:
-                if x.shape[0] < max_num_beams:
-                    temp = np.zeros_like((max_num_beams, ant_count), x.dtype)
-                    temp[:x.shape[0], :] = x
-                    x = temp    # Reassign to the new larger array with zero-padded beams
+        for i, x in enumerate(main_beam_angles):
+            padded_main_phases[i, :len(x)] = x
+        for i, x in enumerate(intf_beam_angles):
+            padded_intf_phases[i, :len(x)] = x
 
-        pad_beams(main_beam_angles, len(options.main_antennas))
-        pad_beams(intf_beam_angles, len(options.intf_antennas))
-
-        main_beam_angles = np.array(main_beam_angles, dtype=np.complex64)
-        intf_beam_angles = np.array(intf_beam_angles, dtype=np.complex64)
         mixing_freqs = np.array(mixing_freqs, dtype=np.float64)
 
         # Get meta from driver
@@ -453,7 +205,7 @@ def main():
             ringbuffer = np.frombuffer(mapped_mem, dtype=np.complex64).reshape(total_antennas, -1)
 
             if cupy_available:
-                cp.cuda.runtime.hostRegister(ringbuffer.ctypes.data, ringbuffer.size, 0)
+                xp.cuda.runtime.hostRegister(ringbuffer.ctypes.data, ringbuffer.size, 0)
 
             first_time = False
 
@@ -466,9 +218,9 @@ def main():
             dm_rates.append(stage.dm_rate)
             dm_scheme_taps.append(np.array(stage.filter_taps, dtype=np.complex64))
             taps_per_stage.append(len(stage.filter_taps))
-        log.debug("stage decimation and filter taps",
-                  decimation_rates=dm_rates,
-                  filter_taps_per_stage=taps_per_stage)
+        log.verbose("stage decimation and filter taps",
+                    decimation_rates=dm_rates,
+                    filter_taps_per_stage=taps_per_stage)
         dm_rates = np.array(dm_rates, dtype=np.uint32)
         for dm, taps in zip(reversed(dm_rates), reversed(dm_scheme_taps)):
             extra_samples = (extra_samples * dm) + len(taps) // 2
@@ -501,11 +253,12 @@ def main():
             start_sample = kwargs['start_sample']
             end_sample = kwargs['end_sample']
             processed_data = kwargs['processed_data']
+            intf_antennas = kwargs['intf_antennas']
             filter_taps = kwargs['filter_taps']
             downsample_rates = kwargs['downsample_rates']
 
             if cupy_available:
-                cp.cuda.runtime.setDevice(0)
+                xp.cuda.runtime.setDevice(0)
 
             seq_begin_iden = options.dspbegin_to_brian_identity + str(sequence_num)
             seq_end_iden = options.dspend_to_brian_identity + str(sequence_num)
@@ -530,11 +283,11 @@ def main():
                 if end_sample > ringbuffer.shape[1]:
                     piece1 = ringbuffer[:, start_sample:]
                     piece2 = ringbuffer[:, :end_sample - ringbuffer.shape[1]]
-                    tmp1 = cp.array(piece1)
-                    tmp2 = cp.array(piece2)
-                    sequence_samples = cp.concatenate((tmp1, tmp2), axis=1)
+                    tmp1 = xp.array(piece1)
+                    tmp2 = xp.array(piece2)
+                    sequence_samples = xp.concatenate((tmp1, tmp2), axis=1)
                 else:
-                    sequence_samples = cp.array(ringbuffer[:, start_sample:end_sample])
+                    sequence_samples = xp.array(ringbuffer[:, start_sample:end_sample])
             else:
                 sequence_samples = ringbuffer.take(indices, axis=1, mode='wrap')
             log_dict["copy_samples_from_ringbuffer_time"] = (time.perf_counter() - start_timer) * 1e3
@@ -549,28 +302,33 @@ def main():
 
             # Process main samples
             mark_timer = time.perf_counter()
-            main_sequence_samples = sequence_samples[:len(options.main_antennas), :]
+            main_sequence_samples = sequence_samples[:len(options.rx_main_antennas), :]
             main_sequence_samples_shape = main_sequence_samples.shape
-            processed_main_samples = DSP(main_sequence_samples, rx_rate, downsample_rates, filter_taps, mixing_freqs,
-                                         main_beam_angles)
-            main_corrs = DSP.correlations_from_samples(processed_main_samples.beamformed_samples,
-                                                       processed_main_samples.beamformed_samples,
+            main_processor = DSP(rx_rate, filter_taps, mixing_freqs, downsample_rates)
+            main_processor.apply_filters(main_sequence_samples)
+            main_processor.move_filter_results()
+            main_processor.beamform(main_beam_angles)
+            main_corrs = DSP.correlations_from_samples(main_processor.beamformed_samples,
+                                                       main_processor.beamformed_samples,
                                                        output_sample_rate, slice_details)
             log_dict["main_dsp_time"] = (time.perf_counter() - mark_timer) * 1e3
 
             # Process intf samples if intf exists
             mark_timer = time.perf_counter()
             intf_sequence_samples_shape = None
-            if options.intf_antenna_count > 0:
-                intf_sequence_samples = sequence_samples[len(options.main_antennas):, :]
+            log.info("intf antennas", antennas=intf_antennas)
+            if len(intf_antennas) > 0:
+                intf_sequence_samples = sequence_samples[len(options.rx_main_antennas):, :]
                 intf_sequence_samples_shape = intf_sequence_samples.shape
-                processed_intf_samples = DSP(intf_sequence_samples, rx_rate, downsample_rates,
-                                             filter_taps, mixing_freqs, intf_beam_angles)
-                intf_corrs = DSP.correlations_from_samples(processed_intf_samples.beamformed_samples,
-                                                           processed_intf_samples.beamformed_samples,
+                intf_processor = DSP(rx_rate, filter_taps, mixing_freqs, downsample_rates)
+                intf_processor.apply_filters(intf_sequence_samples)
+                intf_processor.move_filter_results()
+                intf_processor.beamform(intf_beam_angles)
+                intf_corrs = DSP.correlations_from_samples(intf_processor.beamformed_samples,
+                                                           intf_processor.beamformed_samples,
                                                            output_sample_rate, slice_details)
-                cross_corrs = DSP.correlations_from_samples(processed_intf_samples.beamformed_samples,
-                                                            processed_main_samples.beamformed_samples,
+                cross_corrs = DSP.correlations_from_samples(intf_processor.beamformed_samples,
+                                                            main_processor.beamformed_samples,
                                                             output_sample_rate, slice_details)
             log_dict["intf_dsp_time"] = (time.perf_counter() - mark_timer) * 1e3
 
@@ -582,16 +340,17 @@ def main():
             so.send_bytes(dspend_to_brian, options.brian_to_dspend_identity, msg)
             log_dict["dsp_end_msg_time"] = (time.perf_counter() - mark_timer) * 1e3
 
-            log_dict["total_sequence_process_time"] = (time.perf_counter() - start_timer) * 1e3
-            log.info("processing sequence",
-                     sequence_num=sequence_num,
-                     mixing_freqs=mixing_freqs,
-                     mixing_freqs_units='Hz',
-                     main_beam_angles=main_beam_angles.shape,
-                     intf_beam_angles=main_beam_angles.shape,
-                     main_buffer_shape=main_sequence_samples_shape,
-                     intf_buffer_shape=intf_sequence_samples_shape,
-                     **log_dict)
+            total_processing_time = (time.perf_counter() - start_timer) * 1e3
+            log_dict["total_sequence_process_time"] = total_processing_time
+            log.verbose("processing sequence",
+                        sequence_num=sequence_num,
+                        mixing_freqs=mixing_freqs,
+                        mixing_freqs_units='Hz',
+                        main_beam_angles=main_beam_angles.shape,
+                        intf_beam_angles=main_beam_angles.shape,
+                        main_buffer_shape=main_sequence_samples_shape,
+                        intf_buffer_shape=intf_sequence_samples_shape,
+                        **log_dict)
 
             # Generate a new timer dict for a uniform log
             log_dict = {"time_units": "ms"}
@@ -616,18 +375,17 @@ def main():
                 shm = shared_memory.SharedMemory(create=True, size=data_array.nbytes)
                 data = np.ndarray(data_array.shape, dtype=np.complex64, buffer=shm.buf)
                 if cupy_available:
-                    data[...] = cp.asnumpy(data_array)
+                    data[...] = xp.asnumpy(data_array)
                 else:
                     data[...] = data_array
-                try:
-                    assert array_name in ["main", "intf"]
-                    if array_name == 'main':
-                        holder.main_shm = shm.name
-                    elif array_name == 'intf':
-                        holder.intf_shm = shm.name
-                except Exception as e:
-                    log.error(f"unknown array name {array_name} not in [main, intf]", error=e)
-                    log.exception(f"unknown array name {array_name} [main, intf]", error=e)
+
+                if array_name == 'main':
+                    holder.main_shm = shm.name
+                elif array_name == 'intf':
+                    holder.intf_shm = shm.name
+                else:
+                    log.error(f"unknown array name {array_name} not in [main, intf]")
+                    log.exception(f"unknown array name {array_name} [main, intf]")
                     sys.exit(1)
 
                 holder.num_samps = data_array.shape[-1]
@@ -635,12 +393,12 @@ def main():
 
             # Add the filter stage data if in debug mode
             if __debug__:
-                for i, main_data in enumerate(processed_main_samples.filter_outputs[:-1]):
+                for i, main_data in enumerate(main_processor.filter_outputs[:-1]):
                     stage = DebugDataStage(f'stage_{i}')
                     debug_data_in_shm(stage, main_data, 'main')
 
                     if options.intf_antenna_count > 0:
-                        intf_data = processed_intf_samples.filter_outputs[i]
+                        intf_data = intf_processor.filter_outputs[i]
                         debug_data_in_shm(stage, intf_data, 'intf')
 
                     processed_data.add_debug_data(stage)
@@ -648,12 +406,12 @@ def main():
             # Add antennas_iq data
             stage = DebugDataStage()
             stage.stage_name = 'antennas'
-            main_shm = processed_main_samples.shared_mem['antennas_iq']
+            main_shm = main_processor.shared_mem['antennas_iq']
             stage.main_shm = main_shm.name
-            stage.num_samps = processed_main_samples.antennas_iq_samples.shape[-1]
+            stage.num_samps = main_processor.antennas_iq_samples.shape[-1]
             main_shm.close()
-            if options.intf_antenna_count > 0:
-                intf_shm = processed_intf_samples.shared_mem['antennas_iq']
+            if len(intf_antennas) > 0:
+                intf_shm = intf_processor.shared_mem['antennas_iq']
                 stage.intf_shm = intf_shm.name
                 intf_shm.close()
             processed_data.add_debug_data(stage)
@@ -671,23 +429,22 @@ def main():
                 processed_data.rawrf_num_samps = indices.shape[-1]
                 rawrf_shm.close()
                 log_dict["put_rawrf_in_shm_time"] = (time.perf_counter() - mark_timer) * 1e3
-                mark_timer = time.perf_counter()
 
             # Add bfiq and correlations data
             mark_timer = time.perf_counter()
-            beamformed_m = processed_main_samples.beamformed_samples
-            processed_data.bfiq_main_shm = processed_main_samples.shared_mem['bfiq'].name
+            beamformed_m = main_processor.beamformed_samples
+            processed_data.bfiq_main_shm = main_processor.shared_mem['bfiq'].name
             processed_data.max_num_beams = beamformed_m.shape[1]    # [num_slices, num_beams, num_samps]
             processed_data.num_samps = beamformed_m.shape[-1]
-            processed_main_samples.shared_mem['bfiq'].close()
+            main_processor.shared_mem['bfiq'].close()
 
             data_outputs['main_corrs'] = main_corrs
 
-            if options.intf_antenna_count > 0:
+            if len(intf_antennas) > 0:
                 data_outputs['cross_corrs'] = cross_corrs
                 data_outputs['intf_corrs'] = intf_corrs
-                processed_data.bfiq_intf_shm = processed_intf_samples.shared_mem['bfiq'].name
-                processed_intf_samples.shared_mem['bfiq'].close()
+                processed_data.bfiq_intf_shm = intf_processor.shared_mem['bfiq'].name
+                intf_processor.shared_mem['bfiq'].close()
 
             # Fill message with the slice-specific fields
             fill_datawrite_message(processed_data, slice_details, data_outputs)
@@ -697,18 +454,24 @@ def main():
             so.send_bytes(dsp_to_dw, options.dw_to_dsp_identity, sqn_message)
 
             log_dict["total_serialize_send_time"] = (time.perf_counter() - start_timer) * 1e3
-            log.info("processing sequence",
+            log.info("done with sequence",
                      sequence_num=sequence_num,
-                     **log_dict)
+                     processing_time=total_processing_time,
+                     time_units='ms',
+                     slice_ids=[d['slice_id'] for d in slice_details])
+            log.verbose("sequence timing",
+                        sequence_num=sequence_num,
+                        **log_dict)
 
         args = {"sequence_num": copy.deepcopy(sqn_meta_message.sequence_num),
-                "main_beam_angles": copy.deepcopy(main_beam_angles),
-                "intf_beam_angles": copy.deepcopy(intf_beam_angles),
+                "main_beam_angles": copy.deepcopy(padded_main_phases),
+                "intf_beam_angles": copy.deepcopy(padded_intf_phases),
                 "mixing_freqs": copy.deepcopy(mixing_freqs),
                 "slice_details": copy.deepcopy(slice_details),
                 "start_sample": copy.deepcopy(start_sample),
                 "end_sample": copy.deepcopy(end_sample),
                 "processed_data": copy.deepcopy(processed_data),
+                "intf_antennas": copy.deepcopy(intf_antennas),
                 "filter_taps": copy.deepcopy(dm_scheme_taps),
                 "downsample_rates": copy.deepcopy(dm_rates)}
 
@@ -724,10 +487,14 @@ def main():
 
 
 if __name__ == "__main__":
+    from utils.options import Options
+    from utils import socket_operations as so
     from utils import log_config
 
     log = log_config.log()
     log.info(f"RX_SIGNAL_PROCESSING BOOTED")
+    if not cupy_available:
+        log.warning("cupy not installed")
     try:
         main()
         log.info(f"RX_SIGNAL_PROCESSING EXITED")

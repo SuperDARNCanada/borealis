@@ -6,7 +6,7 @@
     Radar_control is the process that runs the radar (sends pulses to the driver with
     timing information and sends processing information to the signal processing process).
     Experiment_handler provides the experiment for radar_control to run. It iterates
-    through the scan_class_base objects to control the radar.
+    through the interface_class_base objects to control the radar.
 
     :copyright: 2018 SuperDARN Canada
     :author: Marci Detwiller
@@ -133,7 +133,8 @@ def data_to_driver(radctrl_to_driver, driver_to_radctrl_iden, samples_array, txc
 
 def send_dsp_metadata(radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian, brian_radctrl_iden, rxrate,
                       output_sample_rate, seqnum, slice_ids, slice_dict, beam_dict, sequence_time,
-                      first_rx_sample_start, rxctrfreq, pulse_phase_offsets, decimation_scheme=None):
+                      first_rx_sample_start, rxctrfreq, pulse_phase_offsets,
+                      decimation_scheme=None):
     """
     Place data in the receiver packet and send it via zeromq to the signal processing unit and brian.
     Happens every sequence.
@@ -191,22 +192,13 @@ def send_dsp_metadata(radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian, brian_
         chan_add.num_ranges = slice_dict[slice_id].num_ranges
         chan_add.first_range = slice_dict[slice_id].first_range
         chan_add.range_sep = slice_dict[slice_id].range_sep
+        chan_add.rx_intf_antennas = slice_dict[slice_id].rx_intf_antennas
 
         main_bms = beam_dict[slice_id]['main']
         intf_bms = beam_dict[slice_id]['intf']
 
-        beams = []
-        for i in range(main_bms.shape[0]):
-            # Don't need to send channel numbers, will always send beamdir with length = total antennas.
-            # Beam directions are formated e^i*phi so that a 0 will indicate not
-            # to receive on that channel.
-            mains = slice_dict[slice_id].rx_main_antennas
-            intfs = slice_dict[slice_id].rx_int_antennas
-            temp_main = main_bms[i][mains]
-            temp_intf = intf_bms[i][intfs]
-
-            # Combine main and intf such that for a given beam all main phases come first.
-            beams.append(np.hstack((temp_main, temp_intf)))
+        # Combine main and intf such that for a given beam all main phases come first.
+        beams = np.hstack((main_bms, intf_bms))
         chan_add.beam_phases = np.array(beams)
 
         for lag in slice_dict[slice_id].lag_table:
@@ -237,9 +229,9 @@ def send_dsp_metadata(radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian, brian_
 
     if TIME_PROFILE:
         time_done = time.perf_counter() - time_waiting
-        log.info("waiting time for metadata request",
-                 metadata_time=time_done * 1e3,
-                 metadata_time_units='ms')
+        log.verbose("waiting time for metadata request",
+                    metadata_time=time_done * 1e3,
+                    metadata_time_units='ms')
 
     bytes_packet = pickle.dumps(message, protocol=pickle.HIGHEST_PROTOCOL)
 
@@ -374,16 +366,26 @@ def send_datawrite_metadata(radctrl_to_datawrite, datawrite_radctrl_iden, seqnum
             sequence.output_encodings[slice_id] = []
 
             rxchannel.rx_main_antennas = sqn_slice.rx_main_antennas
-            rxchannel.rx_intf_antennas = sqn_slice.rx_int_antennas
+            rxchannel.rx_intf_antennas = sqn_slice.rx_intf_antennas
             rxchannel.tx_antenna_phases = sequence.tx_main_phase_shifts[slice_id][beam_iter]
 
             beams = sqn_slice.rx_beam_order[beam_iter]
             if isinstance(beams, int):
                 beams = [beams]
 
+            rx_main_phases = []
+            rx_intf_phases = []
             for beam in beams:
                 beam_add = messages.Beam(sqn_slice.beam_angle[beam], beam)
                 rxchannel.add_beam(beam_add)
+                rx_main_phases.append(
+                    sequence.rx_beam_phases[slice_id]['main'][beam, sequence.rx_main_antenna_indices[slice_id]]
+                )
+                rx_intf_phases.append(
+                    sequence.rx_beam_phases[slice_id]['intf'][beam, sequence.rx_intf_antenna_indices[slice_id]]
+                )
+            rxchannel.rx_main_phases = np.array(rx_main_phases, dtype=np.complex64)
+            rxchannel.rx_intf_phases = np.array(rx_intf_phases, dtype=np.complex64)
 
             rxchannel.first_range = float(sqn_slice.first_range)
             rxchannel.num_ranges = sqn_slice.num_ranges
@@ -495,7 +497,7 @@ def main():
     # Send driver initial setup data - rates and center frequency from experiment.
     # Wait for acknowledgment that USRP object is set up.
     setup_driver(radar_control_to_driver, options.driver_to_radctrl_identity,
-                 experiment.txctrfreq, experiment.rxctrfreq, experiment.txrate,
+                 experiment.slice_dict[0].txctrfreq, experiment.slice_dict[0].rxctrfreq, experiment.txrate,
                  experiment.rxrate)
 
     first_aveperiod = True
@@ -604,9 +606,9 @@ def main():
                 # Time to start averaging in the below loop.
                 if not scan.scanbound:
                     averaging_period_start_time = datetime.utcnow()  # ms
-                    log.info("averaging period start time",
-                             averaging_period_start_time=averaging_period_start_time,
-                             averaging_period_start_time_units='')
+                    log.verbose("averaging period start time",
+                                averaging_period_start_time=averaging_period_start_time,
+                                averaging_period_start_time_units='')
                 if aveperiod.intt is not None:
                     intt_break = True
 
@@ -618,11 +620,11 @@ def main():
                         time_diff = beam_scanbound - datetime.utcnow()
                         if time_diff.total_seconds() > 0:
                             if first_aveperiod:
-                                log.info("seconds to next avg period",
-                                         time_until_avg_period=time_diff.total_seconds(),
-                                         time_until_avg_period_units='s',
-                                         scan_iter=scan_iter,
-                                         beam_scanbound=beam_scanbound)
+                                log.verbose("seconds to next avg period",
+                                            time_until_avg_period=time_diff.total_seconds(),
+                                            time_until_avg_period_units='s',
+                                            scan_iter=scan_iter,
+                                            beam_scanbound=beam_scanbound)
                             else:
                                 log.debug("seconds to next avg period",
                                           time_until_avg_period=time_diff.total_seconds(),
@@ -640,11 +642,11 @@ def main():
                                       beam_scanbound=beam_scanbound)
 
                         averaging_period_start_time = datetime.utcnow()
-                        log.info("avg period start time",
-                                 avg_period_start_time=averaging_period_start_time,
-                                 avg_period_start_time_units='s',
-                                 scan_iter=scan_iter,
-                                 beam_scanbound=beam_scanbound)
+                        log.verbose("avg period start time",
+                                    avg_period_start_time=averaging_period_start_time,
+                                    avg_period_start_time_units='s',
+                                    scan_iter=scan_iter,
+                                    beam_scanbound=beam_scanbound)
 
                         # Here we find how much system time has elapsed to find the true amount
                         # of time we can integrate for this scan boundary. We can then see if
@@ -663,12 +665,12 @@ def main():
                             bound_time_remaining = next_scan_start - averaging_period_start_time
                             bound_time_remaining = bound_time_remaining.total_seconds()
 
-                        log.info("bound time remaining",
-                                 bound_time_remaining=bound_time_remaining,
-                                 bound_time_remaining_units='s',
-                                 scan_num=scan_num,
-                                 scan_iter=scan_iter,  # scan_iter is averaging period number for some reason
-                                 beam_scanbound=beam_scanbound)
+                        log.verbose("bound time remaining",
+                                    bound_time_remaining=bound_time_remaining,
+                                    bound_time_remaining_units='s',
+                                    scan_num=scan_num,
+                                    scan_iter=scan_iter,  # scan_iter is averaging period number for some reason
+                                    beam_scanbound=beam_scanbound)
 
                         if bound_time_remaining < aveperiod.intt * 1e-3:
                             # Reduce the averaging period to only the time remaining until the next scan boundary
@@ -688,13 +690,13 @@ def main():
                     ending_number_of_sequences = aveperiod.intn  # this will exist
 
                 msg = {x: y[aveperiod.beam_iter] for x, y in aveperiod.slice_to_beamorder.items()}
-                log.info("avg period slice and beam number", slice_and_beam=msg)
+                log.verbose("avg period slice and beam number", slice_and_beam=msg)
 
                 if TIME_PROFILE:
                     aveperiod_prep_time = datetime.utcnow() - time_start_of_aveperiod
-                    log.info("time to prep aveperiod",
-                             aveperiod_prep_time=aveperiod_prep_time,
-                             aveperiod_prep_time_units='')
+                    log.verbose("time to prep aveperiod",
+                                aveperiod_prep_time=aveperiod_prep_time,
+                                aveperiod_prep_time_units='')
 
                 #  Time to start averaging in the below loop
                 num_sequences = 0
@@ -733,8 +735,9 @@ def main():
                                 data_to_driver(radar_control_to_driver,
                                                options.driver_to_radctrl_identity,
                                                pulse_transmit_data['samples_array'],
-                                               experiment.txctrfreq,
-                                               experiment.rxctrfreq, experiment.txrate,
+                                               sequence.txctrfreq,
+                                               sequence.rxctrfreq,
+                                               experiment.txrate,
                                                experiment.rxrate,
                                                sequence.numberofreceivesamples,
                                                sequence.seqtime,
@@ -747,9 +750,9 @@ def main():
 
                             if TIME_PROFILE:
                                 pulses_to_driver_time = datetime.utcnow() - start_time
-                                log.info("pulses to driver time",
-                                         pulses_to_driver_time=pulses_to_driver_time,
-                                         pulses_to_driver_time_units='s')
+                                log.verbose("pulses to driver time",
+                                            pulses_to_driver_time=pulses_to_driver_time,
+                                            pulses_to_driver_time_units='s')
 
                         def send_dsp_meta():
                             rx_beam_phases = sequence.get_rx_phases(aveperiod.beam_iter)
@@ -763,27 +766,30 @@ def main():
                                               sequence.slice_ids, experiment.slice_dict,
                                               rx_beam_phases, sequence.seqtime,
                                               sequence.first_rx_sample_start,
-                                              experiment.rxctrfreq,
+                                              sequence.rxctrfreq,
                                               sequence.output_encodings,
                                               sequence.decimation_scheme)
 
                             if TIME_PROFILE:
                                 sequence_metadata_time = datetime.utcnow() - start_time
-                                log.info("metadata to dsp time",
-                                         sequence_metadata_time=sequence_metadata_time,
-                                         sequence_metadata_time_units='s')
+                                log.verbose("metadata to dsp time",
+                                            sequence_metadata_time=sequence_metadata_time,
+                                            sequence_metadata_time_units='s')
 
                         def make_next_samples():
-                            sqn, dbg = sequence.make_sequence(aveperiod.beam_iter, num_sequences + 1)
+                            sqn, dbg = sequence.make_sequence(
+                                aveperiod.beam_iter,
+                                num_sequences + len(aveperiod.sequences)
+                            )
                             if dbg:
                                 debug_samples.append(dbg)
-                            pulse_transmit_data_tracker[sequence_index][num_sequences + 1] = sqn
+                            pulse_transmit_data_tracker[sequence_index][num_sequences + len(aveperiod.sequences)] = sqn
 
                             if TIME_PROFILE:
                                 new_sequence_time = datetime.utcnow() - start_time
-                                log.info("make new sequence time",
-                                         new_sequence_time=new_sequence_time,
-                                         new_sequence_time_units='s')
+                                log.verbose("make new sequence time",
+                                            new_sequence_time=new_sequence_time,
+                                            new_sequence_time_units='s')
 
                         # These three things can happen simultaneously. We can spawn them as threads.
                         threads = [threading.Thread(target=send_pulses),
@@ -808,11 +814,11 @@ def main():
 
                 if TIME_PROFILE:
                     avg_period_end_time = datetime.utcnow()
-                    log.info("avg period end time",
-                             avg_period_end_time=avg_period_end_time,
-                             avg_period_end_time_units='s')
+                    log.verbose("avg period end time",
+                                avg_period_end_time=avg_period_end_time,
+                                avg_period_end_time_units='s')
 
-                log.info("sequences in avg period", num_sequences=num_sequences)
+                log.info("aveperiod done", num_sequences=num_sequences, slice_ids=aveperiod.slice_ids)
 
                 if scan.aveperiod_iter == 0 and aveperiod.beam_iter == 0:
                     # This is the first averaging period in the scan object.
@@ -832,7 +838,7 @@ def main():
                                             experiment.scheduling_mode,
                                             experiment.output_rx_rate, experiment.comment_string,
                                             decimation_scheme.filter_scaling_factors,
-                                            experiment.rxctrfreq,
+                                            experiment.slice_dict[0].rxctrfreq,
                                             debug_samples=debug_samples)
 
                 thread = threading.Thread(target=send_dw)
@@ -845,9 +851,9 @@ def main():
 
                 if TIME_PROFILE:
                     time_to_finish_aveperiod = datetime.utcnow() - avg_period_end_time
-                    log.info("time to finish avg period",
-                             avg_period_elapsed_time=time_to_finish_aveperiod,
-                             avg_period_elapsed_time_units='s')
+                    log.verbose("time to finish avg period",
+                                avg_period_elapsed_time=time_to_finish_aveperiod,
+                                avg_period_elapsed_time_units='s')
 
                 aveperiod.beam_iter += 1
                 if aveperiod.beam_iter == aveperiod.num_beams_in_scan:

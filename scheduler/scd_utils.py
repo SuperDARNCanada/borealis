@@ -37,31 +37,33 @@ def get_next_month_from_date(date=None):
     return new_date
 
 
-class SCDUtils(object):
+class SCDUtils:
     """
     Contains utilities for working with SCD files. SCD files are schedule files for Borealis.
-    
-    :param  scd_filename:   Schedule file name
-    :type:  scd_filename:   str
-    :param  scd_dt_fmt:     String format for parsing/writing datetimes.
-    :type:  scd_dt_fmt:     str
-    :param  line_fmt:       String format for scd line.
-    :type:  line_fmt:       str
-    :param  scd_default:    Default event to run if no other infinite duration line is scheduled.
-    :type:  scd_default:    dict
     """
 
-    def __init__(self, scd_filename):
-        super().__init__()
-        self.scd_filename = scd_filename
-        self.scd_dt_fmt = "%Y%m%d %H:%M"
-        self.line_fmt = "{datetime} {duration} {prio} {experiment} {scheduling_mode} {embargo} {kwargs}"
-        self.scd_default = self.check_line('20000101', '00:00', 'normalscan', 'common', '0', '-')
+    """String format for parsing and writing datetimes"""
+    scd_dt_fmt = "%Y%m%d %H:%M"
 
-    def check_line(self, yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration, kwargs='', embargo=False):
+    """String format for scd line"""
+    line_fmt = "{datetime} {duration} {prio} {experiment} {scheduling_mode} {embargo} {kwargs}"
+
+    def __init__(self, scd_filename, site_id):
         """
-        Checks the line parameters to see if they are valid and then returns a dict with all the
-        valid fields.
+        :param  scd_filename:   Schedule file name
+        :type   scd_filename:   str
+        :param       site_id:   Three-letter radar site ID, for testing the experiment
+        :type        site_id:   str
+        """
+        self.scd_filename = scd_filename
+        self.site_id = site_id
+
+        """Default event to run if no other infinite duration line is scheduled"""
+        self.scd_default = self.create_line('20000101', '00:00', 'normalscan', 'common', '0', '-')
+
+    def create_line(self, yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration, kwargs='', embargo=False):
+        """
+        Creates a line dictionary from inputs, turning the date and time into a timestamp since epoch.
 
         :param  yyyymmdd:           year/month/day string.
         :type   yyyymmdd:           str
@@ -75,52 +77,18 @@ class SCDUtils(object):
         :type   prio:               str or int
         :param  duration:           an optional duration to run for.
         :type   duration:           str
-        :param  kwargs:      kwargs for the experiment instantiation. Default None
-        :type   kwargs:      str
+        :param  kwargs:             kwargs for the experiment instantiation. Default None
+        :type   kwargs:             str
         :param  embargo:            flag for embargoing files. (Default value = False)
         :type   embargo:            bool
 
         :returns:   Dict of line params.
         :rtype:     dict
-
-        :raises     ValueError: If line parameters are invalid or if line is a duplicate.
         """
-
         # create datetime from args to see if valid. Value error for incorrect format
         time = dt.datetime.strptime(yyyymmdd + " " + hhmm, self.scd_dt_fmt)
-
-        if not isinstance(kwargs, str):
-            raise ValueError("kwargs should be a string")
-
-        if not (0 <= int(prio) <= 20):
-            raise ValueError("Priority is out of bounds. 0 <= prio <= 20.")
-
-        if duration != "-":
-            if isinstance(duration, float) or int(duration) < 1:
-                raise ValueError("Duration should be an integer > 0, or '-'")
-            duration = int(duration)
-
         epoch = dt.datetime.utcfromtimestamp(0)
         epoch_milliseconds = int((time - epoch).total_seconds() * 1000)
-
-        possible_scheduling_modes = ['common', 'special', 'discretionary']
-        if scheduling_mode not in possible_scheduling_modes:
-            raise ValueError(f"Unknown scheduling mode type {scheduling_mode} not in {possible_scheduling_modes}")
-
-        # Don't bother testing past experiments, formats/settings/capabilities/etc. could have changed
-        if not dt.datetime.utcnow() - time > dt.timedelta(days=1):  # Test if experiment is in future or past day
-            # See if the experiment itself would run
-            # This is a full path to /.../{site}.scd file, only want {site}
-            site_name = os.path.basename(self.scd_filename).replace('.scd', '')
-            args = ['--site_id', site_name,
-                    '--experiments', experiment,
-                    '--kwargs', kwargs,
-                    '--module', 'experiment_unittests']
-            test_program = experiment_unittests.run_tests(args, buffer=True, print_results=False)
-            if len(test_program.result.failures) != 0 or len(test_program.result.errors) != 0:
-                raise ValueError("Experiment could not be scheduled due to errors in experiment.\n"
-                                 f"Errors: {test_program.result.errors}\n"
-                                 f"Failures: {test_program.result.failures}")
 
         return {"timestamp": epoch_milliseconds,
                 "time": time,
@@ -130,6 +98,43 @@ class SCDUtils(object):
                 "scheduling_mode": scheduling_mode,
                 "kwargs": kwargs,
                 "embargo": embargo}
+
+    def test_line(self, line_dict):
+        """
+        Check validity of fields and run the line through experiment unit tests to check that the experiment will run.
+
+        :param   line_dict: Dictionary of parameters for the line (as returned from `create_line()`)
+        :type    line_dict: dict
+        """
+
+        if not isinstance(line_dict['kwargs'], str):
+            raise ValueError("kwargs should be a string")
+
+        if not (0 <= int(line_dict['prio']) <= 20):
+            raise ValueError("Priority is out of bounds. 0 <= prio <= 20.")
+
+        if line_dict['duration'] != "-":
+            if isinstance(line_dict['duration'], float) or int(line_dict['duration']) < 1:
+                raise ValueError("Duration should be an integer > 0, or '-'")
+            line_dict['duration'] = int(line_dict['duration'])
+        else:
+            if int(line_dict['prio']) > 0:
+                raise ValueError("Infinite duration lines must have priority 0")
+
+        possible_scheduling_modes = ['common', 'special', 'discretionary']
+        if line_dict['scheduling_mode'] not in possible_scheduling_modes:
+            raise ValueError(f"Unknown scheduling mode type {line_dict['scheduling_mode']} not in "
+                             f"{possible_scheduling_modes}")
+
+        args = ['--site_id', self.site_id,
+                '--experiments', line_dict['experiment'],
+                '--kwargs', line_dict['kwargs'],
+                '--module', 'experiment_unittests']
+        test_program = experiment_unittests.run_tests(args, buffer=True, print_results=False)
+        if len(test_program.result.failures) != 0 or len(test_program.result.errors) != 0:
+            raise ValueError("Experiment could not be scheduled due to errors in experiment.\n"
+                             f"Errors: {test_program.result.errors}\n"
+                             f"Failures: {test_program.result.failures}")
 
     def read_scd(self):
         """
@@ -156,8 +161,8 @@ class SCDUtils(object):
             kwargs = " ".join(kwarg_entries)
 
             # date time experiment mode priority duration [kwargs]
-            scd_lines.append(self.check_line(line[0], line[1], line[4], line[5], line[3], line[2], kwargs,
-                                             embargo=embargo_flag))
+            scd_lines.append(self.create_line(line[0], line[1], line[4], line[5], line[3], line[2], kwargs,
+                                              embargo=embargo_flag))
 
         if len(scd_lines) == 0:
             print('WARNING: SCD file empty; default normalscan will run')
@@ -166,7 +171,8 @@ class SCDUtils(object):
 
         return scd_lines
 
-    def fmt_line(self, line_dict):
+    @classmethod
+    def fmt_line(cls, line_dict):
         """
         Formats a dictionary with line info into a text line for file.
 
@@ -176,13 +182,13 @@ class SCDUtils(object):
         :returns:   Formatted string.
         :rtype:     str
         """
-        line_str = self.line_fmt.format(datetime=line_dict["time"].strftime(self.scd_dt_fmt),
-                                        prio=line_dict["prio"],
-                                        experiment=line_dict["experiment"],
-                                        scheduling_mode=line_dict["scheduling_mode"],
-                                        duration=line_dict["duration"],
-                                        embargo='--embargo' if line_dict["embargo"] else '',
-                                        kwargs=line_dict["kwargs"])
+        line_str = cls.line_fmt.format(datetime=line_dict["time"].strftime(cls.scd_dt_fmt),
+                                       prio=line_dict["prio"],
+                                       experiment=line_dict["experiment"],
+                                       scheduling_mode=line_dict["scheduling_mode"],
+                                       duration=line_dict["duration"],
+                                       embargo='--embargo' if line_dict["embargo"] else '',
+                                       kwargs=line_dict["kwargs"])
         return line_str
 
     def write_scd(self, scd_lines):
@@ -230,8 +236,8 @@ class SCDUtils(object):
 
         :raises ValueError: If line parameters are invalid or if line is a duplicate.
         """
-        new_line = self.check_line(yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration, kwargs,
-                                   embargo=embargo)
+        new_line = self.create_line(yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration, kwargs,
+                                    embargo=embargo)
 
         scd_lines = self.read_scd()
 
@@ -241,6 +247,11 @@ class SCDUtils(object):
         if any([(new_line['timestamp'] == line['timestamp'] and
                  new_line['prio'] == line['prio']) for line in scd_lines]):
             raise ValueError("Priority already exists at this time")
+
+        try:
+            self.test_line(new_line)
+        except ValueError as e:
+            raise ValueError("Unable to add line:\n", str(e))
 
         scd_lines.append(new_line)
 
@@ -252,7 +263,7 @@ class SCDUtils(object):
         self.write_scd(new_scd)
 
     def remove_line(self, yyyymmdd, hhmm, experiment, scheduling_mode, prio=0, 
-                    duration='-', kwargs='', embargo=''):
+                    duration='-', kwargs='', embargo=False):
         """
         Removes a line from the schedule
 
@@ -276,8 +287,8 @@ class SCDUtils(object):
         :raises ValueError: If line parameters are invalid or if line does not exist.
         """
 
-        line_to_rm = self.check_line(yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration, kwargs,
-                                     embargo=embargo)
+        line_to_rm = self.create_line(yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration, kwargs,
+                                      embargo=embargo)
 
         scd_lines = self.read_scd()
         try:
@@ -291,9 +302,9 @@ class SCDUtils(object):
         """
         Gets the currently scheduled and future lines given a supplied time. If the provided time is
         equal to a scheduled line time, it provides that line and all future lines. If the provided
-        time is between schedule line times, it provides any lines in the schedule with the most
-        recent timestamp and all future lines.  If the provided time is before any lines in the
-        schedule, it provides all schedule lines.
+        time is between schedule line times, it provides any lines in the schedule from the past that
+        haven't ended yet, plus the most recently timestamped infinite-duration line, plus all future
+        lines. If the provided time is before any lines in the schedule, it provides all schedule lines.
 
         :param  yyyymmdd:   year/month/day string.
         :type   yyyymmdd:   str
@@ -315,35 +326,36 @@ class SCDUtils(object):
 
         scd_lines = self.read_scd()
 
+        # Sort the lines by timestamp, and for equal times, in reverse priority
+        scd_lines = sorted(scd_lines, key=lambda x: x['prio'], reverse=True)
+        scd_lines = sorted(scd_lines, key=lambda x: x['timestamp'])
+
         if not scd_lines:
             raise IndexError("Schedule file is empty. No lines can be returned")
 
         epoch = dt.datetime.utcfromtimestamp(0)
         epoch_milliseconds = int((time - epoch).total_seconds() * 1000)
 
-        equals = False
-        prev_line_appended = False
         relevant_lines = []
-        for idx, line in enumerate(scd_lines):
-            if line['timestamp'] == epoch_milliseconds:
-                equals = True
+        past_infinite_line_added = False
+        for line in reversed(scd_lines):
+            if line['timestamp'] >= epoch_milliseconds:
                 relevant_lines.append(line)
-            elif line['timestamp'] > epoch_milliseconds:
-                if equals:
-                    relevant_lines.append(line)
-                else:
-                    if not prev_line_appended:
-                        if idx != 0:
-                            last_line_timestamp = scd_lines[idx-1]['timestamp']
-                            temp_list = scd_lines[:]
-                            for t in temp_list:
-                                if t['timestamp'] == last_line_timestamp:
-                                    relevant_lines.append(t)
-                        prev_line_appended = True
-                    relevant_lines.append(line)
             else:
-                continue
+                # Include the most recent infinite line
+                if line['duration'] == '-':
+                    if not past_infinite_line_added:
+                        relevant_lines.append(line)
+                        past_infinite_line_added = True
+                else:
+                    # If the line ends after the current time, include the line
+                    duration_ms = int(line['duration']) * 60 * 1000
+                    line_end = line['timestamp'] + duration_ms
+                    if line_end >= epoch_milliseconds:
+                        relevant_lines.append(line)
 
+        # Put the lines into chronological order (oldest to newest)
+        relevant_lines.reverse()
         return relevant_lines
 
 

@@ -165,6 +165,15 @@ class SliceData:
     rx_sample_rate: float = field(
         metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf'],
                   'description': 'Sampling rate of the samples being written to file in Hz'})
+    # TODO: Include these fields in a future release
+    # rx_main_phases: list[complex] = field(
+    #     metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf', 'txdata'],
+    #               'description': 'Phases of main array receive antennas for each antenna. Magnitude between 0 (off) '
+    #                              'and 1 (full power)'})
+    # rx_intf_phases: list[complex] = field(
+    #     metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf', 'txdata'],
+    #               'description': 'Phases of intf array receive antennas for each antenna. Magnitude between 0 (off) '
+    #                              'and 1 (full power)'})
     samples_data_type: str = field(
         metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf'],
                   'description': 'C data type of the samples'})
@@ -223,6 +232,10 @@ class SliceData:
             if file_type in f.metadata.get('groups'):
                 matching_fields.append(f.name)
         return matching_fields
+
+    def __repr__(self):
+        """Print all available fields"""
+        return f'{vars(self)}'
 
 
 @dataclass
@@ -367,8 +380,8 @@ class ParseData(object):
 
         # Get data dimensions for reading in the shared memory
         num_slices = len(self.processed_data.output_datasets)
-        num_main_antennas = len(self.options.main_antennas)
-        num_intf_antennas = len(self.options.intf_antennas)
+        num_main_antennas = len(self.options.rx_main_antennas)
+        num_intf_antennas = len(self.options.rx_intf_antennas)
 
         stages = []
         # Loop through all the filter stage data
@@ -416,9 +429,15 @@ class ParseData(object):
                 antennas_data = debug_stage['data'][i]
                 antenna_iq_stage["num_samps"] = antennas_data.shape[-1]
 
+                # All possible antenna numbers, given the config file
+                antenna_indices = copy.deepcopy(self.options.rx_main_antennas)
+                # The interferometer antenna numbers start after the last main antenna number
+                antenna_indices.extend([ant + self.options.main_antenna_count for ant in self.options.rx_intf_antennas])
+
                 # Loops over antenna data within stage
                 for ant_num in range(antennas_data.shape[0]):
-                    ant_str = f"antenna_{ant_num}"
+                    # Convert index in the data array to antenna number from the config file
+                    ant_str = f"antenna_{antenna_indices[ant_num]}"
 
                     if ant_str not in antenna_iq_stage:
                         antenna_iq_stage[ant_str] = {}
@@ -585,7 +604,9 @@ class DataWrite(object):
                     elif isinstance(data, bool):
                         data = np.bool_(data)
                     elif isinstance(data, list):
-                        if isinstance(data[0], str):
+                        if len(data) == 0:
+                            log.warning('empty array', field=relevant_field, data=data)
+                        if len(data) > 0 and isinstance(data[0], str):
                             data = np.bytes_(data)
                         else:
                             data = np.array(data)
@@ -625,7 +646,7 @@ class DataWrite(object):
         raise NotImplementedError
 
     def output_data(self, write_bfiq, write_antenna_iq, write_raw_rf, write_tx, file_ext,
-                    aveperiod_meta, data_parsing, rt_dw, write_rawacf=True):
+                    aveperiod_meta, data_parsing, dw_rt, write_rawacf=True):
         """
         Parse through samples and write to file.
 
@@ -645,8 +666,8 @@ class DataWrite(object):
         :type   aveperiod_meta:     AveperiodMetadataMessage
         :param  data_parsing:       All parsed and concatenated data from averaging period
         :type   data_parsing:       ParseData
-        :param  rt_dw:              Pair of socket and iden for RT purposes.
-        :type   rt_dw:              dict
+        :param  dw_rt:              Pair of socket and iden for RT purposes.
+        :type   dw_rt:              dict
         :param  write_rawacf:       Should rawacfs be written to file? Defaults to True.
         :type   write_rawacf:       bool, optional
         """
@@ -782,7 +803,7 @@ class DataWrite(object):
                                 data = np.array(data)
                         group[relevant_field] = data
                     full_dict = {epoch_milliseconds: group}
-                    so.send_bytes(rt_dw['socket'], rt_dw['iden'], pickle.dumps(full_dict))
+                    so.send_bytes(dw_rt['socket'], dw_rt['iden'], pickle.dumps(full_dict))
 
             elif file_ext == 'json':
                 self.write_json_file(tmp_file, aveperiod_data, file_type)
@@ -853,11 +874,17 @@ class DataWrite(object):
 
             for slice_num in xcfs:
                 slice_data = aveperiod_data[slice_num]
-                slice_data.xcfs = find_expectation_value(xcfs[slice_num]['data'])
+                if data_parsing.xcfs_available:
+                    slice_data.xcfs = find_expectation_value(xcfs[slice_num]['data'])
+                else:
+                    slice_data.xcfs = np.array([], np.complex64)
 
             for slice_num in intf_acfs:
                 slice_data = aveperiod_data[slice_num]
-                slice_data.intf_acfs = find_expectation_value(intf_acfs[slice_num]['data'])
+                if data_parsing.intfacfs_available:
+                    slice_data.intf_acfs = find_expectation_value(intf_acfs[slice_num]['data'])
+                else:
+                    slice_data.intf_acfs = np.array([], np.complex64)
 
             for slice_num, slice_data in aveperiod_data.items():
                 slice_data.data_descriptors = ['num_beams', 'num_ranges', 'num_lags']
@@ -997,7 +1024,7 @@ class DataWrite(object):
 
             samples_list = []
             shared_memory_locations = []
-            total_ants = len(self.options.main_antennas) + len(self.options.intf_antennas)
+            total_ants = len(self.options.rx_main_antennas) + len(self.options.rx_intf_antennas)
 
             for raw in raw_rf:
                 shared_mem = shared_memory.SharedMemory(name=raw)
@@ -1096,6 +1123,9 @@ class DataWrite(object):
                 parameters.range_sep = np.float32(rx_channel.range_sep)
                 parameters.rx_center_freq = aveperiod_meta.rx_ctr_freq
                 parameters.rx_sample_rate = data_parsing.output_sample_rate
+                # TODO: Include these in a future release
+                # parameters.rx_main_phases = rx_channel.rx_main_phases
+                # parameters.rx_intf_phases = rx_channel.rx_intf_phases
                 parameters.samples_data_type = "complex float"
                 parameters.scan_start_marker = aveperiod_meta.scan_flag
                 parameters.scheduling_mode = aveperiod_meta.scheduling_mode
@@ -1131,10 +1161,10 @@ class DataWrite(object):
             write_tx_data()
 
         write_time = time.perf_counter() - start
-        log.info("write time",
+        log.info("wrote record",
                  write_time=write_time * 1e3,
-                 write_time_units='ms',
-                 dataset_name=dataset_name)
+                 time_units='ms',
+                 dataset_name=datetime_string)
 
 
 def main():
@@ -1162,7 +1192,7 @@ def main():
 
     dsp_to_data_write = sockets[0]
     radctrl_to_data_write = sockets[1]
-    realtime_to_data_write = sockets[2]
+    data_write_to_realtime = sockets[2]
 
     poller = zmq.Poller()
     poller.register(dsp_to_data_write, zmq.POLLIN)
@@ -1237,7 +1267,7 @@ def main():
                                       file_ext=args.file_type,
                                       aveperiod_meta=aveperiod_metadata,
                                       data_parsing=data_parsing,
-                                      rt_dw={"socket": realtime_to_data_write,
+                                      dw_rt={"socket": data_write_to_realtime,
                                              "iden": options.rt_to_dw_identity},
                                       write_rawacf=args.enable_raw_acfs)
                         thread = threading.Thread(target=data_write.output_data, kwargs=kwargs)
@@ -1250,9 +1280,10 @@ def main():
                 start = time.perf_counter()
                 data_parsing.update(pd)
                 parse_time = time.perf_counter() - start
-                log.info("parse time",
+                log.info("parsed record",
                          parse_time=parse_time * 1e3,
-                         parse_time_units='ms')
+                         time_units='ms',
+                         slice_ids=[dset.slice_id for dset in pd.output_datasets])
 
             queued_sqns = []
 

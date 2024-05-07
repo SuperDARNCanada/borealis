@@ -9,19 +9,19 @@ Manual Start-up
 To more easily start the radar, there is a script called ``steamed_hams.py``. The name of this
 script is a goofy reference to a scene in an episode of The Simpsons in which Principal Skinner
 claims there is an aurora happening in his house. The script takes two arguments and can be invoked
-as follows: ::
+as follows::
 
     $BOREALISPATH/scripts/steamed_hams.py experiment_name code_environment scheduling_mode
 
-An example invocation to run ``twofsound`` in ``release`` mode would be: ::
+An example invocation to run ``twofsound`` in ``release`` mode would be::
 
     /home/radar/borealis/scripts/steamed_hams.py twofsound release
 
-Another example invocation running ``normalscan`` in ``debug`` mode: ::
+Another example invocation running ``normalscan`` in ``debug`` mode::
 
     /home/radar/borealis/scripts/steamed_hams.py normalscan debug
 
-Another example invocation running epopsound in debug mode during special time would be: ::
+Another example invocation running epopsound in debug mode during special time would be::
 
     /home/radar/borealis/scripts/steamed_hams.py epopsound debug special
 
@@ -35,6 +35,11 @@ scheduling working group page `here <http://superdarn.thayer.dartmouth.edu/WG-sc
 The script will boot all the radar processes in a detached ``screen`` window that runs in the
 background. This window can be reattached in any terminal window locally or over ssh (``screen -r``)
 to track any outputs if needed.
+
+To start the radar without the optional ``realtime`` module, pass the flag ``--realtime-off`` and the
+module will not be run. For example::
+
+    /home/radar/borealis/scripts/steamed_hams.py normalscan release --realtime-off
 
 If starting the radar in normal operation according to the schedule, there is a helper script called
 ``start_radar.sh``.

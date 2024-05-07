@@ -25,8 +25,8 @@ import structlog
 from utils.options import Options
 from experiment_prototype.experiment_exception import ExperimentException
 from experiment_prototype.experiment_slice import ExperimentSlice, slice_key_set, hidden_key_set
-from experiment_prototype.scan_classes.scans import Scan
-from experiment_prototype.scan_classes.scan_class_base import ScanClassBase
+from experiment_prototype.interface_classes.scans import Scan
+from experiment_prototype.interface_classes.interface_class_base import InterfaceClassBase
 
 # Obtain the module name that imported this log_config
 caller = Path(inspect.stack()[-1].filename)
@@ -36,51 +36,61 @@ log = structlog.getLogger(module_name)
 BOREALISPATH = os.environ['BOREALISPATH']
 
 interface_types = tuple(['SCAN', 'AVEPERIOD', 'SEQUENCE', 'CONCURRENT'])
-""" The types of interfacing available for slices in the experiment.
+""" Interfacing in this case refers to how two or more slices are meant to be run together.
+The following types of interfacing between slices are possible, arranged from highest level 
+of experiment building-block to the lowest level:
 
-Interfacing in this case refers to how two or more components are meant to be run together. The
-following types of interfacing are possible:
+1. **SCAN**
 
-1. SCAN.
-The scan by scan interfacing allows for slices to run a scan of one slice, followed by a scan of the
-second. The scan mode of interfacing typically means that the slice will cycle through all of its
-beams before switching to another slice.
+    The scan-by-scan interfacing allows for slices to run a scan of one slice, followed by a scan of the
+    second. The scan mode of interfacing typically means that the slice will cycle through all of its
+    beams before switching to another slice.
+    
+    There are no requirements for slices interfaced in this manner.
 
-There are no requirements for slices interfaced in this manner.
+2. **AVEPERIOD**
 
-2. AVEPERIOD.
-This type of interfacing allows for one slice to run its averaging period (also known as integration
-time or integration period), before switching to another slice's averaging period. This type of
-interface effectively creates an interleaving scan where the scans for multiple slices are run 'at
-the same time', by interleaving the averaging periods.
+    This type of interfacing allows for one slice to run its averaging period (also known as integration
+    time or integration period), before switching to another slice's averaging period. This type of
+    interface effectively creates an interleaving scan where the scans for multiple slices are run 'at
+    the same time', by interleaving the averaging periods.
+    
+    Slices which are interfaced in this manner must share:
 
-Slices which are interfaced in this manner must share:
-    - the same SCANBOUND value.
+    * the same SCANBOUND value.
 
-3. SEQUENCE.
-Sequence interfacing allows for pulse sequences defined in the slices to alternate between each
-other within a single averaging period. It's important to note that data from a single slice is
-averaged only with other data from that slice. So in this case, the averaging period is running two
-slices and can produce two averaged datasets, but the sequences within the averaging period are
-interleaved.
+3. **SEQUENCE**
 
-Slices which are interfaced in this manner must share:
-    - the same SCANBOUND value.
-    - the same INTT or INTN value.
-    - the same BEAM_ORDER length (scan length)
+    Sequence interfacing allows for pulse sequences defined in the slices to alternate between each
+    other within a single averaging period. It's important to note that data from a single slice is
+    averaged only with other data from that slice. So in this case, the averaging period is running two
+    slices and can produce two averaged datasets, but the sequences within the averaging period are
+    interleaved.
+    
+    Slices which are interfaced in this manner must share:
 
-4. CONCURRENT.
-Concurrent interfacing allows for pulse sequences to be run together concurrently. Slices will have
-their pulse sequences summed together so that the data transmits at the same time. For example,
-slices of different frequencies can be mixed simultaneously, and slices of different pulse sequences
-can also run together at the cost of having more blanked samples. When slices are interfaced in this
-way the radar is truly transmitting and receiving the slices simultaneously.
+    * the same SCANBOUND value.
+    * the same INTT or INTN value.
+    * the same BEAM_ORDER length (scan length).
+    * the same TXCTRFREQ value.
+    * the same RXCTRFREQ value.
 
-Slices which are interfaced in this manner must share:
-    - the same SCANBOUND value.
-    - the same INTT or INTN value.
-    - the same BEAM_ORDER length (scan length)
-    - the same DECIMATION_SCHEME
+4. **CONCURRENT**
+
+    Concurrent interfacing allows for pulse sequences to be run together concurrently. Slices will have
+    their pulse sequences summed together so that the data transmits at the same time. For example,
+    slices of different frequencies can be mixed simultaneously, and slices of different pulse sequences
+    can also run together at the cost of having more blanked samples. When slices are interfaced in this
+    way the radar is truly transmitting and receiving the slices simultaneously.
+    
+    Slices which are interfaced in this manner must share:
+
+    * the same SCANBOUND value.
+    * the same INTT or INTN value.
+    * the same BEAM_ORDER length (scan length).
+    * the same TXCTRFREQ value.
+    * the same RXCTRFREQ value.
+    * the same DECIMATION_SCHEME.
 
 """
 
@@ -108,15 +118,8 @@ class ExperimentPrototype:
     used to make an experiment. Other parameters are set in the init and cannot be modified after 
     instantiation.
 
-    * xcf:          boolean for cross-correlation data. A default can be set here for slices, \
-                    but any slice can override this setting with the xcf slice key.
-    * acf:          boolean for auto-correlation data on main array. A default can be set here for \
-                    slices, but any slice can override this setting with the acf slice key.
-    * acfint:       boolean for auto-correlation data on interferometer array. A default can be set \
-                    here for slices, but any slice can override this setting with the acfint slice \
-                    key.
     * slice_dict:   modifiable only using the add_slice, edit_slice, and del_slice methods.
-    * interface:    modifiable using the add_slice, edit_slice, and del_slice methods, or by \
+    * interface:    modifiable using the add_slice, edit_slice, and del_slice methods, or by
                     updating the interface dict directly.
 
     :param  cpid:               Unique id necessary for each control program (experiment). Cannot be
@@ -124,7 +127,7 @@ class ExperimentPrototype:
     :type   cpid:               int
     :param  output_rx_rate:     The desired output rate for the data, to be decimated to, in Hz.
                                 Cannot be changed after instantiation. Default 3.333 kHz.
-    :type  output_rx_rate:      float
+    :type   output_rx_rate:     float
     :param  rx_bandwidth:       The desired bandwidth for the experiment. Directly determines rx
                                 sampling rate of the USRPs. Cannot be changed after instantiation.
                                 Default 5.0 MHz.
@@ -133,14 +136,6 @@ class ExperimentPrototype:
                                 sampling rate of the USRPs. Cannot be changed after instantiation.
                                 Default 5.0 MHz.
     :type  tx_bandwidth:        float
-    :param  txctrfreq:          Center frequency, in kHz, for the USRP to mix the samples with.
-                                Since this requires tuning time to set, it cannot be modified after
-                                instantiation.
-    :type   txctrfreq:          float
-    :param  rxctrfreq:          Center frequency, in kHz, used to mix to baseband. Since this
-                                requires tuning time to set, it cannot be modified after
-                                instantiation.
-    :type   rxctrfreq:          float
     :param  comment_string:     Description of experiment for data files. This should be used to
                                 describe your overall experiment design. Another comment string
                                 exists for every slice added, to describe information that is
@@ -157,7 +152,7 @@ class ExperimentPrototype:
     """
 
     def __init__(self, cpid, output_rx_rate=default_output_rx_rate, rx_bandwidth=default_rx_bandwidth,
-                 tx_bandwidth=5.0e6, txctrfreq=12000.0, rxctrfreq=12000.0, comment_string=''):
+                 tx_bandwidth=5.0e6, comment_string=''):
         if not isinstance(cpid, int):
             errmsg = 'CPID must be a unique int'
             raise ExperimentException(errmsg)
@@ -237,24 +232,14 @@ class ExperimentPrototype:
                      f"integer divisor of USRP master clock rate {self.options.usrp_master_clock_rate}"
             raise ExperimentException(errmsg)
 
-        # Note - txctrfreq and rxctrfreq are set here and modify the actual center frequency to a
-        # multiple of the clock divider that is possible by the USRP - this default value set
-        # here is not exact (center freq is never exactly 12 MHz).
-
-        # convert from kHz to Hz to get correct clock divider. Return the result back in kHz.
-        clock_multiples = self.options.usrp_master_clock_rate/2**32
-        clock_divider = math.ceil(txctrfreq*1e3/clock_multiples)
-        self.__txctrfreq = (clock_divider * clock_multiples)/1e3
-
-        clock_divider = math.ceil(rxctrfreq*1e3/clock_multiples)
-        self.__rxctrfreq = (clock_divider * clock_multiples)/1e3
-
         # This is experiment-wide transmit metadata necessary to build the pulses. This data
         # cannot change within the experiment and is used in the scan classes to pass information
         # to where the samples are built.
         self.__transmit_metadata = {
             'output_rx_rate':           self.output_rx_rate,
-            'main_antennas':            self.options.main_antennas,
+            'tx_main_antennas':         self.options.tx_main_antennas,
+            'rx_main_antennas':         self.options.rx_main_antennas,
+            'rx_intf_antennas':         self.options.rx_intf_antennas,
             'main_antenna_count':       self.options.main_antenna_count,
             'intf_antenna_count':       self.options.intf_antenna_count,
             'tr_window_time':           self.options.tr_window_time,
@@ -264,7 +249,6 @@ class ExperimentPrototype:
             'max_usrp_dac_amplitude':   self.options.max_usrp_dac_amplitude,
             'rx_sample_rate':           self.rxrate,
             'min_pulse_separation':     self.options.min_pulse_separation,
-            'txctrfreq':                self.txctrfreq,
             'txrate':                   self.txrate,
             'intf_offset':              self.options.intf_offset
         }
@@ -281,18 +265,12 @@ class ExperimentPrototype:
         # interfacing specified.
         self.__scan_objects = []
         self.__scanbound = False
-        self.__running_experiment = None  # this will be of ScanClassBase type
+        self.__running_experiment = None  # this will be of InterfaceClassBase type
 
         # This is used for adding and editing slices
         self.__slice_restrictions = {
             'tx_bandwidth': self.tx_bandwidth,
             'rx_bandwidth': self.rx_bandwidth,
-            'tx_minfreq': self.tx_minfreq,
-            'tx_maxfreq': self.tx_maxfreq,
-            'rx_minfreq': self.rx_minfreq,
-            'rx_maxfreq': self.rx_maxfreq,
-            'txctrfreq': self.txctrfreq,
-            'rxctrfreq': self.rxctrfreq,
             'output_rx_rate': self.output_rx_rate,
             'transition_bandwidth': transition_bandwidth
         }
@@ -472,102 +450,6 @@ class ExperimentPrototype:
         :rtype:     dict
         """
         return self.__transmit_metadata
-
-    @property
-    def txctrfreq(self):
-        """
-        The transmission center frequency that USRP is tuned to (kHz).
-
-        :returns:   txctrfreq
-        :rtype:     float
-        """
-        return self.__txctrfreq
-
-    @property
-    def tx_maxfreq(self):
-        """
-        The maximum transmit frequency.
-
-        This is the maximum tx frequency possible in this experiment (either maximum in our license
-        or maximum given by the center frequency, and sampling rate). The maximum is slightly less
-        than that allowed by the center frequency and txrate, to stay away from the edges of the
-        possible transmission band where the signal is distorted.
-
-        :returns:   tx_maxfreq
-        :rtype:     float
-        """
-        max_freq = self.txctrfreq * 1000 + (self.txrate/2.0) - transition_bandwidth
-        if max_freq < self.options.max_freq:
-            return max_freq
-        else:
-            log.warning(f"Maximum transmit frequency cannot exceed {self.options.max_freq} due to radio license.")
-            return self.options.max_freq
-
-    @property
-    def tx_minfreq(self):
-        """
-        The minimum transmit frequency.
-
-        This is the minimum tx frequency possible in this experiment (either minimum in our license
-        or minimum given by the center frequency and sampling rate). The minimum is slightly more
-        than that allowed by the center frequency and txrate, to stay away from the edges of the
-        possible transmission band where the signal is distorted.
-
-        :returns:   tx_minfreq
-        :rtype:     float
-        """
-        min_freq = self.txctrfreq * 1000 - (self.txrate/2.0) + transition_bandwidth
-        if min_freq > self.options.min_freq:
-            return min_freq
-        else:
-            log.warning(f"Minimum transmit frequency cannot go below {self.options.min_freq} due to radio license.")
-            return self.options.min_freq
-
-    @property
-    def rxctrfreq(self):
-        """
-        The receive center frequency that USRP is tuned to (kHz).
-
-        :returns:   rxctrfreq
-        :rtype:     float
-        """
-        return self.__rxctrfreq
-
-    @property
-    def rx_maxfreq(self):
-        """
-        The maximum receive frequency.
-
-        This is the maximum tx frequency possible in this experiment (maximum given by the center
-        frequency and sampling rate), as license doesn't matter for receiving. The maximum is
-        slightly less than that allowed by the center frequency and rxrate, to stay away from the
-        edges of the possible receive band where the signal may be distorted.
-
-        :returns:   rx_maxfreq
-        :rtype:     float
-        """
-        max_freq = self.rxctrfreq * 1000 + (self.rxrate/2.0) - transition_bandwidth
-        return max_freq
-
-    @property
-    def rx_minfreq(self):
-        """
-        The minimum receive frequency.
-
-        This is the minimum rx frequency possible in this experiment (minimum given by the center
-        frequency and sampling rate) - license doesn't restrict receiving. The minimum is
-        slightly more than that allowed by the center frequency and rxrate, to stay away from the
-        edges of the possible receive band where the signal may be distorted.
-
-        :returns:   rx_minfreq
-        :rtype:     float
-        """
-        min_freq = self.rxctrfreq * 1000 - (self.rxrate/2.0) + transition_bandwidth
-        if min_freq > 1000:     # Hz
-            return min_freq
-        else:
-            log.warning(f"Minimum receive frequency set to 1 kHz")
-            return 1000         # Hz
 
     @property
     def interface(self):
@@ -919,9 +801,7 @@ class ExperimentPrototype:
                     f'self.slice_ids = {self.slice_ids}\n'\
                     f'self.slice_keys = {self.slice_keys}\n'\
                     f'self.options = {self.options.__str__()}\n'\
-                    f'self.txctrfreq = {self.txctrfreq}\n'\
                     f'self.txrate = {self.txrate}\n'\
-                    f'self.rxctrfreq = {self.rxctrfreq}\n'\
                     f'self.slice_dict = {self.slice_dict}\n'\
                     f'self.interface = {self.interface}\n'
         return represent
@@ -941,13 +821,13 @@ class ExperimentPrototype:
         #  to inherit
 
         # TODO consider removing scan_objects from init and making a new Experiment class to inherit
-        # from ScanClassBase and having all of this included in there. Then would only need to
+        # from InterfaceClassBase and having all of this included in there. Then would only need to
         # pass the running experiment to the radar control (would be returned from build_scans)
-        self.__running_experiment = ScanClassBase(self.slice_ids, self.slice_dict, self.interface,
-                                                  self.transmit_metadata)
+        self.__running_experiment = InterfaceClassBase(self.slice_ids, self.slice_dict, self.interface,
+                                                       self.transmit_metadata)
 
         self.__scan_objects = []
-        for params in self.__running_experiment.prep_for_nested_scan_class():
+        for params in self.__running_experiment.prep_for_nested_interface_class():
             self.__scan_objects.append(Scan(*params))
         
         for scan in self.__scan_objects:
@@ -968,13 +848,13 @@ class ExperimentPrototype:
                     if len(seq.slice_ids) > max_num_concurrent_slices:
                         max_num_concurrent_slices = len(seq.slice_ids)
 
-        log.info(f"Number of Scan types: {len(self.__scan_objects)}")
-        log.info(f"Number of AveragingPeriods in Scan #1: {len(self.__scan_objects[0].aveperiods)}")
-        log.info(f"Number of Sequences in Scan #1, Averaging Period #1: "
+        log.verbose(f"Number of Scan types: {len(self.__scan_objects)}")
+        log.verbose(f"Number of AveragingPeriods in Scan #1: {len(self.__scan_objects[0].aveperiods)}")
+        log.verbose(f"Number of Sequences in Scan #1, Averaging Period #1: "
                  f"{len(self.__scan_objects[0].aveperiods[0].sequences)}")
-        log.info(f"Number of Pulse Types in Scan #1, Averaging Period #1, Sequence #1: "
+        log.verbose(f"Number of Pulse Types in Scan #1, Averaging Period #1, Sequence #1: "
                  f"{len(self.__scan_objects[0].aveperiods[0].sequences[0].slice_dict)}")
-        log.info(f"Max concurrent slices: {max_num_concurrent_slices}")
+        log.verbose(f"Max concurrent slices: {max_num_concurrent_slices}")
 
     def get_slice_interfacing(self, slice_id):
         """
