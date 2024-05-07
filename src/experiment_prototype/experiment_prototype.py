@@ -168,7 +168,7 @@ class ExperimentPrototype:
         # TODO replace below cpid local uniqueness check with pygit2 or some reference
         #  to a database to to ensure CPID uniqueness and to ensure CPID is entered in the database
         #  for this experiment (this CPID is unique AND its correct given experiment name)
-        cpid_list = []
+        cpid_list = {}
         for experiment_file in experiment_files_list:
             with open(experiment_file) as file_to_search:
                 for line in file_to_search:
@@ -184,10 +184,10 @@ class ExperimentPrototype:
                     # Find any lines that have 'cpid = [integer]'
                     existing_cpid = re.findall("cpid.?=.?[0-9]+", line)
                     if existing_cpid:
-                        cpid_list.append(existing_cpid[0].split('=')[1].strip())
+                        cpid_list[existing_cpid[0].split('=')[1].strip()] = experiment_file
 
-        if str(cpid) in cpid_list:
-            errmsg = f'CPID must be unique. {cpid} is in use by another local experiment'
+        if str(cpid) in cpid_list.keys():
+            errmsg = f'CPID must be unique. {cpid} is in use by another local experiment {cpid_list[str(cpid)]}'
             raise ExperimentException(errmsg)
         if cpid <= 0:
             errmsg = 'The CPID should be a positive number in the experiment. If the embargo'\
