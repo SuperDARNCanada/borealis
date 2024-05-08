@@ -38,8 +38,6 @@ Nagios' website_.
 
 .. _website: https://assets.nagios.com/downloads/nagioscore/docs/nagioscore/4/en/quickstart.html
 
-After installing, simply replace the configuration files with those found in this repository.
-
 Installation of NRPE is similarly simple. We maintain a private repository with our Nagios configuration.
 Contact us if you would like to set up Nagios for your own system, we would be happy to share our
 experience.
