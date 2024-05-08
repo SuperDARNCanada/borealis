@@ -13,13 +13,13 @@ as follows::
 
     $BOREALISPATH/scripts/steamed_hams.py experiment_name code_environment scheduling_mode
 
-An example invocation to run ``twofsound`` in ``release`` mode would be::
+An example invocation to run ``twofsound`` in ``release`` mode during ``common`` time would be::
 
-    /home/radar/borealis/scripts/steamed_hams.py twofsound release
+    /home/radar/borealis/scripts/steamed_hams.py twofsound release common
 
-Another example invocation running ``normalscan`` in ``debug`` mode::
+Another example invocation running ``normalscan`` in ``debug`` mode during ``discretionary`` time::
 
-    /home/radar/borealis/scripts/steamed_hams.py normalscan debug
+    /home/radar/borealis/scripts/steamed_hams.py normalscan debug discretionary
 
 Another example invocation running epopsound in debug mode during special time would be::
 
@@ -39,7 +39,7 @@ to track any outputs if needed.
 To start the radar without the optional ``realtime`` module, pass the flag ``--realtime-off`` and the
 module will not be run. For example::
 
-    /home/radar/borealis/scripts/steamed_hams.py normalscan release --realtime-off
+    /home/radar/borealis/scripts/steamed_hams.py normalscan release discretionary --realtime-off
 
 If starting the radar in normal operation according to the schedule, there is a helper script called
 ``start_radar.sh``.

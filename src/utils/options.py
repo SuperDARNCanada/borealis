@@ -8,7 +8,8 @@
     Additionally, parse the hdw.dat and restrict.dat files of the current site for other
     configuration information.
 
-    See documentation on ReadTheDocs for detailed descriptions of each configuration option
+    See https://borealis.readthedocs.io/en/latest/source/config_options.html for
+    detailed descriptions of each configuration option.
 
     :copyright: 2023 SuperDARN Canada
     :author: Theodore Kolkman
@@ -21,6 +22,12 @@ from dataclasses import dataclass, field
 
 @dataclass
 class Options:
+    """
+    Parses all configuration options from the config.ini file for the current site.
+    Additionally, parses the hdw.dat and restrict.dat files of the current site for other
+    configuration information.
+    """
+
     # config.ini options
     data_directory: str = field(init=False)
     hdw_path: str = field(init=False)

@@ -1486,8 +1486,7 @@ class DataWrite(object):
         )
 
 
-def main():
-    faulthandler.enable()
+def dw_parser():
     parser = ap.ArgumentParser(description="Write processed SuperDARN data to file")
     parser.add_argument(
         "--file-type", help="Type of output file: hdf5, json, or dmap", default="hdf5"
@@ -1513,7 +1512,12 @@ def main():
         help="Save tx samples and metadata. Requires HDF5.",
         action="store_true",
     )
-    args = parser.parse_args()
+    return parser
+
+
+def main():
+    faulthandler.enable()
+    args = dw_parser().parse_args()
 
     options = Options()
     sockets = so.create_sockets(

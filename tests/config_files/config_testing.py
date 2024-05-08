@@ -14,8 +14,6 @@ in the Borealis config file directory::
 
     python3 $BOREALISPATH/tests/config_files/config_testing.py $BOREALISPATH/config/*/*_config.ini
 
-:copyright: 2024 SuperDARN Canada
-:author: Remington Rohel
 """
 
 import argparse
