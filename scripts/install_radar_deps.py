@@ -5,11 +5,11 @@
     ~~~~~~~~~~~~~~~~~~
     Installation script for Borealis utilities.
     NOTE: This script has been tested on:
-        OpenSuSe 15.1-15.3
+        OpenSuSe Leap 15.3
         Ubuntu 19.10
         Ubuntu 20.04
 
-    :copyright: 2020 SuperDARN Canada
+    :copyright: 2020-2024 SuperDARN Canada
     :author: Keith Kotyk
 """
 import subprocess as sp
@@ -17,28 +17,6 @@ import sys
 import os
 import multiprocessing as mp
 import argparse as ap
-
-
-def usage_msg():
-    """
-    Return the usage message for this process.
-
-    This is used if a -h flag or invalid arguments are provided.
-
-    :returns:   the usage message
-    :rtype:     str
-    """
-
-    usage_message = """ install_radar_deps.py [-h] radar install_dir
-
-    This script will download and configure all dependencies for the
-    Borealis project. You must supply an installation directory.
-
-    Example usage:
-    python3 install_radar_deps.py sas /home/radar/borealis/
-
-    """
-    return usage_message
 
 
 def execute_cmd(cmd):
@@ -114,13 +92,15 @@ def install_python(distro: str, python_version: str):
             execute_cmd(install_cmd)
 
 
-def install_packages(distro: str):
+def install_packages(distro: str, dev: bool = True):
     """
     Install the needed packages used by Borealis. Multiple options are listed for distributions that
     use different names.
 
     :param  distro:         Distribution to install on
     :type   distro:         str
+    :param  dev:            Flag to install development dependencies
+    :type   dev:            bool
     """
     print("### Installing system packages ###")
 
@@ -167,6 +147,11 @@ def install_packages(distro: str):
         "uhd-devel",
     ]
 
+    dev_packages = [
+        "clang11",
+        "cppcheck",
+    ]
+
     if "openSUSE" in distro:
         pck_mgr = "zypper"
         variant_packages = [pck.format("devel") for pck in variant_packages]
@@ -179,44 +164,13 @@ def install_packages(distro: str):
         print("Could not detect package manager type")
         sys.exit(-1)
 
+    if dev:
+        all_packages += dev_packages
+
     for pck in all_packages:
         install_cmd = pck_mgr + " install -y " + pck
         print(install_cmd)
         execute_cmd(install_cmd)
-
-
-def pip_install_packages(user: str, python_version: str):
-    """
-    Install required python packages using pip
-
-    :param user:            User to install as
-    :type  user:            str
-    :param python_version:  Version of python to install on
-    :type  python_version:  str
-    """
-    packages = [
-        "wheel",
-        "deepdish",
-        "posix_ipc",
-        "inotify",
-        "matplotlib",
-        "virtualenv",
-        "protobuf==3.19.4",
-        "numpy",
-        "zmq",
-        "structlog<=24.1.0",
-        "graypy",
-        "rich",
-    ]
-    update_pip = f"sudo -u {user} python{python_version} -m pip install --upgrade pip"
-    print(update_pip)
-    execute_cmd(update_pip)
-
-    pip_cmd = f"sudo -u {user} python{python_version} -m pip install " + " ".join(
-        packages
-    )
-    print(pip_cmd)
-    execute_cmd(pip_cmd)
 
 
 def install_protobuf():
@@ -427,7 +381,7 @@ def install_cuda(distro: str):
 
 
 def install_borealis_env(
-    python_version: str, user: str, group: str, no_cupy: bool = False
+    python_version: str, user: str, group: str, no_cupy: bool = False, dev: bool = True
 ):
     """
     Create virtual environment and install utilities needed for Borealis operation.
@@ -438,8 +392,10 @@ def install_borealis_env(
     :type   user:           str
     :param  group:          Group to assign ownership permissions of the venv to
     :type   group:          str
-    :param  install_cupy:   Flag on whether to install cupy
-    :type   install_cupy:   bool
+    :param  no_cupy:        Flag for cupy installation. If True, do not install cupy.
+    :type   no_cupy:        bool
+    :param  dev:            Flag on whether to install development dependencies
+    :type   dev:            bool
     """
     print("### Creating Borealis virtual environment ###")
 
@@ -451,29 +407,20 @@ def install_borealis_env(
     execute_cmd(
         f"sudo -u {user} $BOREALISPATH/borealis_env{python_version}/bin/python3 -m pip install wheel"
     )
-    pip_packages = [
-        "zmq",
-        "numpy",
-        "scipy",
-        "protobuf==3.19.4",
-        "posix_ipc",
-        "structlog",
-        "graylog",
-        "rich",
-        "graypy",
-        "pydantic==1.10.11",  # Temporary fix for pydantic code to work with python 3.11
-        "inotify",
-        "matplotlib",  # Used by scheduler
-        "git+https://github.com/SuperDARN/pyDARNio.git@develop",
-        "git+https://github.com/SuperDARNCanada/backscatter.git#egg=backscatter",
-    ]
+
+    optional_deps = []
     if not no_cupy:
-        pip_packages.append("cupy")
-    pkg_str = ""
-    for pkg in pip_packages:
-        pkg_str += f" {pkg}"
+        optional_deps.append("gpu")
+    if dev:
+        optional_deps.append("dev")
+    if len(optional_deps) > 0:
+        deps_string = f"[{','.join(optional_deps)}]"
+    else:
+        deps_string = ""
+
     execute_cmd(
-        f"sudo -u {user} $BOREALISPATH/borealis_env{python_version}/bin/python3 -m pip install {pkg_str}"
+        "bash -c 'cd $BOREALISPATH';"
+        f"sudo -u {user} borealis_env{python_version}/bin/python3 -m pip install .{deps_string}"
     )
 
 
@@ -525,9 +472,7 @@ def install_experiments(user: str, group: str):
 
 
 def main():
-    parser = ap.ArgumentParser(
-        usage=usage_msg(), description="Installation script for Borealis utils"
-    )
+    parser = ap.ArgumentParser(description="Installation script for Borealis utils")
     parser.add_argument(
         "--borealis-dir", help="Path to the Borealis installation directory", default=""
     )
@@ -547,12 +492,10 @@ def main():
         default="3.9",
     )
     parser.add_argument(
-        "--upgrade-to-v06",
-        help="Is this to upgrade from Borealis v0.5 to v0.6?",
-        action="store_true",
+        "--no-cuda", help="Do not install CUDA and cupy libraries.", action="store_true"
     )
     parser.add_argument(
-        "--no-cuda", help="Do not install CUDA and cupy libraries.", action="store_true"
+        "--dev", action="store_true", help="Install the extra development dependencies."
     )
     parser.add_argument(
         "radar", help="The three letter abbreviation for this radar. Example: sas"
@@ -569,9 +512,7 @@ def main():
         sys.exit(1)
 
     if args.borealis_dir == "":
-        try:
-            borealispath = os.environ["BOREALISPATH"]
-        except KeyError:
+        if "BOREALISPATH" not in os.environ:
             print(
                 "ERROR: You must have an environment variable set for BOREALISPATH, or specify BOREALISPATH using --borealis-dir option."
             )
@@ -612,30 +553,21 @@ def main():
             f'echo "export PYTHON_VERSION={args.python_version}" >> /home/{args.user}/.profile'
         )
 
-    if (
-        args.upgrade_to_v06
-    ):  # Only need to update hdw repo and make new virtualenv for Borealis.
-        print("### Upgrading to Borealis v0.6 configuration ###")
-        install_hdw_dat()
-        install_borealis_env(args.python_version, args.user, args.group, args.no_cuda)
-        print(
-            "### REMINDER: Verify that your config.ini file conforms to the new format ###"
-        )
-
-    else:  # Installing fresh, do it all!
-        install_packages(distro)
-        install_python(distro, args.python_version)
-        pip_install_packages(args.user, args.python_version)
-        install_protobuf()
-        install_zmq()
-        install_ntp()
-        install_uhd(distro)
-        if not args.no_cuda:
-            install_cuda(distro)
-        install_hdw_dat()
-        install_borealis_env(args.python_version, args.user, args.group, args.no_cuda)
-        install_directories(args.user, args.group)
-        install_experiments(args.user, args.group)
+    # Installing fresh, do it all!
+    install_packages(distro, args.dev)
+    install_python(distro, args.python_version)
+    install_protobuf()
+    install_zmq()
+    install_ntp()
+    install_uhd(distro)
+    if not args.no_cuda:
+        install_cuda(distro)
+    install_hdw_dat()
+    install_borealis_env(
+        args.python_version, args.user, args.group, args.no_cuda, args.dev
+    )
+    install_directories(args.user, args.group)
+    install_experiments(args.user, args.group)
 
 
 if __name__ == "__main__":

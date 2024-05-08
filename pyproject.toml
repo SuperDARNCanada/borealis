@@ -4,25 +4,26 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "borealis"
-version = "0.6.1"
+version = "0.7"
 description = "SuperDARN Digital Radar System"
 readme = "README.md"
 authors = [{name = "SuperDARN Canada"}]
 license = {file = "LICENSE"}
 requires-python = ">=3.8"
 dependencies = [
+    "backscatter @ git+https://github.com/SuperDARNCanada/backscatter.git",
+    "graypy",
+    "h5py>=3.3.0",
+    "inotify",
     "numpy",
     "posix_ipc",
-    "zmq",
-    "pydarnio",
-    "backscatter",
-    "protobuf",
-    "scipy",
-    "h5py",
-    "structlog",
-    "graypy",
-    "rich",
+    "protobuf==3.19.4",
     "pydantic<2",
+    "pyDARNio @ git+https://github.com/SuperDARN/pyDARNio.git@develop",
+    "rich",
+    "scipy",
+    "structlog==24.1.0",
+    "zmq",
 ]
 
 [project.optional-dependencies]
@@ -43,7 +44,3 @@ restart_borealis = "scripts.restart_borealis:main"
 [tool.setuptools.packages.find]
 where = ["borealis", "build"]
 exclude = ["usrp_drivers", "src.borealis_experiments.testing_archive*"]
-
-[tool.black]
-
-# TODO: Call install_radar_deps.py somehow with proper parameters
