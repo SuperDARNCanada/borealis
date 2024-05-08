@@ -9,4 +9,3 @@ Here are the notes on SuperDARN Canada's Borealis setup procedures.
 
     setup_hardware
     setup_software
-

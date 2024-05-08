@@ -11,6 +11,7 @@ class DebugDataStage:
     """
     Defines a stage of debug data (filtered data or antennas_iq data plus associated metadata).
     """
+
     stage_name: str = None
     main_shm: str = None
     intf_shm: str = None
@@ -22,6 +23,7 @@ class OutputDataset:
     """
     Defines an output dataset message.
     """
+
     slice_id: int = None
     num_beams: int = None
     num_ranges: int = None
@@ -37,6 +39,7 @@ class ProcessedSequenceMessage:
     Defines a message containing metadata about a processed sequence of data.
     This message format is for communication from rx_signal_processing to data_write.
     """
+
     sequence_num: int = None
     rx_sample_rate: float = None
     output_sample_rate: float = None
@@ -72,6 +75,7 @@ class ProcessedSequenceMessage:
 @dataclass
 class DecimationStageMessage:
     """Defines a decimation_stage structure within a SequenceMetadataMessage"""
+
     stage_num: int = None
     input_rate: float = None
     dm_rate: int = None
@@ -81,6 +85,7 @@ class DecimationStageMessage:
 @dataclass
 class Lag:
     """Defines a lag structure within an RxChannel dataclass"""
+
     pulse_1: int = None
     pulse_2: int = None
     lag_num: int = None
@@ -91,6 +96,7 @@ class Lag:
 @dataclass
 class RxChannel:
     """Defines an rx_channel structure within a SequenceMetadataMessage"""
+
     slice_id: int = None
     tau_spacing: int = None
     rx_freq: float = None
@@ -114,6 +120,7 @@ class SequenceMetadataMessage:
     This message format is for communication from radar_control to
     rx_signal_processing.
     """
+
     sequence_num: int = None
     sequence_time: float = None
     offset_to_first_rx_sample: int = None
@@ -135,6 +142,7 @@ class SequenceMetadataMessage:
 @dataclass
 class Beam:
     """Defines a beam structure for inclusion in an RxChannelMetadata dataclass"""
+
     beam_azimuth: float = None
     beam_num: int = None
 
@@ -142,6 +150,7 @@ class Beam:
 @dataclass
 class LagTable:
     """Defines a ltab structure for inclusion in an RxChannelMetadata dataclass"""
+
     pulse_position: list[int] = field(default_factory=list)
     lag_num: int = None
 
@@ -149,6 +158,7 @@ class LagTable:
 @dataclass
 class RxChannelMetadata:
     """Defines an RxChannelMetadata structure for inclusion in an AveperiodMetadataMessage"""
+
     slice_id: int = None
     slice_comment: str = None
     interfacing: str = None
@@ -189,18 +199,20 @@ class RxChannelMetadata:
 @dataclass
 class TxData:
     """Defines a tx_data structure for inclusion in a Sequence dataclass"""
+
     tx_rate: float = None
     tx_ctr_freq: float = None
     pulse_timing_us: int = None
     pulse_sample_start: int = None
-    tx_samples: np.ndarray = None   # [num_antennas, num_samples]
+    tx_samples: np.ndarray = None  # [num_antennas, num_samples]
     dm_rate: int = None
-    decimated_tx_samples: np.ndarray = None     # [num_antennas, num_samples/dm_rate]
+    decimated_tx_samples: np.ndarray = None  # [num_antennas, num_samples/dm_rate]
 
 
 @dataclass
 class Sequence:
     """Defines a sequence structure for inclusion in an AveperiodMetadataMessage"""
+
     blanks: list[int] = field(default_factory=list)
     tx_data: TxData = None
     rx_channels: list[RxChannelMetadata] = field(default_factory=list)
@@ -217,6 +229,7 @@ class AveperiodMetadataMessage:
     This message format is for communication from radar_control to
     data_write.
     """
+
     experiment_id: int = None
     experiment_name: str = None
     experiment_comment: str = None
@@ -233,4 +246,3 @@ class AveperiodMetadataMessage:
     def add_sequence(self, sequence: dict):
         """Add a sequence dict to the message."""
         self.sequences.append(sequence)
-

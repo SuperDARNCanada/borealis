@@ -69,8 +69,8 @@ in memory. Each square represents a sample, and for brevity only a few channels 
 the sample in time at which the ringbuffer wraps around, or the length of ringbuffer. By knowing
 exactly when the ringbuffer was initialized and the exact time the pulse sequence began, we can
 calculate where in the ringbuffer the sequence samples are by calculating how many times the buffer
-wrapped. If `t` is the amount of time passed from when the buffer was initialized to the time the
-sequence was sent, then T\ :sub:`offset` is calculated by dividing `t` by the sampling frequency, F\
+wrapped. If ``t`` is the amount of time passed from when the buffer was initialized to the time the
+sequence was sent, then T\ :sub:`offset` is calculated by dividing ``t`` by the sampling frequency, F\
 :sub:`s`, to convert time to number of samples, then dividing this result by T\ :sub:`wrap` and
 taking the remainder. T\ :sub:`offset` is then used as the offset into the buffer from which samples
 are later copied out for further processing.

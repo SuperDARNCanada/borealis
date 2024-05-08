@@ -11,7 +11,7 @@ import datetime as dt
 import shutil
 import sys
 
-borealis_path = os.environ['BOREALISPATH']
+borealis_path = os.environ["BOREALISPATH"]
 sys.path.append(f"{borealis_path}/tests/experiments")
 import experiment_unittests
 
@@ -46,7 +46,9 @@ class SCDUtils:
     scd_dt_fmt = "%Y%m%d %H:%M"
 
     """String format for scd line"""
-    line_fmt = "{datetime} {duration} {prio} {experiment} {scheduling_mode} {embargo} {kwargs}"
+    line_fmt = (
+        "{datetime} {duration} {prio} {experiment} {scheduling_mode} {embargo} {kwargs}"
+    )
 
     def __init__(self, scd_filename, site_id):
         """
@@ -59,9 +61,21 @@ class SCDUtils:
         self.site_id = site_id
 
         """Default event to run if no other infinite duration line is scheduled"""
-        self.scd_default = self.create_line('20000101', '00:00', 'normalscan', 'common', '0', '-')
+        self.scd_default = self.create_line(
+            "20000101", "00:00", "normalscan", "common", "0", "-"
+        )
 
-    def create_line(self, yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration, kwargs='', embargo=False):
+    def create_line(
+        self,
+        yyyymmdd,
+        hhmm,
+        experiment,
+        scheduling_mode,
+        prio,
+        duration,
+        kwargs="",
+        embargo=False,
+    ):
         """
         Creates a line dictionary from inputs, turning the date and time into a timestamp since epoch.
 
@@ -90,14 +104,16 @@ class SCDUtils:
         epoch = dt.datetime.utcfromtimestamp(0)
         epoch_milliseconds = int((time - epoch).total_seconds() * 1000)
 
-        return {"timestamp": epoch_milliseconds,
-                "time": time,
-                "duration": str(duration),
-                "prio": str(prio),
-                "experiment": experiment,
-                "scheduling_mode": scheduling_mode,
-                "kwargs": kwargs,
-                "embargo": embargo}
+        return {
+            "timestamp": epoch_milliseconds,
+            "time": time,
+            "duration": str(duration),
+            "prio": str(prio),
+            "experiment": experiment,
+            "scheduling_mode": scheduling_mode,
+            "kwargs": kwargs,
+            "embargo": embargo,
+        }
 
     def test_line(self, line_dict):
         """
@@ -107,34 +123,52 @@ class SCDUtils:
         :type    line_dict: dict
         """
 
-        if not isinstance(line_dict['kwargs'], str):
+        if not isinstance(line_dict["kwargs"], str):
             raise ValueError("kwargs should be a string")
 
-        if not (0 <= int(line_dict['prio']) <= 20):
+        if not (0 <= int(line_dict["prio"]) <= 20):
             raise ValueError("Priority is out of bounds. 0 <= prio <= 20.")
 
-        if line_dict['duration'] != "-":
-            if isinstance(line_dict['duration'], float) or int(line_dict['duration']) < 1:
+        if line_dict["duration"] != "-":
+            if (
+                isinstance(line_dict["duration"], float)
+                or int(line_dict["duration"]) < 1
+            ):
                 raise ValueError("Duration should be an integer > 0, or '-'")
-            line_dict['duration'] = int(line_dict['duration'])
+            line_dict["duration"] = int(line_dict["duration"])
         else:
-            if int(line_dict['prio']) > 0:
+            if int(line_dict["prio"]) > 0:
                 raise ValueError("Infinite duration lines must have priority 0")
 
-        possible_scheduling_modes = ['common', 'special', 'discretionary']
-        if line_dict['scheduling_mode'] not in possible_scheduling_modes:
-            raise ValueError(f"Unknown scheduling mode type {line_dict['scheduling_mode']} not in "
-                             f"{possible_scheduling_modes}")
+        possible_scheduling_modes = ["common", "special", "discretionary"]
+        if line_dict["scheduling_mode"] not in possible_scheduling_modes:
+            raise ValueError(
+                f"Unknown scheduling mode type {line_dict['scheduling_mode']} not in "
+                f"{possible_scheduling_modes}"
+            )
 
-        args = ['--site_id', self.site_id,
-                '--experiments', line_dict['experiment'],
-                '--kwargs', line_dict['kwargs'],
-                '--module', 'experiment_unittests']
-        test_program = experiment_unittests.run_tests(args, buffer=True, print_results=False)
-        if len(test_program.result.failures) != 0 or len(test_program.result.errors) != 0:
-            raise ValueError("Experiment could not be scheduled due to errors in experiment.\n"
-                             f"Errors: {test_program.result.errors}\n"
-                             f"Failures: {test_program.result.failures}")
+        args = [
+            "--site_id",
+            self.site_id,
+            "--experiments",
+            line_dict["experiment"],
+            "--kwargs",
+            line_dict["kwargs"],
+            "--module",
+            "experiment_unittests",
+        ]
+        test_program = experiment_unittests.run_tests(
+            args, buffer=True, print_results=False
+        )
+        if (
+            len(test_program.result.failures) != 0
+            or len(test_program.result.errors) != 0
+        ):
+            raise ValueError(
+                "Experiment could not be scheduled due to errors in experiment.\n"
+                f"Errors: {test_program.result.errors}\n"
+                f"Failures: {test_program.result.failures}"
+            )
 
     def read_scd(self):
         """
@@ -155,18 +189,28 @@ class SCDUtils:
 
         for num, line in enumerate(raw_scd):
             kwarg_entries = line[6:]
-            embargo_flag = '--embargo' in kwarg_entries
+            embargo_flag = "--embargo" in kwarg_entries
             if embargo_flag:
-                kwarg_entries.remove('--embargo')
+                kwarg_entries.remove("--embargo")
             kwargs = " ".join(kwarg_entries)
 
             # date time experiment mode priority duration [kwargs]
-            scd_lines.append(self.create_line(line[0], line[1], line[4], line[5], line[3], line[2], kwargs,
-                                              embargo=embargo_flag))
+            scd_lines.append(
+                self.create_line(
+                    line[0],
+                    line[1],
+                    line[4],
+                    line[5],
+                    line[3],
+                    line[2],
+                    kwargs,
+                    embargo=embargo_flag,
+                )
+            )
 
         if len(scd_lines) == 0:
-            print('WARNING: SCD file empty; default normalscan will run')
-            # add the default infinite duration line 
+            print("WARNING: SCD file empty; default normalscan will run")
+            # add the default infinite duration line
             scd_lines.append(self.scd_default)
 
         return scd_lines
@@ -182,13 +226,15 @@ class SCDUtils:
         :returns:   Formatted string.
         :rtype:     str
         """
-        line_str = cls.line_fmt.format(datetime=line_dict["time"].strftime(cls.scd_dt_fmt),
-                                       prio=line_dict["prio"],
-                                       experiment=line_dict["experiment"],
-                                       scheduling_mode=line_dict["scheduling_mode"],
-                                       duration=line_dict["duration"],
-                                       embargo='--embargo' if line_dict["embargo"] else '',
-                                       kwargs=line_dict["kwargs"])
+        line_str = cls.line_fmt.format(
+            datetime=line_dict["time"].strftime(cls.scd_dt_fmt),
+            prio=line_dict["prio"],
+            experiment=line_dict["experiment"],
+            scheduling_mode=line_dict["scheduling_mode"],
+            duration=line_dict["duration"],
+            embargo="--embargo" if line_dict["embargo"] else "",
+            kwargs=line_dict["kwargs"],
+        )
         return line_str
 
     def write_scd(self, scd_lines):
@@ -206,14 +252,23 @@ class SCDUtils:
         """
         text_lines = [self.fmt_line(x) for x in scd_lines]
 
-        shutil.copy(self.scd_filename, self.scd_filename+".bak")
+        shutil.copy(self.scd_filename, self.scd_filename + ".bak")
 
-        with open(self.scd_filename, 'w') as f:
+        with open(self.scd_filename, "w") as f:
             for line in text_lines:
                 f.write(f"{line}\n")
 
-    def add_line(self, yyyymmdd, hhmm, experiment, scheduling_mode, prio=0, 
-                 duration='-', kwargs='', embargo=False):
+    def add_line(
+        self,
+        yyyymmdd,
+        hhmm,
+        experiment,
+        scheduling_mode,
+        prio=0,
+        duration="-",
+        kwargs="",
+        embargo=False,
+    ):
         """
         Adds a new line to the schedule.
 
@@ -236,16 +291,31 @@ class SCDUtils:
 
         :raises ValueError: If line parameters are invalid or if line is a duplicate.
         """
-        new_line = self.create_line(yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration, kwargs,
-                                    embargo=embargo)
+        new_line = self.create_line(
+            yyyymmdd,
+            hhmm,
+            experiment,
+            scheduling_mode,
+            prio,
+            duration,
+            kwargs,
+            embargo=embargo,
+        )
 
         scd_lines = self.read_scd()
 
         if new_line in scd_lines:
             raise ValueError("Line is a duplicate of an existing line")
 
-        if any([(new_line['timestamp'] == line['timestamp'] and
-                 new_line['prio'] == line['prio']) for line in scd_lines]):
+        if any(
+            [
+                (
+                    new_line["timestamp"] == line["timestamp"]
+                    and new_line["prio"] == line["prio"]
+                )
+                for line in scd_lines
+            ]
+        ):
             raise ValueError("Priority already exists at this time")
 
         try:
@@ -257,13 +327,22 @@ class SCDUtils:
 
         # sort priorities in reverse so that they are descending order. Then sort everything by
         # timestamp
-        new_scd = sorted(scd_lines, key=lambda x: x['prio'], reverse=True)
-        new_scd = sorted(new_scd, key=lambda x: x['timestamp'])
+        new_scd = sorted(scd_lines, key=lambda x: x["prio"], reverse=True)
+        new_scd = sorted(new_scd, key=lambda x: x["timestamp"])
 
         self.write_scd(new_scd)
 
-    def remove_line(self, yyyymmdd, hhmm, experiment, scheduling_mode, prio=0, 
-                    duration='-', kwargs='', embargo=False):
+    def remove_line(
+        self,
+        yyyymmdd,
+        hhmm,
+        experiment,
+        scheduling_mode,
+        prio=0,
+        duration="-",
+        kwargs="",
+        embargo=False,
+    ):
         """
         Removes a line from the schedule
 
@@ -287,8 +366,16 @@ class SCDUtils:
         :raises ValueError: If line parameters are invalid or if line does not exist.
         """
 
-        line_to_rm = self.create_line(yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration, kwargs,
-                                      embargo=embargo)
+        line_to_rm = self.create_line(
+            yyyymmdd,
+            hhmm,
+            experiment,
+            scheduling_mode,
+            prio,
+            duration,
+            kwargs,
+            embargo=embargo,
+        )
 
         scd_lines = self.read_scd()
         try:
@@ -327,8 +414,8 @@ class SCDUtils:
         scd_lines = self.read_scd()
 
         # Sort the lines by timestamp, and for equal times, in reverse priority
-        scd_lines = sorted(scd_lines, key=lambda x: x['prio'], reverse=True)
-        scd_lines = sorted(scd_lines, key=lambda x: x['timestamp'])
+        scd_lines = sorted(scd_lines, key=lambda x: x["prio"], reverse=True)
+        scd_lines = sorted(scd_lines, key=lambda x: x["timestamp"])
 
         if not scd_lines:
             raise IndexError("Schedule file is empty. No lines can be returned")
@@ -339,18 +426,18 @@ class SCDUtils:
         relevant_lines = []
         past_infinite_line_added = False
         for line in reversed(scd_lines):
-            if line['timestamp'] >= epoch_milliseconds:
+            if line["timestamp"] >= epoch_milliseconds:
                 relevant_lines.append(line)
             else:
                 # Include the most recent infinite line
-                if line['duration'] == '-':
+                if line["duration"] == "-":
                     if not past_infinite_line_added:
                         relevant_lines.append(line)
                         past_infinite_line_added = True
                 else:
                     # If the line ends after the current time, include the line
-                    duration_ms = int(line['duration']) * 60 * 1000
-                    line_end = line['timestamp'] + duration_ms
+                    duration_ms = int(line["duration"]) * 60 * 1000
+                    line_end = line["timestamp"] + duration_ms
                     if line_end >= epoch_milliseconds:
                         relevant_lines.append(line)
 

@@ -21,12 +21,14 @@ import structlog
 
 # local
 from experiment_prototype.interface_classes.averaging_periods import AveragingPeriod
-from experiment_prototype.interface_classes.interface_class_base import InterfaceClassBase
+from experiment_prototype.interface_classes.interface_class_base import (
+    InterfaceClassBase,
+)
 from experiment_prototype.experiment_exception import ExperimentException
 
 # Obtain the module name that imported this log_config
 caller = Path(inspect.stack()[-1].filename)
-module_name = caller.name.split('.')[0]
+module_name = caller.name.split(".")[0]
 log = structlog.getLogger(module_name)
 
 
@@ -46,14 +48,18 @@ class Scan(InterfaceClassBase):
 
     def __init__(self, scan_keys, scan_slice_dict, scan_interface, transmit_metadata):
 
-        InterfaceClassBase.__init__(self, scan_keys, scan_slice_dict, scan_interface, transmit_metadata)
+        InterfaceClassBase.__init__(
+            self, scan_keys, scan_slice_dict, scan_interface, transmit_metadata
+        )
 
         # scan metadata - must be the same between all slices combined in scan.  Metadata includes:
         self.scanbound = self.slice_dict[self.slice_ids[0]].scanbound
         for slice_id in self.slice_ids:
             if self.slice_dict[slice_id].scanbound != self.scanbound:
-                errmsg = f"Scan boundary not the same between slices {self.slice_ids[0]} and"\
-                         f" {slice_id} for AVEPERIOD or CONCURRENT interfaced slices"
+                errmsg = (
+                    f"Scan boundary not the same between slices {self.slice_ids[0]} and"
+                    f" {slice_id} for AVEPERIOD or CONCURRENT interfaced slices"
+                )
                 raise ExperimentException(errmsg)
 
         # NOTE: for now we assume that when AVEPERIOD combined, the AveragingPeriods of the various
@@ -94,7 +100,7 @@ class Scan(InterfaceClassBase):
         else:
             self.num_aveperiods_in_scan = self.num_unique_aveperiods
 
-        self.aveperiod_iter = 0 # used to keep track of index into aveperiods list.
+        self.aveperiod_iter = 0  # used to keep track of index into aveperiods list.
         # AveragingPeriod will be in slice_id # order
 
     def prep_for_nested_interface_class(self):

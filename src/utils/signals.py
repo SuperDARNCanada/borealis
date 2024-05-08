@@ -8,6 +8,7 @@
     :copyright: 2024 SuperDARN Canada
     :author: Remington Rohel
 """
+
 from functools import reduce
 import math
 from multiprocessing import shared_memory
@@ -37,7 +38,9 @@ class DSP:
     This class also supports extraction of lag profiles from multi-pulse sequences.
     """
 
-    def __init__(self, rx_rate, filter_taps, mixing_freqs, dm_rates, use_shared_mem=True):
+    def __init__(
+        self, rx_rate, filter_taps, mixing_freqs, dm_rates, use_shared_mem=True
+    ):
         """
         Create the filters and initialize parameters for signal processing operations.
 
@@ -73,12 +76,19 @@ class DSP:
         """
         # Apply the filtering and downsampling operations
         self.filter_outputs.append(
-            self.apply_bandpass_decimate(input_samples, self.filters[0], self.mixing_freqs, self.dm_rates[0],
-                                         self.rx_rate)
+            self.apply_bandpass_decimate(
+                input_samples,
+                self.filters[0],
+                self.mixing_freqs,
+                self.dm_rates[0],
+                self.rx_rate,
+            )
         )
         for i in range(1, len(self.filters)):
             self.filter_outputs.append(
-                self.apply_lowpass_decimate(self.filter_outputs[i - 1], self.filters[i], self.dm_rates[i])
+                self.apply_lowpass_decimate(
+                    self.filter_outputs[i - 1], self.filters[i], self.dm_rates[i]
+                )
             )
 
     def move_filter_results(self):
@@ -89,12 +99,16 @@ class DSP:
         # Create an array on the CPU for antennas_iq data
         antennas_iq_samples = self.filter_outputs[-1]
         if self.use_shared_mem:
-            ant_shm = shared_memory.SharedMemory(create=True, size=antennas_iq_samples.nbytes)
+            ant_shm = shared_memory.SharedMemory(
+                create=True, size=antennas_iq_samples.nbytes
+            )
             buffer = ant_shm.buf
-            self.shared_mem['antennas_iq'] = ant_shm
+            self.shared_mem["antennas_iq"] = ant_shm
         else:
             buffer = None
-        self.antennas_iq_samples = np.ndarray(antennas_iq_samples.shape, dtype=np.complex64, buffer=buffer)
+        self.antennas_iq_samples = np.ndarray(
+            antennas_iq_samples.shape, dtype=np.complex64, buffer=buffer
+        )
 
         # Move the antennas_iq samples to the CPU for beamforming
         if cupy_available:
@@ -115,19 +129,29 @@ class DSP:
 
         # Create shared memory for result of beamforming
         # final_shape: [num_slices, num_beams, num_samples]
-        final_shape = (self.antennas_iq_samples.shape[0], beam_phases.shape[1], self.antennas_iq_samples.shape[2])
-        final_size = np.dtype(np.complex64).itemsize * reduce(lambda a, b: a * b, final_shape)
+        final_shape = (
+            self.antennas_iq_samples.shape[0],
+            beam_phases.shape[1],
+            self.antennas_iq_samples.shape[2],
+        )
+        final_size = np.dtype(np.complex64).itemsize * reduce(
+            lambda a, b: a * b, final_shape
+        )
 
         if self.use_shared_mem:
             bf_shm = shared_memory.SharedMemory(create=True, size=final_size)
             buffer = bf_shm.buf
-            self.shared_mem['bfiq'] = bf_shm
+            self.shared_mem["bfiq"] = bf_shm
         else:
             buffer = None
-        self.beamformed_samples = np.ndarray(final_shape, dtype=np.complex64, buffer=buffer)
+        self.beamformed_samples = np.ndarray(
+            final_shape, dtype=np.complex64, buffer=buffer
+        )
 
         # Apply beamforming
-        self.beamformed_samples[...] = self.beamform_samples(self.antennas_iq_samples, beam_phases)
+        self.beamformed_samples[...] = self.beamform_samples(
+            self.antennas_iq_samples, beam_phases
+        )
 
     @staticmethod
     def create_filters(filter_taps, mixing_freqs, rx_rate):
@@ -189,10 +213,14 @@ class DSP:
         new_shape = ndarray.shape[:-1] + (nrows, window_len)
         new_strides = list(ndarray.strides + (last_dim_stride,))
         new_strides[-2] *= step
-        return xp.lib.stride_tricks.as_strided(ndarray, shape=new_shape, strides=new_strides)
+        return xp.lib.stride_tricks.as_strided(
+            ndarray, shape=new_shape, strides=new_strides
+        )
 
     @staticmethod
-    def apply_bandpass_decimate(input_samples, bp_filters, mixing_freqs, dm_rate, rx_rate):
+    def apply_bandpass_decimate(
+        input_samples, bp_filters, mixing_freqs, dm_rate, rx_rate
+    ):
         """
         Apply a Frerking bandpass filter to the input samples. Several different frequencies can be
         centered on simultaneously. Downsampling is done in parallel via a strided window view of
@@ -220,7 +248,7 @@ class DSP:
 
         # [num_slices, num_taps]
         # [num_antennas, num_output_samples, num_taps]
-        filtered = xp.einsum('ij,klj->ikl', bp_filters, input_samples)
+        filtered = xp.einsum("ij,klj->ikl", bp_filters, input_samples)
 
         # Apply the phase correction for the Frerking method.
         ph = xp.arange(filtered.shape[-1], dtype=np.float32)[xp.newaxis, :]
@@ -264,7 +292,7 @@ class DSP:
         # [1, num_taps]
         # [num_slices, num_antennas, num_output_samples, num_taps]
         # filtered: [num_slices, num_antennas, num_output_samples]
-        filtered = xp.einsum('ij,klmj->klm', lp_filter, input_samples)
+        filtered = xp.einsum("ij,klmj->klm", lp_filter, input_samples)
 
         return filtered
 
@@ -286,10 +314,15 @@ class DSP:
         beam_phases = np.array(beam_phases)
 
         # result: [num_slices, num_beams, num_samples]
-        return np.einsum('ijk,ilj->ilk', filtered_samples, beam_phases)
+        return np.einsum("ijk,ilj->ilk", filtered_samples, beam_phases)
 
     @staticmethod
-    def correlations_from_samples(beamformed_samples_1, beamformed_samples_2, output_sample_rate, slice_index_details):
+    def correlations_from_samples(
+        beamformed_samples_1,
+        beamformed_samples_2,
+        output_sample_rate,
+        slice_index_details,
+    ):
         """
         Correlate two sets of beamformed samples together. Correlation matrices are used and indices
         corresponding to lag pulse pairs are extracted.
@@ -309,18 +342,25 @@ class DSP:
         """
         values = []
         for s, slice_info in enumerate(slice_index_details):
-            if slice_info['lags'].size == 0:
+            if slice_info["lags"].size == 0:
                 values.append(np.array([]))
                 continue
 
-            range_off = np.arange(slice_info['num_range_gates'], dtype=np.int32) + slice_info['first_range_off']
-            tau_in_samples = slice_info['tau_spacing'] * 1e-6 * output_sample_rate
-            lag_pulses_as_samples = np.array(slice_info['lags'], np.int32) * np.int32(tau_in_samples)
+            range_off = (
+                np.arange(slice_info["num_range_gates"], dtype=np.int32)
+                + slice_info["first_range_off"]
+            )
+            tau_in_samples = slice_info["tau_spacing"] * 1e-6 * output_sample_rate
+            lag_pulses_as_samples = np.array(slice_info["lags"], np.int32) * np.int32(
+                tau_in_samples
+            )
 
             # [num_range_gates, 1, 1]
             # [1, num_lags, 2]
-            samples_for_all_range_lags = (range_off[..., np.newaxis, np.newaxis] +
-                                          lag_pulses_as_samples[np.newaxis, :, :])
+            samples_for_all_range_lags = (
+                range_off[..., np.newaxis, np.newaxis]
+                + lag_pulses_as_samples[np.newaxis, :, :]
+            )
 
             # [num_range_gates, num_lags, 2]
             row = samples_for_all_range_lags[..., 1].astype(np.int32)
@@ -328,15 +368,22 @@ class DSP:
             # [num_range_gates, num_lags, 2]
             col = samples_for_all_range_lags[..., 0].astype(np.int32)
 
-            values_for_slice = np.empty((beamformed_samples_1.shape[1], row.shape[0], row.shape[1]), dtype=np.complex64)
+            values_for_slice = np.empty(
+                (beamformed_samples_1.shape[1], row.shape[0], row.shape[1]),
+                dtype=np.complex64,
+            )
 
             for lag in range(row.shape[1]):
-                values_for_slice[:, :, lag] = np.einsum('ij,ij->ji',
-                                                        beamformed_samples_1[s, :, row[:, lag]],
-                                                        beamformed_samples_2[s, :, col[:, lag]].conj())
+                values_for_slice[:, :, lag] = np.einsum(
+                    "ij,ij->ji",
+                    beamformed_samples_1[s, :, row[:, lag]],
+                    beamformed_samples_2[s, :, col[:, lag]].conj(),
+                )
 
             # [num_beams, num_range_gates, num_lags]
-            values_for_slice = np.einsum('ijk,k->ijk', values_for_slice, slice_info['lag_phase_offsets'])
+            values_for_slice = np.einsum(
+                "ijk,k->ijk", values_for_slice, slice_info["lag_phase_offsets"]
+            )
 
             values.append(values_for_slice)
 
@@ -390,7 +437,7 @@ def get_phase_shift(beam_angle, freq, num_antennas, antenna_spacing, centre_offs
     # ...
     # ...
     # antenna0beamM-1 ... antenna1beamM-1... ... anteannaN-1beamM-1]
-    phase_shift = np.fmod(np.outer(y, x), 2.0 * np.pi) # beams by antenna
+    phase_shift = np.fmod(np.outer(y, x), 2.0 * np.pi)  # beams by antenna
     phase_shift = np.exp(1j * phase_shift)
 
     # Pointing to right of boresight, use point in middle (hypothetically antenna 7.5) as phshift=0
@@ -429,17 +476,19 @@ def get_samples(rate, wave_freq, pulse_len, ramp_time, max_amplitude):
     sampling_freq = 2 * math.pi * wave_freq / rate
 
     # for linear we used the below:
-    linear_rampsampleslen = round(rate * ramp_time)  # number of samples for ramp-up and ramp-down of pulse.
+    linear_rampsampleslen = round(
+        rate * ramp_time
+    )  # number of samples for ramp-up and ramp-down of pulse.
     sampleslen = round(rate * pulse_len)
 
     rads = sampling_freq * np.arange(sampleslen)
     wave_form = np.exp(rads * 1j)
 
-    amplitude_ramp_up = np.arange(linear_rampsampleslen)/linear_rampsampleslen
+    amplitude_ramp_up = np.arange(linear_rampsampleslen) / linear_rampsampleslen
     amplitude_ramp_down = np.flipud(amplitude_ramp_up)
 
     ramp_up_piece = wave_form[:linear_rampsampleslen]
-    ramp_down_piece = wave_form[sampleslen - linear_rampsampleslen:]
+    ramp_down_piece = wave_form[sampleslen - linear_rampsampleslen :]
     np.multiply(ramp_up_piece, amplitude_ramp_up, out=ramp_up_piece)
     np.multiply(ramp_down_piece, amplitude_ramp_down, out=ramp_down_piece)
 

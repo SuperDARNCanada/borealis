@@ -18,10 +18,20 @@ dependencies = [
     "backscatter",
     "protobuf",
     "scipy",
+    "h5py",
+    "structlog",
+    "graypy",
+    "rich",
+    "pydantic<2",
 ]
 
 [project.optional-dependencies]
 gpu = ["cupy"]
+dev = [
+    "black ~= 24.0",
+    "pre-commit",
+    "jupyter"
+]
 
 [project.urls]
 Homepage = "https://borealis.readthedocs.io"
@@ -32,6 +42,8 @@ restart_borealis = "scripts.restart_borealis:main"
 
 [tool.setuptools.packages.find]
 where = ["borealis", "build"]
-exclude = ["usrp_drivers", "experiments.testing_archive*"]
+exclude = ["usrp_drivers", "src.borealis_experiments.testing_archive*"]
+
+[tool.black]
 
 # TODO: Call install_radar_deps.py somehow with proper parameters

@@ -12,7 +12,6 @@ import inspect
 import json
 from pathlib import Path
 import pickle
-import sys
 import zlib
 
 from backscatter import fitacf
@@ -27,8 +26,9 @@ def convert_and_fit_record(rawacf_record):
     # We only grab the first slice. This means the first slice of any that are SEQUENCE or CONCURRENT interfaced.
     first_key = sorted(list(rawacf_record.keys()))[0]
     log.info("converting record", record=first_key)
-    converted = (pydarnio.BorealisConvert.
-                 _BorealisConvert__convert_rawacf_record(0, (first_key, rawacf_record[first_key]), ""))
+    converted = pydarnio.BorealisConvert._BorealisConvert__convert_rawacf_record(
+        0, (first_key, rawacf_record[first_key]), ""
+    )
 
     fitted_records = []
     for rec in converted:
@@ -48,7 +48,9 @@ def realtime_server(recv_socket, server_socket):
     """
     while True:
         try:
-            rawacf_pickled = so.recv_bytes_from_any_iden(recv_socket)  # This is blocking
+            rawacf_pickled = so.recv_bytes_from_any_iden(
+                recv_socket
+            )  # This is blocking
         except (zmq.ContextTerminated, zmq.ZMQError):  # No way to recover from this
             recv_socket.close()
             server_socket.close()
@@ -65,13 +67,13 @@ def realtime_server(recv_socket, server_socket):
         for rec in fitted_recs:
             # Can't jsonify numpy, so we convert to native types for serving over the web
             for k, v in rec.items():
-                if hasattr(v, 'dtype'):
+                if hasattr(v, "dtype"):
                     if isinstance(v, np.ndarray):
                         rec[k] = v.tolist()
                     else:
                         rec[k] = v.item()
 
-            publishable_data = zlib.compress(json.dumps(rec).encode('utf-8'))
+            publishable_data = zlib.compress(json.dumps(rec).encode("utf-8"))
             try:
                 # Serve the data over the websocket. This is non-blocking in a background thread that zmq handles
                 server_socket.send(publishable_data)
@@ -81,7 +83,7 @@ def realtime_server(recv_socket, server_socket):
                 return
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     from utils import log_config, socket_operations as so
     from utils.options import Options
 
@@ -92,15 +94,21 @@ if __name__ == '__main__':
     context = zmq.Context().instance()
 
     # Socket for receiving data from data_write
-    data_write_socket = so.create_sockets([options.rt_to_dw_identity], options.router_address)[0]
+    data_write_socket = so.create_sockets(
+        [options.rt_to_dw_identity], options.router_address
+    )[0]
 
     # Socket for serving data over the web
     publish_socket = context.socket(zmq.PUB)
-    publish_socket.setsockopt(zmq.LINGER, 0)  # milliseconds to wait for message to send when closing socket
+    publish_socket.setsockopt(
+        zmq.LINGER, 0
+    )  # milliseconds to wait for message to send when closing socket
 
     try:
         publish_socket.bind(options.realtime_address)
-    except zmq.ZMQError as e:  # Raised if the address is invalid (e.g. if device doesn't exist)
+    except (
+        zmq.ZMQError
+    ) as e:  # Raised if the address is invalid (e.g. if device doesn't exist)
         log.critical("REALTIME CRASHED", error=e)
         log.exception("REALTIME CRASHED", exception=e)
         data_write_socket.close()
@@ -120,5 +128,5 @@ else:
     from .utils.options import Options
 
     caller = Path(inspect.stack()[-1].filename)
-    module_name = caller.name.split('.')[0]
+    module_name = caller.name.split(".")[0]
     log = structlog.getLogger(module_name)

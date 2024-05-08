@@ -14,7 +14,6 @@ import argparse
 import sys
 import math
 import numpy as np
-import scipy.signal.windows as windows
 
 # Used to calculate the minimum number of segments per wire structure
 from bisect import bisect
@@ -91,8 +90,17 @@ class Tower(object):
     Tower class used to describe antenna support towers as wires in the array system as NEC strings
     """
 
-    def __init__(self, start_height_m=15.0, balun_offset=0.075, side_length=0.30, awg=13,
-                 global_x=0.0, global_y=0.0, global_z=0.0, guylines=False):
+    def __init__(
+        self,
+        start_height_m=15.0,
+        balun_offset=0.075,
+        side_length=0.30,
+        awg=13,
+        global_x=0.0,
+        global_y=0.0,
+        global_z=0.0,
+        guylines=False,
+    ):
         """
         :param start_height_m: The starting height of the first reflector wire. Default 15, meters
         :param balun_offset: The offset distance the balun and load boxes sit off the towers
@@ -109,36 +117,118 @@ class Tower(object):
         y_offset = global_y - side_length * math.sin(math.pi / 3) - balun_offset
         guyline_span = start_height_m
 
-        x1 = [global_x, global_x - x_offset, global_x + x_offset,
-              global_x, global_x - x_offset, global_x, global_x + x_offset,
-              global_x, global_x - x_offset, global_x + x_offset, global_x]
-        x2 = [global_x, global_x - x_offset, global_x + x_offset,
-              global_x - x_offset, global_x, global_x + x_offset, global_x,
-              global_x, global_x - x_offset - guyline_span, global_x + x_offset + guyline_span, global_x]
-        y1 = [global_y - balun_offset, y_offset, y_offset,
-              global_y - balun_offset, y_offset, y_offset, y_offset,
-              global_y - balun_offset, y_offset, y_offset, y_offset]
-        y2 = [global_y - balun_offset, y_offset, y_offset,
-              y_offset, y_offset, y_offset, global_y - balun_offset,
-              global_y + guyline_span - balun_offset, y_offset - 0.01, y_offset + 0.01, y_offset - guyline_span]
-        z1 = [global_z, global_z, global_z,
-              global_z + start_height_m, global_z + start_height_m, global_z + start_height_m, global_z + start_height_m,
-              global_z + start_height_m, global_z + start_height_m, global_z + start_height_m, global_z + start_height_m]
-        z2 = [global_z + start_height_m, global_z + start_height_m, global_z + start_height_m,
-              global_z + start_height_m, global_z + start_height_m, global_z + start_height_m, global_z + start_height_m,
-              global_z, global_z, global_z, global_z]
+        x1 = [
+            global_x,
+            global_x - x_offset,
+            global_x + x_offset,
+            global_x,
+            global_x - x_offset,
+            global_x,
+            global_x + x_offset,
+            global_x,
+            global_x - x_offset,
+            global_x + x_offset,
+            global_x,
+        ]
+        x2 = [
+            global_x,
+            global_x - x_offset,
+            global_x + x_offset,
+            global_x - x_offset,
+            global_x,
+            global_x + x_offset,
+            global_x,
+            global_x,
+            global_x - x_offset - guyline_span,
+            global_x + x_offset + guyline_span,
+            global_x,
+        ]
+        y1 = [
+            global_y - balun_offset,
+            y_offset,
+            y_offset,
+            global_y - balun_offset,
+            y_offset,
+            y_offset,
+            y_offset,
+            global_y - balun_offset,
+            y_offset,
+            y_offset,
+            y_offset,
+        ]
+        y2 = [
+            global_y - balun_offset,
+            y_offset,
+            y_offset,
+            y_offset,
+            y_offset,
+            y_offset,
+            global_y - balun_offset,
+            global_y + guyline_span - balun_offset,
+            y_offset - 0.01,
+            y_offset + 0.01,
+            y_offset - guyline_span,
+        ]
+        z1 = [
+            global_z,
+            global_z,
+            global_z,
+            global_z + start_height_m,
+            global_z + start_height_m,
+            global_z + start_height_m,
+            global_z + start_height_m,
+            global_z + start_height_m,
+            global_z + start_height_m,
+            global_z + start_height_m,
+            global_z + start_height_m,
+        ]
+        z2 = [
+            global_z + start_height_m,
+            global_z + start_height_m,
+            global_z + start_height_m,
+            global_z + start_height_m,
+            global_z + start_height_m,
+            global_z + start_height_m,
+            global_z + start_height_m,
+            global_z,
+            global_z,
+            global_z,
+            global_z,
+        ]
 
         self.tower_wires = []
         radius = get_mm_radius_from_awg(awg) / 1000.0
-        for i in range(len(x1)-4):
-            self.tower_wires.append(Wire(x1[i], y1[i], z1[i], x2[i], y2[i], z2[i],
-                                         radius=radius, segments=0, conductivity=galvanized_steel_conductivity))
+        for i in range(len(x1) - 4):
+            self.tower_wires.append(
+                Wire(
+                    x1[i],
+                    y1[i],
+                    z1[i],
+                    x2[i],
+                    y2[i],
+                    z2[i],
+                    radius=radius,
+                    segments=0,
+                    conductivity=galvanized_steel_conductivity,
+                )
+            )
 
         # Add the guylines
         if guylines:
-            for i in range(len(x1)-3, len(x1)):
-                self.tower_wires.append(Wire(x1[i], y1[i], z1[i], x2[i], y2[i], z2[i],
-                                                 radius=radius, segments=0, conductivity=galvanized_steel_conductivity))
+            for i in range(len(x1) - 3, len(x1)):
+                self.tower_wires.append(
+                    Wire(
+                        x1[i],
+                        y1[i],
+                        z1[i],
+                        x2[i],
+                        y2[i],
+                        z2[i],
+                        radius=radius,
+                        segments=0,
+                        conductivity=galvanized_steel_conductivity,
+                    )
+                )
 
         # # Front guyline
         # self.tower_wires.append(Wire(x1[-4], y1[-4], z1[-4], x2[-4], y2[-4], z2[-4],
@@ -163,7 +253,7 @@ class Tower(object):
         return_string = ""
         for tower_wire in self.tower_wires:
             return_string += str(tower_wire) + "\n"
-        return return_string.replace('\n', '\r\n')
+        return return_string.replace("\n", "\r\n")
 
 
 class Reflector(object):
@@ -172,8 +262,18 @@ class Reflector(object):
     as NEC strings
     """
 
-    def __init__(self, length_m, spacing_m, start_height_m=15.0, num_wires=0, awg=13, angle=45,
-                 global_x=0.0, global_y=0.0, global_z=0.0):
+    def __init__(
+        self,
+        length_m,
+        spacing_m,
+        start_height_m=15.0,
+        num_wires=0,
+        awg=13,
+        angle=45,
+        global_x=0.0,
+        global_y=0.0,
+        global_z=0.0,
+    ):
         """
         :param length_m: The length of the reflector wires in meters
         :param spacing_m: The straight line distance between successive reflector wires in meters
@@ -191,7 +291,9 @@ class Reflector(object):
         if num_wires == 0:
             # Use spacing to determine the amount of wires given that the reflector
             # fence starts above the antennas and goes down at a given angle until the ground
-            raise NotImplementedError("Please specify # of wires, calculation not implemented.")
+            raise NotImplementedError(
+                "Please specify # of wires, calculation not implemented."
+            )
         else:
             # We are given the number of wires, so place them with the spacing and angle given
             for reflector_wire in range(0, num_wires):
@@ -199,10 +301,17 @@ class Reflector(object):
                 x2 = length_m / 2.0
                 y = -reflector_wire * math.cos(angle * math.pi / 180.0) * spacing_m
                 z = reflector_wire * math.sin(angle * math.pi / 180.0) * spacing_m
-                self.reflector_wires.append(Wire(x1 + global_x, y + global_y,
-                                                 start_height_m - z + global_z, x2 + global_x,
-                                                 y + global_y, start_height_m - z + global_z,
-                                                 radius))
+                self.reflector_wires.append(
+                    Wire(
+                        x1 + global_x,
+                        y + global_y,
+                        start_height_m - z + global_z,
+                        x2 + global_x,
+                        y + global_y,
+                        start_height_m - z + global_z,
+                        radius,
+                    )
+                )
 
     def __repr__(self):
         """
@@ -213,7 +322,7 @@ class Reflector(object):
         return_string = ""
         for reflector_wire in self.reflector_wires:
             return_string += str(reflector_wire) + "\n"
-        return return_string.replace('\n', '\r\n')
+        return return_string.replace("\n", "\r\n")
 
 
 class TransmissionLine(object):
@@ -223,7 +332,9 @@ class TransmissionLine(object):
     down the length of the boom, used to feed each dipole with alternating phase.
     """
 
-    def __init__(self, tag1, segment1, tag2, segment2, crossed, impedance=50.0, length=0.0):
+    def __init__(
+        self, tag1, segment1, tag2, segment2, crossed, impedance=50.0, length=0.0
+    ):
         """
         :param tag1: Tag/wire number connected to end 1 of the transmission line
         :param segment1: Segment number of the tag/wire that end 1 is connected to
@@ -243,7 +354,7 @@ class TransmissionLine(object):
         """
         :return: A string representation of the transmission line object that NEC will understand
         """
-        return self.transmissionline.replace('\n', '\r\n')
+        return self.transmissionline.replace("\n", "\r\n")
 
 
 class Feedline(object):
@@ -270,7 +381,9 @@ class Load(object):
     Load class used to describe NEC loads in the antenna array system (real or complex)
     """
 
-    def __init__(self, tag, start_segment=0, end_segment=0, impedance_real=100, impedance_imag=0):
+    def __init__(
+        self, tag, start_segment=0, end_segment=0, impedance_real=100, impedance_imag=0
+    ):
         """
         Applies a NEC compatible load to a given tag number and set of segments with given
         impedance made up of a complex impedance. If start_segment and end_segment
@@ -283,8 +396,9 @@ class Load(object):
         :param impedance_imag: The imaginary part of the complex impedance for the load
         """
 
-        self.load = "LD 4 {} {} {} {} {}".format(tag, start_segment, end_segment,
-                                                 impedance_real, impedance_imag)
+        self.load = "LD 4 {} {} {} {} {}".format(
+            tag, start_segment, end_segment, impedance_real, impedance_imag
+        )
 
     def __repr__(self):
         """
@@ -292,7 +406,7 @@ class Load(object):
 
         :return: LD NEC string representing the load object
         """
-        return self.load.replace('\n', '\r\n')
+        return self.load.replace("\n", "\r\n")
 
 
 class Source(object):
@@ -300,7 +414,14 @@ class Source(object):
     Source class used to describe NEC sources in the antenna array system (excitations)
     """
 
-    def __init__(self, tag, segment, excitation_real=1.0, excitation_imag=0.0, current_source=True):
+    def __init__(
+        self,
+        tag,
+        segment,
+        excitation_real=1.0,
+        excitation_imag=0.0,
+        current_source=True,
+    ):
         """
         Create a NEC source excitation. Either create a current source if current_source is True
         or create a voltage source otherwise. Defaults to current_source, only change this if you
@@ -322,11 +443,13 @@ class Source(object):
                 excitation_real += 1e-10
             if excitation_imag == 0:
                 excitation_imag += 1e-10
-            self.excitation = "EX 6 {} {} 0 {} {}".format(tag, segment, excitation_real,
-                                                          excitation_imag)
+            self.excitation = "EX 6 {} {} 0 {} {}".format(
+                tag, segment, excitation_real, excitation_imag
+            )
         else:
-            self.excitation = "EX 0 {} {} 0 {} {}".format(tag, segment, excitation_real,
-                                                          excitation_imag)
+            self.excitation = "EX 0 {} {} 0 {} {}".format(
+                tag, segment, excitation_real, excitation_imag
+            )
 
     def __repr__(self):
         """
@@ -343,8 +466,18 @@ class Wire(object):
     rotate them
     """
 
-    def __init__(self, x1=0.0, y1=0.0, z1=0.0, x2=0.0, y2=0.0, z2=0.0, radius=0.000127,
-                 segments=0, conductivity=copper_conductivity):
+    def __init__(
+        self,
+        x1=0.0,
+        y1=0.0,
+        z1=0.0,
+        x2=0.0,
+        y2=0.0,
+        z2=0.0,
+        radius=0.000127,
+        segments=0,
+        conductivity=copper_conductivity,
+    ):
         """
         Since each wire consists of two points and a line between them in 3d space, we can describe
         a wire by giving two 3d points x1, y1, z1 and x2, y2, z2. It also has a finite radius (in m)
@@ -367,7 +500,8 @@ class Wire(object):
         wire_number += 1
         wire_conductivity.append(conductivity)
         wire_length = math.sqrt(
-            (z2 - z1) * (z2 - z1) + (y2 - y1) * (y2 - y1) + (x2 - x1) * (x2 - x1))
+            (z2 - z1) * (z2 - z1) + (y2 - y1) * (y2 - y1) + (x2 - x1) * (x2 - x1)
+        )
         # See nec2.org/part_3/secii.html for info on how long segments should be relative to wl
         # segment length delta should be < 0.1 wavelength or < 0.05 wavelength on critical sections
         if segments == 0:
@@ -375,24 +509,35 @@ class Wire(object):
             segments = int(wire_length / segment_length)
             if segments % 2 == 0:
                 segments += 1
-        self.wire_structure = {'wire_number': wire_number, 'segments': segments, 'x1': x1, 'y1': y1,
-                               'z1': z1, 'x2': x2, 'y2': y2, 'z2': z2, 'radius': radius}
+        self.wire_structure = {
+            "wire_number": wire_number,
+            "segments": segments,
+            "x1": x1,
+            "y1": y1,
+            "z1": z1,
+            "x2": x2,
+            "y2": y2,
+            "z2": z2,
+            "radius": radius,
+        }
 
     def get_mid_segment(self):
         """
         :return: The middle segment number
         :raises: ValueError when there are not an odd number of segments
         """
-        if self.wire_structure['segments'] % 2 == 0:
-            raise ValueError("There are an even number of segments: {}, "
-                             "middle segment DNE.".format(self.wire_structure['segments']))
-        return 1 + int(self.wire_structure['segments'] / 2)
+        if self.wire_structure["segments"] % 2 == 0:
+            raise ValueError(
+                "There are an even number of segments: {}, "
+                "middle segment DNE.".format(self.wire_structure["segments"])
+            )
+        return 1 + int(self.wire_structure["segments"] / 2)
 
     def get_wire_number(self):
         """
         :return: The unique wire number
         """
-        return self.wire_structure['wire_number']
+        return self.wire_structure["wire_number"]
 
     def translate(self, x, y, z):
         """
@@ -402,12 +547,12 @@ class Wire(object):
         :param y: Translate the wire structure in the y direction by this many meters
         :param z: Translate the wire structure in the z direction by this many meters
         """
-        self.wire_structure['x1'] += x
-        self.wire_structure['y1'] += y
-        self.wire_structure['z1'] += z
-        self.wire_structure['x2'] += x
-        self.wire_structure['y2'] += y
-        self.wire_structure['z2'] += z
+        self.wire_structure["x1"] += x
+        self.wire_structure["y1"] += y
+        self.wire_structure["z1"] += z
+        self.wire_structure["x2"] += x
+        self.wire_structure["y2"] += y
+        self.wire_structure["z2"] += z
 
     def rotate(self, alpha, beta, gamma):
         """
@@ -450,51 +595,61 @@ class Wire(object):
         """
         :return: A string representation of the wire structure
         """
-        nec_string = "GW {} {} ".format(self.wire_structure['wire_number'],
-                                        self.wire_structure['segments'])
-        nec_string += "{} {} {} {} {} {} {}".format(self.wire_structure['x1'],
-                                                    self.wire_structure['y1'],
-                                                    self.wire_structure['z1'],
-                                                    self.wire_structure['x2'],
-                                                    self.wire_structure['y2'],
-                                                    self.wire_structure['z2'],
-                                                    self.wire_structure['radius'])
+        nec_string = "GW {} {} ".format(
+            self.wire_structure["wire_number"], self.wire_structure["segments"]
+        )
+        nec_string += "{} {} {} {} {} {} {}".format(
+            self.wire_structure["x1"],
+            self.wire_structure["y1"],
+            self.wire_structure["z1"],
+            self.wire_structure["x2"],
+            self.wire_structure["y2"],
+            self.wire_structure["z2"],
+            self.wire_structure["radius"],
+        )
         self.wire_structure_string = nec_string
-        return self.wire_structure_string.replace('\n', '\r\n')
+        return self.wire_structure_string.replace("\n", "\r\n")
 
 
 class LogPeriodic(object):
     """
-    Class to describe a Log Periodic antenna frequently used in SuperDARN radar arrays.
+        Class to describe a Log Periodic antenna frequently used in SuperDARN radar arrays.
 
-    ** NOTE ** The ASCII representation below shows the electrical connections from the feedpoint
-    to each element in a crosswise manner. For example: element 1 is fed on the left with the
-    positive feedpoint, then element 2 is fed on the right with the positive feedpoint,
-    then element 3 on the left with the positive feedpoint, etc. This is represented with the 'x's.
+        ** NOTE ** The ASCII representation below shows the electrical connections from the feedpoint
+        to each element in a crosswise manner. For example: element 1 is fed on the left with the
+        positive feedpoint, then element 2 is fed on the right with the positive feedpoint,
+        then element 3 on the left with the positive feedpoint, etc. This is represented with the 'x's.
 
-    The example shown represents the Sabre Communications Corporation Mode 610
-    Log Periodic antenna, used in many SuperDARN installations across the world.
-    See https://www.antenna.be/sab-610.html
+        The example shown represents the Sabre Communications Corporation Mode 610
+        Log Periodic antenna, used in many SuperDARN installations across the world.
+        See https://www.antenna.be/sab-610.html
 
-Element #        (+)feed point(-)        radius (m)  Total length (m)    separation from next (m)
-1                 -----| |-----         0.005       6.04                0.725
-2                ------ x ------        0.0065      6.7                 0.86
-3               ------- x -------       0.01        7.57                1.005
-4              -------- x --------      0.0125      8.46                1.175
-5             --------- x ---------     0.0125      9.49                1.4
-6            ---------- x ----------    0.16        10.55               1.515
-7           ----------- x -----------   0.16        11.87               1.705
-8          ------------ x ------------  0.19        13.37               1.94
-9        -------------- x --------------0.19        15.38               1.305
-10       -------------- x --------------0.19        15.4
-                       | |
-                       ~~~
-                    Stub Coil
+    Element #        (+)feed point(-)        radius (m)  Total length (m)    separation from next (m)
+    1                 -----| |-----         0.005       6.04                0.725
+    2                ------ x ------        0.0065      6.7                 0.86
+    3               ------- x -------       0.01        7.57                1.005
+    4              -------- x --------      0.0125      8.46                1.175
+    5             --------- x ---------     0.0125      9.49                1.4
+    6            ---------- x ----------    0.16        10.55               1.515
+    7           ----------- x -----------   0.16        11.87               1.705
+    8          ------------ x ------------  0.19        13.37               1.94
+    9        -------------- x --------------0.19        15.38               1.305
+    10       -------------- x --------------0.19        15.4
+                           | |
+                           ~~~
+                        Stub Coil
 
     """
 
-    def __init__(self, height=15.0, global_x=0.0, global_y=0.0, global_z=0.0,
-                 current_real=1.0, current_imag=0.0):
+    def __init__(
+        self,
+        height=15.0,
+        global_x=0.0,
+        global_y=0.0,
+        global_z=0.0,
+        current_real=1.0,
+        current_imag=0.0,
+    ):
         """
         :param height: Height above the ground, typically 15m
         :param global_x: Absolute location in x dimension in meters
@@ -512,24 +667,47 @@ Element #        (+)feed point(-)        radius (m)  Total length (m)    separat
         # For modeling, number of segments should be minimum of 11 on smallest element for
         # accurate high frequency modeling. Then each longer element should have more segments
         # TODO: Ensure there are enough segments, don't hardcode it
-        self.drivens.append(Wire(-6.04 / 2.0, 0.0, height, 6.04 / 2.0, 0.0, height, radius, 13))
+        self.drivens.append(
+            Wire(-6.04 / 2.0, 0.0, height, 6.04 / 2.0, 0.0, height, radius, 13)
+        )
 
         # One excitation will be placed at the feed point at the apex (smallest element) of the LPDA
         # So we can add that now when we know our only wire/element is the smallest one
         # then create the rest of the driven elements
-        self.excitation = Source(self.drivens[0].get_wire_number(),
-                                 self.drivens[0].get_mid_segment(),
-                                 current_real, current_imag)
+        self.excitation = Source(
+            self.drivens[0].get_wire_number(),
+            self.drivens[0].get_mid_segment(),
+            current_real,
+            current_imag,
+        )
 
-        self.drivens.append(Wire(-6.70 / 2.0, 0.725, height, 6.70 / 2.0, 0.725, height, radius, 15))
-        self.drivens.append(Wire(-7.57 / 2.0, 1.585, height, 7.57 / 2.0, 1.585, height, radius, 17))
-        self.drivens.append(Wire(-8.46 / 2.0, 2.59, height, 8.46 / 2.0, 2.59, height, radius, 19))
-        self.drivens.append(Wire(-9.49 / 2.0, 3.765, height, 9.49 / 2.0, 3.765, height, radius, 21))
-        self.drivens.append(Wire(-10.55 / 2.0, 5.165, height, 10.55 / 2.0, 5.165, height, radius, 23))
-        self.drivens.append(Wire(-11.87 / 2.0, 6.68, height, 11.87 / 2.0, 6.68, height, radius, 25))
-        self.drivens.append(Wire(-13.37 / 2.0, 8.385, height, 13.37 / 2.0, 8.385, height, radius, 27))
-        self.drivens.append(Wire(-15.38 / 2.0, 10.325, height, 15.38 / 2.0, 10.325, height, radius, 29))
-        self.drivens.append(Wire(-15.40 / 2.0, 11.63, height, 15.40 / 2.0, 11.63, height, radius, 31))
+        self.drivens.append(
+            Wire(-6.70 / 2.0, 0.725, height, 6.70 / 2.0, 0.725, height, radius, 15)
+        )
+        self.drivens.append(
+            Wire(-7.57 / 2.0, 1.585, height, 7.57 / 2.0, 1.585, height, radius, 17)
+        )
+        self.drivens.append(
+            Wire(-8.46 / 2.0, 2.59, height, 8.46 / 2.0, 2.59, height, radius, 19)
+        )
+        self.drivens.append(
+            Wire(-9.49 / 2.0, 3.765, height, 9.49 / 2.0, 3.765, height, radius, 21)
+        )
+        self.drivens.append(
+            Wire(-10.55 / 2.0, 5.165, height, 10.55 / 2.0, 5.165, height, radius, 23)
+        )
+        self.drivens.append(
+            Wire(-11.87 / 2.0, 6.68, height, 11.87 / 2.0, 6.68, height, radius, 25)
+        )
+        self.drivens.append(
+            Wire(-13.37 / 2.0, 8.385, height, 13.37 / 2.0, 8.385, height, radius, 27)
+        )
+        self.drivens.append(
+            Wire(-15.38 / 2.0, 10.325, height, 15.38 / 2.0, 10.325, height, radius, 29)
+        )
+        self.drivens.append(
+            Wire(-15.40 / 2.0, 11.63, height, 15.40 / 2.0, 11.63, height, radius, 31)
+        )
 
         self.transmissionlines = []
 
@@ -545,7 +723,9 @@ Element #        (+)feed point(-)        radius (m)  Total length (m)    separat
             mid_segment = driven.get_mid_segment()
             prev_wire_num = self.drivens[index - 1].get_wire_number()
             prev_mid_segment = self.drivens[index - 1].get_mid_segment()
-            tl = TransmissionLine(prev_wire_num, prev_mid_segment, wire_num, mid_segment, True)
+            tl = TransmissionLine(
+                prev_wire_num, prev_mid_segment, wire_num, mid_segment, True
+            )
             self.transmissionlines.append(tl)
 
         # Finally, we need another transmission line to connect to our stub coil
@@ -562,14 +742,21 @@ Element #        (+)feed point(-)        radius (m)  Total length (m)    separat
         self.alpha = 0
         self.stub_length_m = 0
 
-        self.comment_string = "CM Log-Periodic\r\n" \
-                              "CM Height: {} m\r\n" \
-                              "CM Tau: {}\r\n" \
-                              "CM Alpha: {} deg\r\n" \
-                              "CM Sigma: {}\r\n" \
-                              "CM Stub length: {} m\r\n" \
-                              "CE\r\n".format(height, self.tau, (180 / math.pi) * self.alpha,
-                                              self.sigma, self.stub_length_m)
+        self.comment_string = (
+            "CM Log-Periodic\r\n"
+            "CM Height: {} m\r\n"
+            "CM Tau: {}\r\n"
+            "CM Alpha: {} deg\r\n"
+            "CM Sigma: {}\r\n"
+            "CM Stub length: {} m\r\n"
+            "CE\r\n".format(
+                height,
+                self.tau,
+                (180 / math.pi) * self.alpha,
+                self.sigma,
+                self.stub_length_m,
+            )
+        )
 
     def calculate_alpha(self):
         """
@@ -668,8 +855,16 @@ class YAGI(object):
         ----------|----------   Reflector           88.9            608.36
     """
 
-    def __init__(self, radius=0.0175, height=15.0, global_x=0.0, global_y=0.0, global_z=0.0,
-                 current_real=1.0, current_imag=0.0):
+    def __init__(
+        self,
+        radius=0.0175,
+        height=15.0,
+        global_x=0.0,
+        global_y=0.0,
+        global_z=0.0,
+        current_real=1.0,
+        current_imag=0.0,
+    ):
         """
         :param radius: Radius of elements, in meters
         :param height: Height above the ground, typically 15m
@@ -679,22 +874,36 @@ class YAGI(object):
         :param current_real: The real part of the current source
         :param current_imag: The imaginary part of the current source
         """
-        self.comment_string = "CM YAGI\r\n" \
-                              "CM Height: {} m\r\n" \
-                              "CE\r\n".format(height)
+        self.comment_string = (
+            "CM YAGI\r\n" "CM Height: {} m\r\n" "CE\r\n".format(height)
+        )
         self.directors = []
         self.reflectors = []
         self.drivens = []
 
-        self.directors.append(Wire(-0.749 / 2.0, 4.7976, height, 0.749 / 2.0, 4.7976, height, radius))
-        self.directors.append(Wire(-0.724 / 2.0, 3.3276, height, 0.724 / 2.0, 3.3276, height, radius))
-        self.directors.append(Wire(-0.711 / 2.0, 1.7908, height, 0.711 / 2.0, 1.7908, height, radius))
-        self.directors.append(Wire(-0.591 / 2.0, 0.0508, height, 0.591 / 2.0, 0.0508, height, radius))
-        self.directors.append(Wire(-0.591 / 2.0, 0.0508, height, 0.591 / 2.0, 0.0508, height, radius))
+        self.directors.append(
+            Wire(-0.749 / 2.0, 4.7976, height, 0.749 / 2.0, 4.7976, height, radius)
+        )
+        self.directors.append(
+            Wire(-0.724 / 2.0, 3.3276, height, 0.724 / 2.0, 3.3276, height, radius)
+        )
+        self.directors.append(
+            Wire(-0.711 / 2.0, 1.7908, height, 0.711 / 2.0, 1.7908, height, radius)
+        )
+        self.directors.append(
+            Wire(-0.591 / 2.0, 0.0508, height, 0.591 / 2.0, 0.0508, height, radius)
+        )
+        self.directors.append(
+            Wire(-0.591 / 2.0, 0.0508, height, 0.591 / 2.0, 0.0508, height, radius)
+        )
 
-        self.reflectors.append(Wire(-0.889 / 2.0, 6.0836, height, 0.889 / 2.0, 6.0836, height, radius))
+        self.reflectors.append(
+            Wire(-0.889 / 2.0, 6.0836, height, 0.889 / 2.0, 6.0836, height, radius)
+        )
 
-        self.drivens.append(Wire(-0.762 / 2.0, 5.3976, height, 0.762 / 2.0, 5.3976, height, radius))
+        self.drivens.append(
+            Wire(-0.762 / 2.0, 5.3976, height, 0.762 / 2.0, 5.3976, height, radius)
+        )
 
         # TODO: Implement translation, for global x,y,z coords.
         wire_num = self.drivens[0].get_wire_number()
@@ -732,8 +941,9 @@ class YAGI(object):
         """
         :return: A NEC string representation of the geometry of the YAGI for simulation
         """
-        value = "{}\r\n{}\r\n{}".format(self.repr_directors(), self.repr_driven(),
-                                        self.repr_reflectors())
+        value = "{}\r\n{}\r\n{}".format(
+            self.repr_directors(), self.repr_driven(), self.repr_reflectors()
+        )
         return value
 
     def repr_loads(self):
@@ -780,10 +990,20 @@ class TTFD(object):
 
     """
 
-    def __init__(self, wire_gauge=13, height=10.0, termination=100.0,
-                 mid_width=12.0, top_width=8.0, wire_spacing=1.5,
-                 global_x=0.0, global_y=0.0, global_z=0.0,
-                 current_real=1.0, current_imag=0.0):
+    def __init__(
+        self,
+        wire_gauge=13,
+        height=10.0,
+        termination=100.0,
+        mid_width=12.0,
+        top_width=8.0,
+        wire_spacing=1.5,
+        global_x=0.0,
+        global_y=0.0,
+        global_z=0.0,
+        current_real=1.0,
+        current_imag=0.0,
+    ):
         """
         :param wire_gauge: Gauge of the wire used in AWG (American Wire Gauge) typically 13
         :param height: Height above the ground, typically 10m
@@ -798,39 +1018,87 @@ class TTFD(object):
         :param current_imag: The imaginary part of the current source
         """
         self.wire_radius_m = get_mm_radius_from_awg(wire_gauge) / 1000.0
-        self.comment_string = "CM SuperDARN TTFD\r\n" \
-                              "CM Height: {} m\r\n" \
-                              "CM Wire gauge: {} AWG\r\n" \
-                              "CM Termination: {} Ohms\r\n" \
-                              "CM Mid wire width: {} m\r\n" \
-                              "CM Top/bottom wire width: {} m\r\n" \
-                              "CM Wire spacing: {} m\r\n" \
-                              "CE\r\n".format(height, wire_gauge, termination,
-                                              mid_width, top_width, wire_spacing)
-        self.topleftwire = Wire(-mid_width / 2.0, 0.0, height,
-                                -top_width / 2.0, 0.0, wire_spacing + height,
-                                self.wire_radius_m)
+        self.comment_string = (
+            "CM SuperDARN TTFD\r\n"
+            "CM Height: {} m\r\n"
+            "CM Wire gauge: {} AWG\r\n"
+            "CM Termination: {} Ohms\r\n"
+            "CM Mid wire width: {} m\r\n"
+            "CM Top/bottom wire width: {} m\r\n"
+            "CM Wire spacing: {} m\r\n"
+            "CE\r\n".format(
+                height, wire_gauge, termination, mid_width, top_width, wire_spacing
+            )
+        )
+        self.topleftwire = Wire(
+            -mid_width / 2.0,
+            0.0,
+            height,
+            -top_width / 2.0,
+            0.0,
+            wire_spacing + height,
+            self.wire_radius_m,
+        )
         self.topleftwire.translate(global_x, global_y, global_z)
-        self.topwire = Wire(-top_width / 2.0, 0.0, wire_spacing + height,
-                            top_width / 2.0, 0.0, wire_spacing + height, self.wire_radius_m)
+        self.topwire = Wire(
+            -top_width / 2.0,
+            0.0,
+            wire_spacing + height,
+            top_width / 2.0,
+            0.0,
+            wire_spacing + height,
+            self.wire_radius_m,
+        )
         self.topwire.translate(global_x, global_y, global_z)
-        self.toprightwire = Wire(mid_width / 2.0, 0.0, height,
-                                 top_width / 2.0, 0.0, wire_spacing + height,
-                                 self.wire_radius_m)
+        self.toprightwire = Wire(
+            mid_width / 2.0,
+            0.0,
+            height,
+            top_width / 2.0,
+            0.0,
+            wire_spacing + height,
+            self.wire_radius_m,
+        )
         self.toprightwire.translate(global_x, global_y, global_z)
-        self.middlewire = Wire(-mid_width / 2.0, 0.0, height,
-                               mid_width / 2.0, 0.0, height, self.wire_radius_m)
+        self.middlewire = Wire(
+            -mid_width / 2.0,
+            0.0,
+            height,
+            mid_width / 2.0,
+            0.0,
+            height,
+            self.wire_radius_m,
+        )
         self.middlewire.translate(global_x, global_y, global_z)
-        self.bottomleftwire = Wire(-mid_width / 2.0, 0.0, height,
-                                   -top_width / 2.0, 0.0, -wire_spacing + height,
-                                   self.wire_radius_m)
+        self.bottomleftwire = Wire(
+            -mid_width / 2.0,
+            0.0,
+            height,
+            -top_width / 2.0,
+            0.0,
+            -wire_spacing + height,
+            self.wire_radius_m,
+        )
         self.bottomleftwire.translate(global_x, global_y, global_z)
-        self.bottomwire = Wire(-top_width / 2.0, 0.0, -wire_spacing + height,
-                               top_width / 2.0, 0.0, -wire_spacing + height, self.wire_radius_m)
+        self.bottomwire = Wire(
+            -top_width / 2.0,
+            0.0,
+            -wire_spacing + height,
+            top_width / 2.0,
+            0.0,
+            -wire_spacing + height,
+            self.wire_radius_m,
+        )
         self.bottomwire.translate(global_x, global_y, global_z)
-        self.bottomrightwire = Wire(mid_width / 2.0, 0.0, height,
-                                    top_width / 2.0, 0.0, -wire_spacing + height,
-                                    self.wire_radius_m)
+        self.bottomrightwire = Wire(
+            mid_width / 2.0,
+            0.0,
+            height,
+            top_width / 2.0,
+            0.0,
+            -wire_spacing + height,
+            self.wire_radius_m,
+        )
         self.bottomrightwire.translate(global_x, global_y, global_z)
 
         mid_segment = self.topwire.get_mid_segment()
@@ -849,11 +1117,16 @@ class TTFD(object):
         """
         :return: A NEC string representation of the geometry of the TTFD for simulation
         """
-        value = "{}\n{}\n{}\n{}\n{}\n{}\n{}\n".format(self.topleftwire, self.topwire,
-                                                      self.toprightwire, self.middlewire,
-                                                      self.bottomleftwire, self.bottomwire,
-                                                      self.bottomrightwire)
-        return value.replace('\n', '\r\n')
+        value = "{}\n{}\n{}\n{}\n{}\n{}\n{}\n".format(
+            self.topleftwire,
+            self.topwire,
+            self.toprightwire,
+            self.middlewire,
+            self.bottomleftwire,
+            self.bottomwire,
+            self.bottomrightwire,
+        )
+        return value.replace("\n", "\r\n")
 
     def repr_loads(self):
         """
@@ -894,8 +1167,12 @@ def get_mm_radius_from_awg(awg):
     return 0.127 * math.pow(92, float((36 - awg)) / float(39))
 
 
-def create_wire_conductivity(tag_number, start_segment_number=0, end_segment_number=0,
-                             conductivity=copper_conductivity):
+def create_wire_conductivity(
+    tag_number,
+    start_segment_number=0,
+    end_segment_number=0,
+    conductivity=copper_conductivity,
+):
     """
     Applies a NEC compatible conductivity to a given tag number and set of segments with given
     conductivity. If start_segment_number and end_segment_number are blank or 0, then the
@@ -907,13 +1184,20 @@ def create_wire_conductivity(tag_number, start_segment_number=0, end_segment_num
     :param conductivity: The conductivity in mho's per meter for the wire. Default: copper at 20C
     :return: A NEC compatible LD string
     """
-    return "LD 5 {} {} {} {}\r\n".format(tag_number, start_segment_number,
-                                         end_segment_number, conductivity)
+    return "LD 5 {} {} {} {}\r\n".format(
+        tag_number, start_segment_number, end_segment_number, conductivity
+    )
 
 
-def create_main_array(num_antennas, antenna_spacing_m,
-                      antenna_magnitudes, antenna_phases,
-                      log_periodics=False, towers=False, guylines=False):
+def create_main_array(
+    num_antennas,
+    antenna_spacing_m,
+    antenna_magnitudes,
+    antenna_phases,
+    log_periodics=False,
+    towers=False,
+    guylines=False,
+):
     """
     Create the main array of a SuperDARN array, returning the antenna objects
 
@@ -927,9 +1211,13 @@ def create_main_array(num_antennas, antenna_spacing_m,
     :return: antenna objects and tower objects describing the main array
     """
     if len(antenna_magnitudes) != num_antennas:
-        raise ValueError("Magnitudes array len {} != num_antennas".format(antenna_magnitudes))
+        raise ValueError(
+            "Magnitudes array len {} != num_antennas".format(antenna_magnitudes)
+        )
     if len(antenna_phases) != num_antennas:
-        raise ValueError("Phases array len {} != num_antennas".format(len(antenna_phases)))
+        raise ValueError(
+            "Phases array len {} != num_antennas".format(len(antenna_phases))
+        )
 
     antenna_objects = []
     tower_objects = []
@@ -939,23 +1227,40 @@ def create_main_array(num_antennas, antenna_spacing_m,
         magnitude = antenna_magnitudes[antenna]
         real_cur = magnitude * math.cos(phase * math.pi / 180.0)
         imag_cur = magnitude * math.sin(phase * math.pi / 180.0)
-        print("Main antenna {} with mag {} and phase {} deg".format(antenna, magnitude, phase))
+        print(
+            "Main antenna {} with mag {} and phase {} deg".format(
+                antenna, magnitude, phase
+            )
+        )
         x_position = antenna * antenna_spacing_m - array_length_m / 2.0
         if log_periodics:
-            antenna_objects.append(LogPeriodic(global_x=x_position, current_real=real_cur,
-                                               current_imag=imag_cur))
+            antenna_objects.append(
+                LogPeriodic(
+                    global_x=x_position, current_real=real_cur, current_imag=imag_cur
+                )
+            )
         else:
-            antenna_objects.append(TTFD(global_x=x_position,
-                                        current_real=real_cur, current_imag=imag_cur))
+            antenna_objects.append(
+                TTFD(global_x=x_position, current_real=real_cur, current_imag=imag_cur)
+            )
             if towers:
                 tower_objects.append(Tower(global_x=x_position, guylines=guylines))
 
     return antenna_objects, tower_objects
 
 
-def create_int_array(num_antennas, antenna_spacing_m, int_x_spacing_m, int_y_spacing_m, int_z_spacing_m,
-                     antenna_magnitudes, antenna_phases,
-                     log_periodics=False, towers=False, guylines=False):
+def create_int_array(
+    num_antennas,
+    antenna_spacing_m,
+    int_x_spacing_m,
+    int_y_spacing_m,
+    int_z_spacing_m,
+    antenna_magnitudes,
+    antenna_phases,
+    log_periodics=False,
+    towers=False,
+    guylines=False,
+):
     """
     Create the interferometer array of a SuperDARN array, returning the antenna objects
 
@@ -972,9 +1277,13 @@ def create_int_array(num_antennas, antenna_spacing_m, int_x_spacing_m, int_y_spa
     :return: antenna objects and tower objects describing the interferometer array
     """
     if len(antenna_magnitudes) != num_antennas:
-        raise ValueError("Magnitudes array len {} != num_antennas".format(antenna_magnitudes))
+        raise ValueError(
+            "Magnitudes array len {} != num_antennas".format(antenna_magnitudes)
+        )
     if len(antenna_phases) != num_antennas:
-        raise ValueError("Phases array len {} != num_antennas".format(len(antenna_phases)))
+        raise ValueError(
+            "Phases array len {} != num_antennas".format(len(antenna_phases))
+        )
 
     antenna_objects = []
     tower_objects = []
@@ -984,20 +1293,42 @@ def create_int_array(num_antennas, antenna_spacing_m, int_x_spacing_m, int_y_spa
         magnitude = antenna_magnitudes[antenna]
         real_cur = magnitude * math.cos(phase * math.pi / 180.0)
         imag_cur = magnitude * math.sin(phase * math.pi / 180.0)
-        print("Int antenna {} with mag {} and phase {} deg".format(antenna, magnitude, phase))
+        print(
+            "Int antenna {} with mag {} and phase {} deg".format(
+                antenna, magnitude, phase
+            )
+        )
         x_position = antenna * antenna_spacing_m - array_length_m / 2.0
         global_x_position = float(x_position) + float(int_x_spacing_m)
         if log_periodics:
-            antenna_objects.append(LogPeriodic(global_x=global_x_position, global_y=int_y_spacing_m,
-                                               global_z=int_z_spacing_m, current_real=real_cur,
-                                               current_imag=imag_cur))
+            antenna_objects.append(
+                LogPeriodic(
+                    global_x=global_x_position,
+                    global_y=int_y_spacing_m,
+                    global_z=int_z_spacing_m,
+                    current_real=real_cur,
+                    current_imag=imag_cur,
+                )
+            )
         else:
-            antenna_objects.append(TTFD(global_x=global_x_position, global_y=int_y_spacing_m,
-                                        global_z=int_z_spacing_m, current_imag=imag_cur,
-                                        current_real=real_cur))
+            antenna_objects.append(
+                TTFD(
+                    global_x=global_x_position,
+                    global_y=int_y_spacing_m,
+                    global_z=int_z_spacing_m,
+                    current_imag=imag_cur,
+                    current_real=real_cur,
+                )
+            )
             if towers:
-                tower_objects.append(Tower(global_x=global_x_position, global_y=int_y_spacing_m,
-                                       global_z=int_z_spacing_m, guylines=guylines))
+                tower_objects.append(
+                    Tower(
+                        global_x=global_x_position,
+                        global_y=int_y_spacing_m,
+                        global_z=int_z_spacing_m,
+                        guylines=guylines,
+                    )
+                )
 
     return antenna_objects, tower_objects
 
@@ -1011,7 +1342,9 @@ def end_geometry(ground_plane_value=1):
         return "GE {}\r\n".format(ground_plane_value)
 
 
-def calculate_angle_from_beam(beam_number, beam_separation=3.24, max_beam_num=max_num_beams - 1):
+def calculate_angle_from_beam(
+    beam_number, beam_separation=3.24, max_beam_num=max_num_beams - 1
+):
     """
     Returns azimuth angle in degrees for a SuperDARN array. Negative values mean CCW of boresight.
     ** Note that this function takes beams indexed from 0 **
@@ -1036,7 +1369,12 @@ def calculate_phase_from_beam(beam_number, frequency_hz, antenna_spacing_m):
     """
     wavelength_m = speed_of_light / float(frequency_hz)
     beam_azimuth = calculate_angle_from_beam(beam_number)
-    return 360.0 * antenna_spacing_m * math.sin(beam_azimuth * math.pi / 180.0) / wavelength_m
+    return (
+        360.0
+        * antenna_spacing_m
+        * math.sin(beam_azimuth * math.pi / 180.0)
+        / wavelength_m
+    )
 
 
 def calculate_parabolic_phase(frequency_hz, antenna_spacing_m, num_antennas):
@@ -1062,33 +1400,245 @@ def calculate_broadened_phase(frequency_hz, antenna_spacing_m, num_antennas):
     :return: Array containing appropriate phases for a broadened beam.
     """
     cached_values_16_antennas = {
-        10.4e6: [33.21168501, 63.39856497,  133.51815213, 232.59694556, 287.65482653, 299.43588532, 313.30394893],
-        10.5e6: [33.22157987, 63.44769218,  134.09072554, 232.41818196, 288.18043116, 299.96678003, 312.81034918],
-        10.6e6: [33.49341546, 63.918406,    135.76673356, 232.41342064, 288.68373728, 299.8089564,  312.19755493],
-        10.7e6: [33.42706054, 63.94880958,  136.78441366, 232.43324622, 288.91978353, 299.57226291, 311.74840496],
-        10.8e6: [33.13909903, 63.56879316,  137.23017826, 232.17488475, 289.01436937, 299.53525025, 311.23785241],
-        10.9e6: [33.15305158, 63.55105706,  137.93590292, 232.13550152, 289.46328775, 299.78227805, 310.57614029],
-        12.2e6: [70.91038811, 122.60927618, 214.92179098, 276.38784179, 325.25390655, 351.3873793,  316.5693829],
-        12.3e6: [71.78224973, 124.29124213, 215.26781585, 277.84490172, 326.57004062, 353.22972278, 318.83181539],
-        12.5e6: [75.1870308,  128.12468688, 216.50545923, 281.26273571, 334.23044519, 357.70997722, 326.41420518],
-        13.0e6: [65.30441048, 122.04513377, 208.77532736, 282.14858123, 329.88094473, 368.67442895, 324.92709286],
-        13.1e6: [75.41723909, 133.59413156, 216.03815626, 287.94258174, 343.50035796, 369.91299149, 337.96682569],
-        13.2e6: [67.98474247, 126.21855408, 209.5839628,  285.48610109, 333.17276884, 370.37654775, 329.43903017],
-        14.5e6: [3.14970459,  92.61128586,  175.97789944, 220.42383933, 295.70931415, 290.2341177,  275.58267647]
+        10.4e6: [
+            33.21168501,
+            63.39856497,
+            133.51815213,
+            232.59694556,
+            287.65482653,
+            299.43588532,
+            313.30394893,
+        ],
+        10.5e6: [
+            33.22157987,
+            63.44769218,
+            134.09072554,
+            232.41818196,
+            288.18043116,
+            299.96678003,
+            312.81034918,
+        ],
+        10.6e6: [
+            33.49341546,
+            63.918406,
+            135.76673356,
+            232.41342064,
+            288.68373728,
+            299.8089564,
+            312.19755493,
+        ],
+        10.7e6: [
+            33.42706054,
+            63.94880958,
+            136.78441366,
+            232.43324622,
+            288.91978353,
+            299.57226291,
+            311.74840496,
+        ],
+        10.8e6: [
+            33.13909903,
+            63.56879316,
+            137.23017826,
+            232.17488475,
+            289.01436937,
+            299.53525025,
+            311.23785241,
+        ],
+        10.9e6: [
+            33.15305158,
+            63.55105706,
+            137.93590292,
+            232.13550152,
+            289.46328775,
+            299.78227805,
+            310.57614029,
+        ],
+        12.2e6: [
+            70.91038811,
+            122.60927618,
+            214.92179098,
+            276.38784179,
+            325.25390655,
+            351.3873793,
+            316.5693829,
+        ],
+        12.3e6: [
+            71.78224973,
+            124.29124213,
+            215.26781585,
+            277.84490172,
+            326.57004062,
+            353.22972278,
+            318.83181539,
+        ],
+        12.5e6: [
+            75.1870308,
+            128.12468688,
+            216.50545923,
+            281.26273571,
+            334.23044519,
+            357.70997722,
+            326.41420518,
+        ],
+        13.0e6: [
+            65.30441048,
+            122.04513377,
+            208.77532736,
+            282.14858123,
+            329.88094473,
+            368.67442895,
+            324.92709286,
+        ],
+        13.1e6: [
+            75.41723909,
+            133.59413156,
+            216.03815626,
+            287.94258174,
+            343.50035796,
+            369.91299149,
+            337.96682569,
+        ],
+        13.2e6: [
+            67.98474247,
+            126.21855408,
+            209.5839628,
+            285.48610109,
+            333.17276884,
+            370.37654775,
+            329.43903017,
+        ],
+        14.5e6: [
+            3.14970459,
+            92.61128586,
+            175.97789944,
+            220.42383933,
+            295.70931415,
+            290.2341177,
+            275.58267647,
+        ],
     }
     cached_values_8_antennas = {
-        10.4e6: [0., 25.65596691, 78.37293679, 139.64736262, 139.64736262, 78.37293679, 25.65596691, 0.],
-        10.5e6: [0., 25.08958919, 77.59100768, 140.85808655, 140.85808655, 77.59100768, 25.08958919, 0.],
-        10.6e6: [0., 24.57335302, 76.75481191, 141.98499171, 141.98499171, 76.75481191, 24.57335302, 0.],
-        10.7e6: [0., 23.8098711,  75.90392693, 143.01444351, 143.01444351, 75.90392693, 23.8098711,  0.],
-        10.8e6: [0., 22.11931133, 73.23562257, 143.47732068, 143.47732068, 73.23562257, 22.11931133, 0.],
-        10.9e6: [0., 22.85211015, 72.76130323, 144.37536937, 144.37536937, 72.76130323, 22.85211015, 0.],
-        12.2e6: [0., 24.12132192, 67.43277427, 160.59421469, 160.59421469, 67.43277427, 24.12132192, 0.],
-        12.3e6: [0., 25.79888664, 68.32548572, 162.24856417, 162.24856417, 68.32548572, 25.79888664, 0.],
-        12.5e6: [0., 29.73310292, 70.83940609, 166.04550735, 166.04550735, 70.83940609, 29.73310292, 0.],
-        13.0e6: [0., 41.4313578,  82.16477044, 175.25809179, 175.25809179, 82.16477044, 41.4313578,  0.],
-        13.1e6: [0., 43.20693263, 84.14234248, 175.38631445, 175.38631445, 84.14234248, 43.20693263, 0.],
-        13.2e6: [0., 43.42908842, 84.21675093, 174.68458927, 174.68458927, 84.21675093, 43.42908842, 0.]
+        10.4e6: [
+            0.0,
+            25.65596691,
+            78.37293679,
+            139.64736262,
+            139.64736262,
+            78.37293679,
+            25.65596691,
+            0.0,
+        ],
+        10.5e6: [
+            0.0,
+            25.08958919,
+            77.59100768,
+            140.85808655,
+            140.85808655,
+            77.59100768,
+            25.08958919,
+            0.0,
+        ],
+        10.6e6: [
+            0.0,
+            24.57335302,
+            76.75481191,
+            141.98499171,
+            141.98499171,
+            76.75481191,
+            24.57335302,
+            0.0,
+        ],
+        10.7e6: [
+            0.0,
+            23.8098711,
+            75.90392693,
+            143.01444351,
+            143.01444351,
+            75.90392693,
+            23.8098711,
+            0.0,
+        ],
+        10.8e6: [
+            0.0,
+            22.11931133,
+            73.23562257,
+            143.47732068,
+            143.47732068,
+            73.23562257,
+            22.11931133,
+            0.0,
+        ],
+        10.9e6: [
+            0.0,
+            22.85211015,
+            72.76130323,
+            144.37536937,
+            144.37536937,
+            72.76130323,
+            22.85211015,
+            0.0,
+        ],
+        12.2e6: [
+            0.0,
+            24.12132192,
+            67.43277427,
+            160.59421469,
+            160.59421469,
+            67.43277427,
+            24.12132192,
+            0.0,
+        ],
+        12.3e6: [
+            0.0,
+            25.79888664,
+            68.32548572,
+            162.24856417,
+            162.24856417,
+            68.32548572,
+            25.79888664,
+            0.0,
+        ],
+        12.5e6: [
+            0.0,
+            29.73310292,
+            70.83940609,
+            166.04550735,
+            166.04550735,
+            70.83940609,
+            29.73310292,
+            0.0,
+        ],
+        13.0e6: [
+            0.0,
+            41.4313578,
+            82.16477044,
+            175.25809179,
+            175.25809179,
+            82.16477044,
+            41.4313578,
+            0.0,
+        ],
+        13.1e6: [
+            0.0,
+            43.20693263,
+            84.14234248,
+            175.38631445,
+            175.38631445,
+            84.14234248,
+            43.20693263,
+            0.0,
+        ],
+        13.2e6: [
+            0.0,
+            43.42908842,
+            84.21675093,
+            174.68458927,
+            174.68458927,
+            84.21675093,
+            43.42908842,
+            0.0,
+        ],
     }
 
     if num_antennas == 16:
@@ -1096,8 +1646,8 @@ def calculate_broadened_phase(frequency_hz, antenna_spacing_m, num_antennas):
             print("Using cached values")
             phases_deg = np.array(cached_values_16_antennas[frequency_hz])
             angles = np.zeros(num_antennas)
-            angles[1:phases_deg.size+1] = phases_deg
-            angles[phases_deg.size+1:-1] = np.flip(phases_deg)
+            angles[1 : phases_deg.size + 1] = phases_deg
+            angles[phases_deg.size + 1 : -1] = np.flip(phases_deg)
             return angles, np.ones(num_antennas)
     elif num_antennas == 8:
         if frequency_hz in cached_values_8_antennas.keys():
@@ -1117,10 +1667,10 @@ def calculate_broadened_phase(frequency_hz, antenna_spacing_m, num_antennas):
 
     wavelength = speed_of_light / frequency_hz
 
-    fov_left_bound = np.deg2rad(-24.3)    # Left bound of FOV in radians CW of boresight
-    fov_right_bound = np.deg2rad(24.3)    # Right bound of FOV in radians CW of boresight
+    fov_left_bound = np.deg2rad(-24.3)  # Left bound of FOV in radians CW of boresight
+    fov_right_bound = np.deg2rad(24.3)  # Right bound of FOV in radians CW of boresight
 
-    k0 = 2 * np.pi / wavelength   # Wave number
+    k0 = 2 * np.pi / wavelength  # Wave number
 
     # Initialize some arrays
     kn = np.zeros(num_antennas - 1)
@@ -1129,7 +1679,7 @@ def calculate_broadened_phase(frequency_hz, antenna_spacing_m, num_antennas):
     # Calculate the phase difference between adjacent elements, assuming the leftmost element has phase 0
     for i, mag in enumerate(normalized_taper_cumsum[:-1]):
         kn[i] = np.sin(fov_left_bound + (fov_right_bound - fov_left_bound) * mag) * k0
-        element_phases[i+1] = element_phases[i] + kn[i] * antenna_spacing_m
+        element_phases[i + 1] = element_phases[i] + kn[i] * antenna_spacing_m
 
     return np.rad2deg(element_phases), amplitude_taper
 
@@ -1153,11 +1703,19 @@ def frequency_card(num_freq_steps=1, start_frequency=8.0, freq_step_size=0.5):
     :param freq_step_size: What is the frequency step size in MHz? Default 0.5
     :return: NEC compatible frequency calculation card
     """
-    return "FR 0 {} 0 0 {} {}\r\n".format(num_freq_steps, start_frequency, freq_step_size)
+    return "FR 0 {} 0 0 {} {}\r\n".format(
+        num_freq_steps, start_frequency, freq_step_size
+    )
 
 
-def radiation_pattern_card(theta_start=45.0, theta_increment=0.0, theta_steps=1,
-                           phi_start=0.0, phi_increment=1.0, phi_steps=361):
+def radiation_pattern_card(
+    theta_start=45.0,
+    theta_increment=0.0,
+    theta_steps=1,
+    phi_start=0.0,
+    phi_increment=1.0,
+    phi_steps=361,
+):
     """
     :param theta_start: Start elevation angle in degrees. Default 45.0
     :param theta_increment: Elevation increment angle in degrees. Default 0.0
@@ -1167,8 +1725,9 @@ def radiation_pattern_card(theta_start=45.0, theta_increment=0.0, theta_steps=1,
     :param phi_steps: How many steps in azimuth to calculate. Default 361
     :return: NEC compatible radiation pattern calculation card.
     """
-    return "RP 0 {} {} 1000 {} {} {} {}\r\n".format(theta_steps, phi_steps, theta_start,
-                                                    phi_start, theta_increment, phi_increment)
+    return "RP 0 {} {} 1000 {} {} {} {}\r\n".format(
+        theta_steps, phi_steps, theta_start, phi_start, theta_increment, phi_increment
+    )
 
 
 def ground_card(ground_type=2, epse=13, conductivity=0.005):
@@ -1202,65 +1761,167 @@ def max_coupling_card():
     return "CP * * * *\r\n"
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser(usage=usage_msg())
 
     # Options related to transmitting on a subset of antennas
     problem_group = parser.add_argument_group("Array Problems")
-    problem_group.add_argument("-a", "--antennas_down", help="Indices of antennas which are receiving but not "
-                                                             "transmitting, e.g. '5-7,11'. This is to model if "
-                                                             "an N200 is still up, but the connection to the "
-                                                             "antenna is down.",
-                               default="", type=str)
-    problem_group.add_argument("-r", "--transceivers_down", help="Indices of antennas which are neither receiving "
-                                                                 "nor transmitting, e.g. if an N200 is down. Format "
-                                                                 "as '5-7,11'",
-                               default="", type=str)
+    problem_group.add_argument(
+        "-a",
+        "--antennas_down",
+        help="Indices of antennas which are receiving but not "
+        "transmitting, e.g. '5-7,11'. This is to model if "
+        "an N200 is still up, but the connection to the "
+        "antenna is down.",
+        default="",
+        type=str,
+    )
+    problem_group.add_argument(
+        "-r",
+        "--transceivers_down",
+        help="Indices of antennas which are neither receiving "
+        "nor transmitting, e.g. if an N200 is down. Format "
+        "as '5-7,11'",
+        default="",
+        type=str,
+    )
 
     # Operating parameter options
-    parser.add_argument("-b", "--beam", help="Beam to transmit on?", default=BORESIGHT_BEAM, type=float)
-    parser.add_argument("-f", "--frequency", help="Frequency to transmit on? MHz", default=10.5, type=float)
-    parser.add_argument("-F", "--without_fence", help="Generate the array without fence", action="store_true")
-    parser.add_argument("-B", "--broadened_beam", help="Use a broadened beam phase distribution",
-                        action="store_true")
-    parser.add_argument("-t", "--towers", help="Should antenna support towers be included?",
-                        action='store_true')
-    parser.add_argument("-g", "--guylines", help="Should antenna support tower guylines be included?",
-                        action='store_true')
-    parser.add_argument("-m", "--antennas", help="How many antennas in the main array?", default=16, type=int)
-    parser.add_argument("-i", "--int_antennas", help="How many antennas in the interferometer array?", default=4,
-                        type=int)
-    parser.add_argument("-G", "--no-ground", help='Do not include ground plane', action='store_true')
+    parser.add_argument(
+        "-b", "--beam", help="Beam to transmit on?", default=BORESIGHT_BEAM, type=float
+    )
+    parser.add_argument(
+        "-f",
+        "--frequency",
+        help="Frequency to transmit on? MHz",
+        default=10.5,
+        type=float,
+    )
+    parser.add_argument(
+        "-F",
+        "--without_fence",
+        help="Generate the array without fence",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-B",
+        "--broadened_beam",
+        help="Use a broadened beam phase distribution",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-t",
+        "--towers",
+        help="Should antenna support towers be included?",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-g",
+        "--guylines",
+        help="Should antenna support tower guylines be included?",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-m",
+        "--antennas",
+        help="How many antennas in the main array?",
+        default=16,
+        type=int,
+    )
+    parser.add_argument(
+        "-i",
+        "--int_antennas",
+        help="How many antennas in the interferometer array?",
+        default=4,
+        type=int,
+    )
+    parser.add_argument(
+        "-G", "--no-ground", help="Do not include ground plane", action="store_true"
+    )
 
     # Options related to setting the array geometry
     geometry_group = parser.add_argument_group("Array Geometry")
-    geometry_group.add_argument("-s", "--antenna_spacing", help="What is the spacing between antennas? (m)",
-                                default=15.24, type=float)
-    geometry_group.add_argument("-x", "--int_x_spacing", help="The x spacing between main and int arrays? (m)",
-                                default=0.0, type=float)
-    geometry_group.add_argument("-y", "--int_y_spacing", help="The y spacing between main and int arrays? (m)",
-                                default=-100.0, type=float)
-    geometry_group.add_argument("-z", "--int_z_spacing", help="The z spacing between main and int arrays? (m)",
-                                default=0.0, type=float)
-    geometry_group.add_argument('-M', '--reflector_length', help="The length of main reflector fence wires (m)",
-                                type=float)
-    geometry_group.add_argument('-I', '--intf_reflector_length', help="The length of interferometer reflector fence wires (m)",
-                                type=float)
+    geometry_group.add_argument(
+        "-s",
+        "--antenna_spacing",
+        help="What is the spacing between antennas? (m)",
+        default=15.24,
+        type=float,
+    )
+    geometry_group.add_argument(
+        "-x",
+        "--int_x_spacing",
+        help="The x spacing between main and int arrays? (m)",
+        default=0.0,
+        type=float,
+    )
+    geometry_group.add_argument(
+        "-y",
+        "--int_y_spacing",
+        help="The y spacing between main and int arrays? (m)",
+        default=-100.0,
+        type=float,
+    )
+    geometry_group.add_argument(
+        "-z",
+        "--int_z_spacing",
+        help="The z spacing between main and int arrays? (m)",
+        default=0.0,
+        type=float,
+    )
+    geometry_group.add_argument(
+        "-M",
+        "--reflector_length",
+        help="The length of main reflector fence wires (m)",
+        type=float,
+    )
+    geometry_group.add_argument(
+        "-I",
+        "--intf_reflector_length",
+        help="The length of interferometer reflector fence wires (m)",
+        type=float,
+    )
 
-    parser.add_argument("-o", "--output_file", help="Name of NEC input file this program creates",
-                        default="sd_array_nec_input.nec")
+    parser.add_argument(
+        "-o",
+        "--output_file",
+        help="Name of NEC input file this program creates",
+        default="sd_array_nec_input.nec",
+    )
 
     # Here are some arguments that are currently not implemented
-    parser.add_argument("-l", "--log_periodic", help="Use log periodics instead of TTFD antennas "
-                                                     "* Not implemented * ", action="store_true")
-    parser.add_argument("-w", "--power", help="Power output/antenna? (Watts). * Not implemented *",
-                        default=500.0, type=float)
-    parser.add_argument("-P", "--phase", help="Phase between antennas? (deg) * Not implemented *",
-                        default=0.0, type=float)
-    parser.add_argument("-p", "--parabolic_phase", help="Use a parabolic phase distribution  "
-                                                        "* Not implemented *", action="store_true")
-    parser.add_argument("-c", "--circular_phase", help="Use a circular phase distribution  "
-                                                       "* Not implemented *", action="store_true")
+    parser.add_argument(
+        "-l",
+        "--log_periodic",
+        help="Use log periodics instead of TTFD antennas " "* Not implemented * ",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-w",
+        "--power",
+        help="Power output/antenna? (Watts). * Not implemented *",
+        default=500.0,
+        type=float,
+    )
+    parser.add_argument(
+        "-P",
+        "--phase",
+        help="Phase between antennas? (deg) * Not implemented *",
+        default=0.0,
+        type=float,
+    )
+    parser.add_argument(
+        "-p",
+        "--parabolic_phase",
+        help="Use a parabolic phase distribution  " "* Not implemented *",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-c",
+        "--circular_phase",
+        help="Use a circular phase distribution  " "* Not implemented *",
+        action="store_true",
+    )
     args = parser.parse_args()
 
     if args.output_file is not None:
@@ -1269,30 +1930,34 @@ if __name__ == '__main__':
     # Boresight beam number is the default argument, so only calculate the relative phases
     # if we want something other than boresight
     if args.beam != BORESIGHT_BEAM:
-        rel_phase = calculate_phase_from_beam(args.beam, args.frequency * 1e6, args.antenna_spacing)
+        rel_phase = calculate_phase_from_beam(
+            args.beam, args.frequency * 1e6, args.antenna_spacing
+        )
     else:
         print("Using boresight")
         rel_phase = 0
 
     antennas_down = []
     if args.antennas_down is not None and args.antennas_down != "":
-        antennas = args.antennas_down.strip().split(',')
+        antennas = args.antennas_down.strip().split(",")
         for antenna in antennas:
             # If they specified a range, then include all numbers in that range (including endpoints)
-            if '-' in antenna:
-                small_antenna, big_antenna = antenna.split('-')
+            if "-" in antenna:
+                small_antenna, big_antenna = antenna.split("-")
                 antennas_down.extend(range(int(small_antenna), int(big_antenna) + 1))
             else:
                 antennas_down.append(int(antenna))
 
     transceivers_down = []
     if args.transceivers_down is not None and args.transceivers_down != "":
-        transceivers = args.transceivers_down.strip().split(',')
+        transceivers = args.transceivers_down.strip().split(",")
         for transceiver in transceivers:
             # If they specified a range, then include all numbers in that range (including endpoints)
-            if '-' in transceiver:
-                small_transceiver, big_transceiver = transceiver.split('-')
-                transceivers_down.extend(range(int(small_transceiver), int(big_transceiver) + 1))
+            if "-" in transceiver:
+                small_transceiver, big_transceiver = transceiver.split("-")
+                transceivers_down.extend(
+                    range(int(small_transceiver), int(big_transceiver) + 1)
+                )
             else:
                 transceivers_down.append(int(transceiver))
 
@@ -1302,20 +1967,26 @@ if __name__ == '__main__':
     int_antenna_phases = []
 
     if args.circular_phase:
-        antenna_phases = calculate_circular_phase(args.frequency * 1e6, args.antenna_spacing,
-                                                  args.antennas)
-        int_antenna_phases = calculate_circular_phase(args.frequency * 1e6, args.antenna_spacing,
-                                                      args.int_antennas)
+        antenna_phases = calculate_circular_phase(
+            args.frequency * 1e6, args.antenna_spacing, args.antennas
+        )
+        int_antenna_phases = calculate_circular_phase(
+            args.frequency * 1e6, args.antenna_spacing, args.int_antennas
+        )
     elif args.parabolic_phase:
-        antenna_phases = calculate_parabolic_phase(args.frequency * 1e6, args.antenna_spacing,
-                                                   args.antennas)
-        int_antenna_phases = calculate_parabolic_phase(args.frequency * 1e6, args.antenna_spacing,
-                                                       args.int_antennas)
+        antenna_phases = calculate_parabolic_phase(
+            args.frequency * 1e6, args.antenna_spacing, args.antennas
+        )
+        int_antenna_phases = calculate_parabolic_phase(
+            args.frequency * 1e6, args.antenna_spacing, args.int_antennas
+        )
     elif args.broadened_beam:
-        antenna_phases, antenna_magnitudes = calculate_broadened_phase(args.frequency * 1e6, args.antenna_spacing,
-                                                                       args.antennas)
-        int_antenna_phases, _ = calculate_broadened_phase(args.frequency * 1e6, args.antenna_spacing,
-                                                          args.int_antennas)
+        antenna_phases, antenna_magnitudes = calculate_broadened_phase(
+            args.frequency * 1e6, args.antenna_spacing, args.antennas
+        )
+        int_antenna_phases, _ = calculate_broadened_phase(
+            args.frequency * 1e6, args.antenna_spacing, args.int_antennas
+        )
         # for m_ant in range(0, args.antennas):
         #     antenna_magnitudes.append(1)
         #     if m_ant in antennas_down or m_ant in transceivers_down:
@@ -1330,7 +2001,7 @@ if __name__ == '__main__':
         for m_ant in range(0, args.antennas):
             transceivers_down_to_left = bisect(transceivers_down, m_ant)
             if m_ant in transceivers_down:
-                transceivers_down_to_left -= 1     # bisect([0, 1], 0) returns 1, i.e. will add to back of equal elements
+                transceivers_down_to_left -= 1  # bisect([0, 1], 0) returns 1, i.e. will add to back of equal elements
             phase = rel_phase * (m_ant - transceivers_down_to_left)
             if m_ant in antennas_down or m_ant in transceivers_down:
                 antenna_magnitudes.append(0)
@@ -1345,23 +2016,34 @@ if __name__ == '__main__':
 
     # Now that we have phases calculated, create the arrays and write out the NEC cards that
     # represent them
-    with open(args.output_file, 'w') as f:
-        main_antenna_objects, main_tower_objects = create_main_array(args.antennas, args.antenna_spacing,
-                                                                     antenna_magnitudes, antenna_phases,
-                                                                     log_periodics=args.log_periodic,
-                                                                     towers=args.towers, guylines=args.guylines)
+    with open(args.output_file, "w") as f:
+        main_antenna_objects, main_tower_objects = create_main_array(
+            args.antennas,
+            args.antenna_spacing,
+            antenna_magnitudes,
+            antenna_phases,
+            log_periodics=args.log_periodic,
+            towers=args.towers,
+            guylines=args.guylines,
+        )
         for m_ant in main_antenna_objects:
             f.write(m_ant.repr_geometry())
         for m_tow in main_tower_objects:
             f.write(m_tow.repr_geometry())
 
         if args.int_antennas > 0:
-            int_antenna_objects, int_tower_objects = create_int_array(args.int_antennas, args.antenna_spacing,
-                                                                      args.int_x_spacing, args.int_y_spacing,
-                                                                      args.int_z_spacing, int_antenna_magnitudes,
-                                                                      int_antenna_phases,
-                                                                      log_periodics=args.log_periodic,
-                                                                      towers=args.towers, guylines=args.guylines)
+            int_antenna_objects, int_tower_objects = create_int_array(
+                args.int_antennas,
+                args.antenna_spacing,
+                args.int_x_spacing,
+                args.int_y_spacing,
+                args.int_z_spacing,
+                int_antenna_magnitudes,
+                int_antenna_phases,
+                log_periodics=args.log_periodic,
+                towers=args.towers,
+                guylines=args.guylines,
+            )
             for i_ant in int_antenna_objects:
                 f.write(i_ant.repr_geometry())
             for i_tow in int_tower_objects:
@@ -1374,16 +2056,29 @@ if __name__ == '__main__':
                 else:
                     reflector_length = (args.antennas + 1) * args.antenna_spacing
                 reflector_spacing = 0.707
-                f.write(str(Reflector(reflector_length, reflector_spacing, num_wires=21)))
+                f.write(
+                    str(Reflector(reflector_length, reflector_spacing, num_wires=21))
+                )
             if args.int_antennas > 0:
                 if args.intf_reflector_length:
                     int_reflector_length = args.intf_reflector_length
                 else:
-                    int_reflector_length = (args.int_antennas + 1) * args.antenna_spacing
+                    int_reflector_length = (
+                        args.int_antennas + 1
+                    ) * args.antenna_spacing
                 int_reflector_spacing = 0.707
-                f.write(str(Reflector(int_reflector_length, int_reflector_spacing,
-                                      global_x=args.int_x_spacing, global_y=args.int_y_spacing,
-                                      global_z=args.int_z_spacing, num_wires=21)))
+                f.write(
+                    str(
+                        Reflector(
+                            int_reflector_length,
+                            int_reflector_spacing,
+                            global_x=args.int_x_spacing,
+                            global_y=args.int_y_spacing,
+                            global_z=args.int_z_spacing,
+                            num_wires=21,
+                        )
+                    )
+                )
         f.write(end_geometry())
 
         # We're finished with the geometry, so now write out the cards that tell NEC various other
@@ -1391,9 +2086,13 @@ if __name__ == '__main__':
         # type of coupling, excitations, transmission lines, and comments.
         for wire in range(0, wire_number):
             if args.log_periodic:
-                f.write(create_wire_conductivity(wire, conductivity=aluminum_conductivity))
+                f.write(
+                    create_wire_conductivity(wire, conductivity=aluminum_conductivity)
+                )
             else:
-                f.write(create_wire_conductivity(wire, conductivity=wire_conductivity[wire]))
+                f.write(
+                    create_wire_conductivity(wire, conductivity=wire_conductivity[wire])
+                )
         for m_ant in main_antenna_objects:
             f.write(m_ant.repr_loads())
         if args.int_antennas > 0:
@@ -1416,7 +2115,9 @@ if __name__ == '__main__':
         # In order for NEC to know what to calculate, we write out a frequency card and and
         # a radiation pattern card that steps through angles
         f.write(frequency_card(start_frequency=args.frequency))
-        f.write(radiation_pattern_card(theta_start=0, theta_increment=1, theta_steps=90))
+        f.write(
+            radiation_pattern_card(theta_start=0, theta_increment=1, theta_steps=90)
+        )
         f.write(end_of_run_card())
 
     sys.exit()

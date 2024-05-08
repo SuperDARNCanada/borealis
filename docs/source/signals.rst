@@ -6,5 +6,3 @@ Signals
     :members:
     :undoc-members:
     :show-inheritance:
-
-

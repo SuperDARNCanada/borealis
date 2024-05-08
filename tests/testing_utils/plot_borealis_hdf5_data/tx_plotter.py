@@ -3,8 +3,6 @@
 import sys
 import deepdish
 import random
-import numpy as np
-import matplotlib.pyplot as plt
 
 from plotting_borealis_data_utils import plot_output_tx_data
 
@@ -16,4 +14,4 @@ record_name = random.choice(list(data.keys()))
 print(record_name)
 tx = data[record_name]
 
-plot_output_tx_data(tx, 'tx_data')
+plot_output_tx_data(tx, "tx_data")

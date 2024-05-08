@@ -146,12 +146,12 @@ Installing the Custom-Made TXIO Board
        larger diameter. The easiest way to do this is to push the spacer onto a steel alignment
        punch using a 1/4" washer after warming up the spacer with a heat gun.
     #. Optional: add labels to each LED.
-    
+
     .. image:: img/txio/txio_leds.jpg
        :scale: 50%
        :alt: LEDs installed with spacers
        :align: center
-    
+
 #. Install the fan, making sure to re-install it the same way it was originally installed.
 
     .. image:: img/txio/txio_fan_direction.jpg
@@ -166,7 +166,7 @@ Installing the Custom-Made TXIO Board
    connector. The other ends of these wires connects to header J2 on the TXIO board
 
 	+---------+-----------+-------------+----------+
-	| J2 Pin  | Pin label | Wire colour | DSUB Pin | 
+	| J2 Pin  | Pin label | Wire colour | DSUB Pin |
 	+=========+===========+=============+==========+
 	| 1       | LP-       | Grey        | 4        |
 	+---------+-----------+-------------+----------+
@@ -465,7 +465,7 @@ different models may be required. Essentially, Borealis requires high throughput
 Typically, commerical grade equipment cannout provide high throughput and low latency
 simultaneously. You will need enterprise level switches, or a custom server with PCIe card
 extensions, or use a select few commerical devices. As maunfacutring and availablity changes some
-prototyping with different models may be required. 
+prototyping with different models may be required.
 
 Once these components are selected, the supporting components such as motherboard, cooling and hard
 drives can all be selected. Assemble the computer following the instructions that come with the
@@ -549,4 +549,3 @@ to one of the 10Gbps network switches. The 5-port switch must be capable of oper
 and 100Mbps so it can connect to both the Octoclocks as well as the XS708E switch. The network cables
 connecting the Octoclocks to the 5-port switch do not need to be dual shielded and any Cat5 cable
 (or better) should work.
-

@@ -33,8 +33,10 @@ def realtime_sim(ctx: zmq.Context):
     realtime_server(rawacf_recv_socket, fitacf_server)  # Runs indefinitely
 
 
-if __name__ == '__main__':
-    log = log_config.log(console=True, console_log_level="DEBUG", logfile=False, aggregator=False)
+if __name__ == "__main__":
+    log = log_config.log(
+        console=True, console_log_level="DEBUG", logfile=False, aggregator=False
+    )
 
     context = zmq.Context().instance()
 
@@ -55,14 +57,16 @@ if __name__ == '__main__':
     infile = open(str(Path(__file__).resolve().parent) + "/rawacf_record.pkl", "rb")
     rawacf_data = pickle.load(infile)
 
-    for i in range(5):     # Change this loop if you want to simulate sending multiple data packets
+    for i in range(
+        5
+    ):  # Change this loop if you want to simulate sending multiple data packets
         # Send rawacf data to the realtime_sim thread
         log.info("Sending rawacf data")
         so.send_bytes(rawacf_send_socket, "sim", pickle.dumps(rawacf_data))
 
         # Get the fitacf data back from realtime_sim
         recvd_data = fitacf_sink.recv()
-        fitacf_data = json.loads(zlib.decompress(recvd_data).decode('utf-8'))
+        fitacf_data = json.loads(zlib.decompress(recvd_data).decode("utf-8"))
 
         # Log the data to the console
         log.info("fitacf data received")

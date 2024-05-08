@@ -13,18 +13,18 @@ A python program to act like the driver and dsp modules for radar_control.
 TODO: Keith
 
 ## brian_testing ##
-A communication model for brian. The system without the data processing and data packets. 
+A communication model for brian. The system without the data processing and data packets.
 
 # BOREALIS_TESTS #
 
 ## testing_utils ##
-Contains functions and utilities for testing and plotting Borealis data and building decimation schemes for Borealis. 
+Contains functions and utilities for testing and plotting Borealis data and building decimation schemes for Borealis.
 
 ## data_test_scripts ##
-Full scripts dedicated to testing loopback and other data. 
+Full scripts dedicated to testing loopback and other data.
 
-## filter_testing ## 
-Scripts for building and plotting and testing filters. 
+## filter_testing ##
+Scripts for building and plotting and testing filters.
 
 # NTP #
 Contains test NTP statistics files for plotting, as well as a python NTP plotting utility.
@@ -34,7 +34,7 @@ Contains test NTP statistics files for plotting, as well as a python NTP plottin
 ## n200_gpio_test ##
 This directory contains a c++ program to run gpio tests on the n200's as well as python code to use a saleae logic analyzer's output file to test for proper gpio signal timing.
 
-## octoclock_test	## 
+## octoclock_test	##
 This directory contains a c++ program to explore all the functionality of the ettus octoclocks, with or without internal GPSDOs in them.
 
 ## parallel_reduce ##
@@ -46,9 +46,9 @@ See: http://lists.ettus.com/pipermail/usrp-users_lists.ettus.com/2013-September/
 This is due to the reference points for time being different in TX and RX. In TX, it is before the DSP section, in RX it is after the DSP section.
 This directory has code written by Max to calculate the offsets for combinations of frequency and sampling rates.
 
-## dsp_testing ## 
+## dsp_testing ##
 
-This directory houses some tests which can be used as a testbench for DSP development. 
+This directory houses some tests which can be used as a testbench for DSP development.
 
 ### decimate.cu ###
 
@@ -68,7 +68,7 @@ This directory houses several C++ and CUDA files which mimic the rx_signal_proce
 as closely as possible, without any dependency on other modules. These files depend on the
 core DSP files (borealis/rx_signal_processing/decimate.cu and .../filtering.cu), and as such
 provide a test bench for any development on these files. Simulated data is generated with
-rx_dsp_chain.cu, then passed into dsp_testing.cu which operates as closely to 
+rx_dsp_chain.cu, then passed into dsp_testing.cu which operates as closely to
 borealis/rx_signal_processing/dsp.cu as possible, without any protobufs and without doing any
 beamforming or correlating. The filter taps and data after each stage of filtering/downsampling
 are saved to csv files for analysis.

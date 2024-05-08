@@ -31,9 +31,9 @@ import os
 from site_utils import module_dirs_generator
 
 # Directory for build process outputs (object files etc.)
-_BUILD_BASE = 'build'
+_BUILD_BASE = "build"
 # Directory where binary programs are installed in (under $build_base/$flavor)
-_BIN_SUBDIR = 'bin'
+_BIN_SUBDIR = "bin"
 
 # List of cached modules to save processing for second call and beyond
 _CACHED_MODULES = list()
@@ -53,12 +53,14 @@ def modules():
         def hidden_dir_skipper(dirpath):
             """Return True if `dirpath` last dir component begins with '.'"""
             last_dir = os.path.basename(dirpath)
-            return last_dir.startswith('.')
+            return last_dir.startswith(".")
 
         for module_path in module_dirs_generator(
-                max_depth=7, followlinks=False,
-                dir_skip_list=[build_dir_skipper, hidden_dir_skipper],
-                file_skip_list='.noscons'):
+            max_depth=7,
+            followlinks=False,
+            dir_skip_list=[build_dir_skipper, hidden_dir_skipper],
+            file_skip_list=".noscons",
+        ):
             _CACHED_MODULES.append(module_path)
     # Yield modules from cache
     for module in _CACHED_MODULES:
@@ -69,18 +71,18 @@ def modules():
 #  from the base environment (using env.Replace).
 # `_common` is reserved for settings that apply to the base env.
 ENV_OVERRIDES = {
-    '_common': dict(
+    "_common": dict(
         # Use clang compiler by default
-        CC='gcc',
-        CXX='g++',
+        CC="gcc",
+        CXX="g++",
         # Path for installed binary programs
-        BINDIR=os.path.join('$BUILDROOT', _BIN_SUBDIR),
+        BINDIR=os.path.join("$BUILDROOT", _BIN_SUBDIR),
     ),
-    'debug': dict(
-        BUILDROOT=os.path.join(_BUILD_BASE, 'debug'),
+    "debug": dict(
+        BUILDROOT=os.path.join(_BUILD_BASE, "debug"),
     ),
-    'release': dict(
-        BUILDROOT=os.path.join(_BUILD_BASE, 'release'),
+    "release": dict(
+        BUILDROOT=os.path.join(_BUILD_BASE, "release"),
     ),
 }
 
@@ -89,21 +91,21 @@ ENV_OVERRIDES = {
 # `_common` is reserved for settings that apply to the base env.
 
 ENV_EXTENSIONS = {
-    '_common': dict(
+    "_common": dict(
         # Common flags for all C++ builds
-        CCFLAGS=['-Wall'],
-        CXXFLAGS=['-std=c++11'],
-        CFLAGS=['-std=c99'],
+        CCFLAGS=["-Wall"],
+        CXXFLAGS=["-std=c++11"],
+        CFLAGS=["-std=c99"],
         # Modules should be able to include relative to build root dir
-        CPPPATH=['#$BUILDROOT'],
+        CPPPATH=["#$BUILDROOT"],
     ),
-    'debug': dict(
+    "debug": dict(
         # Extra flags for debug C++ builds
-        CCFLAGS=['-g', '-DDEBUG'],
+        CCFLAGS=["-g", "-DDEBUG"],
     ),
-    'release': dict(
+    "release": dict(
         # Extra flags for release C++ builds
-        CCFLAGS=['-DNDEBUG', '-O3'],
+        CCFLAGS=["-DNDEBUG", "-O3"],
     ),
 }
 
@@ -119,28 +121,29 @@ def flavors():
     # Use the keys from the env override / extension dictionaries
     for flavor in set(list(ENV_EXTENSIONS.keys()) + list(ENV_OVERRIDES.keys())):
         # Skip "hidden" records
-        if not flavor.startswith('_'):
+        if not flavor.startswith("_"):
             yield flavor
 
 
 def main():
     """Main procedure - print out a requested variable (value per line)"""
     import sys
+
     if 2 == len(sys.argv):
         var = sys.argv[1].lower()
         items = list()
-        if var in ('flavors',):
+        if var in ("flavors",):
             items = flavors()
-        elif var in ('modules',):
+        elif var in ("modules",):
             items = modules()
-        elif var in ('build', 'build_dir', 'build_base'):
+        elif var in ("build", "build_dir", "build_base"):
             items = [_BUILD_BASE]
-        elif var in ('bin', 'bin_subdir'):
+        elif var in ("bin", "bin_subdir"):
             items = [_BIN_SUBDIR]
         # print out the item values
         for val in items:
             print(val)
 
 
-if '__main__' == __name__:
+if "__main__" == __name__:
     main()

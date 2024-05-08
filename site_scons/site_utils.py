@@ -31,17 +31,20 @@ import os
 try:
     from SCons.Script import GetOption
 except ImportError:
+
     def GetOption(dummy):  # pylint: disable=invalid-name
         """Stub GetOption if not running in SCons context"""
         return True
 
+
 def sprint(message, *args):
     """Silent-mode-aware SCons message printer."""
-    if not GetOption('silent'):
+    if not GetOption("silent"):
         if args:
-            print('scons:', message % (args))
+            print("scons:", message % (args))
         else:
-            print('scons:', message)
+            print("scons:", message)
+
 
 def listify(args):
     """Return args as a list.
@@ -56,13 +59,15 @@ def listify(args):
         return [args]
     return []
 
+
 def path_to_key(path):
     """Convert path to `key`, by replacing pathseps with periods."""
-    return path.replace('/', '.').replace('\\', '.')
+    return path.replace("/", ".").replace("\\", ".")
+
 
 def nop(*args, **kwargs):  # pylint: disable=unused-argument
     """Take arbitrary args and kwargs and do absolutely nothing!"""
-    pass
+
 
 def intersection(*args):
     """Return the intersection of all iterables passed."""
@@ -73,8 +78,10 @@ def intersection(*args):
         result.intersection_update(listify(args.pop(0)))
     return result
 
-def module_dirs_generator(max_depth=None, followlinks=False,
-                          dir_skip_list=None, file_skip_list=None):
+
+def module_dirs_generator(
+    max_depth=None, followlinks=False, dir_skip_list=None, file_skip_list=None
+):
     """Use os.walk to generate directories that contain a SConscript file.
 
     @param max_depth        Maximal depth for os.walk recursion
@@ -86,6 +93,7 @@ def module_dirs_generator(max_depth=None, followlinks=False,
     @param file_skip_list   List of filenames used as dir-skip markers.
                             Directory with marker filename is a "skip dir".
     """
+
     def should_process(dirpath, filenames):
         """Return True if current directory should be processed.
 
@@ -101,14 +109,16 @@ def module_dirs_generator(max_depth=None, followlinks=False,
                 return False
         if intersection(filenames, file_skip_list):
             # Skip directories with skip-list files
-            sprint('|- Skipping %s (skip marker found)', dirpath)
+            sprint("|- Skipping %s (skip marker found)", dirpath)
             return False
         return True
-    top = '.'
-    for dirpath, dirnames, filenames in os.walk(top, topdown=True,
-                                                followlinks=followlinks):
+
+    top = "."
+    for dirpath, dirnames, filenames in os.walk(
+        top, topdown=True, followlinks=followlinks
+    ):
         # Find path relative to top
-        rel_path = os.path.relpath(dirpath, top) if (dirpath != top) else ''
+        rel_path = os.path.relpath(dirpath, top) if (dirpath != top) else ""
         if rel_path:
             if not should_process(rel_path, filenames):
                 # prevent os.walk from recursing deeper and skip
@@ -125,8 +135,8 @@ def module_dirs_generator(max_depth=None, followlinks=False,
                     dirnames[:] = []
                 if depth > max_depth:
                     # shouldn't reach here though - shout and skip
-                    sprint('w00t?! Should not reach here ... o_O')
+                    sprint("w00t?! Should not reach here ... o_O")
                     continue
         # Yield directory with SConscript file
-        if 'SConscript' in filenames:
+        if "SConscript" in filenames:
             yield rel_path

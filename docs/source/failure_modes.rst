@@ -160,7 +160,7 @@ The root cause is unknown, but symptoms are:
 - Radar stops with nothing obvious in the logs or on the screen session
 - Attempting to start the radar with ``start_radar.sh`` results in a segfault
 - Attempting to reboot the computer results in segfaults, bus errors, core dumps, etc
-    
+
 To fix this issue and restart the radar:
 - Power cycle the machine
 

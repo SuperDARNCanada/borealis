@@ -12,7 +12,6 @@
 # built-in
 import copy
 import inspect
-import math
 import os
 from pathlib import Path
 
@@ -24,20 +23,26 @@ import structlog
 # local
 from utils.options import Options
 from experiment_prototype.experiment_exception import ExperimentException
-from experiment_prototype.experiment_slice import ExperimentSlice, slice_key_set, hidden_key_set
+from experiment_prototype.experiment_slice import (
+    ExperimentSlice,
+    slice_key_set,
+    hidden_key_set,
+)
 from experiment_prototype.interface_classes.scans import Scan
-from experiment_prototype.interface_classes.interface_class_base import InterfaceClassBase
+from experiment_prototype.interface_classes.interface_class_base import (
+    InterfaceClassBase,
+)
 
 # Obtain the module name that imported this log_config
 caller = Path(inspect.stack()[-1].filename)
-module_name = caller.name.split('.')[0]
+module_name = caller.name.split(".")[0]
 log = structlog.getLogger(module_name)
 
-BOREALISPATH = os.environ['BOREALISPATH']
+BOREALISPATH = os.environ["BOREALISPATH"]
 
-interface_types = tuple(['SCAN', 'AVEPERIOD', 'SEQUENCE', 'CONCURRENT'])
+interface_types = tuple(["SCAN", "AVEPERIOD", "SEQUENCE", "CONCURRENT"])
 """ Interfacing in this case refers to how two or more slices are meant to be run together.
-The following types of interfacing between slices are possible, arranged from highest level 
+The following types of interfacing between slices are possible, arranged from highest level
 of experiment building-block to the lowest level:
 
 1. **SCAN**
@@ -45,7 +50,7 @@ of experiment building-block to the lowest level:
     The scan-by-scan interfacing allows for slices to run a scan of one slice, followed by a scan of the
     second. The scan mode of interfacing typically means that the slice will cycle through all of its
     beams before switching to another slice.
-    
+
     If any slice in the experiment specifies a value for ``scanbound``, all other slices must also specify
     a value for ``scanbound``. The values do not have to be the same, however.
 
@@ -55,7 +60,7 @@ of experiment building-block to the lowest level:
     time or integration period), before switching to another slice's averaging period. This type of
     interface effectively creates an interleaving scan where the scans for multiple slices are run 'at
     the same time', by interleaving the averaging periods.
-    
+
     Slices which are interfaced in this manner must share:
 
     * the same ``scanbound`` value.
@@ -67,7 +72,7 @@ of experiment building-block to the lowest level:
     averaged only with other data from that slice. So in this case, the averaging period is running two
     slices and can produce two averaged datasets, but the sequences within the averaging period are
     interleaved.
-    
+
     Slices which are interfaced in this manner must share:
 
     * the same ``scanbound`` value.
@@ -83,7 +88,7 @@ of experiment building-block to the lowest level:
     slices of different frequencies can be mixed simultaneously, and slices of different pulse sequences
     can also run together at the cost of having more blanked samples. When slices are interfaced in this
     way the radar is truly transmitting and receiving the slices simultaneously.
-    
+
     Slices which are interfaced in this manner must share:
 
     * the same ``scanbound`` value.
@@ -95,9 +100,9 @@ of experiment building-block to the lowest level:
 
 """
 
-possible_scheduling_modes = frozenset(['common', 'special', 'discretionary'])
+possible_scheduling_modes = frozenset(["common", "special", "discretionary"])
 default_rx_bandwidth = 5.0e6
-default_output_rx_rate = 10.0e3/3
+default_output_rx_rate = 10.0e3 / 3
 transition_bandwidth = 750.0e3
 
 
@@ -116,7 +121,7 @@ class ExperimentPrototype:
     given property setters.
 
     The following are the user-modifiable attributes of the ExperimentPrototype that are
-    used to make an experiment. Other parameters are set in the init and cannot be modified after 
+    used to make an experiment. Other parameters are set in the init and cannot be modified after
     instantiation.
 
     * slice_dict:   modifiable only using the add_slice, edit_slice, and del_slice methods.
@@ -152,19 +157,27 @@ class ExperimentPrototype:
                                     USRP clock rate
     """
 
-    def __init__(self, cpid, output_rx_rate=default_output_rx_rate, rx_bandwidth=default_rx_bandwidth,
-                 tx_bandwidth=5.0e6, comment_string=''):
+    def __init__(
+        self,
+        cpid,
+        output_rx_rate=default_output_rx_rate,
+        rx_bandwidth=default_rx_bandwidth,
+        tx_bandwidth=5.0e6,
+        comment_string="",
+    ):
         if not isinstance(cpid, int):
-            errmsg = 'CPID must be a unique int'
+            errmsg = "CPID must be a unique int"
             raise ExperimentException(errmsg)
         if cpid > np.iinfo(np.int16).max:
-            errmsg = 'CPID must be representable by a 16-bit signed integer'
+            errmsg = "CPID must be representable by a 16-bit signed integer"
             raise ExperimentException(errmsg)
         # Quickly check for uniqueness with a search in the experiments directory first taking care
         # not to look for CPID in any experiments that are just tests (located in the testing
         # directory)
-        experiment_files_list = list(Path(f"{BOREALISPATH}/src/borealis_experiments/").glob("*.py"))
-        self.__experiment_name = self.__class__.__name__  
+        experiment_files_list = list(
+            Path(f"{BOREALISPATH}/src/borealis_experiments/").glob("*.py")
+        )
+        self.__experiment_name = self.__class__.__name__
         # TODO use this to check the cpid is correct using pygit2, or __class__.__module__ for module name
         # TODO replace below cpid local uniqueness check with pygit2 or some reference
         #  to a database to to ensure CPID uniqueness and to ensure CPID is entered in the database
@@ -174,41 +187,53 @@ class ExperimentPrototype:
             with open(experiment_file) as file_to_search:
                 for line in file_to_search:
                     # Find the name of the class in the file and break if it matches this class
-                    experiment_class_name = re.findall("class.*\(ExperimentPrototype\):", line)
+                    experiment_class_name = re.findall(
+                        "class.*\(ExperimentPrototype\):", line
+                    )
                     if experiment_class_name:
                         # Parse out just the name from the experiment, format will be like this:
                         # ['class IBCollabMode(ExperimentPrototype):']
-                        atomic_class_name = experiment_class_name[0].split()[1].split('(')[0]
+                        atomic_class_name = (
+                            experiment_class_name[0].split()[1].split("(")[0]
+                        )
                         if self.__experiment_name == atomic_class_name:
                             break
 
                     # Find any lines that have 'cpid = [integer]'
                     existing_cpid = re.findall("cpid.?=.?[0-9]+", line)
                     if existing_cpid:
-                        cpid_list[existing_cpid[0].split('=')[1].strip()] = experiment_file
+                        cpid_list[existing_cpid[0].split("=")[1].strip()] = (
+                            experiment_file
+                        )
 
         if str(cpid) in cpid_list.keys():
-            errmsg = f'CPID must be unique. {cpid} is in use by another local experiment {cpid_list[str(cpid)]}'
+            errmsg = f"CPID must be unique. {cpid} is in use by another local experiment {cpid_list[str(cpid)]}"
             raise ExperimentException(errmsg)
         if cpid <= 0:
-            errmsg = 'The CPID should be a positive number in the experiment. If the embargo'\
-                     ' flag is set, then borealis will configure the CPID to be negative to .'\
-                     ' indicate the data is to be embargoed for one year.'
+            errmsg = (
+                "The CPID should be a positive number in the experiment. If the embargo"
+                " flag is set, then borealis will configure the CPID to be negative to ."
+                " indicate the data is to be embargoed for one year."
+            )
             raise ExperimentException(errmsg)
 
-        self.__options = Options()      # Load the config, hardware, and restricted frequency data
+        self.__options = (
+            Options()
+        )  # Load the config, hardware, and restricted frequency data
         self.__cpid = cpid
-        self.__scheduling_mode = 'unknown'
+        self.__scheduling_mode = "unknown"
         self.__output_rx_rate = float(output_rx_rate)
         if comment_string is None:
-            comment_string = ''
+            comment_string = ""
         self.__comment_string = comment_string
         self.__slice_dict = {}
         self.__new_slice_id = 0
 
         if self.output_rx_rate > self.options.max_output_sample_rate:
-            errmsg = f"Experiment's output sample rate is too high: {self.output_rx_rate} " \
-                     f"greater than max {self.options.max_output_sample_rate}."
+            errmsg = (
+                f"Experiment's output sample rate is too high: {self.output_rx_rate} "
+                f"greater than max {self.options.max_output_sample_rate}."
+            )
             raise ExperimentException(errmsg)
 
         self.__txrate = float(tx_bandwidth)  # sampling rate, samples per sec, Hz.
@@ -217,41 +242,49 @@ class ExperimentPrototype:
         # Transmitting is possible in the range of txctrfreq +/- (txrate/2) because we have iq data
         # Receiving is possible in the range of rxctrfreq +/- (rxrate/2)
         if self.txrate > self.options.max_tx_sample_rate:
-            errmsg = f"Experiment's transmit bandwidth is too large: {self.txrate} greater than " \
-                     f"max {self.options.max_tx_sample_rate}."
+            errmsg = (
+                f"Experiment's transmit bandwidth is too large: {self.txrate} greater than "
+                f"max {self.options.max_tx_sample_rate}."
+            )
             raise ExperimentException(errmsg)
         if self.rxrate > self.options.max_rx_sample_rate:
-            errmsg = f"Experiment's receive bandwidth is too large: {self.rxrate} greater than " \
-                     f"max {self.options.max_rx_sample_rate}."
+            errmsg = (
+                f"Experiment's receive bandwidth is too large: {self.rxrate} greater than "
+                f"max {self.options.max_rx_sample_rate}."
+            )
             raise ExperimentException(errmsg)
         if round(self.options.usrp_master_clock_rate / self.txrate, 3) % 2.0 != 0.0:
-            errmsg = f"Experiment's transmit bandwidth {self.txrate} is not possible as it must be an " \
-                     f"integer divisor of USRP master clock rate {self.options.usrp_master_clock_rate}"
+            errmsg = (
+                f"Experiment's transmit bandwidth {self.txrate} is not possible as it must be an "
+                f"integer divisor of USRP master clock rate {self.options.usrp_master_clock_rate}"
+            )
             raise ExperimentException(errmsg)
         if round(self.options.usrp_master_clock_rate / self.rxrate, 3) % 2.0 != 0.0:
-            errmsg = f"Experiment's receive bandwidth {self.rxrate} is not possible as it must be an " \
-                     f"integer divisor of USRP master clock rate {self.options.usrp_master_clock_rate}"
+            errmsg = (
+                f"Experiment's receive bandwidth {self.rxrate} is not possible as it must be an "
+                f"integer divisor of USRP master clock rate {self.options.usrp_master_clock_rate}"
+            )
             raise ExperimentException(errmsg)
 
         # This is experiment-wide transmit metadata necessary to build the pulses. This data
         # cannot change within the experiment and is used in the scan classes to pass information
         # to where the samples are built.
         self.__transmit_metadata = {
-            'output_rx_rate':           self.output_rx_rate,
-            'tx_main_antennas':         self.options.tx_main_antennas,
-            'rx_main_antennas':         self.options.rx_main_antennas,
-            'rx_intf_antennas':         self.options.rx_intf_antennas,
-            'main_antenna_count':       self.options.main_antenna_count,
-            'intf_antenna_count':       self.options.intf_antenna_count,
-            'tr_window_time':           self.options.tr_window_time,
-            'main_antenna_spacing':     self.options.main_antenna_spacing,
-            'intf_antenna_spacing':     self.options.intf_antenna_spacing,
-            'pulse_ramp_time':          self.options.pulse_ramp_time,
-            'max_usrp_dac_amplitude':   self.options.max_usrp_dac_amplitude,
-            'rx_sample_rate':           self.rxrate,
-            'min_pulse_separation':     self.options.min_pulse_separation,
-            'txrate':                   self.txrate,
-            'intf_offset':              self.options.intf_offset
+            "output_rx_rate": self.output_rx_rate,
+            "tx_main_antennas": self.options.tx_main_antennas,
+            "rx_main_antennas": self.options.rx_main_antennas,
+            "rx_intf_antennas": self.options.rx_intf_antennas,
+            "main_antenna_count": self.options.main_antenna_count,
+            "intf_antenna_count": self.options.intf_antenna_count,
+            "tr_window_time": self.options.tr_window_time,
+            "main_antenna_spacing": self.options.main_antenna_spacing,
+            "intf_antenna_spacing": self.options.intf_antenna_spacing,
+            "pulse_ramp_time": self.options.pulse_ramp_time,
+            "max_usrp_dac_amplitude": self.options.max_usrp_dac_amplitude,
+            "rx_sample_rate": self.rxrate,
+            "min_pulse_separation": self.options.min_pulse_separation,
+            "txrate": self.txrate,
+            "intf_offset": self.options.intf_offset,
         }
 
         # Dictionary of how each exp_slice interacts with the other slices.
@@ -270,10 +303,10 @@ class ExperimentPrototype:
 
         # This is used for adding and editing slices
         self.__slice_restrictions = {
-            'tx_bandwidth': self.tx_bandwidth,
-            'rx_bandwidth': self.rx_bandwidth,
-            'output_rx_rate': self.output_rx_rate,
-            'transition_bandwidth': transition_bandwidth
+            "tx_bandwidth": self.tx_bandwidth,
+            "rx_bandwidth": self.rx_bandwidth,
+            "output_rx_rate": self.output_rx_rate,
+            "transition_bandwidth": transition_bandwidth,
         }
 
     __slice_keys = slice_key_set
@@ -517,8 +550,10 @@ class ExperimentPrototype:
         if scheduling_mode in possible_scheduling_modes:
             self.__scheduling_mode = scheduling_mode
         else:
-            errmsg = f'Scheduling mode {scheduling_mode} set by experiment handler is not '\
-                     f' a valid mode: {possible_scheduling_modes}'
+            errmsg = (
+                f"Scheduling mode {scheduling_mode} set by experiment handler is not "
+                f" a valid mode: {possible_scheduling_modes}"
+            )
             raise ExperimentException(errmsg)
 
     def slice_beam_directions_mapping(self, slice_id):
@@ -569,8 +604,10 @@ class ExperimentPrototype:
         """
         for sibling_slice_id, interface_value in interfacing_dict.items():
             if interface_value not in interface_types:
-                errmsg = f'Interface value with slice {sibling_slice_id}: {interface_value} not '\
-                         f'valid. Types available are: {interface_types}'
+                errmsg = (
+                    f"Interface value with slice {sibling_slice_id}: {interface_value} not "
+                    f"valid. Types available are: {interface_types}"
+                )
                 raise ExperimentException(errmsg)
 
         full_interfacing_dict = {}
@@ -584,15 +621,20 @@ class ExperimentPrototype:
                 # for this slice.
                 for sibling_slice_id in interfacing_dict.keys():
                     if sibling_slice_id not in self.slice_ids:
-                        errmsg = f'Cannot add slice: the interfacing_dict set interfacing to an unknown '\
-                                 f'slice {sibling_slice_id} not in slice ids {self.slice_ids}'
+                        errmsg = (
+                            f"Cannot add slice: the interfacing_dict set interfacing to an unknown "
+                            f"slice {sibling_slice_id} not in slice ids {self.slice_ids}"
+                        )
                         raise ExperimentException(errmsg)
                 try:
-                    closest_sibling = max(interfacing_dict.keys(),
-                                          key=lambda k: interface_types.index(
-                                               interfacing_dict[k]))
+                    closest_sibling = max(
+                        interfacing_dict.keys(),
+                        key=lambda k: interface_types.index(interfacing_dict[k]),
+                    )
                 except ValueError as e:  # cannot find interface type in list
-                    errmsg = f'Interface types must be of valid types {interface_types}.'
+                    errmsg = (
+                        f"Interface types must be of valid types {interface_types}."
+                    )
                     raise ExperimentException(errmsg) from e
                 closest_interface_value = interfacing_dict[closest_sibling]
                 closest_interface_rank = interface_types.index(closest_interface_value)
@@ -600,15 +642,21 @@ class ExperimentPrototype:
                 # the user provided no keys. The default is therefore 'SCAN'
                 # with all keys so the closest will be 'SCAN' (the furthest possible interface_type)
                 closest_sibling = self.slice_ids[0]
-                closest_interface_value = 'SCAN'
+                closest_interface_value = "SCAN"
                 closest_interface_rank = interface_types.index(closest_interface_value)
 
             # now populate a full_interfacing_dict based on the closest sibling's interface values
             # and knowing how we interface with that sibling. this is the only correct interfacing
             # given the closest interfacing.
             full_interfacing_dict[closest_sibling] = closest_interface_value
-            for sibling_slice_id, siblings_interface_value in self.get_slice_interfacing(closest_sibling).items():
-                if interface_types.index(siblings_interface_value) >= closest_interface_rank:
+            for (
+                sibling_slice_id,
+                siblings_interface_value,
+            ) in self.get_slice_interfacing(closest_sibling).items():
+                if (
+                    interface_types.index(siblings_interface_value)
+                    >= closest_interface_rank
+                ):
                     # in this case, the interfacing between the sibling and the closest sibling is
                     # closer than the closest interface for the new slice. Therefore, interface with
                     # this sibling should be equal to the closest interface. Or, if they are all at
@@ -630,12 +678,16 @@ class ExperimentPrototype:
             # that was populated based on the closest sibling given by the user.
             for sibling_slice_id, interface_value in interfacing_dict.items():
                 if interface_value != full_interfacing_dict[sibling_slice_id]:
-                    siblings_interface_value = self.get_slice_interfacing(closest_sibling)[sibling_slice_id]
-                    errmsg = f'The interfacing values of new slice cannot be reconciled. Interfacing '\
-                             f'with slice {closest_sibling}: {closest_interface_value} and with '\
-                             f'slice {sibling_slice_id}: {interface_value} does not make sense with '\
-                             f'existing interface between slices of '\
-                             f'{([sibling_slice_id, closest_sibling].sort())}: {siblings_interface_value}'
+                    siblings_interface_value = self.get_slice_interfacing(
+                        closest_sibling
+                    )[sibling_slice_id]
+                    errmsg = (
+                        f"The interfacing values of new slice cannot be reconciled. Interfacing "
+                        f"with slice {closest_sibling}: {closest_interface_value} and with "
+                        f"slice {sibling_slice_id}: {interface_value} does not make sense with "
+                        f"existing interface between slices of "
+                        f"{([sibling_slice_id, closest_sibling].sort())}: {siblings_interface_value}"
+                    )
                     raise ExperimentException(errmsg)
 
         return full_interfacing_dict
@@ -646,7 +698,9 @@ class ExperimentPrototype:
         dictionary is changed, to update all of the slices' interfacing dictionaries.
         """
         for slice_id in self.slice_ids:
-            self.__slice_dict[slice_id].slice_interfacing = self.get_slice_interfacing(slice_id)
+            self.__slice_dict[slice_id].slice_interfacing = self.get_slice_interfacing(
+                slice_id
+            )
 
     def add_slice(self, exp_slice, interfacing_dict=None):
         """
@@ -666,16 +720,16 @@ class ExperimentPrototype:
                                         setup_slice.
         """
         if not isinstance(exp_slice, dict):
-            errmsg = f'Attempt to add a slice failed - {exp_slice} is not a dictionary of slice parameters'
+            errmsg = f"Attempt to add a slice failed - {exp_slice} is not a dictionary of slice parameters"
             raise ExperimentException(errmsg)
             # TODO multiple types of Exceptions so they can be caught by the experiment in these
             #  add_slice, edit_slice, del_slice functions (and handled specifically)
         if interfacing_dict is None:
             interfacing_dict = {}
 
-        add_slice_id = exp_slice['slice_id'] = self.new_slice_id
+        add_slice_id = exp_slice["slice_id"] = self.new_slice_id
         # each added slice has a unique slice id, even if previous slices have been deleted.
-        exp_slice['cpid'] = self.cpid
+        exp_slice["cpid"] = self.cpid
 
         # Now we setup the slice which will check minimum requirements and set defaults, and then
         # will complete a check_slice and raise any errors found.
@@ -685,7 +739,9 @@ class ExperimentPrototype:
         full_interfacing_dict = self.check_new_slice_interfacing(interfacing_dict)
         for sibling_slice_id, interface_value in full_interfacing_dict.items():
             # sibling_slice_id < new slice id so this maintains interface list requirement.
-            self.__interface[(sibling_slice_id, exp_slice['slice_id'])] = interface_value
+            self.__interface[(sibling_slice_id, exp_slice["slice_id"])] = (
+                interface_value
+            )
 
         # if there were no errors raised in setup_slice, we will add the slice to the slice_dict.
         self.__slice_dict[add_slice_id] = new_exp_slice
@@ -709,10 +765,12 @@ class ExperimentPrototype:
         """
         try:
             removed_slice = copy.deepcopy(self.slice_dict[remove_slice_id])
-            del(self.slice_dict[remove_slice_id])
+            del self.slice_dict[remove_slice_id]
         except (KeyError, TypeError) as e:
-            errmsg = f'Cannot remove slice id {remove_slice_id} : it does not exist in slice '\
-                      'dictionary'
+            errmsg = (
+                f"Cannot remove slice id {remove_slice_id} : it does not exist in slice "
+                "dictionary"
+            )
             raise ExperimentException(errmsg) from e
 
         remove_keys = []
@@ -755,15 +813,17 @@ class ExperimentPrototype:
             edited_slice = copy.deepcopy(self.slice_dict[edit_slice_id])
         except (KeyError, TypeError):
             # the edit_slice_id is not an index in the slice_dict
-            errmsg = f'Trying to edit {edit_slice_id} but it does not exist in Slice_IDs list.'
+            errmsg = f"Trying to edit {edit_slice_id} but it does not exist in Slice_IDs list."
             raise ExperimentException(errmsg)
 
         for edit_slice_param, edit_slice_value in slice_params_to_edit.items():
             if edit_slice_param in self.slice_keys:
                 setattr(edited_slice, edit_slice_param, edit_slice_value)
             else:
-                errmsg = f'Cannot edit slice ID {edit_slice_id}: {edit_slice_param} is not a valid'\
-                          ' slice parameter'
+                errmsg = (
+                    f"Cannot edit slice ID {edit_slice_id}: {edit_slice_param} is not a valid"
+                    " slice parameter"
+                )
                 raise ExperimentException(errmsg)
 
         # Get the interface values of the slice. These are not editable, if these are wished to be
@@ -797,14 +857,16 @@ class ExperimentPrototype:
             return edit_slice_id
 
     def __repr__(self):
-        represent = f'self.cpid = {self.cpid}\n'\
-                    f'self.num_slices = {self.num_slices}\n'\
-                    f'self.slice_ids = {self.slice_ids}\n'\
-                    f'self.slice_keys = {self.slice_keys}\n'\
-                    f'self.options = {self.options.__str__()}\n'\
-                    f'self.txrate = {self.txrate}\n'\
-                    f'self.slice_dict = {self.slice_dict}\n'\
-                    f'self.interface = {self.interface}\n'
+        represent = (
+            f"self.cpid = {self.cpid}\n"
+            f"self.num_slices = {self.num_slices}\n"
+            f"self.slice_ids = {self.slice_ids}\n"
+            f"self.slice_keys = {self.slice_keys}\n"
+            f"self.options = {self.options.__str__()}\n"
+            f"self.txrate = {self.txrate}\n"
+            f"self.slice_dict = {self.slice_dict}\n"
+            f"self.interface = {self.interface}\n"
+        )
         return represent
 
     def build_scans(self):
@@ -824,22 +886,25 @@ class ExperimentPrototype:
         # TODO consider removing scan_objects from init and making a new Experiment class to inherit
         # from InterfaceClassBase and having all of this included in there. Then would only need to
         # pass the running experiment to the radar control (would be returned from build_scans)
-        self.__running_experiment = InterfaceClassBase(self.slice_ids, self.slice_dict, self.interface,
-                                                       self.transmit_metadata)
+        self.__running_experiment = InterfaceClassBase(
+            self.slice_ids, self.slice_dict, self.interface, self.transmit_metadata
+        )
 
         self.__scan_objects = []
         for params in self.__running_experiment.prep_for_nested_interface_class():
             self.__scan_objects.append(Scan(*params))
-        
+
         for scan in self.__scan_objects:
             if scan.scanbound is not None:
                 self.__scanbound = True
 
         if self.__scanbound:
             try:
-                self.__scan_objects = sorted(self.__scan_objects, key=lambda input_scan: input_scan.scanbound[0])
+                self.__scan_objects = sorted(
+                    self.__scan_objects, key=lambda input_scan: input_scan.scanbound[0]
+                )
             except (IndexError, TypeError) as e:  # scanbound is None in some scans
-                errmsg = 'If one slice has a scanbound, they all must to avoid up to minute-long downtimes.'
+                errmsg = "If one slice has a scanbound, they all must to avoid up to minute-long downtimes."
                 raise ExperimentException(errmsg) from e
 
         max_num_concurrent_slices = 0
@@ -850,11 +915,17 @@ class ExperimentPrototype:
                         max_num_concurrent_slices = len(seq.slice_ids)
 
         log.verbose(f"Number of Scan types: {len(self.__scan_objects)}")
-        log.verbose(f"Number of AveragingPeriods in Scan #1: {len(self.__scan_objects[0].aveperiods)}")
-        log.verbose(f"Number of Sequences in Scan #1, Averaging Period #1: "
-                 f"{len(self.__scan_objects[0].aveperiods[0].sequences)}")
-        log.verbose(f"Number of Pulse Types in Scan #1, Averaging Period #1, Sequence #1: "
-                 f"{len(self.__scan_objects[0].aveperiods[0].sequences[0].slice_dict)}")
+        log.verbose(
+            f"Number of AveragingPeriods in Scan #1: {len(self.__scan_objects[0].aveperiods)}"
+        )
+        log.verbose(
+            f"Number of Sequences in Scan #1, Averaging Period #1: "
+            f"{len(self.__scan_objects[0].aveperiods[0].sequences)}"
+        )
+        log.verbose(
+            f"Number of Pulse Types in Scan #1, Averaging Period #1, Sequence #1: "
+            f"{len(self.__scan_objects[0].aveperiods[0].sequences[0].slice_dict)}"
+        )
         log.verbose(f"Max concurrent slices: {max_num_concurrent_slices}")
 
     def get_slice_interfacing(self, slice_id):

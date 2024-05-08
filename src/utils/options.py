@@ -19,6 +19,7 @@ import os
 import json
 from dataclasses import dataclass, field
 
+
 @dataclass
 class Options:
     """
@@ -26,6 +27,7 @@ class Options:
     Additionally, parses the hdw.dat and restrict.dat files of the current site for other
     configuration information.
     """
+
     # config.ini options
     data_directory: str = field(init=False)
     hdw_path: str = field(init=False)
@@ -124,8 +126,8 @@ class Options:
     def __post_init__(self):
         if not os.environ["BOREALISPATH"]:
             raise ValueError("BOREALISPATH env variable not set")
-        if not os.environ['RADAR_ID']:
-            raise ValueError('RADAR_ID env variable not set')
+        if not os.environ["RADAR_ID"]:
+            raise ValueError("RADAR_ID env variable not set")
         self.parse_config()  # Parse info from config file
         self.parse_hdw()  # Parse info from hdw file
         self.parse_restrict()  # Parse info from restrict.dat file
@@ -133,24 +135,26 @@ class Options:
 
     def parse_config(self):
         # Read in config.ini file for current site
-        path = f'{os.environ["BOREALISPATH"]}/config/' \
-               f'{os.environ["RADAR_ID"]}/' \
-               f'{os.environ["RADAR_ID"]}_config.ini'
+        path = (
+            f'{os.environ["BOREALISPATH"]}/config/'
+            f'{os.environ["RADAR_ID"]}/'
+            f'{os.environ["RADAR_ID"]}_config.ini'
+        )
         try:
-            with open(path, 'r') as data:
+            with open(path, "r") as data:
                 raw_config = json.load(data)
         except OSError:
-            errmsg = f'Cannot open config file at {path}'
+            errmsg = f"Cannot open config file at {path}"
             raise ValueError(errmsg)
 
         # Initialize all options from config file
-        self.site_id = raw_config['site_id']
+        self.site_id = raw_config["site_id"]
         self.main_antenna_count = int(raw_config["main_antenna_count"])
         self.intf_antenna_count = int(raw_config["intf_antenna_count"])
 
         # Parse N200 array and calculate which main and intf antennas operating
         self.n200_count = 0
-        self.n200_addrs = []    # Used for checking IPs of N200s
+        self.n200_addrs = []  # Used for checking IPs of N200s
         self.rx_main_antennas = []
         self.rx_intf_antennas = []
         self.tx_main_antennas = []
@@ -162,16 +166,18 @@ class Options:
             except ValueError:
                 problem = "channel[1:] must be an integer"
                 raise ValueError(problem)
-            if channel_str[0] == 'm':
+            if channel_str[0] == "m":
                 if rx:
                     self.rx_main_antennas.append(antenna_num)
                 else:
                     self.tx_main_antennas.append(antenna_num)
-            elif channel_str[0] == 'i':
+            elif channel_str[0] == "i":
                 if rx:
                     self.rx_intf_antennas.append(antenna_num)
                 else:
-                    raise ValueError("Cannot connect tx channel to interferometer array")
+                    raise ValueError(
+                        "Cannot connect tx channel to interferometer array"
+                    )
             else:
                 problem = "channel must start with either 'm' or 'i' for main or interferometer array"
                 raise ValueError(problem)
@@ -211,27 +217,27 @@ class Options:
         self.rx_intf_antennas.sort()
         self.tx_main_antennas.sort()
 
-        self.main_antenna_spacing = float(raw_config['main_antenna_spacing'])  # m
-        self.intf_antenna_spacing = float(raw_config['intf_antenna_spacing'])  # m
-        self.min_freq = float(raw_config['min_freq'])  # Hz
-        self.max_freq = float(raw_config['max_freq'])  # Hz
-        self.min_pulse_length = float(raw_config['min_pulse_length'])  # us
-        self.min_tau_spacing_length = float(raw_config['min_tau_spacing_length'])  # us
+        self.main_antenna_spacing = float(raw_config["main_antenna_spacing"])  # m
+        self.intf_antenna_spacing = float(raw_config["intf_antenna_spacing"])  # m
+        self.min_freq = float(raw_config["min_freq"])  # Hz
+        self.max_freq = float(raw_config["max_freq"])  # Hz
+        self.min_pulse_length = float(raw_config["min_pulse_length"])  # us
+        self.min_tau_spacing_length = float(raw_config["min_tau_spacing_length"])  # us
         # Minimum pulse separation is the minimum before the experiment treats it as a single pulse
         # (transmitting zeroes or no receiving between the pulses) 125 us is approx two TX/RX times
-        self.min_pulse_separation = float(raw_config['min_pulse_separation'])  # us
+        self.min_pulse_separation = float(raw_config["min_pulse_separation"])  # us
 
-        self.max_tx_sample_rate = float(raw_config['max_tx_sample_rate'])  # sps
-        self.max_rx_sample_rate = float(raw_config['max_rx_sample_rate'])  # sps
+        self.max_tx_sample_rate = float(raw_config["max_tx_sample_rate"])  # sps
+        self.max_rx_sample_rate = float(raw_config["max_rx_sample_rate"])  # sps
 
         self.max_usrp_dac_amplitude = float(raw_config["max_usrp_dac_amplitude"])  # V
         self.pulse_ramp_time = float(raw_config["pulse_ramp_time"])  # s
         self.tr_window_time = float(raw_config["tr_window_time"])  # s
 
-        self.usrp_master_clock_rate = float(raw_config['usrp_master_clock_rate'])  # sps
-        self.max_output_sample_rate = float(raw_config['max_output_sample_rate'])  # sps
-        self.max_filtering_stages = int(raw_config['max_filtering_stages'])
-        self.max_filter_taps_per_stage = int(raw_config['max_filter_taps_per_stage'])
+        self.usrp_master_clock_rate = float(raw_config["usrp_master_clock_rate"])  # sps
+        self.max_output_sample_rate = float(raw_config["max_output_sample_rate"])  # sps
+        self.max_filtering_stages = int(raw_config["max_filtering_stages"])
+        self.max_filter_taps_per_stage = int(raw_config["max_filter_taps_per_stage"])
 
         self.router_address = raw_config["router_address"]
         self.realtime_address = raw_config["realtime_address"]
@@ -239,7 +245,7 @@ class Options:
 
         self.data_directory = raw_config["data_directory"]
         self.log_directory = raw_config["log_handlers"]["logfile"]["directory"]
-        self.hdw_path = raw_config['hdw_path']
+        self.hdw_path = raw_config["hdw_path"]
 
         self.console_log_level = raw_config["log_handlers"]["console"]["level"]
         self.logfile_log_level = raw_config["log_handlers"]["logfile"]["level"]
@@ -258,7 +264,7 @@ class Options:
             with open(hdw_dat_file) as hdwdata:
                 lines = hdwdata.readlines()
         except OSError:
-            errmsg = f'Cannot open hdw.dat file at {hdw_dat_file}'
+            errmsg = f"Cannot open hdw.dat file at {hdw_dat_file}"
             raise ValueError(errmsg)
 
         lines[:] = [line for line in lines if line[0] != "#"]  # remove comments
@@ -268,24 +274,30 @@ class Options:
         try:
             hdw = lines[-1]
         except IndexError:
-            errmsg = f'Cannot find any valid lines in the hardware file: {hdw_dat_file}'
+            errmsg = f"Cannot find any valid lines in the hardware file: {hdw_dat_file}"
             raise ValueError(errmsg)
         # we now have the correct line of data.
 
         params = hdw.split()
         if len(params) != 22:
-            errmsg = f'Found {len(params)} parameters in hardware file, expected 22'
+            errmsg = f"Found {len(params)} parameters in hardware file, expected 22"
             raise ValueError(errmsg)
 
         self.status = int(params[1])  # 1 operational, -1 offline
         self.geo_lat = float(params[4])  # decimal degrees, S = negative
         self.geo_long = float(params[5])  # decimal degrees, W = negative
         self.altitude = float(params[6])  # metres
-        self.boresight = float(params[7])  # degrees from geographic north, CCW = negative.
-        self.boresight_shift = float(params[8])  # degrees from physical boresight. nominal 0.0 degrees
+        self.boresight = float(
+            params[7]
+        )  # degrees from geographic north, CCW = negative.
+        self.boresight_shift = float(
+            params[8]
+        )  # degrees from physical boresight. nominal 0.0 degrees
         self.beam_sep = float(params[9])  # degrees, nominal 3.24 degrees
         self.velocity_sign = int(params[10])  # +1 or -1
-        self.phase_sign = int(params[11])  # +1 indicates correct interferometry phase, -1 indicates 180
+        self.phase_sign = int(
+            params[11]
+        )  # +1 indicates correct interferometry phase, -1 indicates 180
         self.tdiff_a = float(params[12])  # us for channel A.
         self.tdiff_b = float(params[13])  # us for channel B.
         # interferometer offset from midpoint of main, metres [x, y, z] where x is along line of
@@ -295,43 +307,51 @@ class Options:
         self.analog_rx_attenuator = float(params[18])  # dB
         self.analog_atten_stages = int(params[19])  # number of stages
         self.max_range_gates = int(params[20])
-        self.max_beams = int(params[21])  # so a beam number always points in a certain direction
+        self.max_beams = int(
+            params[21]
+        )  # so a beam number always points in a certain direction
 
     def parse_restrict(self):
         # Read in restrict.dat
-        path = f'{os.environ["BOREALISPATH"]}/config/' \
-               f'{os.environ["RADAR_ID"]}/' \
-               f'restrict.dat.{os.environ["RADAR_ID"]}'
+        path = (
+            f'{os.environ["BOREALISPATH"]}/config/'
+            f'{os.environ["RADAR_ID"]}/'
+            f'restrict.dat.{os.environ["RADAR_ID"]}'
+        )
         try:
             with open(path) as data:
                 restricted = data.readlines()
         except IOError:
-            print(f'IOError on restrict.dat file at {path}')
+            print(f"IOError on restrict.dat file at {path}")
             raise
 
-        restricted[:] = [line for line in restricted if line[0] != "#"]  # remove comments
-        restricted[:] = [line for line in restricted if len(line.split()) != 0]  # remove blanks
+        restricted[:] = [
+            line for line in restricted if line[0] != "#"
+        ]  # remove comments
+        restricted[:] = [
+            line for line in restricted if len(line.split()) != 0
+        ]  # remove blanks
 
         for line in restricted:
             splitup = line.split("=")
             if len(splitup) == 2:
-                if splitup[0].strip() == 'default':
+                if splitup[0].strip() == "default":
                     self.default_freq = int(splitup[1])  # kHz
                     restricted.remove(line)
                     break
         else:  # no break
-            raise ValueError('No default frequency found in restrict.dat')
+            raise ValueError("No default frequency found in restrict.dat")
 
         self.restricted_ranges = []
         for line in restricted:
             splitup = line.split()
             if len(splitup) != 2:
-                errmsg = 'Error reading restricted frequency: more than two frequencies listed'
+                errmsg = "Error reading restricted frequency: more than two frequencies listed"
                 raise ValueError(errmsg)
             try:
                 splitup = [int(float(freq)) for freq in splitup]  # convert to ints
             except ValueError:
-                errmsg = 'Error parsing restrict.dat: frequencies must be valid numbers'
+                errmsg = "Error parsing restrict.dat: frequencies must be valid numbers"
                 raise ValueError(errmsg)
             restricted_range = tuple(splitup)
             self.restricted_ranges.append(restricted_range)
@@ -342,32 +362,47 @@ class Options:
             raise ValueError(errmsg)
 
         if len(self.n200_addrs) != len(set(self.n200_addrs)):
-            raise ValueError('Two or more n200s have identical IP addresses')
+            raise ValueError("Two or more n200s have identical IP addresses")
 
         if len(self.rx_main_antennas) > 0:
-            if min(self.rx_main_antennas) < 0 or max(self.rx_main_antennas) >= self.main_antenna_count:
-                raise ValueError('rx_main_antennas and main_antenna_count are not consistent')
+            if (
+                min(self.rx_main_antennas) < 0
+                or max(self.rx_main_antennas) >= self.main_antenna_count
+            ):
+                raise ValueError(
+                    "rx_main_antennas and main_antenna_count are not consistent"
+                )
             if len(self.rx_main_antennas) != len(set(self.rx_main_antennas)):
                 raise ValueError("rx_main_antennas has duplicate values")
         if len(self.tx_main_antennas) > 0:
-            if min(self.tx_main_antennas) < 0 or max(self.tx_main_antennas) >= self.main_antenna_count:
-                raise ValueError('tx_main_antennas and main_antenna_count are not consistent')
+            if (
+                min(self.tx_main_antennas) < 0
+                or max(self.tx_main_antennas) >= self.main_antenna_count
+            ):
+                raise ValueError(
+                    "tx_main_antennas and main_antenna_count are not consistent"
+                )
             if len(self.tx_main_antennas) != len(set(self.tx_main_antennas)):
                 raise ValueError("tx_main_antennas has duplicate values")
         if len(self.rx_intf_antennas) > 0:
-            if min(self.rx_intf_antennas) < 0 or max(self.rx_intf_antennas) >= self.intf_antenna_count:
-                raise ValueError('rx_intf_antennas and intf_antenna_count are not consistent')
+            if (
+                min(self.rx_intf_antennas) < 0
+                or max(self.rx_intf_antennas) >= self.intf_antenna_count
+            ):
+                raise ValueError(
+                    "rx_intf_antennas and intf_antenna_count are not consistent"
+                )
             if len(self.rx_intf_antennas) != len(set(self.rx_intf_antennas)):
                 raise ValueError("rx_intf_antennas has duplicate values")
 
         # TODO: Test that realtime_address and router_address are valid addresses
 
         if not os.path.exists(self.data_directory):
-            raise ValueError(f'data_directory {self.data_directory} does not exist')
+            raise ValueError(f"data_directory {self.data_directory} does not exist")
         if not os.path.exists(self.log_directory):
-            raise ValueError(f'log_directory {self.log_directory} does not exist')
+            raise ValueError(f"log_directory {self.log_directory} does not exist")
         if not os.path.exists(self.hdw_path):
-            raise ValueError(f'hdw_path directory {self.hdw_path} does not exist')
+            raise ValueError(f"hdw_path directory {self.hdw_path} does not exist")
 
     def __str__(self):
         return_str = f"""    site_id = {self.site_id} \

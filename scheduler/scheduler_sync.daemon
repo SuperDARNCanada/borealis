@@ -3,7 +3,7 @@
 # Author: Theodore Kolkman
 #
 # This script continuously monitors the Borealis schedule files on a campus server using inotify
-# and rsync's the files to each site whenever a change is detected. 
+# and rsync's the files to each site whenever a change is detected.
 #
 # Rsync sync's to all remote sites, utilizing the autossh link between the computer and all site
 # computers.
@@ -130,7 +130,7 @@ do
                 md5sum --check --status "$TMP_FILE"
                 retval=$?
                 rm "$TMP_FILE"
-                
+
                 if [[ $retval -ne 0 ]]; then
                     printf "%s - Error in syncing schedule, trying again\n" "$(date --utc "+%Y%m%d %H:%M:%S UTC")"
                     attempts=$((attempts + 1))

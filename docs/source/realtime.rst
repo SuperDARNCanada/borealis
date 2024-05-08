@@ -26,7 +26,7 @@ should see ``UP`` in the ``eth1`` line like so:
        valid_lft 59988sec preferred_lft 59988sec
     inet6 xxxx:xxxx:xxxx:xxxx:xxxx:xxxx/64 scope link noprefixroute
        valid_lft forever preferred_lft forever
-       
+
 To disable this module, run the radar with the argument ``--realtime-off``. For example::
 
     /home/radar/borealis/scripts/steamed_hams.py twofsound release --realtime-off
