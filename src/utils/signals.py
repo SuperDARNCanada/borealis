@@ -32,7 +32,7 @@ class DSP:
     filter stages are lowpass.
 
     Beamforming can also be conducted on the filtered and downsampled data, requiring a list of complex antenna
-    amplitudes for the beamforming operation. Multiple beams can be formed simultaneously.
+    phases for the beamforming operation. Multiple beams can be formed simultaneously.
 
     This class also supports extraction of lag profiles from multi-pulse sequences.
     """

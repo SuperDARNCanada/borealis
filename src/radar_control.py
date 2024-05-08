@@ -585,7 +585,7 @@ def main():
                     next_scan_start = round_up_time(end_of_scan) + timedelta(seconds=next_scanbound[0])
 
             while scan_iter < scan.num_aveperiods_in_scan and not new_experiment_waiting:
-                # If there are multiple aveperiods in a scan they are alternated (INTTIME interfaced)
+                # If there are multiple aveperiods in a scan they are alternated (AVEPERIOD interfaced)
                 aveperiod = scan.aveperiods[scan.aveperiod_iter]
                 if TIME_PROFILE:
                     time_start_of_aveperiod = datetime.utcnow()

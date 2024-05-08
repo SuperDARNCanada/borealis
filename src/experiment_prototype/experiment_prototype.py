@@ -46,7 +46,8 @@ of experiment building-block to the lowest level:
     second. The scan mode of interfacing typically means that the slice will cycle through all of its
     beams before switching to another slice.
     
-    There are no requirements for slices interfaced in this manner.
+    If any slice in the experiment specifies a value for ``scanbound``, all other slices must also specify
+    a value for ``scanbound``. The values do not have to be the same, however.
 
 2. **AVEPERIOD**
 
@@ -57,7 +58,7 @@ of experiment building-block to the lowest level:
     
     Slices which are interfaced in this manner must share:
 
-    * the same SCANBOUND value.
+    * the same ``scanbound`` value.
 
 3. **SEQUENCE**
 
@@ -69,11 +70,11 @@ of experiment building-block to the lowest level:
     
     Slices which are interfaced in this manner must share:
 
-    * the same SCANBOUND value.
-    * the same INTT or INTN value.
-    * the same BEAM_ORDER length (scan length).
-    * the same TXCTRFREQ value.
-    * the same RXCTRFREQ value.
+    * the same ``scanbound`` value.
+    * the same ``intt`` or ``intn`` value.
+    * the same ``rx_beam_order`` length (scan length).
+    * the same ``txctrfreq`` value.
+    * the same ``rxctrfreq`` value.
 
 4. **CONCURRENT**
 
@@ -85,12 +86,12 @@ of experiment building-block to the lowest level:
     
     Slices which are interfaced in this manner must share:
 
-    * the same SCANBOUND value.
-    * the same INTT or INTN value.
-    * the same BEAM_ORDER length (scan length).
-    * the same TXCTRFREQ value.
-    * the same RXCTRFREQ value.
-    * the same DECIMATION_SCHEME.
+    * the same ``scanbound`` value.
+    * the same ``intt`` or ``intn`` value.
+    * the same ``rx_beam_order`` length (scan length).
+    * the same ``txctrfreq`` value.
+    * the same ``rxctrfreq`` value.
+    * the same ``decimation_scheme``.
 
 """
 
