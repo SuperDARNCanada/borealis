@@ -214,7 +214,7 @@ def send_dsp_metadata(
         chan_add.tau_spacing = slice_dict[slice_id].tau_spacing
 
         # Send the translational frequencies to dsp in order to bandpass filter correctly.
-        if slice_dict[slice_id].clrfrqflag:
+        if slice_dict[slice_id].cfs_flag:
             pass  # TODO - get freq from clear frequency search.
         else:
             chan_add.rx_freq = slice_dict[slice_id].freq * 1.0e3

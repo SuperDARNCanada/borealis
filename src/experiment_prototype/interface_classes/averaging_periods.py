@@ -4,7 +4,7 @@
     averaging_periods
     ~~~~~~~~~~~~~~~~~
     This is the module containing the AveragingPeriod class. The AveragingPeriod class contains the
-    InterfaceClassBase members, as well as clrfrqflag (to be implemented), intn (number of integrations
+    InterfaceClassBase members, as well as cfs_flag (to be implemented), intn (number of integrations
     to run), or intt(max time for integrations), and it contains sequences of class Sequence.
 
     :copyright: 2018 SuperDARN Canada
@@ -53,10 +53,10 @@ class AveragingPeriod(InterfaceClassBase):
     slice_to_beamdir
         passed in by the scan that this AveragingPeriod instance is contained in. A dictionary of
         slice: beamdir(s) for all slices contained in this aveperiod.
-    clrfrqflag
+    cfs_flag
         Boolean, True if clrfrqsearch should be performed.
-    clrfrqrange
-        The range of frequency to search if clrfrqflag is True.  Otherwise empty.
+    cfs_range
+        The range of frequency to search if cfs_flag is True.  Otherwise empty.
     intt
         The priority limitation. The time limit (ms) at which time the aveperiod will end. If None,
         we will use intn to end the aveperiod (a number of sequences).
@@ -92,17 +92,17 @@ class AveragingPeriod(InterfaceClassBase):
         self.slice_to_beamdir = slice_to_beamdir_dict
 
         # Metadata for an AveragingPeriod: clear frequency search, integration time, number of averages goal
-        self.clrfrqflag = False
+        self.cfs_flag = False
         # there may be multiple slices in this averaging period at different frequencies so
         # we may have to search multiple ranges.
-        self.clrfrqrange = []
+        self.cfs_range = []
         for slice_id in self.slice_ids:
-            if self.slice_dict[slice_id].clrfrqflag:
-                self.clrfrqflag = True
-                self.clrfrqrange.append(self.slice_dict[slice_id].clrfrqrange)
+            if self.slice_dict[slice_id].cfs_flag:
+                self.cfs_flag = True
+                self.cfs_range.append(self.slice_dict[slice_id].cfs_range)
 
         # TODO: SET UP CLEAR FREQUENCY SEARCH CAPABILITY
-        # also note for when setting this up clrfrqranges may overlap
+        # also note for when setting this up cfs_ranges may overlap
 
         self.intt = self.slice_dict[self.slice_ids[0]].intt
         self.intn = self.slice_dict[self.slice_ids[0]].intn

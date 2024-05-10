@@ -55,7 +55,7 @@ slice_key_set = frozenset(
         "align_sequences",
         "averaging_method",
         "beam_angle",
-        "clrfrqrange",
+        "cfs_range",
         "comment",
         "cpid",
         "first_range",
@@ -86,7 +86,7 @@ slice_key_set = frozenset(
         "xcf",
     ]
 )
-hidden_key_set = frozenset(["clrfrqflag", "slice_interfacing"])
+hidden_key_set = frozenset(["cfs_flag", "slice_interfacing"])
 """
 These are used by the build_scans method (called from the experiment_handler every time the
 experiment is run). If set by the user, the values will be overwritten and therefore ignored.
@@ -139,13 +139,13 @@ class ExperimentSlice:
         them as beam -19.64 degrees, we refer as beam 1, beam 2. Beam 0 will be the 0th element in the
         list, beam 1 will be the 1st, etc. These beam numbers are needed to write the [rx|tx]_beam_order
         list. This is like a mapping of beam number (list index) to beam direction off boresight.
-    clrfrqrange *required or freq required*
+    cfs_range *required or freq required*
         range for clear frequency search, should be a list of length = 2, [min_freq, max_freq] in kHz.
         **Not currently supported.**
     first_range *required*
         first range gate, in km
-    freq *required or clrfrqrange required*
-        transmit/receive frequency, in kHz. Note if you specify clrfrqrange it won't be used.
+    freq *required or cfs_range required*
+        transmit/receive frequency, in kHz. Note if you specify cfs_range it won't be used.
     intt *required or intn required*
         duration of an averaging period (integration), in ms. (maximum)
     intn *required or intt required*
@@ -274,7 +274,7 @@ class ExperimentSlice:
 
     **Read-only Slice Keys**
 
-    clrfrqflag *read-only*
+    cfs_flag *read-only*
         A boolean flag to indicate that a clear frequency search will be done. **Not currently
         supported.**
     cpid *read-only*
@@ -350,8 +350,8 @@ class ExperimentSlice:
     intt: Optional[confloat(ge=0)] = None
     scanbound: Optional[list[confloat(ge=0)]] = Field(default_factory=list)
     pulse_phase_offset: Optional[Callable] = default_callable
-    clrfrqrange: Optional[conlist(freq_int_khz, min_items=2, max_items=2)] = None
-    clrfrqflag: StrictBool = Field(init=False)
+    cfs_range: Optional[conlist(freq_int_khz, min_items=2, max_items=2)] = None
+    cfs_flag: StrictBool = Field(init=False)
     decimation_scheme: DecimationScheme = Field(default_factory=create_default_scheme)
 
     acf: Optional[StrictBool] = False
@@ -403,19 +403,20 @@ class ExperimentSlice:
         return values
 
     @root_validator(pre=True)
-    def check_freq_clrfrqrange(cls, values):
-        if "clrfrqrange" in values and values["clrfrqrange"]:
-            values["clrfrqflag"] = True
+    def check_freq_cfs_range(cls, values):
+        if "cfs_range" in values and values["cfs_range"]:
+            values["cfs_flag"] = True
             if "freq" in values and values["freq"]:
                 log.info(
-                    f"Slice parameter 'freq' removed as 'clrfrqrange' takes precedence. If this is not desired,"
-                    f"remove 'clrfrqrange' parameter from experiment. Slice: {values['slice_id']}"
+                    f"Slice parameter 'freq' removed as 'cfs_range' takes precedence. If this is not desired,"
+                    f"remove 'cfs_range' parameter from experiment. Slice: {values['slice_id']}"
                 )
+                values["freq"] = None
         elif "freq" in values and values["freq"]:
-            values["clrfrqflag"] = False
+            values["cfs_flag"] = False
         else:
             raise ValueError(
-                f"A freq or clrfrqrange must be specified in a slice. Slice: {values['slice_id']}"
+                f"A freq or cfs_range must be specified in a slice. Slice: {values['slice_id']}"
             )
         return values
 
@@ -722,24 +723,24 @@ class ExperimentSlice:
                     )
         return ppo
 
-    @validator("clrfrqrange")
-    def check_clrfrqrange(cls, clrfrqrange, values):
-        if not clrfrqrange:
-            return clrfrqrange
+    @validator("cfs_range")
+    def check_cfs_range(cls, cfs_range, values):
+        if not cfs_range:
+            return cfs_range
 
-        if clrfrqrange[0] >= clrfrqrange[1]:
+        if cfs_range[0] >= cfs_range[1]:
             raise ValueError(
-                f"Slice {values['slice_id']} clrfrqrange must be between min and max tx frequencies "
+                f"Slice {values['slice_id']} cfs_range must be between min and max tx frequencies "
                 f"and rx frequencies according to license and/or center "
                 f"frequencies / sampling rates / transition bands, and must have lower frequency first."
             )
 
         for freq_range in options.restricted_ranges:
-            if freq_range[0] <= clrfrqrange[0] <= freq_range[1]:
-                if freq_range[0] <= clrfrqrange[1] <= freq_range[1]:
+            if freq_range[0] <= cfs_range[0] <= freq_range[1]:
+                if freq_range[0] <= cfs_range[1] <= freq_range[1]:
                     # the range is entirely within the restricted range.
                     raise ValueError(
-                        f"clrfrqrange is entirely within restricted range {freq_range}. Slice: "
+                        f"cfs_range is entirely within restricted range {freq_range}. Slice: "
                         f"{values['slice_id']}"
                     )
 

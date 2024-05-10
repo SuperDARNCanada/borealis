@@ -100,7 +100,7 @@ class RxChannel:
     slice_id: int = None
     tau_spacing: int = None
     rx_freq: float = None
-    clrfrqflag: bool = None
+    cfs_flag: bool = None
     num_ranges: int = None
     first_range: int = None
     range_sep: float = None
