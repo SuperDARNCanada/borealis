@@ -426,7 +426,7 @@ def install_borealis_env(
     if dev:
         execute_cmd(
             "bash -c 'cd $BOREALISPATH';"
-            "pre-commit install"
+            f"sudo -u {user} borealis_env3.11/bin/pre-commit install"
         )
 
 
@@ -513,8 +513,8 @@ def main():
         print("ERROR: You must run this script as root.")
         sys.exit(1)
 
-    if not os.path.isdir(args.user):
-        print("ERROR: Must user does not exist: {args.user}")
+    if not os.path.isdir(f"/home/{args.user}"):
+        print(f"ERROR: User does not exist: {args.user}")
         sys.exit(1)
 
     if not os.path.isdir(args.install_dir):
