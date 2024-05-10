@@ -114,6 +114,20 @@ class Sequence(InterfaceClassBase):
                 )
                 raise ExperimentException(errmsg)
 
+        slice_freqs = []
+        for slice_id in self.slice_ids:
+            check_freq = float(self.slice_dict[slice_id].freq)
+            for freq in slice_freqs:
+                if isinstance(freq, float):
+                    if freq - 1 <= check_freq <= freq + 1:
+                        errmsg = (
+                            f"Slice {slice_id} frequency {check_freq} is within 1kHz "
+                            f"of another CONCURRENT slice frequency. Adjust the slice "
+                            f"frequencies to have at least 1kHz separation."
+                        )
+                        raise ExperimentException(errmsg)
+            slice_freqs.append(check_freq)
+
         dm_rate = 1
         for stage in self.decimation_scheme.stages:
             dm_rate *= stage.dm_rate
