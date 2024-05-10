@@ -377,7 +377,7 @@ def install_borealis_env(
     if dev:
         execute_cmd(
             "bash -c 'cd $BOREALISPATH';"
-            f"sudo -u {user} borealis_env3.11/bin/pre-commit install"
+            f"sudo -u {user} borealis_env{python_version}/bin/pre-commit install"
         )
 
 
