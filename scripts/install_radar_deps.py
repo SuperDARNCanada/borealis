@@ -5,12 +5,11 @@
     ~~~~~~~~~~~~~~~~~~
     Installation script for Borealis utilities.
     NOTE: This script has been tested on:
-        OpenSuSe Leap 15.3
+        OpenSUSE Leap 15.5
         Ubuntu 19.10
         Ubuntu 20.04
 
     :copyright: 2020-2024 SuperDARN Canada
-    :author: Keith Kotyk
 """
 import subprocess as sp
 import sys
@@ -449,7 +448,9 @@ def main():
         default="3.9",
     )
     parser.add_argument(
-        "--no-cuda", help="Do not install CUDA and cupy libraries.", action="store_true"
+        "--no-cuda",
+        help="CUDA is not installed - do not install cupy libraries.",
+        action="store_true",
     )
     parser.add_argument(
         "--dev", action="store_true", help="Install the extra development dependencies."

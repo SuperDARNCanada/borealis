@@ -5,8 +5,8 @@ Software
 ========
 
 SuperDARN Canada uses OpenSUSE for an operating system, but any Linux system that can support the
-NVIDIA drivers for the graphics card will work. The latest version of OpenSuSe installation has
-been tested on is OpenSuSe Leap 15.3.
+NVIDIA drivers for the graphics card will work. The latest version of OpenSUSE that this
+installation has been tested on is OpenSUSE Leap 15.5.
 
 **NOTE:** Commands that require root privileges will have a ``sudo`` or ``su`` command ahead of
 them, or explicitly say 'as root', all others should be executed as the normal user (recommended
@@ -215,7 +215,7 @@ see the note when running ``install_radar_deps.py``.
     - ``scons [release|debug]``
 
 #. Add the Python scheduling script, ``start_radar.sh``, to the system boot scripts to allow the
-   radar to follow the schedule. As an example on openSUSE for the ``radar`` user:
+   radar to follow the schedule. As an example on OpenSUSE for the ``radar`` user:
 
     - Open the crontab for editing with ``crontab -e`` as radar
     - Add the line ``@reboot /home/radar/borealis/start_radar.sh >> /home/radar/start_radar.log
