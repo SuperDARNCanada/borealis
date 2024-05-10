@@ -423,6 +423,12 @@ def install_borealis_env(
         f"sudo -u {user} borealis_env{python_version}/bin/python3 -m pip install .{deps_string}"
     )
 
+    if dev:
+        execute_cmd(
+            "bash -c 'cd $BOREALISPATH';"
+            "pre-commit install"
+        )
+
 
 def install_directories(user: str, group: str):
     """
@@ -505,6 +511,10 @@ def main():
 
     if os.geteuid() != 0:
         print("ERROR: You must run this script as root.")
+        sys.exit(1)
+
+    if not os.path.isdir(args.user):
+        print("ERROR: Must user does not exist: {args.user}")
         sys.exit(1)
 
     if not os.path.isdir(args.install_dir):

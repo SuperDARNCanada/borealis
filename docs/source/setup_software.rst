@@ -5,8 +5,8 @@ Software
 ========
 
 SuperDARN Canada uses OpenSUSE for an operating system, but any Linux system that can support the
-NVIDIA drivers for the graphics card will work. The current latest version of OpenSuSe (15.3) is
-known to work.
+NVIDIA drivers for the graphics card will work. The latest version of OpenSuSe installation has
+been tested on is OpenSuSe Leap 15.3.
 
 **NOTE:** Commands that require root privileges will have a ``sudo`` or ``su`` command ahead of
 them, or explicitly say 'as root', all others should be executed as the normal user (recommended
@@ -132,7 +132,7 @@ see the note when running ``install_radar_deps.py``.
    not want CUDA installed, pass the ``--no-cuda`` flag as an option. ::
 
     cd $BOREALISPATH
-    sudo -E python3 install_radar_deps.py [radar abbreviation] $BOREALISPATH --python-version=3.9 2>&1 | tee install_log.txt
+    sudo -E python3 scripts/install_radar_deps.py [radar abbreviation] $BOREALISPATH --python-version=3.9 2>&1 | tee install_log.txt
 
 #. If you're building Borealis for a non University of Saskatchewan radar, use a USASK
    ```config.ini``` file (located in ``borealis/config/``) as a template, or follow the config file
