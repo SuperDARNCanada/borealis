@@ -734,46 +734,14 @@ class ExperimentSlice:
                 f"frequencies / sampling rates / transition bands, and must have lower frequency first."
             )
 
-        still_checking = True
-        while still_checking:
-            for freq_range in options.restricted_ranges:
-                if freq_range[0] <= clrfrqrange[0] <= freq_range[1]:
-                    if freq_range[0] <= clrfrqrange[1] <= freq_range[1]:
-                        # the range is entirely within the restricted range.
-                        raise ValueError(
-                            f"clrfrqrange is entirely within restricted range {freq_range}. Slice: "
-                            f"{values['slice_id']}"
-                        )
-                    else:
-                        log.warning(
-                            f"Slice: {values['slice_id']} clrfrqrange will be modified because it is partially "
-                            f"in a restricted range."
-                        )
-                        clrfrqrange[0] = freq_range[1] + 1
-                        # outside of restricted range now.
-                        break  # we have changed the 'clrfrqrange' - must restart the
-                        # check in case it's in another range.
-                else:
-                    # lower end is not in restricted frequency range.
-                    if freq_range[0] <= clrfrqrange[1] <= freq_range[1]:
-                        log.warning(
-                            f"Slice: {values['slice_id']} clrfrqrange will be modified because it is partially "
-                            f"in a restricted range."
-                        )
-                        clrfrqrange[1] = freq_range[0] - 1
-                        # outside of restricted range now.
-                        break  # we have changed the 'clrfrqrange' - must restart the for loop
-                        # checking in case it's in another range.
-                    else:  # neither end of clrfrqrange is inside the restricted range but
-                        # we should check if the range is inside the clrfrqrange.
-                        if clrfrqrange[0] <= freq_range[0] <= clrfrqrange[1]:
-                            log.warning(
-                                f"There is a restricted range within the clrfrqrange - STOP. Slice: "
-                                f"{values['slice_id']}"
-                            )
-                            # TODO: Error. Still need to implement clear frequency searching.
-            else:  # no break, so no changes to the clrfrqrange
-                still_checking = False
+        for freq_range in options.restricted_ranges:
+            if freq_range[0] <= clrfrqrange[0] <= freq_range[1]:
+                if freq_range[0] <= clrfrqrange[1] <= freq_range[1]:
+                    # the range is entirely within the restricted range.
+                    raise ValueError(
+                        f"clrfrqrange is entirely within restricted range {freq_range}. Slice: "
+                        f"{values['slice_id']}"
+                    )
 
         return values
 
