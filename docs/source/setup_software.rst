@@ -23,6 +23,11 @@ see the note when running ``install_radar_deps.py``.
    capability version of the GPU. Getting the OS to run stable with NVIDIA is the most important
    step, **so make sure you read this page carefully**.
 
+#. Install the latest NVIDIA CUDA drivers (see
+   https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html). The radar software uses
+   CUDA for accelerated data processing and is required for the best performance. Make sure the
+   version of CUDA installed is appropriate for your GPU and works with your installed NVIDIA drivers.
+
 #.  **NOTE: Overclocking is no longer suggested, as reliability is more important than
     performance now**. Use the BIOS to find a stable over-clock for the CPU. Usually the recommended
     turbo frequency is a good place to start. This step is optional, but will help system performance
@@ -123,13 +128,12 @@ see the note when running ``install_radar_deps.py``.
 
 #. The Borealis software has a script called ``install_radar_deps.py`` to help install dependencies.
    This script has to be run with root privileges. This script can be modified to add the package
-   manager of a different distribution if it doesn't exist yet. Make sure that the version of CUDA
-   is up to date and supports your card. This script makes an attempt to correctly install Boost and
-   create symbolic links to the Boost libraries the UHD (USRP Hardware Driver) understands. If UHD
-   does not configure correctly, an improper Boost installation or library naming convention is the
-   likely reason. Note that you need python3 installed before you can run this script. The radar
-   abbreviation should be the 3 letter radar code such as 'sas', 'rkn' or 'inv'. **NOTE:** If you do
-   not want CUDA installed, pass the ``--no-cuda`` flag as an option. ::
+   manager of a different distribution if it doesn't exist yet. This script makes an attempt to
+   correctly install Boost and create symbolic links to the Boost libraries the UHD (USRP Hardware
+   Driver) understands. If UHD does not configure correctly, an improper Boost installation or library
+   naming convention is the likely reason. Note that you need python3 installed before you can run this
+   script. The radar abbreviation should be the 3 letter radar code such as 'sas', 'rkn' or 'inv'.
+   **NOTE:** If you do not have CUDA installed, pass the ``--no-cuda`` flag as an option. ::
 
     cd $BOREALISPATH
     sudo -E python3 scripts/install_radar_deps.py [radar abbreviation] $BOREALISPATH --python-version=3.9 2>&1 | tee install_log.txt

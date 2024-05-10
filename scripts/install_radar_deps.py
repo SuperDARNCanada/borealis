@@ -331,55 +331,6 @@ def install_uhd(distro: str):
     execute_cmd(uhd_cmd)
 
 
-def install_cuda(distro: str):
-    """
-    Install CUDA.
-
-    :param  distro: Distribution to install on
-    :type   distro: str
-    """
-    print("### Installing CUDA ###")
-
-    if "openSUSE" in distro:
-        pre_cuda_setup_cmd = (
-            "groupadd video;"
-            "usermod -a -G video $USER;"
-            "rpm --erase gpg-pubkey-7fa2af80*"
-        )
-        execute_cmd(pre_cuda_setup_cmd)
-        cuda_zypper_cmd = (
-            "zypper removerepo cuda-opensuse15-x86_64;"
-            "zypper addrepo "
-            "https://developer.download.nvidia.com/compute/cuda/repos/opensuse15/x86_64/cuda-opensuse15.repo;"
-            "echo a | zypper refresh;"
-        )
-        execute_cmd(cuda_zypper_cmd)
-        cuda_cmd = "zypper install -y cuda"
-    elif "Ubuntu" in distro:
-        pre_cuda_setup_cmd = (
-            "apt-get install -y gcc-7 g++-7;"
-            "update-alternatives --remove-all gcc;"
-            "update-alternatives --remove-all g++;"
-            "update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 50;"
-            "update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-7 50;"
-            "update-alternatives --config gcc;"
-            "update-alternatives --config g++;"
-        )
-        execute_cmd(pre_cuda_setup_cmd)
-        cuda_file = "../cuda_11.4.3_470.82.01_linux.run"
-        cuda_cmd = (
-            "cd ${{IDIR}};"
-            f"wget -N http://developer.download.nvidia.com/compute/cuda/10.2/Prod/local_installers/{cuda_file};"
-            f"sh {cuda_file} --silent --toolkit --samples;"
-        )
-    else:
-        cuda_cmd = (
-            f'echo "Failed; No CUDA install script for Linux Distribution: {distro}"'
-        )
-
-    execute_cmd(cuda_cmd)
-
-
 def install_borealis_env(
     python_version: str, user: str, group: str, no_cupy: bool = False, dev: bool = True
 ):
@@ -570,8 +521,6 @@ def main():
     install_zmq()
     install_ntp()
     install_uhd(distro)
-    if not args.no_cuda:
-        install_cuda(distro)
     install_hdw_dat()
     install_borealis_env(
         args.python_version, args.user, args.group, args.no_cuda, args.dev
