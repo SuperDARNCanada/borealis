@@ -324,6 +324,117 @@ def search_for_experiment(radar_control_to_exp_handler, exphan_to_radctrl_iden, 
     return new_experiment_received, experiment
 
 
+def send_pulses(
+    radar_control_to_driver,
+    experiment=None,
+    sequence=None,
+    pulse_transmit_data_tracker=None,
+    options=None,
+    sequence_index=None,
+    num_sequences=None,
+    seqnum_start=None,
+    start_time=None,
+    **kwargs,
+):
+    for pulse_transmit_data in pulse_transmit_data_tracker[sequence_index][
+        num_sequences
+    ]:
+        data_to_driver(
+            radar_control_to_driver,
+            options.driver_to_radctrl_identity,
+            pulse_transmit_data["samples_array"],
+            sequence.txctrfreq,
+            sequence.rxctrfreq,
+            experiment.txrate,
+            experiment.rxrate,
+            sequence.numberofreceivesamples,
+            sequence.seqtime,
+            pulse_transmit_data["startofburst"],
+            pulse_transmit_data["endofburst"],
+            pulse_transmit_data["timing"],
+            seqnum_start + num_sequences,
+            sequence.align_sequences,
+            repeat=pulse_transmit_data["isarepeat"],
+        )
+
+    if TIME_PROFILE:
+        pulses_to_driver_time = datetime.utcnow() - start_time
+        log.verbose(
+            "pulses to driver time",
+            pulses_to_driver_time=pulses_to_driver_time,
+            pulses_to_driver_time_units="s",
+        )
+
+
+def send_dsp_meta(
+    radar_control_to_brian,
+    radar_control_to_dsp,
+    experiment=None,
+    sequence=None,
+    aveperiod=None,
+    num_sequences=None,
+    options=None,
+    seqnum_start=None,
+    start_time=None,
+    **kwargs,
+):
+    rx_beam_phases = sequence.get_rx_phases(aveperiod.beam_iter)
+    send_dsp_metadata(
+        radar_control_to_dsp,
+        options.dsp_to_radctrl_identity,
+        radar_control_to_brian,
+        options.brian_to_radctrl_identity,
+        experiment.rxrate,
+        experiment.output_rx_rate,
+        seqnum_start + num_sequences,
+        sequence.slice_ids,
+        experiment.slice_dict,
+        rx_beam_phases,
+        sequence.seqtime,
+        sequence.first_rx_sample_start,
+        sequence.rxctrfreq,
+        sequence.output_encodings,
+        sequence.decimation_scheme,
+    )
+
+    if TIME_PROFILE:
+        sequence_metadata_time = datetime.utcnow() - start_time
+        log.verbose(
+            "metadata to dsp time",
+            sequence_metadata_time=sequence_metadata_time,
+            sequence_metadata_time_units="s",
+        )
+
+
+def make_next_samples(
+    sequence=None,
+    pulse_transmit_data_tracker=None,
+    sequence_index=None,
+    num_sequences=None,
+    aveperiod=None,
+    debug_samples=None,
+    start_time=None,
+    **kwargs,
+):
+    sqn, dbg = sequence.make_sequence(
+        aveperiod.beam_iter,
+        num_sequences + len(aveperiod.sequences),
+    )
+    if dbg:
+        debug_samples.append(dbg)
+    pulse_transmit_data_tracker[sequence_index][
+        num_sequences + len(aveperiod.sequences)
+    ] = sqn
+
+    if TIME_PROFILE:
+        new_sequence_time = datetime.utcnow() - start_time
+        log.verbose(
+            "make new sequence time",
+            new_sequence_time=new_sequence_time,
+            new_sequence_time_units="s",
+        )
+
+
 def send_datawrite_metadata(
     radctrl_to_datawrite,
     datawrite_radctrl_iden,
@@ -475,6 +586,38 @@ def send_datawrite_metadata(
         radctrl_to_datawrite,
         datawrite_radctrl_iden,
         pickle.dumps(message, protocol=pickle.HIGHEST_PROTOCOL),
+    )
+
+
+def send_dw(
+    radar_control_to_dw,
+    experiment=None,
+    aveperiod=None,
+    options=None,
+    debug_samples=None,
+    scan_flag=None,
+    last_sequence_num=None,
+    num_sequences=None,
+    averaging_period_time=None,
+    decimation_scheme=None,
+):
+    send_datawrite_metadata(
+        radar_control_to_dw,
+        options.dw_to_radctrl_identity,
+        last_sequence_num,
+        num_sequences,
+        scan_flag,
+        averaging_period_time,
+        aveperiod.sequences,
+        aveperiod.beam_iter,
+        experiment.cpid,
+        experiment.experiment_name,
+        experiment.scheduling_mode,
+        experiment.output_rx_rate,
+        experiment.comment_string,
+        decimation_scheme.filter_scaling_factors,
+        experiment.slice_dict[0].rxctrfreq,
+        debug_samples=debug_samples,
     )
 
 
@@ -834,15 +977,29 @@ def main():
 
                 # Time to start averaging in the below loop
                 num_sequences = 0
+                averaging_period_time = 0
                 time_remains = True
                 pulse_transmit_data_tracker = {}
                 debug_samples = []
+                ave_period_run = {
+                    "experiment": experiment,
+                    "aveperiod": aveperiod,
+                    "options": options,
+                    "seqnum_start": seqnum_start,
+                }
 
                 while time_remains:
+                    ave_period_run["num_sequences"] = num_sequences
                     for sequence_index, sequence in enumerate(aveperiod.sequences):
-
                         # Alternating sequences if there are multiple in the averaging_period
                         start_time = datetime.utcnow()
+                        ave_period_run.update(
+                            {
+                                "sequence": sequence,
+                                "sequence_index": sequence_index,
+                                "start_time": start_time,
+                            }
+                        )
                         if intt_break:
                             if start_time >= averaging_period_done_time:
                                 time_remains = False
@@ -870,90 +1027,31 @@ def main():
                                 num_sequences
                             ] = sqn
 
-                        decimation_scheme = sequence.decimation_scheme
-
-                        def send_pulses():
-                            for pulse_transmit_data in pulse_transmit_data_tracker[
-                                sequence_index
-                            ][num_sequences]:
-                                data_to_driver(
-                                    radar_control_to_driver,
-                                    options.driver_to_radctrl_identity,
-                                    pulse_transmit_data["samples_array"],
-                                    sequence.txctrfreq,
-                                    sequence.rxctrfreq,
-                                    experiment.txrate,
-                                    experiment.rxrate,
-                                    sequence.numberofreceivesamples,
-                                    sequence.seqtime,
-                                    pulse_transmit_data["startofburst"],
-                                    pulse_transmit_data["endofburst"],
-                                    pulse_transmit_data["timing"],
-                                    seqnum_start + num_sequences,
-                                    sequence.align_sequences,
-                                    repeat=pulse_transmit_data["isarepeat"],
-                                )
-
-                            if TIME_PROFILE:
-                                pulses_to_driver_time = datetime.utcnow() - start_time
-                                log.verbose(
-                                    "pulses to driver time",
-                                    pulses_to_driver_time=pulses_to_driver_time,
-                                    pulses_to_driver_time_units="s",
-                                )
-
-                        def send_dsp_meta():
-                            rx_beam_phases = sequence.get_rx_phases(aveperiod.beam_iter)
-                            send_dsp_metadata(
-                                radar_control_to_dsp,
-                                options.dsp_to_radctrl_identity,
-                                radar_control_to_brian,
-                                options.brian_to_radctrl_identity,
-                                experiment.rxrate,
-                                experiment.output_rx_rate,
-                                seqnum_start + num_sequences,
-                                sequence.slice_ids,
-                                experiment.slice_dict,
-                                rx_beam_phases,
-                                sequence.seqtime,
-                                sequence.first_rx_sample_start,
-                                sequence.rxctrfreq,
-                                sequence.output_encodings,
-                                sequence.decimation_scheme,
-                            )
-
-                            if TIME_PROFILE:
-                                sequence_metadata_time = datetime.utcnow() - start_time
-                                log.verbose(
-                                    "metadata to dsp time",
-                                    sequence_metadata_time=sequence_metadata_time,
-                                    sequence_metadata_time_units="s",
-                                )
-
-                        def make_next_samples():
-                            sqn, dbg = sequence.make_sequence(
-                                aveperiod.beam_iter,
-                                num_sequences + len(aveperiod.sequences),
-                            )
-                            if dbg:
-                                debug_samples.append(dbg)
-                            pulse_transmit_data_tracker[sequence_index][
-                                num_sequences + len(aveperiod.sequences)
-                            ] = sqn
-
-                            if TIME_PROFILE:
-                                new_sequence_time = datetime.utcnow() - start_time
-                                log.verbose(
-                                    "make new sequence time",
-                                    new_sequence_time=new_sequence_time,
-                                    new_sequence_time_units="s",
-                                )
+                        ave_period_run.update(
+                            {
+                                "debug_samples": debug_samples,
+                                "pulse_transmit_data_tracker": pulse_transmit_data_tracker,
+                                "decimation_scheme": sequence.decimation_scheme,
+                            }
+                        )
 
                         # These three things can happen simultaneously. We can spawn them as threads.
                         threads = [
-                            threading.Thread(target=send_pulses),
-                            threading.Thread(target=send_dsp_meta),
-                            threading.Thread(target=make_next_samples),
+                            threading.Thread(
+                                target=send_pulses(
+                                    radar_control_to_driver, **ave_period_run
+                                )
+                            ),
+                            threading.Thread(
+                                target=send_dsp_meta(
+                                    radar_control_to_brian,
+                                    radar_control_to_dsp,
+                                    **ave_period_run,
+                                )
+                            ),
+                            threading.Thread(
+                                target=make_next_samples(**ave_period_run)
+                            ),
                         ]
 
                         for thread in threads:
@@ -993,29 +1091,17 @@ def main():
                 else:
                     scan_flag = False
 
-                last_sequence_num = seqnum_start + num_sequences - 1
+                ave_period_run.update(
+                    {
+                        "scan_flag": scan_flag,
+                        "last_sequence_num": seqnum_start + num_sequences - 1,
+                        "averaging_period_time": averaging_period_time,
+                    }
+                )
 
-                def send_dw():
-                    send_datawrite_metadata(
-                        radar_control_to_dw,
-                        options.dw_to_radctrl_identity,
-                        last_sequence_num,
-                        num_sequences,
-                        scan_flag,
-                        averaging_period_time,
-                        aveperiod.sequences,
-                        aveperiod.beam_iter,
-                        experiment.cpid,
-                        experiment.experiment_name,
-                        experiment.scheduling_mode,
-                        experiment.output_rx_rate,
-                        experiment.comment_string,
-                        decimation_scheme.filter_scaling_factors,
-                        experiment.slice_dict[0].rxctrfreq,
-                        debug_samples=debug_samples,
-                    )
-
-                thread = threading.Thread(target=send_dw)
+                thread = threading.Thread(
+                    target=send_dw(radar_control_to_dw, **ave_period_run)
+                )
                 thread.daemon = True
                 thread.start()
                 # end of the averaging period loop - move onto the next averaging period.
