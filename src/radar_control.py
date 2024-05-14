@@ -600,6 +600,7 @@ def send_dw(
     num_sequences=None,
     averaging_period_time=None,
     decimation_scheme=None,
+    **kwargs,
 ):
     send_datawrite_metadata(
         radar_control_to_dw,
