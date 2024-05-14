@@ -352,6 +352,8 @@ class ExperimentSlice:
     pulse_phase_offset: Optional[Callable] = default_callable
     cfs_range: Optional[conlist(freq_int_khz, min_items=2, max_items=2)] = None
     cfs_flag: StrictBool = Field(init=False)
+    cfs_duration: Optional[int] = None
+    cfs_scheme: DecimationScheme = None
     decimation_scheme: DecimationScheme = Field(default_factory=create_default_scheme)
 
     acf: Optional[StrictBool] = False
@@ -479,6 +481,24 @@ class ExperimentSlice:
                     f"Slice {values['slice_id']}: pulse sequence is too long for integration time given"
                 )
         return intt
+
+    @validator("cfs_duration")
+    def check_cfs_duration(cls, cfs_duration, values):
+        if values["cfs_flag"]:
+            if not isinstance(cfs_duration, (int, float, complex)):
+                raise ValueError(
+                    f"Slice {values['slice_id']}: cfs_duration must be a number"
+                )
+            cfs_duration = float(cfs_duration)
+        else:
+            cfs_duration = None
+
+        return cfs_duration
+
+    @validator("cfs_scheme")
+    def check_cfs_scheme(cls, cfs_scheme, values):
+        # TODO build validator for the cfs decimation scheme
+        return cfs_scheme
 
     @validator("tx_antennas")
     def check_tx_antennas(cls, tx_antennas):
