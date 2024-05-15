@@ -30,7 +30,7 @@ def execute_cmd(cmd):
     """
     # try/except block lets install script continue even if something fails
     try:
-        output = sp.check_output(cmd, shell=True)
+        output = sp.check_output(cmd, shell=True, stderr=sp.STDOUT)
     except sp.CalledProcessError as err:
         output = err.output
 
@@ -360,8 +360,8 @@ def install_borealis_env(
 
     optional_deps = []
     if not no_cupy:
-        cuda_check = execute_cmd("which nvcc")
-        if "no nvcc" in cuda_check:
+        cuda_check = execute_cmd("nvcc --version")
+        if "nvcc: command not found" in cuda_check:
             print("WARNING: CUDA not installed; skipping cupy installation")
         else:
             optional_deps.append("gpu")
