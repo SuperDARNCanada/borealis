@@ -1,4 +1,6 @@
 #!/bin/bash
+
+readonly BOREALISPATH=$(dirname $(dirname $(realpath "$0")))  # Up two directories from this file
 source "/home/radar/.profile"
 source "${BOREALISPATH}/borealis_env${PYTHON_VERSION}/bin/activate"
 LOGFILE="/home/radar/logs/start_stop.log"

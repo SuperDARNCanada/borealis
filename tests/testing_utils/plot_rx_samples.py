@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import sys
 import os
+from pathlib import Path
 import math
 
 plt.rcParams["agg.path.chunksize"] = 20000
@@ -179,9 +180,7 @@ if __name__ == "__main__":
     # Path to json file of rx samples to plot
     file_path = sys.argv[1]
 
-    if not os.environ["BOREALISPATH"]:
-        raise ValueError("BOREALISPATH env variable not set")
-    config_path = os.environ["BOREALISPATH"] + "/config.ini"
+    config_path = str(Path(__file__).resolve().parents[2]) + "/config.ini"
 
     with open(config_path, "r") as f:
         config = json.load(f, object_hook=ascii_encode_dict)

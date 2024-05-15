@@ -11,7 +11,7 @@ import copy
 import math
 import mmap
 from multiprocessing import shared_memory
-import os
+from pathlib import Path
 import pickle
 import sys
 import threading
@@ -28,8 +28,7 @@ except ImportError:
 else:
     cupy_available = True
 
-
-sys.path.append(os.environ["BOREALISPATH"])
+sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 if __debug__:
     from build.debug.src.utils.protobuf.rxsamplesmetadata_pb2 import RxSamplesMetadata

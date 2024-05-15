@@ -13,7 +13,7 @@
 #   - SLACK_WEBHOOK defined in ~/.profile to a valid Slack webhook URL
 #   - Any email or SMS-to-email addresses to be notified should be defined in the CONTACTS array
 #     within .profile
-#   - RADAR_ID, BOREALISPATH, and PYTHON_VERSION defined in ~/.profile
+#   - RADAR_ID and PYTHON_VERSION defined in ~/.profile
 #
 # This script should be ran as a systemd daemon. An example .service file is shown below:
 # /usr/lib/systemd/system/restart_borealis.service
@@ -32,7 +32,8 @@
 
 ###################################################################################################
 
-source "${HOME}/.profile"   # Source BOREALISPATH, RADAR_ID, PYTHON_VERSION, and SLACK_WEBHOOK
+readonly BOREALISPATH=$(dirname $(dirname $(realpath "$0")))  # Up two directories from this file
+source "${HOME}/.profile"   # Source RADAR_ID, PYTHON_VERSION, and SLACK_WEBHOOK
 source "${BOREALISPATH}/borealis_env${PYTHON_VERSION}/bin/activate"
 
 readonly THRESHOLD=3     # Number of consecutive Borealis restarts before sending alert

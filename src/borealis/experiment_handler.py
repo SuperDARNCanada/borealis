@@ -44,7 +44,7 @@ def usage_msg():
     usage_message = """ experiment_handler.py [-h] experiment_module scheduling_mode_type
 
     Pass the module containing the experiment to the experiment handler as a required
-    argument. It will search for the module in the BOREALISPATH/experiment_prototype
+    argument. It will search for the module in the src/borealis_experiments/
     package. It will retrieve the class from within the module (your experiment).
 
     It will use the experiment's build_scans method to create the iterable InterfaceClassBase

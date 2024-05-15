@@ -11,22 +11,24 @@
     :copyright: 2018 SuperDARN Canada
     :author: Marci Detwiller
 """
-import os
-import sys
-import time
+
 from datetime import datetime, timedelta
-import zmq
-import pickle
-import threading
-import numpy as np
 from functools import reduce
+from pathlib import Path
+import pickle
+import sys
+import threading
+import time
+
+import numpy as np
+import zmq
 
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 from utils.options import Options
 import utils.message_formats as messages
 from utils import socket_operations
 
-sys.path.append(os.environ["BOREALISPATH"])
+sys.path.append(str(Path(__file__).resolve().parents[1]))
 if __debug__:
     from build.debug.src.utils.protobuf.driverpacket_pb2 import DriverPacket
 else:

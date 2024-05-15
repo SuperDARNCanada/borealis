@@ -20,11 +20,9 @@ from pathlib import Path
 import structlog
 
 # local
-from experiment_prototype.interface_classes.averaging_periods import AveragingPeriod
-from experiment_prototype.interface_classes.interface_class_base import (
-    InterfaceClassBase,
-)
-from experiment_prototype.experiment_exception import ExperimentException
+from .averaging_periods import AveragingPeriod
+from .interface_class_base import InterfaceClassBase
+from ..experiment_exception import ExperimentException
 
 # Obtain the module name that imported this log_config
 caller = Path(inspect.stack()[-1].filename)

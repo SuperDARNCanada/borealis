@@ -11,30 +11,28 @@
 """
 
 import argparse
-import os
-import sys
-import json
 from datetime import datetime as dt
 import glob
+import json
+import os
+from pathlib import Path
 import subprocess
+import sys
 import time
 from textwrap import indent
 
 
-def get_args():
+def get_args(borealis_path: str):
     """
     Supports the command-line arguments listed below.
     """
     # Gather the borealis configuration information
-    if not os.environ["BOREALISPATH"]:
-        raise ValueError("BOREALISPATH env variable not set")
     if not os.environ["RADAR_ID"]:
         raise ValueError("RADAR_ID env variable not set")
-    BOREALISPATH = os.environ["BOREALISPATH"]
     RADAR_ID = os.environ["RADAR_ID"]
 
     # Config file parsing needed for data directory location
-    path = f"{BOREALISPATH}/config/{RADAR_ID}/{RADAR_ID}_config.ini"
+    path = f"{borealis_path}/config/{RADAR_ID}/{RADAR_ID}_config.ini"
     try:
         with open(path, "r") as data:
             raw_config = json.load(data)
@@ -54,14 +52,6 @@ def get_args():
         "to restart the radar? Default 300 seconds (5 minutes)",
     )
     parser.add_argument(
-        "-p",
-        "--borealis-path",
-        required=False,
-        dest="borealis_path",
-        default=BOREALISPATH,
-        help="Path to Borealis directory. Default " "BOREALISPATH environment variable",
-    )
-    parser.add_argument(
         "-d",
         "--data-directory",
         required=False,
@@ -75,10 +65,10 @@ def get_args():
 
 
 def main():
+    borealis_path = str(Path(__file__).resolve().parents[1])
     # Handling arguments
-    args = get_args()
+    args = get_args(borealis_path)
     restart_after_seconds = args.restart_after_seconds
-    borealis_path = args.borealis_path
     data_directory = args.data_directory
 
     # Get today's date and look for the current data file being written

@@ -7,13 +7,13 @@ import matplotlib
 
 matplotlib.use("TkAgg")
 import sys
-import os
 import deepdish
 import argparse
+from pathlib import Path
 
-sys.path.append(os.environ["BOREALISPATH"])
+borealis_path = str(Path(__file__).resolve().parents[3])
+sys.path.append(borealis_path)
 
-borealis_path = os.environ["BOREALISPATH"]
 config_file = borealis_path + "/config.ini"
 
 

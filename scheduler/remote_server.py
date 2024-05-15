@@ -22,13 +22,15 @@ import os
 import datetime
 import argparse
 import copy
+from pathlib import Path
 import subprocess as sp
 import sys
 
 import scd_utils
 
-sys.path.append(f'{os.environ["BOREALISPATH"]}/src')
-from utils.options import Options
+borealis_path = str(Path(__file__).resolve().parents[1])
+sys.path.append(borealis_path)
+from src.borealis.utils.options import Options
 
 
 def format_to_atq(
@@ -53,8 +55,6 @@ def format_to_atq(
     :returns:   Formatted atq str.
     :rtype:     str
     """
-    borealis_path = os.environ["BOREALISPATH"]
-
     start_cmd = f"echo 'screen -d -m -S starter {borealis_path}/scripts/steamed_hams.py {experiment} release {scheduling_mode}"
     if embargo:
         start_cmd += f" --embargo"

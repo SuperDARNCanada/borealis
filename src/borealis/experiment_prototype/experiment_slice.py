@@ -35,8 +35,8 @@ import structlog
 from typing import Optional, Union, Literal, Callable
 
 # local
-from utils.options import Options
-from experiment_prototype.experiment_utils.decimation_scheme import (
+from src.borealis.utils.options import Options
+from src.borealis.experiment_prototype.experiment_utils.decimation_scheme import (
     DecimationScheme,
     create_default_scheme,
 )

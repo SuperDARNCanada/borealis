@@ -11,7 +11,7 @@ script is a goofy reference to a scene in an episode of The Simpsons in which Pr
 claims there is an aurora happening in his house. The script takes two arguments and can be invoked
 as follows::
 
-    $BOREALISPATH/scripts/steamed_hams.py experiment_name code_environment scheduling_mode
+    /path/to/borealis/scripts/steamed_hams.py experiment_name code_environment scheduling_mode
 
 An example invocation to run ``twofsound`` in ``release`` mode during ``common`` time would be::
 
@@ -96,7 +96,7 @@ Then, ``enable`` and ``start`` the daemon using the ``systemctl`` commands.
 
 Alternatively, ``restart_borealis.py`` can be run via ``crontab``, as shown below: ::
 
-    */10 * * * * . $HOME/.profile; /usr/bin/python3 /home/radar/borealis/scripts/restart_borealis.py >> /home/radar/borealis/restart_log.txt 2>&1
+    */10 * * * * . $HOME/.profile; /usr/bin/python3 /path/to/borealis/scripts/restart_borealis.py >> /path/to/borealis/restart_log.txt 2>&1
 
 ------------------
 Stopping the Radar

@@ -8,15 +8,15 @@
     :copyright: 2022 SuperDARN Canada
 """
 
+import argparse
+import datetime
+import os
+from pathlib import Path
 import subprocess as sp
 import sys
-import os
-import datetime
 import time
-import argparse
 
-BOREALISPATH = os.environ["BOREALISPATH"]
-sys.path.append(f"{BOREALISPATH}/scheduler")
+sys.path.append(str(Path(__file__).resolve().parent))
 import scd_utils
 
 

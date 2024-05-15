@@ -16,15 +16,8 @@ import datetime
 import subprocess as sp
 import re
 
-if "BOREALISPATH" not in os.environ:
-    BOREALISPATH = (
-        f"{Path(__file__).resolve().parents[2]}"  # Two directories up from this file
-    )
-    os.environ["BOREALISPATH"] = BOREALISPATH
-else:
-    BOREALISPATH = os.environ["BOREALISPATH"]
-
-sys.path.append(BOREALISPATH)
+borealis_path = str(Path(__file__).resolve().parents[2])
+sys.path.append(borealis_path)
 
 from scheduler import scd_utils
 from scheduler import local_scd_server, remote_server
@@ -39,13 +32,9 @@ class TestSchedulerUtils(unittest.TestCase):
         super().__init__(*args, **kwargs)
         self.site_id = "sas"
         # A file that has a bunch of lines in the scd file that should all pass all tests
-        self.good_scd_file = (
-            f"{os.environ['BOREALISPATH']}/tests/scheduler/good_scd_file.scd"
-        )
+        self.good_scd_file = f"{borealis_path}/tests/scheduler/good_scd_file.scd"
         # A file that has 5 arguments (missing the scheduling mode)
-        self.incorrect_args_scd = (
-            f"{os.environ['BOREALISPATH']}/tests/scheduler/incorrect_args.scd"
-        )
+        self.incorrect_args_scd = f"{borealis_path}/tests/scheduler/incorrect_args.scd"
         self.line_fmt = (
             "{self.dt} {self.dur} {self.prio} {self.exp} {self.mode} {self.kwargs}"
         )
@@ -1136,10 +1125,8 @@ class TestRemoteServer(unittest.TestCase):
         super().__init__(*args, **kwargs)
 
         self.site_id = "lab"
-        self.good_config = f"{os.environ['BOREALISPATH']}/config/sas/sas_config.ini"
-        self.good_scd_file = (
-            f"{os.environ['BOREALISPATH']}/tests/scheduler/good_scd_file.scd"
-        )
+        self.good_config = f"{borealis_path}/config/sas/sas_config.ini"
+        self.good_scd_file = f"{borealis_path}/tests/scheduler/good_scd_file.scd"
         self.maxDiff = None
 
     def setUp(self):
@@ -1160,7 +1147,7 @@ class TestRemoteServer(unittest.TestCase):
         )
         self.assertEqual(
             atq_str,
-            f"echo 'screen -d -m -S starter {os.environ['BOREALISPATH']}/scripts/steamed_hams.py "
+            f"echo 'screen -d -m -S starter {borealis_path}/scripts/steamed_hams.py "
             "some weird experiment with options release some mode' | "
             "at -t 202209081234",
         )
@@ -1169,7 +1156,7 @@ class TestRemoteServer(unittest.TestCase):
         )
         self.assertEqual(
             atq_str,
-            f"echo 'screen -d -m -S starter {os.environ['BOREALISPATH']}/scripts/steamed_hams.py "
+            f"echo 'screen -d -m -S starter {borealis_path}/scripts/steamed_hams.py "
             "exp release md' | "
             "at now + 1 minute",
         )
@@ -1179,7 +1166,7 @@ class TestRemoteServer(unittest.TestCase):
         )
         self.assertEqual(
             atq_str,
-            f"echo 'screen -d -m -S starter {os.environ['BOREALISPATH']}/scripts/steamed_hams.py "
+            f"echo 'screen -d -m -S starter {borealis_path}/scripts/steamed_hams.py "
             "exp release md --kwargs this is the kwargs' | "
             "at -t 201904030956",
         )
@@ -1212,7 +1199,7 @@ class TestRemoteServer(unittest.TestCase):
         print(f"Current atq: {current_atq}")
 
         # Remove any existing atq backups directory
-        scd_dir = f"{os.environ['BOREALISPATH']}/tests/scheduler/"
+        scd_dir = f"{borealis_path}/tests/scheduler/"
         atq_dir = f"{scd_dir}/atq_backups/"
         try:
             shutil.rmtree(atq_dir)
@@ -1253,7 +1240,7 @@ class TestRemoteServer(unittest.TestCase):
         timeline is a list of events, which are dicts with 'time', 'experiment', 'scheduling_mode', 'kwargs_string'
         """
         # Remove any existing atq backups directory
-        scd_dir = f"{os.environ['BOREALISPATH']}/tests/scheduler/"
+        scd_dir = f"{borealis_path}/tests/scheduler/"
         atq_dir = f"{scd_dir}/atq_backups/"
         try:
             shutil.rmtree(atq_dir)
@@ -1342,7 +1329,7 @@ class TestLocalServer(unittest.TestCase):
         """
         Test initializing the SWG class
         """
-        scd_dir = f"{os.environ['BOREALISPATH']}/tests/scheduler/"
+        scd_dir = f"{borealis_path}/tests/scheduler/"
         swg_dir = scd_dir + "schedules/"
 
         # Ensure the swg dir (the git repo for schedules) doesn't exist before
@@ -1364,7 +1351,7 @@ class TestLocalServer(unittest.TestCase):
         """
         Test new file exists method, which checks for new swg file uploads via git and returns True or False
         """
-        scd_dir = f"{os.environ['BOREALISPATH']}/tests/scheduler/"
+        scd_dir = f"{borealis_path}/tests/scheduler/"
         swg_dir = scd_dir + "schedules/"
         swg = local_scd_server.SWG(scd_dir)
         self.assertTrue(os.path.exists(scd_dir))
@@ -1381,7 +1368,7 @@ class TestLocalServer(unittest.TestCase):
     # """
     # Test pulling new git files
     # """
-    # scd_dir = f"{os.environ['BOREALISPATH']}/tests/scheduler/"
+    # scd_dir = f"{borealis_path}/tests/scheduler/"
     # swg = local_scd_server.SWG(scd_dir)
     # self.assertTrue(os.path.exists(scd_dir))
 
@@ -1390,7 +1377,7 @@ class TestLocalServer(unittest.TestCase):
         """
         Test parsing the SWG file that DNE. Should fail with FileNotFoundError
         """
-        scd_dir = f"{os.environ['BOREALISPATH']}/tests/scheduler/"
+        scd_dir = f"{borealis_path}/tests/scheduler/"
         site_id = os.environ["RADAR_ID"]
 
         modes = local_scd_server.EXPERIMENTS[site_id]
@@ -1411,9 +1398,9 @@ class TestLocalServer(unittest.TestCase):
         """
         Test parsing the SWG file. Should fail due to a gap in the schedule of several hours.
         """
-        scd_dir = f"{os.environ['BOREALISPATH']}/tests/scheduler/"
+        scd_dir = f"{borealis_path}/tests/scheduler/"
         site_id = os.environ["RADAR_ID"]
-        swg_file = f"{os.environ['BOREALISPATH']}/tests/scheduler/missing_hours.swg"
+        swg_file = f"{borealis_path}/tests/scheduler/missing_hours.swg"
         swg_dir = scd_dir + "schedules/"
 
         # Need to ensure we put in the current month to the schedule file and set first run to True
@@ -1444,9 +1431,9 @@ class TestLocalServer(unittest.TestCase):
         """
         Test parsing the SWG file. Should fail when it encounters a line with a non-existent experiment
         """
-        scd_dir = f"{os.environ['BOREALISPATH']}/tests/scheduler/"
+        scd_dir = f"{borealis_path}/tests/scheduler/"
         site_id = os.environ["RADAR_ID"]
-        swg_file = f"{os.environ['BOREALISPATH']}/tests/scheduler/bad_experiment.swg"
+        swg_file = f"{borealis_path}/tests/scheduler/bad_experiment.swg"
         swg_dir = scd_dir + "schedules/"
 
         # Need to ensure we put in the current month to the schedule file and set first run to True
@@ -1478,11 +1465,9 @@ class TestLocalServer(unittest.TestCase):
         Test parsing the SWG file. Should work properly and return a list of parsed parameters corresponding to
         the swg file input
         """
-        scd_dir = f"{os.environ['BOREALISPATH']}/tests/scheduler/"
+        scd_dir = f"{borealis_path}/tests/scheduler/"
         site_id = os.environ["RADAR_ID"]
-        swg_file = (
-            f"{os.environ['BOREALISPATH']}/tests/scheduler/complicated_schedule.swg"
-        )
+        swg_file = f"{borealis_path}/tests/scheduler/complicated_schedule.swg"
         swg_dir = scd_dir + "schedules/"
 
         # Need to ensure we put in the current month to the schedule file and set first run to True

@@ -6,14 +6,14 @@
 
     :copyright: 2019 SuperDARN Canada
 """
-import os
 import datetime as dt
+from pathlib import Path
 import shutil
 import sys
 
-borealis_path = os.environ["BOREALISPATH"]
-sys.path.append(f"{borealis_path}/tests/experiments")
-import experiment_unittests
+borealis_path = str(Path(__file__).resolve().parents[1])
+sys.path.append(borealis_path + "/tests")
+from experiments import experiment_unittests
 
 
 def get_next_month_from_date(date=None):
@@ -155,7 +155,7 @@ class SCDUtils:
             "--kwargs",
             line_dict["kwargs"],
             "--module",
-            "experiment_unittests",
+            "tests.experiments.experiment_unittests",
         ]
         test_program = experiment_unittests.run_tests(
             args, buffer=True, print_results=False

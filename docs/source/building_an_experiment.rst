@@ -239,7 +239,7 @@ An experiment testing script ``experiment_unittests.py`` has been written to che
 errors and ensure the operation of experiment checking source code. This suite of tests can be run
 by the following command::
 
-        python3 BOREALISPATH/tests/experiments/experiment_unittests.py
+        python3 /path/to/borealis/tests/experiments/experiment_unittests.py
 
 This will test all experiments within the ``borealis_experiments`` directory, and run all
 exception-checking unit tests within the testing_archive directory of the experiments directory.
@@ -249,7 +249,7 @@ This testing script can also be used to check specific experiments are written c
 this, ensure your experiment is in the ``src/borealis_experiments`` directory and run the following
 command::
 
-        python3 BOREALISPATH/tests/experiments/experiment_unittests.py --experiment [EXPERIMENT_NAME]
+        python3 /path/to/borealis/tests/experiments/experiment_unittests.py --experiment [EXPERIMENT_NAME]
 
 where EXPERIMENT_NAME is the module name of your experiment. If there are any errors while checking
 your experiment, the test will fail and the exception will describe the error.

@@ -17,6 +17,9 @@ import sys
 import os
 import multiprocessing as mp
 import argparse as ap
+from pathlib import Path
+
+borealis_path = str(Path(__file__).resolve().parents[1])
 
 
 def usage_msg():
@@ -443,13 +446,13 @@ def install_borealis_env(
     """
     print("### Creating Borealis virtual environment ###")
 
-    execute_cmd(f"mkdir -p $BOREALISPATH/borealis_env{python_version}")
-    execute_cmd(f"chown -R {user}:{group} $BOREALISPATH/borealis_env{python_version}")
+    execute_cmd(f"mkdir -p {borealis_path}/borealis_env{python_version}")
+    execute_cmd(f"chown -R {user}:{group} {borealis_path}/borealis_env{python_version}")
     execute_cmd(
-        f"sudo -u {user} python{python_version} -m venv $BOREALISPATH/borealis_env{python_version};"
+        f"sudo -u {user} python{python_version} -m venv {borealis_path}/borealis_env{python_version};"
     )
     execute_cmd(
-        f"sudo -u {user} $BOREALISPATH/borealis_env{python_version}/bin/python3 -m pip install wheel"
+        f"sudo -u {user} {borealis_path}/borealis_env{python_version}/bin/python3 -m pip install wheel"
     )
     pip_packages = [
         "zmq",
@@ -473,7 +476,7 @@ def install_borealis_env(
     for pkg in pip_packages:
         pkg_str += f" {pkg}"
     execute_cmd(
-        f"sudo -u {user} $BOREALISPATH/borealis_env{python_version}/bin/python3 -m pip install {pkg_str}"
+        f"sudo -u {user} {borealis_path}/borealis_env{python_version}/bin/python3 -m pip install {pkg_str}"
     )
 
 
@@ -516,7 +519,7 @@ def install_experiments(user: str, group: str):
     """
     print("### Installing Borealis experiment files ###")
     install_experiments_cmd = (
-        "bash -c 'cd $BOREALISPATH';"
+        f"bash -c 'cd ${borealis_path}';"
         f"sudo -u {user} git submodule update --init;"
         f"chown -R {user}:{group} src/borealis_experiments;"
     )
@@ -527,9 +530,6 @@ def install_experiments(user: str, group: str):
 def main():
     parser = ap.ArgumentParser(
         usage=usage_msg(), description="Installation script for Borealis utils"
-    )
-    parser.add_argument(
-        "--borealis-dir", help="Path to the Borealis installation directory", default=""
     )
     parser.add_argument(
         "--user",
@@ -567,17 +567,6 @@ def main():
     if not os.path.isdir(args.install_dir):
         print(f"ERROR: Install directory does not exist: {args.install_dir}")
         sys.exit(1)
-
-    if args.borealis_dir == "":
-        try:
-            borealispath = os.environ["BOREALISPATH"]
-        except KeyError:
-            print(
-                "ERROR: You must have an environment variable set for BOREALISPATH, or specify BOREALISPATH using --borealis-dir option."
-            )
-            sys.exit(1)
-    else:
-        os.environ["BOREALISPATH"] = args.borealis_dir
 
     distro = get_distribution()
 

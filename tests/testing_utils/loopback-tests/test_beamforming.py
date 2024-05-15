@@ -18,14 +18,14 @@ import sys
 import os
 import argparse
 import traceback
+from pathlib import Path
 
-
-sys.path.append(os.environ["BOREALISPATH"])
+borealis_path = str(Path(__file__).resolve().parents[3])
+sys.path.append(borealis_path)
 
 from testing.testing_utils.plot_borealis_hdf5_data.plotting_borealis_data_utils import *
 from testing.testing_utils.beamforming_utils import *
 
-borealis_path = os.environ["BOREALISPATH"]
 config_file = borealis_path + "/config.ini"
 
 

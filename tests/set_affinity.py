@@ -1,18 +1,20 @@
 import subprocess as sp
-import os
 import itertools as it
 import sys
+from pathlib import Path
+
+borealis_path = str(Path(__file__).resolve().parents[1])
 
 # TODO: Do we need any protobufs?
 if __debug__:
     sys.path.append(
-        os.environ["BOREALISPATH"] + "/build/debug/utils/protobuf"
+        borealis_path + "/build/debug/utils/protobuf"
     )  # TODO need to get this from scons environment, 'release' may be 'debug'
 else:
-    sys.path.append(os.environ["BOREALISPATH"] + "/build/release/utils/protobuf")
+    sys.path.append(borealis_path + "/build/release/utils/protobuf")
 
-import src.utils.socket_operations as so
-from src.utils.options import Options
+import src as so
+from src.borealis.utils.options import Options
 
 
 def get_tids(process_name):

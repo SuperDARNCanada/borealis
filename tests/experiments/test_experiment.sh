@@ -23,6 +23,8 @@ RADAR_IDS=("sas" "pgr" "inv" "cly" "rkn")
 printf "Testing $EXPERIMENT at all sites.\n"
 pwd
 
+readonly BOREALISPATH=$(dirname $(dirname $(dirname $(realpath "$0"))))  # Up three directories from this file
+
 for site in ${RADAR_IDS[*]}; do
     printf "\n$site:\n"
     python3 $BOREALISPATH/tests/experiments/experiment_unittests.py \

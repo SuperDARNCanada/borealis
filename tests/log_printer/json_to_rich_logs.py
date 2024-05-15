@@ -6,7 +6,7 @@
 """
 
 import argparse
-import os
+from pathlib import Path
 import sys
 
 import ijson
@@ -29,8 +29,8 @@ if __name__ == "__main__":
     parser.add_argument("json_file", type=str, help="Path to JSON log file")
     args = parser.parse_args()
 
-    sys.path.append(os.environ["BOREALISPATH"])
-    from src.utils import log_config
+    sys.path.append(str(Path(__file__).resolve().parents[2]))
+    from src import log_config
 
     log = log_config.log(
         console=False,

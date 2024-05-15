@@ -1,16 +1,15 @@
-#!/usr/bin/python
+#!/usr/bin/python3
+from pathlib import Path
 import sys
 import time
 import threading
-import os
 
+borealis_path = str(Path(__file__).resolve().parents[3])
+sys.path.append(borealis_path)
+sys.path.append(borealis_path + "/build/release/borealis/utils/protobuf")
 
-BOREALISPATH = os.environ["BOREALISPATH"]
-sys.path.append(BOREALISPATH)
-sys.path.append(os.environ["BOREALISPATH"] + "/build/release/borealis/utils/protobuf")
-
-from borealis.utils import socket_operations as so
-from borealis.utils.options.experimentoptions import ExperimentOptions
+from src.borealis.utils import socket_operations as so
+from src.borealis.utils.options import Options
 
 from driverpacket_pb2 import DriverPacket
 from sigprocpacket_pb2 import SigProcPacket
@@ -18,7 +17,7 @@ from rxsamplesmetadata_pb2 import RxSamplesMetadata
 from processeddata_pb2 import ProcessedData
 
 
-options = ExperimentOptions()
+options = Options()
 
 ids = [
     options.dsp_to_radctrl_identity,

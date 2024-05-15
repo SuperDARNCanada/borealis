@@ -8,17 +8,19 @@
     :copyright: 2017 SuperDARN Canada
 """
 
-import os
-import sys
-import time
-import threading
 import argparse
-import zmq
+from pathlib import Path
 import pickle
+import sys
+import threading
+import time
+
+import zmq
+
 from utils import socket_operations as so
 from utils.options import Options
 
-sys.path.append(os.environ["BOREALISPATH"])
+sys.path.append(str(Path(__file__).resolve().parents[1]))
 if __debug__:
     from build.debug.src.utils.protobuf import rxsamplesmetadata_pb2
 else:

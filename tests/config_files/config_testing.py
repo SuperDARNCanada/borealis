@@ -3,7 +3,7 @@ config_testing.py
 ~~~~~~~~~~~~~~~~~
 
 This script is designed to test that various configurations of N200 specification in a config file are properly
-handled. The script modifies the directory ``$BOREALISPATH/config/test``, and will remove any existing files in
+handled. The script modifies the directory ``borealis/config/test``, and will remove any existing files in
 that directory. This script should be run to verify that the ``src.utils.options.Options`` class can properly
 parse the N200 channel/antenna specifications of a config file.
 
@@ -12,7 +12,7 @@ Alternatively, any number of paths to config files for testing can be passed to 
 test all the config files to ensure that they have valid fields. The following invocation tests all config files
 in the Borealis config file directory::
 
-    python3 $BOREALISPATH/tests/config_files/config_testing.py $BOREALISPATH/config/*/*_config.ini
+    python3 /path/to/borealis/tests/config_files/config_testing.py /path/to/borealis/config/*/*_config.ini
 
 """
 
@@ -25,10 +25,10 @@ import sys
 import unittest
 
 # Need the path append to import within this file
-BOREALISPATH = os.environ["BOREALISPATH"]
-sys.path.append(f"{BOREALISPATH}/src")
+borealis_path = str(Path(__file__).resolve().parents[2])
+sys.path.append(borealis_path)
 
-from utils.options import Options
+from src.borealis.utils.options import Options, log_config
 
 
 class MockOptions(Options):
@@ -39,21 +39,19 @@ class MockOptions(Options):
 
     def __post_init__(self):
         """Override the `__post_init__` method to hack the paths to files"""
-        if not os.environ["BOREALISPATH"]:
-            raise ValueError("BOREALISPATH env variable not set")
 
         os.environ["RADAR_ID"] = "test"  # For testing a new config file
         self.parse_config()  # Parse info from config file
 
-        os.environ["RADAR_ID"] = (
-            "sas"  # Use SAS to ensure that valid hdw and restrict files are loaded.
-        )
+        os.environ["RADAR_ID"] = "sas"
+        # Use SAS to ensure that valid hdw and restrict files are loaded.
+
         self.parse_hdw()
         self.parse_restrict()
 
-        os.environ["RADAR_ID"] = (
-            self.site_id
-        )  # Match the value from the config file, to hack a test in verify_options
+        os.environ["RADAR_ID"] = self.site_id
+        # Match the value from the config file, to hack a test in verify_options
+
         self.verify_options()  # Check that all parsed values are valid
 
 
@@ -61,40 +59,38 @@ class TestConfigFile(unittest.TestCase):
     """Tests a config file to ensure the N200 specifications are correct."""
 
     def setUp(self):
-        """Create a new directory `$BOREALISPATH/config/test/`."""
-        if not os.path.exists(f'{os.environ["BOREALISPATH"]}/config/test'):
-            os.mkdir(f'{os.environ["BOREALISPATH"]}/config/test')
+        """Create a new directory ``borealis/config/test/``"""
+        if not os.path.exists(f"{borealis_path}/config/test"):
+            os.mkdir(f"{borealis_path}/config/test")
 
     def tearDown(self):
-        """Delete the `$BOREALISPATH/config/test directory and all contained files."""
-        for f in os.listdir(f'{os.environ["BOREALISPATH"]}/config/test/'):
-            os.remove(f'{os.environ["BOREALISPATH"]}/config/test/{f}')
-        os.rmdir(f'{os.environ["BOREALISPATH"]}/config/test/')
+        """Delete the ``borealis/config/test/`` directory and all contained files."""
+        for f in os.listdir(f"{borealis_path}/config/test/"):
+            os.remove(f"{borealis_path}/config/test/{f}")
+        os.rmdir(f"{borealis_path}/config/test/")
 
 
 class TestConfig(unittest.TestCase):
     """This class modifies fields of `base_config.ini` to ensure that config file parsing is handled correctly."""
 
     def setUp(self):
-        """Create a new directory `$BOREALISPATH/config/test/`."""
-        if not os.path.exists(f'{os.environ["BOREALISPATH"]}/config/test'):
-            os.mkdir(f'{os.environ["BOREALISPATH"]}/config/test')
-        for f in os.listdir(f'{os.environ["BOREALISPATH"]}/config/test/'):
-            os.remove(f'{os.environ["BOREALISPATH"]}/config/test/{f}')
+        """Create a new directory ``borealis/config/test/``"""
+        if not os.path.exists(f"{borealis_path}/config/test"):
+            os.mkdir(f"{borealis_path}/config/test")
+        for f in os.listdir(f"{borealis_path}/config/test/"):
+            os.remove(f"{borealis_path}/config/test/{f}")
 
     def tearDown(self):
-        """Delete the `$BOREALISPATH/config/test directory and all contained files."""
-        for f in os.listdir(f'{os.environ["BOREALISPATH"]}/config/test/'):
-            os.remove(f'{os.environ["BOREALISPATH"]}/config/test/{f}')
-        os.rmdir(f'{os.environ["BOREALISPATH"]}/config/test/')
+        """Delete the ``borealis/config/test`` directory and all contained files."""
+        for f in os.listdir(f"{borealis_path}/config/test/"):
+            os.remove(f"{borealis_path}/config/test/{f}")
+        os.rmdir(f"{borealis_path}/config/test/")
 
     def testBaseConfig(self):
         """Test the parameters of the base_config.ini file"""
         with open(Path(__file__).with_name("base_config.ini"), "r") as f:
             config = json.load(f)
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(f"{borealis_path}/config/test/test_config.ini", "w") as f:
             json.dump(config, f)
 
         options = MockOptions()
@@ -109,9 +105,7 @@ class TestConfig(unittest.TestCase):
         with open(Path(__file__).with_name("base_config.ini"), "r") as f:
             config = json.load(f)
         config["n200s"] = []
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(f"{borealis_path}/config/test/test_config.ini", "w") as f:
             json.dump(config, f)
 
         options = MockOptions()
@@ -130,9 +124,7 @@ class TestConfig(unittest.TestCase):
         n200["rx_channel_0"] = ""
         n200["rx_channel_1"] = ""
         n200["tx_channel_0"] = ""
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(f"{borealis_path}/config/test/test_config.ini", "w") as f:
             json.dump(config, f)
 
         options = MockOptions()
@@ -151,9 +143,7 @@ class TestConfig(unittest.TestCase):
         n200["rx_channel_0"] = "m0"
         n200["rx_channel_1"] = "i0"
         n200["tx_channel_0"] = "m0"
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(f"{borealis_path}/config/test/test_config.ini", "w") as f:
             json.dump(config, f)
 
         options = MockOptions()
@@ -175,9 +165,7 @@ class TestConfig(unittest.TestCase):
         n200["rx_channel_0"] = "m100"  # main_antenna_count = 16, this is too large
         n200["rx_channel_1"] = ""
         n200["tx_channel_0"] = ""
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(f"{borealis_path}/config/test/test_config.ini", "w") as f:
             json.dump(config, f)
 
         with self.assertRaisesRegex(
@@ -194,9 +182,7 @@ class TestConfig(unittest.TestCase):
         n200["rx_channel_0"] = ""
         n200["rx_channel_1"] = "i4"  # intf_antenna_count = 4, this is too large
         n200["tx_channel_0"] = ""
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(f"{borealis_path}/config/test/test_config.ini", "w") as f:
             json.dump(config, f)
 
         with self.assertRaisesRegex(
@@ -213,9 +199,7 @@ class TestConfig(unittest.TestCase):
         n200["rx_channel_0"] = ""
         n200["rx_channel_1"] = ""
         n200["tx_channel_0"] = "m100"  # main_antenna_count = 16, this is too large
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(f"{borealis_path}/config/test/test_config.ini", "w") as f:
             json.dump(config, f)
 
         with self.assertRaisesRegex(
@@ -232,9 +216,7 @@ class TestConfig(unittest.TestCase):
         n200["rx_channel_0"] = ""
         n200["rx_channel_1"] = ""
         n200["tx_channel_0"] = "i0"  # cannot connect to intf antenna
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(f"{borealis_path}/config/test/test_config.ini", "w") as f:
             json.dump(config, f)
 
         with self.assertRaisesRegex(
@@ -251,9 +233,7 @@ class TestConfig(unittest.TestCase):
         n200["rx_channel_0"] = "m0"
         n200["rx_channel_1"] = ""
         n200["tx_channel_0"] = "m1"
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(f"{borealis_path}/config/test/test_config.ini", "w") as f:
             json.dump(config, f)
 
         options = MockOptions()
@@ -278,9 +258,7 @@ class TestConfig(unittest.TestCase):
         n200_1["rx_channel_0"] = "m0"
         n200_1["rx_channel_1"] = ""
         n200_1["tx_channel_0"] = "m0"
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(f"{borealis_path}/config/test/test_config.ini", "w") as f:
             json.dump(config, f)
 
         options = MockOptions()
@@ -309,9 +287,7 @@ class TestConfig(unittest.TestCase):
         n200_2["rx_channel_0"] = "i4"
         n200_2["rx_channel_1"] = ""
         n200_2["tx_channel_0"] = ""
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(f"{borealis_path}/config/test/test_config.ini", "w") as f:
             json.dump(config, f)
 
         with self.assertRaisesRegex(
@@ -326,9 +302,7 @@ class TestConfig(unittest.TestCase):
 
         n200_16 = config["n200s"][16]
         n200_16["rx_channel_0"] = "m16"
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(f"{borealis_path}/config/test/test_config.ini", "w") as f:
             json.dump(config, f)
 
         with self.assertRaisesRegex(
@@ -346,9 +320,7 @@ class TestConfig(unittest.TestCase):
         n200["rx_channel_0"] = "m0"
         n200["rx_channel_1"] = "m0"
         n200["tx_channel_0"] = ""
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(f"{borealis_path}/config/test/test_config.ini", "w") as f:
             json.dump(config, f)
 
         with self.assertRaisesRegex(
@@ -366,9 +338,7 @@ class TestConfig(unittest.TestCase):
         n200["rx_channel_0"] = "i0"
         n200["rx_channel_1"] = "i0"
         n200["tx_channel_0"] = ""
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(f"{borealis_path}/config/test/test_config.ini", "w") as f:
             json.dump(config, f)
 
         with self.assertRaisesRegex(
@@ -390,9 +360,7 @@ class TestConfig(unittest.TestCase):
         n200_1["rx_channel_0"] = "m1"
         n200_1["rx_channel_1"] = ""
         n200_1["tx_channel_0"] = "m0"
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(f"{borealis_path}/config/test/test_config.ini", "w") as f:
             json.dump(config, f)
 
         with self.assertRaisesRegex(
@@ -410,9 +378,7 @@ class TestConfig(unittest.TestCase):
         n200_0["rx_channel_0"] = "a0"
         n200_0["rx_channel_1"] = ""
         n200_0["tx_channel_0"] = ""
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(f"{borealis_path}/config/test/test_config.ini", "w") as f:
             json.dump(config, f)
 
         with self.assertRaisesRegex(
@@ -430,9 +396,7 @@ class TestConfig(unittest.TestCase):
         n200_0["rx_channel_0"] = "m0"
         n200_0["rx_channel_1"] = ""
         n200_0["tx_channel_0"] = "z0"
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(f"{borealis_path}/config/test/test_config.ini", "w") as f:
             json.dump(config, f)
 
         with self.assertRaisesRegex(
@@ -450,9 +414,7 @@ class TestConfig(unittest.TestCase):
         n200_0["rx_channel_0"] = "mo"
         n200_0["rx_channel_1"] = ""
         n200_0["tx_channel_0"] = ""
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(f"{borealis_path}/config/test/test_config.ini", "w") as f:
             json.dump(config, f)
 
         with self.assertRaisesRegex(ValueError, "channel\[1:\] must be an integer"):
@@ -468,9 +430,7 @@ class TestConfig(unittest.TestCase):
         n200_0["rx_channel_0"] = "io"
         n200_0["rx_channel_1"] = ""
         n200_0["tx_channel_0"] = ""
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(f"{borealis_path}/config/test/test_config.ini", "w") as f:
             json.dump(config, f)
 
         with self.assertRaisesRegex(ValueError, "channel\[1:\] must be an integer"):
@@ -486,9 +446,7 @@ class TestConfig(unittest.TestCase):
         n200_0["rx_channel_0"] = "m0"
         n200_0["rx_channel_1"] = ""
         n200_0["tx_channel_0"] = "mo"
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(f"{borealis_path}/config/test/test_config.ini", "w") as f:
             json.dump(config, f)
 
         with self.assertRaisesRegex(ValueError, "channel\[1:\] must be an integer"):
@@ -507,9 +465,7 @@ class TestConfig(unittest.TestCase):
         n200_1 = copy.deepcopy(n200_0)
         n200_1["rx_channel_0"] = "m1"
         config["n200s"].append(n200_1)
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(f"{borealis_path}/config/test/test_config.ini", "w") as f:
             json.dump(config, f)
 
         with self.assertRaisesRegex(
@@ -527,18 +483,15 @@ class TestConfig(unittest.TestCase):
         n200_0["rx_channel_0"] = "m0"
         n200_0["rx_channel_1"] = ""
         n200_0["tx_channel_0"] = "m0"
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(f"{borealis_path}/config/test/test_config.ini", "w") as f:
             json.dump(config, f)
 
         # Do this to avoid logging from ExperimentSlice
-        from utils import log_config
 
         log = log_config.log(console=False, logfile=False, aggregator=False)
 
         # Set up a slice to test with ExperimentSlice
-        from borealis_experiments import superdarn_common_fields as scf
+        from src import superdarn_common_fields as scf
 
         slice_dict = {
             "slice_id": 0,  # arbitrary
@@ -564,7 +517,7 @@ class TestConfig(unittest.TestCase):
         }
 
         # Test that the ExperimentSlice object will raise an exception
-        from experiment_prototype import experiment_slice
+        from src.borealis.experiment_prototype import experiment_slice
 
         experiment_slice.options = MockOptions()
         with self.assertRaisesRegex(
@@ -582,18 +535,16 @@ class TestConfig(unittest.TestCase):
         n200_0["rx_channel_0"] = "m0"
         n200_0["rx_channel_1"] = "i0"
         n200_0["tx_channel_0"] = "m0"
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(f"{borealis_path}/config/test/test_config.ini", "w") as f:
             json.dump(config, f)
 
         # Do this to avoid logging from ExperimentSlice
-        from utils import log_config
+        from src import log_config
 
         log = log_config.log(console=False, logfile=False, aggregator=False)
 
         # Set up a slice to test with ExperimentSlice
-        from borealis_experiments import superdarn_common_fields as scf
+        from src import superdarn_common_fields as scf
 
         slice_dict = {
             "slice_id": 0,  # arbitrary
@@ -619,7 +570,7 @@ class TestConfig(unittest.TestCase):
         }
 
         # Test that the ExperimentSlice object will raise an exception
-        from experiment_prototype import experiment_slice
+        from src.borealis.experiment_prototype import experiment_slice
 
         experiment_slice.options = MockOptions()
         with self.assertRaisesRegex(
@@ -637,18 +588,16 @@ class TestConfig(unittest.TestCase):
         n200_0["rx_channel_0"] = "m0"
         n200_0["rx_channel_1"] = ""
         n200_0["tx_channel_0"] = "m0"
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(f"{borealis_path}/config/test/test_config.ini", "w") as f:
             json.dump(config, f)
 
         # Do this to avoid logging from ExperimentSlice
-        from utils import log_config
+        from src import log_config
 
         log = log_config.log(console=False, logfile=False, aggregator=False)
 
         # Set up a slice to test with ExperimentSlice
-        from borealis_experiments import superdarn_common_fields as scf
+        from src import superdarn_common_fields as scf
 
         slice_dict = {
             "slice_id": 0,  # arbitrary
@@ -674,7 +623,7 @@ class TestConfig(unittest.TestCase):
         }
 
         # Test that the ExperimentSlice object will raise an exception
-        from experiment_prototype import experiment_slice
+        from src.borealis.experiment_prototype import experiment_slice
 
         experiment_slice.options = MockOptions()
         with self.assertRaisesRegex(
@@ -696,11 +645,9 @@ if __name__ == "__main__":
             def test_method(self):
                 with open(config, "r") as f:
                     config_data = json.load(f)
-                if not os.path.exists(f'{os.environ["BOREALISPATH"]}/config/test'):
-                    os.mkdir(f'{os.environ["BOREALISPATH"]}/config/test')
-                with open(
-                    f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-                ) as f:
+                if not os.path.exists(f"{borealis_path}/config/test"):
+                    os.mkdir(f"{borealis_path}/config/test")
+                with open(f"{borealis_path}/config/test/test_config.ini", "w") as f:
                     json.dump(config_data, f)
                 try:
                     MockOptions()

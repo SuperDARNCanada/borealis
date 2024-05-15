@@ -25,11 +25,9 @@ import numpy as np
 import structlog
 
 # local
-from experiment_prototype.interface_classes.interface_class_base import (
-    InterfaceClassBase,
-)
-from experiment_prototype.experiment_exception import ExperimentException
-from utils.signals import get_samples, get_phase_shift
+from .interface_class_base import InterfaceClassBase
+from ..experiment_exception import ExperimentException
+from src.borealis.utils.signals import get_samples, get_phase_shift
 
 # Obtain the module name that imported this log_config
 caller = Path(inspect.stack()[-1].filename)

@@ -7,20 +7,19 @@
 # Communicate with all processes to administrate the borealis software
 
 import sys
-import os
+from pathlib import Path
 import zmq
 import time
 
-sys.path.append(os.environ["BOREALISPATH"])
+borealis_path = str(Path(__file__).resolve().parents[3])
+sys.path.append(borealis_path)
 
 if (
     __debug__
 ):  # TODO need to get build flavour from scons environment, 'release' may be 'debug'
-    sys.path.append(os.environ["BOREALISPATH"] + "/build/debug/borealis/utils/protobuf")
+    sys.path.append(borealis_path + "/build/debug/borealis/utils/protobuf")
 else:
-    sys.path.append(
-        os.environ["BOREALISPATH"] + "/build/release/borealis/utils/protobuf"
-    )
+    sys.path.append(borealis_path + "/build/release/borealis/utils/protobuf")
 
 import sigprocpacket_pb2
 import rxsamplesmetadata_pb2

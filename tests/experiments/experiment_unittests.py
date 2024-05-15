@@ -29,14 +29,16 @@ import unittest
 import os
 import sys
 import inspect
+from pathlib import Path
 import pkgutil
 from importlib import import_module
 import importlib.util
 import json
 
 # Need the path append to import within this file
-BOREALISPATH = os.environ["BOREALISPATH"]
-sys.path.append(f"{BOREALISPATH}/src")
+borealis_path = str(Path(__file__).resolve().parents[2])
+if borealis_path not in sys.path:
+    sys.path.append(f"{borealis_path}/src")
 
 
 def redirect_to_devnull(func, *args, **kwargs):
@@ -66,13 +68,13 @@ def ehmain(experiment_name="normalscan", scheduling_mode="discretionary", **kwar
     :param  kwargs: The keyword arguments for the experiment
     :type   kwargs: dict
     """
-    from utils import log_config
+    from src import log_config
 
     log_config.log(
         console=False, logfile=False, aggregator=False
     )  # Prevent logging in experiment
 
-    import experiment_handler as eh
+    from src.borealis import experiment_handler as eh
 
     experiment = eh.retrieve_experiment(experiment_name)
     exp = experiment(**kwargs)
@@ -97,25 +99,10 @@ class TestExperimentEnvSetup(unittest.TestCase):
         """
         Test calling the experiment handler without any command line arguments, which returns 2
         """
-        import experiment_handler as eh
+        from src.borealis import experiment_handler as eh
 
         with self.assertRaisesRegex(SystemExit, "2"):
             eh.main([])
-
-    @unittest.skip("Skip for TODO reason")
-    def test_borealispath(self):
-        """
-        Test failure to have BOREALISPATH in env
-        """
-        # Need to remove the environment variable, reset for other tests
-        os.environ.pop("BOREALISPATH")
-        sys.path.remove(BOREALISPATH)
-        del os.environ["BOREALISPATH"]
-        os.unsetenv("BOREALISPATH")
-        with self.assertRaisesRegex(KeyError, "BOREALISPATH"):
-            ehmain()
-        os.environ["BOREALISPATH"] = BOREALISPATH
-        sys.path.append(BOREALISPATH)
 
     @unittest.skip("Skip because it is annoying")
     def test_config_file(self):
@@ -125,16 +112,16 @@ class TestExperimentEnvSetup(unittest.TestCase):
         # Rename the config file temporarily
         site_id = scf.options.site_id
         os.rename(
-            f"{BOREALISPATH}/config/{site_id}/{site_id}_config.ini",
-            f"{BOREALISPATH}/_config.ini",
+            f"{borealis_path}/config/{site_id}/{site_id}_config.ini",
+            f"{borealis_path}/_config.ini",
         )
         with self.assertRaisesRegex(ValueError, "Cannot open config file at "):
             ehmain()
 
         # Now rename the config file and move on
         os.rename(
-            f"{BOREALISPATH}/_config.ini",
-            f"{BOREALISPATH}/config/{site_id}/{site_id}_config.ini",
+            f"{borealis_path}/_config.ini",
+            f"{borealis_path}/config/{site_id}/{site_id}_config.ini",
         )
 
     @unittest.skip("Cannot test this while hdw.dat files are in /usr/local/hdw")
@@ -142,7 +129,7 @@ class TestExperimentEnvSetup(unittest.TestCase):
         """
         Test the code that checks for the hdw.dat file
         """
-        import borealis_experiments.superdarn_common_fields as scf
+        from src import superdarn_common_fields as scf
 
         site_name = scf.options.site_id
         hdw_path = scf.options.hdw_path
@@ -188,17 +175,18 @@ def build_unit_tests():
     """
     Create individual unit tests for all test cases specified in testing_archive directory of experiments path.
     """
-    from experiment_prototype.experiment_prototype import ExperimentPrototype
+    from src.borealis.experiment_prototype import ExperimentPrototype
 
     experiment_package = "testing_archive"
-    experiment_path = f"{BOREALISPATH}/src/borealis_experiments/{experiment_package}/"
+    experiment_path = f"{borealis_path}/src/borealis_experiments/{experiment_package}/"
     if not os.path.exists(experiment_path):
         raise OSError(f"Error: experiment path {experiment_path} is invalid")
+    sys.path.append(f"{borealis_path}/src/")
 
     # Iterate through all modules in the borealis_experiments directory
     for _, name, _ in pkgutil.iter_modules([experiment_path]):
         imported_module = import_module(
-            "." + name, package=f"borealis_experiments.{experiment_package}"
+            "." + name, package=f"src.borealis_experiments.{experiment_package}"
         )
         # Loop through all attributes of each found module
         for i in dir(imported_module):
@@ -249,12 +237,12 @@ def build_experiment_tests(experiments=None, kwargs=None):
     Create individual unit tests for all experiments within the base borealis_experiments/
     directory. All experiments are run to ensure no exceptions are thrown when they are built
     """
-    from experiment_prototype.experiment_prototype import ExperimentPrototype
+    from src.borealis.experiment_prototype import ExperimentPrototype
 
-    experiment_package = "borealis_experiments"
-    experiment_path = f"{BOREALISPATH}/src/{experiment_package}/"
+    experiment_path = f"{borealis_path}/src/borealis_experiments/"
     if not os.path.exists(experiment_path):
         raise OSError(f"Error: experiment path {experiment_path} is invalid")
+    experiment_package = "src.borealis_experiments"
 
     # parse kwargs and pass to experiment
     kwargs_dict = {}
@@ -270,6 +258,7 @@ def build_experiment_tests(experiments=None, kwargs=None):
 
     def add_experiment_test(exp_name: str):
         """Add a unit test for a given experiment"""
+        sys.path.append(f"{borealis_path}/src/")
         imported_module = import_module("." + exp_name, package=experiment_package)
         # Loop through all attributes of each found module
         for i in dir(imported_module):
@@ -362,7 +351,7 @@ def run_tests(raw_args=None, buffer=True, print_results=True):
 
     # Read in config.ini file for current site to make necessary directories
     path = (
-        f'{os.environ["BOREALISPATH"]}/config/'
+        f"{borealis_path}/config/"
         f'{os.environ["RADAR_ID"]}/'
         f'{os.environ["RADAR_ID"]}_config.ini'
     )
@@ -437,7 +426,7 @@ def run_tests(raw_args=None, buffer=True, print_results=True):
 
 
 if __name__ == "__main__":
-    from utils import log_config
+    from src import log_config
 
     log = log_config.log(console=False, logfile=False, aggregator=False)
 

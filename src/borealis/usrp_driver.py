@@ -9,12 +9,14 @@
     :copyright: 2023 SuperDARN Canada
     :author: Adam Lozinsky
 """
-import os
-import subprocess
-import faulthandler
+
 import argparse as ap
+import faulthandler
+import os
+from pathlib import Path
 import pty
 import re
+import subprocess
 import time
 
 
@@ -39,7 +41,7 @@ def main():
     )
     args = parser.parse_args()
 
-    path = os.environ["BOREALISPATH"]
+    path = str(Path(__file__).resolve().parents[1])
     cmd = f"source {path}/mode {args.run_mode}; {args.c_debug_opts} usrp_driver"
     log.debug("usrp_driver start command", command=cmd)
 

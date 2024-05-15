@@ -62,25 +62,25 @@ see the note when running ``install_radar_deps.py``.
 
     sudo ip link set <10G_network_device> mtu 9000
 
-#. To verify that the MTU was set correctly: ::
+#. To verify that the MTU was set correctly::
 
     ip link show <10G_network_device>
 
 #. Use sysctl to adjust the kernel network buffer sizes. This should be added to a script that
    occurs on reboot for the interface used to connect to the USRPs. That's 50 million for
-   ``rmem_max`` and 2.5 million for ``wmwem_max``. ::
+   ``rmem_max`` and 2.5 million for ``wmwem_max``::
 
     sudo sysctl -w net.core.rmem_max=50000000
     sudo sysctl -w net.core.wmem_max=2500000
 
-#. Verify that the kernel network buffer sizes are set: ::
+#. Verify that the kernel network buffer sizes are set::
 
     cat /proc/sys/net/core/rmem_max
     cat /proc/sys/net/core/wmem_max
 
 #. The previous commands should all be executed on boot, as they are not persistent. One way to do
    this is via the root user's crontab. Here are some example entries for a computer with multiple
-   ethernet interfaces: ::
+   ethernet interfaces::
 
     @reboot /sbin/sysctl -w net.ipv6.conf.all.disable_ipv6=1
     @reboot /sbin/sysctl -w net.ipv6.conf.default.disable_ipv6=1
@@ -92,7 +92,7 @@ see the note when running ``install_radar_deps.py``.
     @reboot /sbin/sysctl -w net.core.rmem_max=50000000
     @reboot /sbin/sysctl -w net.core.wmem_max=2500000
 
-#. Install tuned. Use tuned-adm (as root) to set the system's performance to network-latency. ::
+#. Install tuned. Use tuned-adm (as root) to set the system's performance to network-latency::
 
     sudo zypper in tuned
     su
@@ -101,25 +101,16 @@ see the note when running ``install_radar_deps.py``.
     tuned-adm profile network-latency
     exit
 
-#. To verify the system's new profile: ::
+#. To verify the system's new profile::
 
     sudo tuned-adm profile_info
 
-#. Add an environment variable called BOREALISPATH that points to the cloned git repository in
-   .bashrc or .profile and re-source the file. For example: **(NOTE the extra '/')** ::
+#. Clone the Borealis software to a directory (note that ``/path/to/borealis`` is a placeholder for the
+   directory of your choice)::
 
-    export BOREALISPATH=/home/radar/borealis/
-    source .profile
-
-#. Verify the BOREALISPATH environment variable exists: ::
-
-    env | grep BOREALISPATH
-
-#. Clone the Borealis software to a directory **The following ensures that Borealis will be in the
-   same directory that the ``BOREALISPATH`` env variable points to**. ::
-
+    cd /path/to/borealis
     sudo zypper in git
-    git clone https://github.com/SuperDARNCanada/borealis.git $BOREALISPATH
+    git clone https://github.com/SuperDARNCanada/borealis.git
 
 #. The Borealis software has a script called ``install_radar_deps.py`` to help install dependencies.
    This script has to be run with root privileges. This script can be modified to add the package
@@ -131,8 +122,8 @@ see the note when running ``install_radar_deps.py``.
    abbreviation should be the 3 letter radar code such as 'sas', 'rkn' or 'inv'. **NOTE:** If you do
    not want CUDA installed, pass the ``--no-cuda`` flag as an option. ::
 
-    cd $BOREALISPATH
-    sudo -E python3 install_radar_deps.py [radar abbreviation] $BOREALISPATH --python-version=3.9 2>&1 | tee install_log.txt
+    cd /path/to/borealis
+    sudo -E python3 scripts/install_radar_deps.py [radar abbreviation] --python-version=3.9 2>&1 | tee install_log.txt
 
 #. If you're building Borealis for a non University of Saskatchewan radar, use a USASK
    ```config.ini``` file (located in ``borealis/config/``) as a template, or follow the config file
@@ -201,12 +192,11 @@ see the note when running ``install_radar_deps.py``.
 
     @users - rtprio 99
 
-#. Assuming all dependencies are resolved, use ``scons`` to build the system. Use the script called
-   ``mode`` to change the build environment to debug or release depending on what version of the
-   system should be run. ``SCONSFLAGS`` variable can be added to ``.profile`` to hold any flags such
+#. Assuming all dependencies are resolved, use ``scons`` to build the system.
+   ``SCONSFLAGS`` variable can be added to ``.profile`` to hold any flags such
    as ``-j`` for parallel builds. For example, run the following:
 
-    - ``cd $BOREALISPATH``
+    - ``cd /path/to/borealis``
     - If first time building, run ``scons -c`` to reset project state.
     - ``scons [release|debug]``
 
@@ -214,7 +204,7 @@ see the note when running ``install_radar_deps.py``.
    radar to follow the schedule. As an example on openSUSE for the ``radar`` user:
 
     - Open the crontab for editing with ``crontab -e`` as radar
-    - Add the line ``@reboot /home/radar/borealis/start_radar.sh >> /home/radar/start_radar.log
+    - Add the line ``@reboot /path/to/borealis/start_radar.sh >> /home/radar/start_radar.log
       2>&1``
 
 #. Find out which tty device is physically connected to your PPS signal. It may not be ttyS0,

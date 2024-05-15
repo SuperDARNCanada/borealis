@@ -4,7 +4,7 @@ provideds methods for setting and retrieving options critical
 to txio board and USRP device configuration
 """
 
-from src.utils.general import load_config
+from src import load_config
 
 
 class SetupOptions(object):

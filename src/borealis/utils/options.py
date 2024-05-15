@@ -15,9 +15,12 @@
     :author: Theodore Kolkman
 """
 
-import os
-import json
 from dataclasses import dataclass, field
+import json
+import os
+from pathlib import Path
+
+borealis_path = str(Path(__file__).resolve().parents[2])
 
 
 @dataclass
@@ -124,8 +127,6 @@ class Options:
     txaffinity_to_driver_identity: str = "TXAFFINITY_DRIVER_IDEN"
 
     def __post_init__(self):
-        if not os.environ["BOREALISPATH"]:
-            raise ValueError("BOREALISPATH env variable not set")
         if not os.environ["RADAR_ID"]:
             raise ValueError("RADAR_ID env variable not set")
         self.parse_config()  # Parse info from config file
@@ -136,7 +137,7 @@ class Options:
     def parse_config(self):
         # Read in config.ini file for current site
         path = (
-            f'{os.environ["BOREALISPATH"]}/config/'
+            f"{borealis_path}/config/"
             f'{os.environ["RADAR_ID"]}/'
             f'{os.environ["RADAR_ID"]}_config.ini'
         )
@@ -314,7 +315,7 @@ class Options:
     def parse_restrict(self):
         # Read in restrict.dat
         path = (
-            f'{os.environ["BOREALISPATH"]}/config/'
+            f"{borealis_path}/config/"
             f'{os.environ["RADAR_ID"]}/'
             f'restrict.dat.{os.environ["RADAR_ID"]}'
         )
