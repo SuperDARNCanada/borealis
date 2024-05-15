@@ -190,6 +190,11 @@ def create_default_scheme():
     return DecimationScheme(5.0e6, 10.0e3 / 3, stages=all_stages)
 
 
+def create_default_cfs_scheme():
+    # Place holder for default cfs scheme
+    return create_default_scheme()
+
+
 def calculate_num_filter_taps(sampling_freq, trans_width, k):
     """
     Calculates the number of filter taps required for the filter, using the sampling rate,

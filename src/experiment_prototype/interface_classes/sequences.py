@@ -116,9 +116,9 @@ class Sequence(InterfaceClassBase):
 
         slice_freqs = []
         for slice_id in self.slice_ids:
-            check_freq = float(self.slice_dict[slice_id].freq)
+            check_freq = self.slice_dict[slice_id].freq
             for freq in slice_freqs:
-                if isinstance(freq, float):
+                if isinstance(freq, (float, int, complex)):
                     if freq - 1 <= check_freq <= freq + 1:
                         errmsg = (
                             f"Slice {slice_id} frequency {check_freq} is within 1kHz "
@@ -128,22 +128,9 @@ class Sequence(InterfaceClassBase):
                         raise ExperimentException(errmsg)
             slice_freqs.append(check_freq)
 
-        dm_rate = 1
-        for stage in self.decimation_scheme.stages:
-            dm_rate *= stage.dm_rate
-
-        txrate = self.transmit_metadata["txrate"]
-        main_antenna_count = self.transmit_metadata["main_antenna_count"]
-        main_antenna_spacing = self.transmit_metadata["main_antenna_spacing"]
-        intf_antenna_count = self.transmit_metadata["intf_antenna_count"]
-        intf_antenna_spacing = self.transmit_metadata["intf_antenna_spacing"]
         self.tx_main_antennas = self.transmit_metadata["tx_main_antennas"]
         self.rx_main_antennas = self.transmit_metadata["rx_main_antennas"]
         self.rx_intf_antennas = self.transmit_metadata["rx_intf_antennas"]
-        pulse_ramp_time = self.transmit_metadata["pulse_ramp_time"]
-        max_usrp_dac_amplitude = self.transmit_metadata["max_usrp_dac_amplitude"]
-        tr_window_time = self.transmit_metadata["tr_window_time"]
-        intf_offset = self.transmit_metadata["intf_offset"]
 
         self.basic_slice_pulses = {}
         self.rx_beam_phases = {}
@@ -153,6 +140,32 @@ class Sequence(InterfaceClassBase):
         self.tx_antenna_indices = {}
         self.txctrfreq = self.slice_dict[self.slice_ids[0]].txctrfreq
         self.rxctrfreq = self.slice_dict[self.slice_ids[0]].rxctrfreq
+
+        # if any slice has cfs flag set, set the sequence cfs_flag to true
+        self.cfs_flag = False
+        for slice_id in self.slice_ids:
+            if self.slice_dict[slice_id].cfs_flag:
+                self.cfs_flag = True
+
+        if not self.cfs_flag:
+            self.build_sequence_pulses()
+
+    def build_sequence_pulses(self):
+        dm_rate = 1
+        for stage in self.decimation_scheme.stages:
+            dm_rate *= stage.dm_rate
+
+        txrate = self.transmit_metadata["txrate"]
+        main_antenna_count = self.transmit_metadata["main_antenna_count"]
+        main_antenna_spacing = self.transmit_metadata["main_antenna_spacing"]
+        intf_antenna_count = self.transmit_metadata["intf_antenna_count"]
+        intf_antenna_spacing = self.transmit_metadata["intf_antenna_spacing"]
+
+        pulse_ramp_time = self.transmit_metadata["pulse_ramp_time"]
+        max_usrp_dac_amplitude = self.transmit_metadata["max_usrp_dac_amplitude"]
+        tr_window_time = self.transmit_metadata["tr_window_time"]
+        intf_offset = self.transmit_metadata["intf_offset"]
+
         single_pulse_timing = []
 
         # For each slice calculate beamformed samples and place into the basic_slice_pulses
