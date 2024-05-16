@@ -162,6 +162,7 @@ def send_dsp_metadata(
     rxctrfreq,
     pulse_phase_offsets,
     decimation_scheme=None,
+    cfs_scan_flag=False,
 ):
     """
     Place data in the receiver packet and send it via zeromq to the signal processing unit and brian.
@@ -190,6 +191,7 @@ def send_dsp_metadata(
     :param pulse_phase_offsets: Phase offsets (degrees) applied to each pulse in the sequence
     :param decimation_scheme: object of type DecimationScheme that has all decimation and
         filtering data.
+    :param cfs_scan_flag: flag indicating of sequence is a clear frequency search rx only sequence
     """
     # TODO: does the for loop below need to happen every time. Could be only updated
     #       as necessary to make it more efficient.
@@ -201,6 +203,7 @@ def send_dsp_metadata(
     message.rx_rate = rxrate
     message.output_sample_rate = output_sample_rate
     message.rx_ctr_freq = rxctrfreq * 1.0e3
+    message.cfs_scan_flag = cfs_scan_flag
 
     if decimation_scheme is not None:
         for stage in decimation_scheme.stages:
@@ -214,10 +217,7 @@ def send_dsp_metadata(
         chan_add.tau_spacing = slice_dict[slice_id].tau_spacing
 
         # Send the translational frequencies to dsp in order to bandpass filter correctly.
-        if slice_dict[slice_id].cfs_flag:
-            pass  # TODO - get freq from clear frequency search.
-        else:
-            chan_add.rx_freq = slice_dict[slice_id].freq * 1.0e3
+        chan_add.rx_freq = slice_dict[slice_id].freq * 1.0e3
         chan_add.num_ranges = slice_dict[slice_id].num_ranges
         chan_add.first_range = slice_dict[slice_id].first_range
         chan_add.range_sep = slice_dict[slice_id].range_sep
@@ -376,6 +376,7 @@ def send_dsp_meta(
     options=None,
     seqnum_start=None,
     start_time=None,
+    cfs_scan_flag=False,
     **kwargs,
 ):
     rx_beam_phases = sequence.get_rx_phases(aveperiod.beam_iter)
@@ -395,6 +396,7 @@ def send_dsp_meta(
         sequence.rxctrfreq,
         sequence.output_encodings,
         sequence.decimation_scheme,
+        cfs_scan_flag,
     )
 
     if TIME_PROFILE:
@@ -644,6 +646,55 @@ def round_up_time(dt=None, round_to=60):
     if result < dt:
         result += timedelta(minutes=1)
     return result
+
+
+def run_cfs_scan(cfs_run, to_driver, to_brian, to_dsp):
+    # 2. Send DSP meta data
+    # 3. Retrieve DSP results
+    debug_samples = []
+
+    aveperiod = cfs_run.aveperiod
+    sequence = aveperiod.cfs_sequence
+
+    cfs_run.update(
+        {
+            "sequence": sequence,
+            "sequence_index": 0,
+            "start_time": datetime.utcnow(),
+        }
+    )
+    pulse_transmit_data_tracker = {0: {}}
+    sqn, dbg = sequence.make_sequence(aveperiod.beam_iter, 0)
+    if dbg:
+        debug_samples.append(dbg)
+    pulse_transmit_data_tracker[0][0] = sqn
+
+    cfs_run.udpate(
+        {
+            "debug_samples": debug_samples,
+            "pulse_transmit_data_tracker": pulse_transmit_data_tracker,
+            "decimation_scheme": sequence.decimation_scheme,
+        }
+    )
+
+    threads = [
+        threading.Thread(target=send_pulses(to_driver, **cfs_run)),
+        threading.Thread(target=send_dsp_meta(to_brian, to_dsp, **cfs_run)),
+    ]
+
+    for thread in threads:
+        thread.daemon = True
+        thread.start()
+
+    for thread in threads:
+        thread.join()
+
+    processed_cfs = socket_operations.recv_data(
+        to_dsp, cfs_run.options.dsp_to_radctrl_identity, log
+    )
+
+    freq_data = {processed_cfs}
+    return freq_data
 
 
 def main():
@@ -991,6 +1042,21 @@ def main():
 
                 while time_remains:
                     ave_period_run["num_sequences"] = num_sequences
+
+                    # CFS block
+                    if num_sequences == 0 and aveperiod.cfs_flag:
+                        cfs_run = ave_period_run.copy()
+                        freq_spectrum = run_cfs_scan(
+                            cfs_run,
+                            radar_control_to_driver,
+                            radar_control_to_brian,
+                            radar_control_to_dsp,
+                        )
+
+                        aveperiod.update_cfs_freqs(freq_spectrum)
+                        ave_period_run["aveperiod"] = aveperiod
+                    # End CFS block
+
                     for sequence_index, sequence in enumerate(aveperiod.sequences):
                         # Alternating sequences if there are multiple in the averaging_period
                         start_time = datetime.utcnow()

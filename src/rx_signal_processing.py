@@ -128,6 +128,7 @@ def main():
         output_sample_rate = np.float64(sqn_meta_message.output_sample_rate)
         first_rx_sample_off = sqn_meta_message.offset_to_first_rx_sample
         rx_center_freq = sqn_meta_message.rx_ctr_freq
+        cfs_scan_flag = sqn_meta_message.cfs_scan_flag
 
         processed_data = ProcessedSequenceMessage()
 
@@ -304,7 +305,10 @@ def main():
 
             seq_begin_iden = options.dspbegin_to_brian_identity + str(sequence_num)
             seq_end_iden = options.dspend_to_brian_identity + str(sequence_num)
-            dw_iden = options.dsp_to_dw_identity + str(sequence_num)
+            if cfs_scan_flag:
+                dw_iden = options.dsp_to_radctrl_identity + str(sequence_num)
+            else:
+                dw_iden = options.dsp_to_dw_identity + str(sequence_num)
             gpu_socks = so.create_sockets(
                 [seq_begin_iden, seq_end_iden, dw_iden], options.router_address
             )

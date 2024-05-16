@@ -205,7 +205,7 @@ class AveragingPeriod(InterfaceClassBase):
         return slice_to_beamdir_dict
 
     def update_cfs_freqs(
-        self, cfs_powers, cfs_freqs
+        self, frequency_spectrum
     ):  # DSP return is 2d array or object, change to cfs_spectrum
         """
         Accepts the analysis results of the clear frequency search and uses the passed frequencies and powers
@@ -218,7 +218,10 @@ class AveragingPeriod(InterfaceClassBase):
         :type       cfs_powers: int array
         """
 
-        sorted_freqs = [x for _, x in sorted(zip(cfs_powers, cfs_freqs))]
+        # sorted_freqs = [x for _, x in sorted(zip(cfs_powers, cfs_freqs))]
+        for cfs_id in self.cfs_slice_id:
+            self.sequences[cfs_id].freq = 12000
+            self.sequences[cfs_id].build_sequence_pulses()
 
     def build_cfs_sequence(self):
         """
