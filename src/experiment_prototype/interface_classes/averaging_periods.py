@@ -93,12 +93,15 @@ class AveragingPeriod(InterfaceClassBase):
 
         # Metadata for an AveragingPeriod: clear frequency search, integration time, number of averages goal
         self.cfs_flag = False
+        self.cfs_sequence = None
+        self.cfs_slice_id = []
         # there may be multiple slices in this averaging period at different frequencies so
         # we may have to search multiple ranges.
         self.cfs_range = []
         for slice_id in self.slice_ids:
             if self.slice_dict[slice_id].cfs_flag:
                 self.cfs_flag = True
+                self.cfs_slice_id.append(slice_id)
                 self.cfs_range.append(self.slice_dict[slice_id].cfs_range)
 
         # TODO: SET UP CLEAR FREQUENCY SEARCH CAPABILITY
@@ -153,6 +156,9 @@ class AveragingPeriod(InterfaceClassBase):
 
         # NOTE: Do not need beam information inside the AveragingPeriod, this is in Scan.
 
+        if self.cfs_flag:
+            self.build_cfs_sequence()
+
         # Determine how this averaging period is made by separating out the SEQUENCE interfaced.
         self.nested_slice_list = self.get_nested_slice_ids()
         self.sequences = []
@@ -197,3 +203,73 @@ class AveragingPeriod(InterfaceClassBase):
             raise ExperimentException(errmsg)
 
         return slice_to_beamdir_dict
+
+    def update_cfs_freqs(
+        self, cfs_powers, cfs_freqs
+    ):  # DSP return is 2d array or object, change to cfs_spectrum
+        """
+        Accepts the analysis results of the clear frequency search and uses the passed frequencies and powers
+        to determine what frequencies to set each clear frequency search slice to.
+
+        :param      cfs_powers: Power measured at each frequency stored in cfs_freqs
+        :type       cfs_powers: float array
+
+        :param      cfs_freqs: All frequencies measured for the clear frequency search in kHz
+        :type       cfs_powers: int array
+        """
+
+        sorted_freqs = [x for _, x in sorted(zip(cfs_powers, cfs_freqs))]
+
+    def build_cfs_sequence(self):
+        """
+        Builds an empty rx only pulse sequence to collect clear frequency search data
+        """
+        import copy
+        import borealis_experiments.superdarn_common_fields as scf
+        from experiment_prototype.experiment_slice import ExperimentSlice
+
+        num_ranges = self.slice_dict[0].cfs_duration  # And some math
+
+        # Create a CFS slice for the pulse
+        default_slice = {
+            "cpid": self.slice_dict[0].cpid,
+            "slice_id": 0,
+            "transition_bandwidth": self.slice_dict[0].transition_bandwidth,
+            "output_rx_rate": self.slice_dict[0].output_rx_rate,
+            "rx_bandwidth": self.slice_dict[0].rx_bandwidth,
+            "tx_bandwidth": self.slice_dict[0].tx_bandwidth,
+            "rxonly": True,
+            "pulse_sequence": [0],
+            "tau_spacing": scf.TAU_SPACING_7P,
+            "pulse_len": 100,  # us
+            "num_ranges": num_ranges,
+            "first_range": scf.STD_FIRST_RANGE,
+            "intn": 1,  # number of integration times
+            "beam_angle": [0.0],
+            "rx_beam_order": [0],
+            "freq": None,  # kHz
+            "decimation_scheme": self.slice_dict[0].cfs_scheme,
+        }
+
+        CFS_slices = {}
+        seq_keys = []
+        slice_counter = 0
+        for cfs_id in self.cfs_slice_id:
+            listening_slice = copy.deepcopy(default_slice)
+            slice_range = self.slice_dict[cfs_id].cfs_range
+            listening_slice["freq"] = int((slice_range[0] + slice_range[1]) / 2)
+            listening_slice["slice_id"] = slice_counter
+
+            CFS_slices[slice_counter] = ExperimentSlice(**listening_slice)
+            seq_keys.append(slice_counter)
+            slice_counter += 1
+
+        # Build interface dictionary
+        interface_dict = {}
+        for ref_ind in range(slice_counter):
+            for int_ind in range(ref_ind + 1, slice_counter):
+                interface_dict[(ref_ind, int_ind)] = "CONCURRENT"
+
+        self.cfs_sequence = Sequence(
+            seq_keys, CFS_slices, interface_dict, self.transmit_metadata
+        )

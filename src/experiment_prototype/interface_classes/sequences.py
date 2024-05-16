@@ -115,18 +115,19 @@ class Sequence(InterfaceClassBase):
                 raise ExperimentException(errmsg)
 
         slice_freqs = []
-        for slice_id in self.slice_ids:
-            check_freq = self.slice_dict[slice_id].freq
-            for freq in slice_freqs:
-                if isinstance(freq, (float, int, complex)):
-                    if freq - 1 <= check_freq <= freq + 1:
-                        errmsg = (
-                            f"Slice {slice_id} frequency {check_freq} is within 1kHz "
-                            f"of another CONCURRENT slice frequency. Adjust the slice "
-                            f"frequencies to have at least 1kHz separation."
-                        )
-                        raise ExperimentException(errmsg)
-            slice_freqs.append(check_freq)
+        if not self.slice_dict[0].rxonly:
+            for slice_id in self.slice_ids:
+                check_freq = self.slice_dict[slice_id].freq
+                for freq in slice_freqs:
+                    if isinstance(freq, (float, int, complex)):
+                        if freq - 1 <= check_freq <= freq + 1:
+                            errmsg = (
+                                f"Slice {slice_id} frequency {check_freq} is within 1kHz "
+                                f"of another CONCURRENT slice frequency. Adjust the slice "
+                                f"frequencies to have at least 1kHz separation."
+                            )
+                            raise ExperimentException(errmsg)
+                slice_freqs.append(check_freq)
 
         self.tx_main_antennas = self.transmit_metadata["tx_main_antennas"]
         self.rx_main_antennas = self.transmit_metadata["rx_main_antennas"]
