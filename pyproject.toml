@@ -41,9 +41,5 @@ steamed_hams = "scripts.steamed_hams:main"
 restart_borealis = "scripts.restart_borealis:main"
 
 [tool.setuptools.packages.find]
-where = ["borealis", "build"]
+where = ["src", "build"]
 exclude = ["usrp_drivers", "src.borealis_experiments.testing_archive*"]
-
-[tool.black]
-
-# TODO: Call install_radar_deps.py somehow with proper parameters

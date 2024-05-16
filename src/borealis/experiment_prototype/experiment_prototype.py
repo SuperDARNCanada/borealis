@@ -20,7 +20,7 @@ import re
 import structlog
 
 # local
-from src.borealis.utils.options import Options
+from borealis import Options, BOREALISPATH
 from .experiment_exception import ExperimentException
 from .experiment_slice import (
     ExperimentSlice,
@@ -35,7 +35,6 @@ caller = Path(inspect.stack()[-1].filename)
 module_name = caller.name.split(".")[0]
 log = structlog.getLogger(module_name)
 
-borealis_path = str(Path(__file__).resolve().parents[2])
 
 interface_types = tuple(["SCAN", "AVEPERIOD", "SEQUENCE", "CONCURRENT"])
 """ Interfacing in this case refers to how two or more slices are meant to be run together.
@@ -172,7 +171,7 @@ class ExperimentPrototype:
         # not to look for CPID in any experiments that are just tests (located in the testing
         # directory)
         experiment_files_list = list(
-            Path(f"{borealis_path}/src/borealis_experiments/").glob("*.py")
+            Path(f"{BOREALISPATH}/src/borealis_experiments/").glob("*.py")
         )
         self.__experiment_name = self.__class__.__name__
         # TODO use this to check the cpid is correct using pygit2, or __class__.__module__ for module name

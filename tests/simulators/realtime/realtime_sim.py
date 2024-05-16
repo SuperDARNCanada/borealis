@@ -9,17 +9,14 @@ and verifies that fitted data is received over a corresponding socket.
 import json
 from pathlib import Path
 import pickle
-import sys
 import threading
 import time
 import zlib
 
 import zmq
 
-sys.path.append(str(Path(__file__).resolve().parents[3]))
-from src import log_config
-from src.borealis.utils import socket_operations as so
-from src.borealis.realtime import realtime_server
+from borealis import log_config, socket_operations as so
+from borealis.realtime import realtime_server
 
 
 def realtime_sim(ctx: zmq.Context):

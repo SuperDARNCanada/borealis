@@ -155,7 +155,7 @@ class SCDUtils:
             "--kwargs",
             line_dict["kwargs"],
             "--module",
-            "tests.experiments.experiment_unittests",
+            "experiments.experiment_unittests",
         ]
         test_program = experiment_unittests.run_tests(
             args, buffer=True, print_results=False

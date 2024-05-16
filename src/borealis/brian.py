@@ -9,7 +9,6 @@
 """
 
 import argparse
-from pathlib import Path
 import pickle
 import sys
 import threading
@@ -17,10 +16,9 @@ import time
 
 import zmq
 
-from utils import socket_operations as so
-from utils.options import Options
+from borealis import Options, BOREALISPATH, socket_operations as so
 
-sys.path.append(str(Path(__file__).resolve().parents[1]))
+sys.path.append(BOREALISPATH)
 if __debug__:
     from build.debug.src.utils.protobuf import rxsamplesmetadata_pb2
 else:
@@ -329,7 +327,7 @@ def main():
 
 
 if __name__ == "__main__":
-    from utils import log_config
+    from borealis import log_config
 
     log = log_config.log()
     log.info(f"BRIAN BOOTED")

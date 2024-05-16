@@ -20,6 +20,8 @@ import pydarnio
 import structlog
 import zmq
 
+from borealis import Options, socket_operations as so
+
 
 def convert_and_fit_record(rawacf_record):
     """Converts a rawacf record to DMAP format and fits using backscatter, returning the results"""
@@ -84,8 +86,7 @@ def realtime_server(recv_socket, server_socket):
 
 
 if __name__ == "__main__":
-    from utils import log_config, socket_operations as so
-    from utils.options import Options
+    from borealis import log_config
 
     log = log_config.log()
     log.info(f"REALTIME BOOTED")
@@ -124,9 +125,6 @@ if __name__ == "__main__":
         log.exception("REALTIME CRASHED", exception=main_exception)
 
 else:
-    from .utils import socket_operations as so
-    from .utils.options import Options
-
     caller = Path(inspect.stack()[-1].filename)
     module_name = caller.name.split(".")[0]
     log = structlog.getLogger(module_name)

@@ -25,10 +25,12 @@ import threading
 import structlog
 import zmq
 
-from utils.options import Options
-from utils import socket_operations
-from experiment_prototype.experiment_exception import ExperimentException
-from experiment_prototype.experiment_prototype import ExperimentPrototype
+from borealis import (
+    ExperimentPrototype,
+    ExperimentException,
+    Options,
+    socket_operations,
+)
 
 
 def usage_msg():
@@ -310,7 +312,7 @@ def main(sys_args):
 
 
 if __name__ == "__main__":
-    from utils import log_config
+    from borealis import log_config
 
     log = log_config.log()
     log.info(f"EXPERIMENT_HANDLER BOOTED")

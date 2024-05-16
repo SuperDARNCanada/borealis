@@ -35,11 +35,7 @@ import structlog
 from typing import Optional, Union, Literal, Callable
 
 # local
-from src.borealis.utils.options import Options
-from src.borealis.experiment_prototype.experiment_utils.decimation_scheme import (
-    DecimationScheme,
-    create_default_scheme,
-)
+from borealis import Options, decimation_scheme as dm
 
 # Obtain the module name that imported this log_config
 caller = Path(inspect.stack()[-1].filename)
@@ -352,7 +348,9 @@ class ExperimentSlice:
     pulse_phase_offset: Optional[Callable] = default_callable
     clrfrqrange: Optional[conlist(freq_int_khz, min_items=2, max_items=2)] = None
     clrfrqflag: StrictBool = Field(init=False)
-    decimation_scheme: DecimationScheme = Field(default_factory=create_default_scheme)
+    decimation_scheme: dm.DecimationScheme = Field(
+        default_factory=dm.create_default_scheme
+    )
 
     acf: Optional[StrictBool] = False
     acfint: Optional[StrictBool] = False

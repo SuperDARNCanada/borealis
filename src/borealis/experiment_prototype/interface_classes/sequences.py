@@ -27,7 +27,7 @@ import structlog
 # local
 from .interface_class_base import InterfaceClassBase
 from ..experiment_exception import ExperimentException
-from src.borealis.utils.signals import get_samples, get_phase_shift
+from borealis import signals
 
 # Obtain the module name that imported this log_config
 caller = Path(inspect.stack()[-1].filename)
@@ -164,13 +164,13 @@ class Sequence(InterfaceClassBase):
                     intf_offset[0],
                 )
             else:
-                rx_main_phase_shift = get_phase_shift(
+                rx_main_phase_shift = signals.get_phase_shift(
                     exp_slice.beam_angle,
                     freq_khz,
                     main_antenna_count,
                     main_antenna_spacing,
                 )
-                rx_intf_phase_shift = get_phase_shift(
+                rx_intf_phase_shift = signals.get_phase_shift(
                     exp_slice.beam_angle,
                     freq_khz,
                     intf_antenna_count,
@@ -212,7 +212,7 @@ class Sequence(InterfaceClassBase):
 
             # Set up the tx pulses if transmitting
             if not exp_slice.rxonly:
-                basic_samples = get_samples(
+                basic_samples = signals.get_samples(
                     txrate,
                     wave_freq_hz,
                     float(exp_slice.pulse_len) / 1e6,
@@ -226,7 +226,7 @@ class Sequence(InterfaceClassBase):
                         freq_khz, exp_slice.tx_antennas, main_antenna_spacing
                     )
                 else:
-                    tx_main_phase_shift = get_phase_shift(
+                    tx_main_phase_shift = signals.get_phase_shift(
                         exp_slice.beam_angle,
                         freq_khz,
                         main_antenna_count,

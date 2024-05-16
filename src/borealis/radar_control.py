@@ -14,7 +14,6 @@
 
 from datetime import datetime, timedelta
 from functools import reduce
-from pathlib import Path
 import pickle
 import sys
 import threading
@@ -23,12 +22,14 @@ import time
 import numpy as np
 import zmq
 
-from experiment_prototype.experiment_prototype import ExperimentPrototype
-from utils.options import Options
-import utils.message_formats as messages
-from utils import socket_operations
+from borealis import (
+    ExperimentPrototype,
+    message_formats as messages,
+    Options,
+    socket_operations,
+)
 
-sys.path.append(str(Path(__file__).resolve().parents[1]))
+sys.path.append(BOREALISPATH)
 if __debug__:
     from build.debug.src.utils.protobuf.driverpacket_pb2 import DriverPacket
 else:
@@ -1043,7 +1044,7 @@ def main():
 
 
 if __name__ == "__main__":
-    from utils import log_config
+    from borealis import log_config
 
     log = log_config.log()
     log.info(f"RADAR_CONTROL BOOTED")

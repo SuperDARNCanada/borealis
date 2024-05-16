@@ -32,9 +32,8 @@ import zmq
 from scipy.constants import speed_of_light
 
 # local
-from utils import socket_operations as so
-from utils.message_formats import ProcessedSequenceMessage
-from utils.options import Options
+from borealis import Options, socket_operations as so
+from borealis.utils.message_formats import ProcessedSequenceMessage
 
 
 @dataclass(init=False)
@@ -1643,7 +1642,7 @@ def main():
 
 
 if __name__ == "__main__":
-    from utils import log_config
+    from borealis import log_config
 
     log = log_config.log()
     log.info(f"DATA_WRITE BOOTED")

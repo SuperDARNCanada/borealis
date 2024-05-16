@@ -11,7 +11,6 @@ import copy
 import math
 import mmap
 from multiprocessing import shared_memory
-from pathlib import Path
 import pickle
 import sys
 import threading
@@ -19,6 +18,8 @@ import time
 
 import numpy as np
 import posix_ipc as ipc
+
+from borealis import BOREALISPATH
 
 try:
     import cupy as xp
@@ -28,19 +29,19 @@ except ImportError:
 else:
     cupy_available = True
 
-sys.path.append(str(Path(__file__).resolve().parents[1]))
+sys.path.append(BOREALISPATH)
 
 if __debug__:
     from build.debug.src.utils.protobuf.rxsamplesmetadata_pb2 import RxSamplesMetadata
 else:
     from build.release.src.utils.protobuf.rxsamplesmetadata_pb2 import RxSamplesMetadata
 
-from utils.message_formats import (
+from borealis.utils.message_formats import (
     ProcessedSequenceMessage,
     DebugDataStage,
     OutputDataset,
 )
-from utils.signals import DSP
+from borealis.utils.signals import DSP
 
 
 def fill_datawrite_message(processed_data, slice_details, data_outputs):
@@ -567,9 +568,7 @@ def main():
 
 
 if __name__ == "__main__":
-    from utils.options import Options
-    from utils import socket_operations as so
-    from utils import log_config
+    from borealis import log_config, Options, socket_operations as so
 
     log = log_config.log()
     log.info(f"RX_SIGNAL_PROCESSING BOOTED")

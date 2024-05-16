@@ -106,7 +106,7 @@ def main():
 
 
 if __name__ == "__main__":
-    from utils import log_config
+    from borealis import log_config
 
     log = log_config.log()
     log.info(f"USRP_DRIVER BOOTED")

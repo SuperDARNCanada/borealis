@@ -24,11 +24,7 @@ from pathlib import Path
 import sys
 import unittest
 
-# Need the path append to import within this file
-borealis_path = str(Path(__file__).resolve().parents[2])
-sys.path.append(borealis_path)
-
-from src.borealis.utils.options import Options, log_config
+from borealis import Options, log_config, BOREALISPATH as borealis_path
 
 
 class MockOptions(Options):
@@ -491,7 +487,7 @@ class TestConfig(unittest.TestCase):
         log = log_config.log(console=False, logfile=False, aggregator=False)
 
         # Set up a slice to test with ExperimentSlice
-        from src import superdarn_common_fields as scf
+        from borealis_experiments import superdarn_common_fields as scf
 
         slice_dict = {
             "slice_id": 0,  # arbitrary
@@ -538,13 +534,10 @@ class TestConfig(unittest.TestCase):
         with open(f"{borealis_path}/config/test/test_config.ini", "w") as f:
             json.dump(config, f)
 
-        # Do this to avoid logging from ExperimentSlice
-        from src import log_config
-
         log = log_config.log(console=False, logfile=False, aggregator=False)
 
         # Set up a slice to test with ExperimentSlice
-        from src import superdarn_common_fields as scf
+        from borealis_experiments import superdarn_common_fields as scf
 
         slice_dict = {
             "slice_id": 0,  # arbitrary
@@ -591,13 +584,10 @@ class TestConfig(unittest.TestCase):
         with open(f"{borealis_path}/config/test/test_config.ini", "w") as f:
             json.dump(config, f)
 
-        # Do this to avoid logging from ExperimentSlice
-        from src import log_config
-
         log = log_config.log(console=False, logfile=False, aggregator=False)
 
         # Set up a slice to test with ExperimentSlice
-        from src import superdarn_common_fields as scf
+        from borealis_experiments import superdarn_common_fields as scf
 
         slice_dict = {
             "slice_id": 0,  # arbitrary

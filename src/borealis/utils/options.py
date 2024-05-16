@@ -18,9 +18,7 @@
 from dataclasses import dataclass, field
 import json
 import os
-from pathlib import Path
-
-borealis_path = str(Path(__file__).resolve().parents[2])
+from borealis import BOREALISPATH
 
 
 @dataclass
@@ -137,7 +135,7 @@ class Options:
     def parse_config(self):
         # Read in config.ini file for current site
         path = (
-            f"{borealis_path}/config/"
+            f"{BOREALISPATH}/config/"
             f'{os.environ["RADAR_ID"]}/'
             f'{os.environ["RADAR_ID"]}_config.ini'
         )
@@ -315,7 +313,7 @@ class Options:
     def parse_restrict(self):
         # Read in restrict.dat
         path = (
-            f"{borealis_path}/config/"
+            f"{BOREALISPATH}/config/"
             f'{os.environ["RADAR_ID"]}/'
             f'restrict.dat.{os.environ["RADAR_ID"]}'
         )
