@@ -94,14 +94,14 @@ class AveragingPeriod(InterfaceClassBase):
         # Metadata for an AveragingPeriod: clear frequency search, integration time, number of averages goal
         self.cfs_flag = False
         self.cfs_sequence = None
-        self.cfs_slice_id = []
+        self.cfs_slice_ids = []
         # there may be multiple slices in this averaging period at different frequencies so
         # we may have to search multiple ranges.
         self.cfs_range = []
         for slice_id in self.slice_ids:
             if self.slice_dict[slice_id].cfs_flag:
                 self.cfs_flag = True
-                self.cfs_slice_id.append(slice_id)
+                self.cfs_slice_ids.append(slice_id)
                 self.cfs_range.append(self.slice_dict[slice_id].cfs_range)
 
         # TODO: SET UP CLEAR FREQUENCY SEARCH CAPABILITY
@@ -163,8 +163,12 @@ class AveragingPeriod(InterfaceClassBase):
         self.nested_slice_list = self.get_nested_slice_ids()
         self.sequences = []
 
+        self.cfs_sequences = []
         for params in self.prep_for_nested_interface_class():
-            self.sequences.append(Sequence(*params))
+            new_sequence = Sequence(*params)
+            if new_sequence.cfs_flag:
+                self.cfs_sequences.append(new_sequence)
+            self.sequences.append(new_sequence)
 
         self.one_pulse_only = False
 
@@ -219,9 +223,13 @@ class AveragingPeriod(InterfaceClassBase):
         """
 
         # sorted_freqs = [x for _, x in sorted(zip(cfs_powers, cfs_freqs))]
-        for cfs_id in self.cfs_slice_id:
-            self.sequences[cfs_id].freq = 12000
-            self.sequences[cfs_id].build_sequence_pulses()
+        for sequence in self.cfs_sequences:
+            for slice_obj in sequence.slice_dict.values():
+                if slice_obj.cfs_flag:
+                    slice_obj.freq = (
+                        12000  # TODO: Get this value from frequency_spectrum
+                    )
+            sequence.build_sequence_pulses()
 
     def build_cfs_sequence(self):
         """
@@ -257,7 +265,7 @@ class AveragingPeriod(InterfaceClassBase):
         CFS_slices = {}
         seq_keys = []
         slice_counter = 0
-        for cfs_id in self.cfs_slice_id:
+        for cfs_id in self.cfs_slice_ids:
             listening_slice = copy.deepcopy(default_slice)
             slice_range = self.slice_dict[cfs_id].cfs_range
             listening_slice["freq"] = int((slice_range[0] + slice_range[1]) / 2)

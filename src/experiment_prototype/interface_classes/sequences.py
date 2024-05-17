@@ -115,7 +115,7 @@ class Sequence(InterfaceClassBase):
                 raise ExperimentException(errmsg)
 
         slice_freqs = []
-        if not self.slice_dict[0].rxonly:
+        if not self.slice_dict[self.slice_ids[0]].rxonly:
             for slice_id in self.slice_ids:
                 check_freq = self.slice_dict[slice_id].freq
                 for freq in slice_freqs:
@@ -282,13 +282,13 @@ class Sequence(InterfaceClassBase):
                 # tx_phases:        [num_beams, num_antennas]
                 # basic_samples:    [num_samples]
                 # phased_samps_for_beams: [num_beams, num_antennas, num_samples]
-                log.verbose(
-                    "slice information",
-                    slice_id=slice_id,
-                    tx_main_phases=tx_phases,
-                    tx_main_magnitudes=np.abs(tx_phases),
-                    tx_main_angles=np.rad2deg(np.angle(tx_phases)),
-                )
+                # log.verbose(
+                #     "slice information",
+                #     slice_id=slice_id,
+                #     tx_main_phases=tx_phases,
+                #     tx_main_magnitudes=np.abs(tx_phases),
+                #     tx_main_angles=np.rad2deg(np.angle(tx_phases)),
+                # )
                 phased_samps_for_beams = np.einsum(
                     "ij,k->ijk", tx_phases, basic_samples
                 )

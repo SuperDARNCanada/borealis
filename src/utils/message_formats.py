@@ -129,7 +129,7 @@ class SequenceMetadataMessage:
     rx_ctr_freq: float = None
     decimation_stages: list[DecimationStageMessage] = field(default_factory=list)
     rx_channels: list[RxChannel] = field(default_factory=list)
-    cfs_flag: bool = False
+    cfs_scan_flag: bool = False
 
     def add_decimation_stage(self, stage: DecimationStageMessage):
         """Add a decimation stage to the message."""

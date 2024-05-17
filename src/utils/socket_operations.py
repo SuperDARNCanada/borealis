@@ -126,7 +126,7 @@ def recv_bytes_from_any_iden(socket):
     return bytes_object
 
 
-def send_bytes(socket, receiver_identity, bytes_object):
+def send_bytes(socket, receiver_identity, bytes_object, log=None):
     """Sends experiment to another identity.
 
     :param  socket:         Socket to send from.
@@ -137,10 +137,16 @@ def send_bytes(socket, receiver_identity, bytes_object):
                             available.
     :type   bytes_object:   bytes
     """
+    if log:
+        log.debug(
+            "Sending message",
+            sender=socket.get(zmq.IDENTITY),
+            receiver=receiver_identity,
+        )
     frames = [receiver_identity.encode("utf-8"), b"", bytes_object]
     socket.send_multipart(frames)
 
 
-send_pulse = send_obj = send_exp = send_bytes
+send_obj = send_exp = send_bytes
 
-recv_pulse = recv_obj = recv_exp = recv_bytes
+recv_obj = recv_exp = recv_bytes

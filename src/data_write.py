@@ -1525,6 +1525,7 @@ def main():
             options.dw_to_dsp_identity,
             options.dw_to_radctrl_identity,
             options.dw_to_rt_identity,
+            options.dw_cfs_identity,
         ],
         options.router_address,
     )
@@ -1532,10 +1533,12 @@ def main():
     dsp_to_data_write = sockets[0]
     radctrl_to_data_write = sockets[1]
     data_write_to_realtime = sockets[2]
+    cfs_sequence_socket = sockets[3]
 
     poller = zmq.Poller()
     poller.register(dsp_to_data_write, zmq.POLLIN)
     poller.register(radctrl_to_data_write, zmq.POLLIN)
+    poller.register(cfs_sequence_socket, zmq.POLLIN)
 
     log.debug("socket connected")
 
@@ -1546,6 +1549,7 @@ def main():
     first_time = True
     expected_sqn_num = 0
     queued_sqns = []
+    cfs_nums = []
     aveperiod_metadata_dict = dict()
     while True:
         try:
@@ -1564,10 +1568,27 @@ def main():
             aveperiod_meta = pickle.loads(data)
             aveperiod_metadata_dict[aveperiod_meta.last_sqn_num] = aveperiod_meta
 
+        if cfs_sequence_socket in socks and socks[cfs_sequence_socket] == zmq.POLLIN:
+            cfs_sqn_num = pickle.loads(
+                so.recv_bytes(cfs_sequence_socket, options.radctrl_cfs_identity, log)
+            )
+            log.debug(
+                "Received CFS sequence, increasing expected_sqn_num",
+                cfs_sqn_num=cfs_sqn_num,
+            )
+            cfs_nums.append(cfs_sqn_num)
+
+        if expected_sqn_num in cfs_nums:
+            # Update the expected sequence number if that sequence is a CFS sequence,
+            # and so will not be sent to data_write.
+            cfs_nums.remove(expected_sqn_num)
+            expected_sqn_num += 1
+
         if dsp_to_data_write in socks and socks[dsp_to_data_write] == zmq.POLLIN:
             data = so.recv_bytes_from_any_iden(dsp_to_data_write)
             processed_data = pickle.loads(data)
             queued_sqns.append(processed_data)
+            log.debug("Received from DSP", sequence_num=processed_data.sequence_num)
 
             # Check if any data processing finished out of order.
             if processed_data.sequence_num != expected_sqn_num:

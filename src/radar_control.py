@@ -35,65 +35,61 @@ else:
 TIME_PROFILE = False
 
 
-def setup_driver(
-    radctrl_to_driver, driver_to_radctrl_iden, txctrfreq, rxctrfreq, txrate, rxrate
-):
+def driver_comms_thread(radctrl_driver_iden, driver_socket_iden, router_addr):
     """
-    First packet sent to driver for setup.
-
-    :param radctrl_to_driver: the sender socket for sending the driverpacket
-    :param driver_to_radctrl_iden: the receiver socket identity on the driver side
-    :param txctrfreq: the transmit center frequency to tune to, kHz.
-    :param rxctrfreq: the receive center frequency to tune to. With rx_sample_rate from config.ini file, this
-        determines the received signal band, kHz.
-    :param txrate: the tx sampling rate (Hz).
-    :param rxrate: the rx sampling rate (Hz).
+    Thread for handling communication between radar_control and rx_signal_processing.
     """
 
-    driverpacket = DriverPacket()
-    driverpacket.txcenterfreq = txctrfreq * 1000  # convert to Hz
-    driverpacket.rxcenterfreq = rxctrfreq * 1000  # convert to Hz
-    driverpacket.txrate = txrate
-    driverpacket.rxrate = rxrate
+    driver_comms_socket = zmq.Context().instance().socket(zmq.PAIR)
+    driver_comms_socket.connect("inproc://radctrl_driver")
 
-    socket_operations.send_pulse(
-        radctrl_to_driver, driver_to_radctrl_iden, driverpacket.SerializeToString()
-    )
+    radctrl_driver_socket = socket_operations.create_sockets(
+        [radctrl_driver_iden], router_addr
+    )[0]
 
-    socket_operations.recv_data(radctrl_to_driver, driver_to_radctrl_iden, log)
+    first_time = True
+    while True:
+        log.debug("Waiting for data from main thread")
+        driver_args = driver_comms_socket.recv_pyobj()
+
+        message = create_driver_message(*driver_args)
+
+        socket_operations.send_bytes(radctrl_driver_socket, driver_socket_iden, message)
+
+        if first_time:
+            socket_operations.recv_data(radctrl_driver_socket, driver_socket_iden, log)
+            log.debug("Received READY from Driver")
+            driver_comms_socket.send_string("Driver ready to go")
+            first_time = False
 
 
-def data_to_driver(
-    radctrl_to_driver,
-    driver_to_radctrl_iden,
-    samples_array,
+def create_driver_message(
     txctrfreq,
     rxctrfreq,
     txrate,
     rxrate,
-    numberofreceivesamples,
-    seqtime,
-    SOB,
-    EOB,
-    timing,
-    seqnum,
-    align_sequences,
+    samples_array=None,
+    numberofreceivesamples=None,
+    seqtime=None,
+    SOB=None,
+    EOB=None,
+    timing=None,
+    seqnum=None,
+    align_sequences=None,
     repeat=False,
 ):
     """
     Place data in the driver packet and send it via zeromq to the driver.
 
-    :param radctrl_to_driver: the sender socket for sending the driverpacket
-    :param driver_to_radctrl_iden: the reciever socket identity on the driver side
-    :param samples_array: this is a list of length main_antenna_count from the config file. It contains one
-        numpy array of complex values per antenna. If the antenna will not be transmitted on, it contains a
-        numpy array of zeros of the same length as the rest. All arrays will have the same length according to
-        the pulse length.
     :param txctrfreq: the transmit center frequency to tune to.
     :param rxctrfreq: the receive center frequency to tune to. With rx_sample_rate from config.ini file, this
         determines the received signal band.
     :param txrate: the tx sampling rate (Hz).
     :param rxrate: the rx sampling rate (Hz).
+    :param samples_array: this is a list of length main_antenna_count from the config file. It contains one
+        numpy array of complex values per antenna. If the antenna will not be transmitted on, it contains a
+        numpy array of zeros of the same length as the rest. All arrays will have the same length according to
+        the pulse length.
     :param numberofreceivesamples: number of samples to receive at the rx_sample_rate from config.ini file. This
         determines length of Scope Sync GPIO being high for this sequence.
     :param seqtime: relative timing offset
@@ -109,14 +105,21 @@ def data_to_driver(
         params that will be the same.
     """
 
-    driverpacket = DriverPacket()
-    driverpacket.timetosendsamples = timing
-    driverpacket.SOB = SOB
-    driverpacket.EOB = EOB
-    driverpacket.sequence_num = seqnum
-    driverpacket.numberofreceivesamples = numberofreceivesamples
-    driverpacket.seqtime = seqtime
-    driverpacket.align_sequences = align_sequences
+    message = DriverPacket()
+    if timing is not None:
+        message.timetosendsamples = timing
+    if SOB is not None:
+        message.SOB = SOB
+    if EOB is not None:
+        message.EOB = EOB
+    if seqnum is not None:
+        message.sequence_num = seqnum
+    if numberofreceivesamples is not None:
+        message.numberofreceivesamples = numberofreceivesamples
+    if seqtime is not None:
+        message.seqtime = seqtime
+    if align_sequences is not None:
+        message.align_sequences = align_sequences
 
     if repeat:
         # antennas empty
@@ -126,31 +129,89 @@ def data_to_driver(
         log.debug("repeat timing", timing=timing, sob=SOB, eob=EOB)
     else:
         # Setup data to send to driver for transmit.
-        for ant_idx in range(samples_array.shape[0]):
-            sample_add = driverpacket.channel_samples.add()
-            # Add one Samples message for each channel possible in config.
-            # Any unused channels will be sent zeros.
-            # Protobuf expects types: int, long, or float, will reject numpy types and
-            # throw a TypeError so we must convert the numpy arrays to lists
-            sample_add.real.extend(samples_array[ant_idx, :].real.tolist())
-            sample_add.imag.extend(samples_array[ant_idx, :].imag.tolist())
-        driverpacket.txcenterfreq = txctrfreq * 1000  # convert to Hz
-        driverpacket.rxcenterfreq = rxctrfreq * 1000  # convert to Hz
-        driverpacket.txrate = txrate
-        driverpacket.rxrate = rxrate
-        driverpacket.numberofreceivesamples = numberofreceivesamples
-        log.debug("non-repeat timing", timing=timing, sob=SOB, eob=EOB)
+        if samples_array is not None:
+            log.debug("non-repeat timing", timing=timing, sob=SOB, eob=EOB)
+            for ant_idx in range(samples_array.shape[0]):
+                sample_add = message.channel_samples.add()
+                # Add one Samples message for each channel possible in config.
+                # Any unused channels will be sent zeros.
+                # Protobuf expects types: int, long, or float, will reject numpy types and
+                # throw a TypeError so we must convert the numpy arrays to lists
+                sample_add.real.extend(samples_array[ant_idx, :].real.tolist())
+                sample_add.imag.extend(samples_array[ant_idx, :].imag.tolist())
+        message.txcenterfreq = txctrfreq * 1000  # convert to Hz
+        message.rxcenterfreq = rxctrfreq * 1000  # convert to Hz
+        message.txrate = txrate
+        message.rxrate = rxrate
+        if numberofreceivesamples:
+            message.numberofreceivesamples = numberofreceivesamples
 
-    socket_operations.send_pulse(
-        radctrl_to_driver, driver_to_radctrl_iden, driverpacket.SerializeToString()
-    )
+    return message.SerializeToString()
 
 
-def send_dsp_metadata(
-    radctrl_to_dsp,
-    dsp_radctrl_iden,
-    radctrl_to_brian,
-    brian_radctrl_iden,
+def dsp_comms_thread(radctrl_dsp_iden, dsp_socket_iden, router_addr):
+    """
+    Thread for handling communication between radar_control and rx_signal_processing.
+    """
+
+    request_socket = zmq.Context().instance().socket(zmq.PAIR)
+    request_socket.connect("inproc://radctrl")
+
+    radctrl_dsp_socket = socket_operations.create_sockets(
+        [radctrl_dsp_iden], router_addr
+    )[0]
+
+    while True:
+
+        log.debug("Waiting for metadata from main thread")
+        metadata_dict = request_socket.recv_pyobj()
+
+        message = create_dsp_message(
+            metadata_dict["rx_rate"],
+            metadata_dict["output_rate"],
+            metadata_dict["sequence_num"],
+            metadata_dict["slice_ids"],
+            metadata_dict["slice_dict"],
+            metadata_dict["rx_beam_phases"],
+            metadata_dict["sequence_time"],
+            metadata_dict["first_rx_sample_start"],
+            metadata_dict["rx_center_freq"],
+            metadata_dict["output_encodings"],
+            metadata_dict["decimation_scheme"],
+            metadata_dict["cfs_scan_flag"],
+        )
+
+        log.debug("Waiting for go-ahead from main thread")
+        request = request_socket.recv_string()
+
+        # Wait until main thread reports that brian requested metadata
+        log.debug("brian requested", request=request)
+
+        if TIME_PROFILE:
+            time_done = time.perf_counter() - time_waiting
+            log.verbose(
+                "waiting time for metadata request",
+                metadata_time=time_done * 1e3,
+                metadata_time_units="ms",
+            )
+
+        log.debug("Sending metadata to inproc socket")
+        request_socket.send_pyobj(message)
+        # Send the message to the main thread, to pass along to brian
+
+        bytes_packet = pickle.dumps(message, protocol=pickle.HIGHEST_PROTOCOL)
+        socket_operations.send_obj(radctrl_dsp_socket, dsp_socket_iden, bytes_packet)
+        # Send the message to rx_signal_processing
+
+        log.debug("Waiting for ACK from DSP")
+        socket_operations.recv_data(radctrl_dsp_socket, dsp_socket_iden, log)
+        # Wait for rx_signal_processing to acknowledge that it received the metadata
+
+        log.debug("Received ACK from DSP")
+        request_socket.send_string("DSP acknowledged metadata")
+
+
+def create_dsp_message(
     rxrate,
     output_sample_rate,
     seqnum,
@@ -168,11 +229,7 @@ def send_dsp_metadata(
     Place data in the receiver packet and send it via zeromq to the signal processing unit and brian.
     Happens every sequence.
 
-    :param radctrl_to_dsp: The sender socket for sending data to dsp
-    :param dsp_radctrl_iden: The receiver socket identity on the dsp side
-    :param radctrl_to_brian: The sender socket for sending data to brian
-    :param brian_radctrl_iden: The receiver socket identity on the brian side
-    :param rxrate: The receive sampling rate (Hz).
+    :param rxrate: The receiver sampling rate (Hz).
     :param output_sample_rate: The output sample rate desired for the output data (Hz).
     :param seqnum: the sequence number. This is a unique identifier for the sequence that is always increasing
         with increasing sequences while radar_control is running. It is only reset when program restarts.
@@ -251,30 +308,7 @@ def send_dsp_metadata(
             chan_add.add_lag(lag_add)
         message.add_rx_channel(chan_add)
 
-    # Brian requests sequence metadata for timeouts
-    if TIME_PROFILE:
-        time_waiting = time.perf_counter()
-
-    request = socket_operations.recv_request(radctrl_to_brian, brian_radctrl_iden, log)
-    log.debug("brian requested", request=request)
-
-    if TIME_PROFILE:
-        time_done = time.perf_counter() - time_waiting
-        log.verbose(
-            "waiting time for metadata request",
-            metadata_time=time_done * 1e3,
-            metadata_time_units="ms",
-        )
-
-    bytes_packet = pickle.dumps(message, protocol=pickle.HIGHEST_PROTOCOL)
-
-    socket_operations.send_obj(radctrl_to_brian, brian_radctrl_iden, bytes_packet)
-
-    socket_operations.send_obj(
-        radctrl_to_dsp,
-        dsp_radctrl_iden,
-        pickle.dumps(message, protocol=pickle.HIGHEST_PROTOCOL),
-    )
+    return message
 
 
 def search_for_experiment(radar_control_to_exp_handler, exphan_to_radctrl_iden, status):
@@ -324,90 +358,6 @@ def search_for_experiment(radar_control_to_exp_handler, exphan_to_radctrl_iden, 
     return new_experiment_received, experiment
 
 
-def send_pulses(
-    radar_control_to_driver,
-    experiment=None,
-    sequence=None,
-    pulse_transmit_data_tracker=None,
-    options=None,
-    sequence_index=None,
-    num_sequences=None,
-    seqnum_start=None,
-    start_time=None,
-    **kwargs,
-):
-    for pulse_transmit_data in pulse_transmit_data_tracker[sequence_index][
-        num_sequences
-    ]:
-        data_to_driver(
-            radar_control_to_driver,
-            options.driver_to_radctrl_identity,
-            pulse_transmit_data["samples_array"],
-            sequence.txctrfreq,
-            sequence.rxctrfreq,
-            experiment.txrate,
-            experiment.rxrate,
-            sequence.numberofreceivesamples,
-            sequence.seqtime,
-            pulse_transmit_data["startofburst"],
-            pulse_transmit_data["endofburst"],
-            pulse_transmit_data["timing"],
-            seqnum_start + num_sequences,
-            sequence.align_sequences,
-            repeat=pulse_transmit_data["isarepeat"],
-        )
-
-    if TIME_PROFILE:
-        pulses_to_driver_time = datetime.utcnow() - start_time
-        log.verbose(
-            "pulses to driver time",
-            pulses_to_driver_time=pulses_to_driver_time,
-            pulses_to_driver_time_units="s",
-        )
-
-
-def send_dsp_meta(
-    radar_control_to_brian,
-    radar_control_to_dsp,
-    experiment=None,
-    sequence=None,
-    aveperiod=None,
-    num_sequences=None,
-    options=None,
-    seqnum_start=None,
-    start_time=None,
-    cfs_scan_flag=False,
-    **kwargs,
-):
-    rx_beam_phases = sequence.get_rx_phases(aveperiod.beam_iter)
-    send_dsp_metadata(
-        radar_control_to_dsp,
-        options.dsp_to_radctrl_identity,
-        radar_control_to_brian,
-        options.brian_to_radctrl_identity,
-        experiment.rxrate,
-        experiment.output_rx_rate,
-        seqnum_start + num_sequences,
-        sequence.slice_ids,
-        experiment.slice_dict,
-        rx_beam_phases,
-        sequence.seqtime,
-        sequence.first_rx_sample_start,
-        sequence.rxctrfreq,
-        sequence.output_encodings,
-        sequence.decimation_scheme,
-        cfs_scan_flag,
-    )
-
-    if TIME_PROFILE:
-        sequence_metadata_time = datetime.utcnow() - start_time
-        log.verbose(
-            "metadata to dsp time",
-            sequence_metadata_time=sequence_metadata_time,
-            sequence_metadata_time_units="s",
-        )
-
-
 def make_next_samples(
     sequence=None,
     pulse_transmit_data_tracker=None,
@@ -438,8 +388,8 @@ def make_next_samples(
 
 
 def send_datawrite_metadata(
-    radctrl_to_datawrite,
-    datawrite_radctrl_iden,
+    radctrl_socket_iden,
+    datawrite_socket_iden,
     seqnum,
     num_sequences,
     scan_flag,
@@ -453,13 +403,14 @@ def send_datawrite_metadata(
     experiment_comment,
     filter_scaling_factors,
     rx_center_freq,
+    router_addr,
     debug_samples=None,
 ):
     """
     Send the metadata about this averaging period to datawrite so that it can be recorded.
 
-    :param radctrl_to_datawrite: The socket to send the packet on.
-    :param datawrite_radctrl_iden: Identity of datawrite on the socket.
+    :param radctrl_socket_iden: Identity of the socket that this process uses for communication with data_write
+    :param datawrite_socket_iden: Identity of the socket that data_write uses for communication with this process
     :param seqnum: The last sequence number (identifier) that is valid for this averaging
         period. Used to verify and synchronize driver, dsp, datawrite.
     :param num_sequences: The number of sequences that were sent in this averaging period. (number of
@@ -477,6 +428,7 @@ def send_datawrite_metadata(
     :param filter_scaling_factors: The decimation scheme scaling factors used for the experiment,
         to get the scaling for the data for accurate power measurements between experiments.
     :param rx_center_freq: The receive center frequency (kHz)
+    :param router_addr: the address to connect the socket to
     :param debug_samples: the debug samples for this averaging period, to be written to the
         file if debug is set. This is a list of dictionaries for each Sequence in the
         AveragingPeriod. The dictionary is set up in the sample_building module function
@@ -584,15 +536,15 @@ def send_datawrite_metadata(
 
     log.debug("sending metadata to data_write")
 
+    socket = socket_operations.create_sockets([radctrl_socket_iden], router_addr)[0]
     socket_operations.send_bytes(
-        radctrl_to_datawrite,
-        datawrite_radctrl_iden,
+        socket,
+        datawrite_socket_iden,
         pickle.dumps(message, protocol=pickle.HIGHEST_PROTOCOL),
     )
 
 
 def send_dw(
-    radar_control_to_dw,
     experiment=None,
     aveperiod=None,
     options=None,
@@ -605,7 +557,7 @@ def send_dw(
     **kwargs,
 ):
     send_datawrite_metadata(
-        radar_control_to_dw,
+        options.radctrl_to_dw_identity,
         options.dw_to_radctrl_identity,
         last_sequence_num,
         num_sequences,
@@ -620,6 +572,7 @@ def send_dw(
         experiment.comment_string,
         decimation_scheme.filter_scaling_factors,
         experiment.slice_dict[0].rxctrfreq,
+        options.router_address,
         debug_samples=debug_samples,
     )
 
@@ -648,52 +601,92 @@ def round_up_time(dt=None, round_to=60):
     return result
 
 
-def run_cfs_scan(cfs_run, to_driver, to_brian, to_dsp):
+def run_cfs_scan(
+    radctrl_process_socket, radctrl_brian_socket, cfs_run, to_driver_inproc_sock
+):
     # 2. Send DSP meta data
     # 3. Retrieve DSP results
-    debug_samples = []
 
-    aveperiod = cfs_run.aveperiod
+    dsp_socket_iden = cfs_run["options"].dsp_cfs_identity
+    router_addr = cfs_run["options"].router_address
+    cfs_socket = socket_operations.create_sockets(
+        [cfs_run["options"].radctrl_cfs_identity], router_addr
+    )[0]
+
+    aveperiod = cfs_run["aveperiod"]
     sequence = aveperiod.cfs_sequence
-
-    cfs_run.update(
-        {
-            "sequence": sequence,
-            "sequence_index": 0,
-            "start_time": datetime.utcnow(),
-        }
-    )
-    pulse_transmit_data_tracker = {0: {}}
     sqn, dbg = sequence.make_sequence(aveperiod.beam_iter, 0)
-    if dbg:
-        debug_samples.append(dbg)
-    pulse_transmit_data_tracker[0][0] = sqn
 
-    cfs_run.udpate(
+    socket_operations.send_bytes(
+        cfs_socket,
+        cfs_run["options"].dw_cfs_identity,
+        pickle.dumps(cfs_run["seqnum_start"] + cfs_run["num_sequences"]),
+    )
+
+    brian_socket_iden = cfs_run["options"].brian_to_radctrl_identity
+    log.debug("run_cfs_scan waiting for request from brian")
+    socket_operations.recv_data(radctrl_brian_socket, brian_socket_iden, log)
+    # The above call is blocking; will wait until something is received
+
+    for pulse_transmit_data in sqn:
+        driver_args = (
+            sequence.txctrfreq,
+            sequence.rxctrfreq,
+            cfs_run["experiment"].txrate,
+            cfs_run["experiment"].rxrate,
+            pulse_transmit_data["samples_array"],
+            sequence.numberofreceivesamples,
+            sequence.seqtime,
+            pulse_transmit_data["startofburst"],
+            pulse_transmit_data["endofburst"],
+            pulse_transmit_data["timing"],
+            cfs_run["seqnum_start"] + cfs_run["num_sequences"],
+            sequence.align_sequences,
+            pulse_transmit_data["isarepeat"],
+        )
+        to_driver_inproc_sock.send_pyobj(driver_args)
+
+    radctrl_process_socket.send_pyobj(
         {
-            "debug_samples": debug_samples,
-            "pulse_transmit_data_tracker": pulse_transmit_data_tracker,
+            "rx_rate": cfs_run["experiment"].rxrate,
+            "output_rate": cfs_run["experiment"].output_rx_rate,
+            "sequence_num": cfs_run["seqnum_start"] + cfs_run["num_sequences"],
+            "slice_ids": sequence.slice_ids,
+            "slice_dict": sequence.slice_dict,
+            "rx_beam_phases": sequence.get_rx_phases(
+                0
+            ),  # TODO: use aveperiod.beam_iter instead of 0
+            "sequence_time": sequence.seqtime,
+            "first_rx_sample_start": sequence.first_rx_sample_start,
+            "rx_center_freq": sequence.rxctrfreq,
+            "output_encodings": sequence.output_encodings,
             "decimation_scheme": sequence.decimation_scheme,
+            "cfs_scan_flag": True,
         }
     )
+    # Send metadata to dsp_comms_thread, so it can package into a message for rx_signal_processing
 
-    threads = [
-        threading.Thread(target=send_pulses(to_driver, **cfs_run)),
-        threading.Thread(target=send_dsp_meta(to_brian, to_dsp, **cfs_run)),
-    ]
+    radctrl_process_socket.send_string("Brian wants metadata")
+    # Let dsp_comms_thread know that it is good to send the metadata to rx_signal_processing
+    log.debug("Waiting for metadata from send_dsp_metadata()")
 
-    for thread in threads:
-        thread.daemon = True
-        thread.start()
+    metadata = radctrl_process_socket.recv_pyobj()
+    log.info("Metadata from send_dsp_meta")
 
-    for thread in threads:
-        thread.join()
-
-    processed_cfs = socket_operations.recv_data(
-        to_dsp, cfs_run.options.dsp_to_radctrl_identity, log
+    socket_operations.send_bytes(
+        radctrl_brian_socket, brian_socket_iden, pickle.dumps(metadata)
     )
+    # Send the metadata along to brian
 
-    freq_data = {processed_cfs}
+    log.info("Trying to receive: ", sender=dsp_socket_iden)
+    processed_cfs = socket_operations.recv_bytes(cfs_socket, dsp_socket_iden, log)
+    log.info("Received CFS")
+
+    freq_data = pickle.loads(processed_cfs)
+
+    radctrl_process_socket.recv_string()
+    # Consume the DSP ACK that dsp_comms_thread will send
+
     return freq_data
 
 
@@ -720,10 +713,7 @@ def main():
     # The socket identities for radar_control, retrieved from options
     ids = [
         options.radctrl_to_exphan_identity,
-        options.radctrl_to_dsp_identity,
-        options.radctrl_to_driver_identity,
         options.radctrl_to_brian_identity,
-        options.radctrl_to_dw_identity,
     ]
 
     # Setup sockets
@@ -738,12 +728,15 @@ def main():
         sys.exit(1)
 
     radar_control_to_exp_handler = sockets_list[0]
-    radar_control_to_dsp = sockets_list[1]
-    radar_control_to_driver = sockets_list[2]
-    radar_control_to_brian = sockets_list[3]
-    radar_control_to_dw = sockets_list[4]
+    radctrl_brian_socket = sockets_list[1]
 
-    # seqnum is used as a identifier in all packets while radar is running so set it up here.
+    radctrl_inproc_socket = zmq.Context().instance().socket(zmq.PAIR)
+    radctrl_inproc_socket.bind("inproc://radctrl")
+
+    driver_comms_socket = zmq.Context().instance().socket(zmq.PAIR)
+    driver_comms_socket.bind("inproc://radctrl_driver")
+
+    # seqnum is used as an identifier in all packets while radar is running so set it up here.
     # seqnum will get increased by num_sequences (number of averages or sequences in the averaging period)
     # at the end of every averaging period.
     seqnum_start = 0
@@ -766,14 +759,37 @@ def main():
 
     # Send driver initial setup data - rates and center frequency from experiment.
     # Wait for acknowledgment that USRP object is set up.
-    setup_driver(
-        radar_control_to_driver,
-        options.driver_to_radctrl_identity,
+    driver_args = (
         experiment.slice_dict[0].txctrfreq,
         experiment.slice_dict[0].rxctrfreq,
         experiment.txrate,
         experiment.rxrate,
     )
+
+    metadata_thread = threading.Thread(
+        target=dsp_comms_thread,
+        args=(
+            options.radctrl_to_dsp_identity,
+            options.dsp_to_radctrl_identity,
+            options.router_address,
+        ),
+    )
+
+    driver_comms = threading.Thread(
+        target=driver_comms_thread,
+        args=(
+            options.radctrl_to_driver_identity,
+            options.driver_to_radctrl_identity,
+            options.router_address,
+        ),
+    )
+
+    metadata_thread.start()
+    driver_comms.start()
+
+    driver_comms_socket.send_pyobj(driver_args)
+    driver_comms_socket.recv_string()
+    # Wait until driver acknowledges that it is good to start
 
     first_aveperiod = True
     next_scan_start = None
@@ -1041,20 +1057,21 @@ def main():
                 }
 
                 while time_remains:
-                    ave_period_run["num_sequences"] = num_sequences
 
                     # CFS block
                     if num_sequences == 0 and aveperiod.cfs_flag:
                         cfs_run = ave_period_run.copy()
+                        cfs_run["num_sequences"] = num_sequences
                         freq_spectrum = run_cfs_scan(
+                            radctrl_inproc_socket,
+                            radctrl_brian_socket,
                             cfs_run,
-                            radar_control_to_driver,
-                            radar_control_to_brian,
-                            radar_control_to_dsp,
+                            driver_comms_socket,
                         )
 
                         aveperiod.update_cfs_freqs(freq_spectrum)
                         ave_period_run["aveperiod"] = aveperiod
+                        num_sequences += 1
                     # End CFS block
 
                     for sequence_index, sequence in enumerate(aveperiod.sequences):
@@ -1065,6 +1082,8 @@ def main():
                                 "sequence": sequence,
                                 "sequence_index": sequence_index,
                                 "start_time": start_time,
+                                "slice_dict": experiment.slice_dict,
+                                "num_sequences": num_sequences,
                             }
                         )
                         if intt_break:
@@ -1104,29 +1123,72 @@ def main():
 
                         # These three things can happen simultaneously. We can spawn them as threads.
                         threads = [
-                            threading.Thread(
-                                target=send_pulses(
-                                    radar_control_to_driver, **ave_period_run
-                                )
-                            ),
-                            threading.Thread(
-                                target=send_dsp_meta(
-                                    radar_control_to_brian,
-                                    radar_control_to_dsp,
-                                    **ave_period_run,
-                                )
-                            ),
-                            threading.Thread(
-                                target=make_next_samples(**ave_period_run)
-                            ),
+                            threading.Thread(target=make_next_samples(**ave_period_run))
                         ]
 
                         for thread in threads:
                             thread.daemon = True
                             thread.start()
 
+                        for pulse_transmit_data in pulse_transmit_data_tracker[
+                            sequence_index
+                        ][num_sequences]:
+                            driver_args = (
+                                sequence.txctrfreq,
+                                sequence.rxctrfreq,
+                                experiment.txrate,
+                                experiment.rxrate,
+                                pulse_transmit_data["samples_array"],
+                                sequence.numberofreceivesamples,
+                                sequence.seqtime,
+                                pulse_transmit_data["startofburst"],
+                                pulse_transmit_data["endofburst"],
+                                pulse_transmit_data["timing"],
+                                seqnum_start + num_sequences,
+                                sequence.align_sequences,
+                                pulse_transmit_data["isarepeat"],
+                            )
+                            driver_comms_socket.send_pyobj(driver_args)
+
+                        radctrl_inproc_socket.send_pyobj(
+                            {
+                                "rx_rate": experiment.rxrate,
+                                "output_rate": experiment.output_rx_rate,
+                                "sequence_num": seqnum_start + num_sequences,
+                                "slice_ids": sequence.slice_ids,
+                                "slice_dict": sequence.slice_dict,
+                                "rx_beam_phases": sequence.get_rx_phases(
+                                    aveperiod.beam_iter
+                                ),
+                                "sequence_time": sequence.seqtime,
+                                "first_rx_sample_start": sequence.first_rx_sample_start,
+                                "rx_center_freq": sequence.rxctrfreq,
+                                "output_encodings": sequence.output_encodings,
+                                "decimation_scheme": sequence.decimation_scheme,
+                                "cfs_scan_flag": False,
+                            }
+                        )
+                        # Send metadata to dsp_comms_thread, so it can package into a message for rx_signal_processing
+
+                        radctrl_inproc_socket.send_string("Brian wants metadata")
+                        # Let dsp_comms_thread know that it is good to send the metadata to rx_signal_processing
+
+                        log.debug("Waiting for metadata from send_dsp_metadata")
+                        metadata = radctrl_inproc_socket.recv_pyobj()
+                        log.info("Metadata from send_dsp_meta")
+
+                        socket_operations.send_bytes(
+                            radctrl_brian_socket,
+                            options.brian_to_radctrl_identity,
+                            pickle.dumps(metadata),
+                        )
+                        # Send the metadata along to brian
+
                         for thread in threads:
                             thread.join()
+
+                        radctrl_inproc_socket.recv_string()
+                        # wait for dsp to signal that it received the metadata
 
                         num_sequences += 1
 
@@ -1166,9 +1228,7 @@ def main():
                     }
                 )
 
-                thread = threading.Thread(
-                    target=send_dw(radar_control_to_dw, **ave_period_run)
-                )
+                thread = threading.Thread(target=send_dw(**ave_period_run))
                 thread.daemon = True
                 thread.start()
                 # end of the averaging period loop - move onto the next averaging period.
