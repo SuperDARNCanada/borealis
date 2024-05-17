@@ -49,17 +49,22 @@ def driver_comms_thread(radctrl_driver_iden, driver_socket_iden, router_addr):
 
     first_time = True
     while True:
-        log.debug("Waiting for data from main thread")
         driver_args = driver_comms_socket.recv_pyobj()
+        # Wait until the main thread sends a message intended for the driver
 
         message = create_driver_message(*driver_args)
+        # Massage the message into a format the driver can parse
 
         socket_operations.send_bytes(radctrl_driver_socket, driver_socket_iden, message)
+        # Send the message to the driver
 
         if first_time:
             socket_operations.recv_data(radctrl_driver_socket, driver_socket_iden, log)
-            log.debug("Received READY from Driver")
+            # Driver sends back an ACK on the first communication
+
             driver_comms_socket.send_string("Driver ready to go")
+            # Let the main thread know that the driver is ready to go
+
             first_time = False
 
 
@@ -154,17 +159,16 @@ def dsp_comms_thread(radctrl_dsp_iden, dsp_socket_iden, router_addr):
     Thread for handling communication between radar_control and rx_signal_processing.
     """
 
-    request_socket = zmq.Context().instance().socket(zmq.PAIR)
-    request_socket.connect("inproc://radctrl")
+    inproc_socket = zmq.Context().instance().socket(zmq.PAIR)
+    inproc_socket.connect("inproc://radctrl")
 
     radctrl_dsp_socket = socket_operations.create_sockets(
         [radctrl_dsp_iden], router_addr
     )[0]
 
     while True:
-
-        log.debug("Waiting for metadata from main thread")
-        metadata_dict = request_socket.recv_pyobj()
+        metadata_dict = inproc_socket.recv_pyobj()
+        # Wait for metadata from the main thread
 
         message = create_dsp_message(
             metadata_dict["rx_rate"],
@@ -181,34 +185,21 @@ def dsp_comms_thread(radctrl_dsp_iden, dsp_socket_iden, router_addr):
             metadata_dict["cfs_scan_flag"],
         )
 
-        log.debug("Waiting for go-ahead from main thread")
-        request = request_socket.recv_string()
+        inproc_socket.recv_string()
+        # Wait for go-ahead from the main thread
 
-        # Wait until main thread reports that brian requested metadata
-        log.debug("brian requested", request=request)
-
-        if TIME_PROFILE:
-            time_done = time.perf_counter() - time_waiting
-            log.verbose(
-                "waiting time for metadata request",
-                metadata_time=time_done * 1e3,
-                metadata_time_units="ms",
-            )
-
-        log.debug("Sending metadata to inproc socket")
-        request_socket.send_pyobj(message)
+        inproc_socket.send_pyobj(message)
         # Send the message to the main thread, to pass along to brian
 
         bytes_packet = pickle.dumps(message, protocol=pickle.HIGHEST_PROTOCOL)
         socket_operations.send_obj(radctrl_dsp_socket, dsp_socket_iden, bytes_packet)
         # Send the message to rx_signal_processing
 
-        log.debug("Waiting for ACK from DSP")
         socket_operations.recv_data(radctrl_dsp_socket, dsp_socket_iden, log)
         # Wait for rx_signal_processing to acknowledge that it received the metadata
 
-        log.debug("Received ACK from DSP")
-        request_socket.send_string("DSP acknowledged metadata")
+        inproc_socket.send_string("DSP acknowledged metadata")
+        # Let the main thread know that DSP has received the metadata
 
 
 def create_dsp_message(
@@ -534,14 +525,12 @@ def send_datawrite_metadata(
             sequence_add.add_rx_channel(rxchannel)
         message.sequences.append(sequence_add)
 
-    log.debug("sending metadata to data_write")
-
     socket = socket_operations.create_sockets([radctrl_socket_iden], router_addr)[0]
     socket_operations.send_bytes(
         socket,
         datawrite_socket_iden,
         pickle.dumps(message, protocol=pickle.HIGHEST_PROTOCOL),
-    )
+    )  # Send metadata about averaging period to data_write
 
 
 def send_dw(
@@ -624,7 +613,6 @@ def run_cfs_scan(
     )
 
     brian_socket_iden = cfs_run["options"].brian_to_radctrl_identity
-    log.debug("run_cfs_scan waiting for request from brian")
     socket_operations.recv_data(radctrl_brian_socket, brian_socket_iden, log)
     # The above call is blocking; will wait until something is received
 
@@ -668,20 +656,17 @@ def run_cfs_scan(
 
     radctrl_process_socket.send_string("Brian wants metadata")
     # Let dsp_comms_thread know that it is good to send the metadata to rx_signal_processing
-    log.debug("Waiting for metadata from send_dsp_metadata()")
 
     metadata = radctrl_process_socket.recv_pyobj()
-    log.info("Metadata from send_dsp_meta")
+    # Wait for the metadata from dsp_comms_thread
 
     socket_operations.send_bytes(
         radctrl_brian_socket, brian_socket_iden, pickle.dumps(metadata)
     )
     # Send the metadata along to brian
 
-    log.info("Trying to receive: ", sender=dsp_socket_iden)
     processed_cfs = socket_operations.recv_bytes(cfs_socket, dsp_socket_iden, log)
-    log.info("Received CFS")
-
+    # Receive the processed data back from CFS
     freq_data = pickle.loads(processed_cfs)
 
     radctrl_process_socket.recv_string()
@@ -1173,9 +1158,7 @@ def main():
                         radctrl_inproc_socket.send_string("Brian wants metadata")
                         # Let dsp_comms_thread know that it is good to send the metadata to rx_signal_processing
 
-                        log.debug("Waiting for metadata from send_dsp_metadata")
                         metadata = radctrl_inproc_socket.recv_pyobj()
-                        log.info("Metadata from send_dsp_meta")
 
                         socket_operations.send_bytes(
                             radctrl_brian_socket,
