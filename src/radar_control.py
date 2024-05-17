@@ -378,9 +378,54 @@ def make_next_samples(
         )
 
 
-def send_datawrite_metadata(
-    radctrl_socket_iden,
-    datawrite_socket_iden,
+def dw_comms_thread(radctrl_dw_iden, dw_socket_iden, router_addr):
+    """
+    Thread for handling communication between radar_control and data write.
+    """
+
+    inproc_socket = zmq.Context().instance().socket(zmq.PAIR)
+    inproc_socket.connect("inproc://radctrl_dw")
+
+    radctrl_dw_socket = socket_operations.create_sockets(
+        [radctrl_dw_iden], router_addr
+    )[0]
+
+    while True:
+        metadata_dict = inproc_socket.recv_pyobj()
+        # Wait for metadata from the main thread
+
+        message = create_dw_message(
+            metadata_dict["seqnum"],
+            metadata_dict["num_sequences"],
+            metadata_dict["scan_flag"],
+            metadata_dict["inttime"],
+            metadata_dict["sequences"],
+            metadata_dict["beam_iter"],
+            metadata_dict["experiment_id"],
+            metadata_dict["experiment_name"],
+            metadata_dict["scheduling_mode"],
+            metadata_dict["output_sample_rate"],
+            metadata_dict["experiment_comment"],
+            metadata_dict["filter_scaling_factors"],
+            metadata_dict["rx_cetner_freq"],
+            metadata_dict["debug_samples"],
+        )
+
+        inproc_socket.recv_string()
+        # Wait for go-ahead from the main thread
+
+        bytes_packet = pickle.dumps(message, protocol=pickle.HIGHEST_PROTOCOL)
+        socket_operations.send_obj(radctrl_dw_socket, dw_socket_iden, bytes_packet)
+        # Send the message to data write
+
+        # socket_operations.recv_data(radctrl_dw_socket, dw_socket_iden, log)
+        # Wait for data write to acknowledge that it received the metadata
+
+        # inproc_socket.send_string("DW acknowledged metadata")
+        # Let the main thread know that DW has received the metadata
+
+
+def create_dw_message(
     seqnum,
     num_sequences,
     scan_flag,
@@ -394,14 +439,11 @@ def send_datawrite_metadata(
     experiment_comment,
     filter_scaling_factors,
     rx_center_freq,
-    router_addr,
     debug_samples=None,
 ):
     """
     Send the metadata about this averaging period to datawrite so that it can be recorded.
 
-    :param radctrl_socket_iden: Identity of the socket that this process uses for communication with data_write
-    :param datawrite_socket_iden: Identity of the socket that data_write uses for communication with this process
     :param seqnum: The last sequence number (identifier) that is valid for this averaging
         period. Used to verify and synchronize driver, dsp, datawrite.
     :param num_sequences: The number of sequences that were sent in this averaging period. (number of
@@ -419,7 +461,6 @@ def send_datawrite_metadata(
     :param filter_scaling_factors: The decimation scheme scaling factors used for the experiment,
         to get the scaling for the data for accurate power measurements between experiments.
     :param rx_center_freq: The receive center frequency (kHz)
-    :param router_addr: the address to connect the socket to
     :param debug_samples: the debug samples for this averaging period, to be written to the
         file if debug is set. This is a list of dictionaries for each Sequence in the
         AveragingPeriod. The dictionary is set up in the sample_building module function
@@ -525,45 +566,7 @@ def send_datawrite_metadata(
             sequence_add.add_rx_channel(rxchannel)
         message.sequences.append(sequence_add)
 
-    socket = socket_operations.create_sockets([radctrl_socket_iden], router_addr)[0]
-    socket_operations.send_bytes(
-        socket,
-        datawrite_socket_iden,
-        pickle.dumps(message, protocol=pickle.HIGHEST_PROTOCOL),
-    )  # Send metadata about averaging period to data_write
-
-
-def send_dw(
-    experiment=None,
-    aveperiod=None,
-    options=None,
-    debug_samples=None,
-    scan_flag=None,
-    last_sequence_num=None,
-    num_sequences=None,
-    averaging_period_time=None,
-    decimation_scheme=None,
-    **kwargs,
-):
-    send_datawrite_metadata(
-        options.radctrl_to_dw_identity,
-        options.dw_to_radctrl_identity,
-        last_sequence_num,
-        num_sequences,
-        scan_flag,
-        averaging_period_time,
-        aveperiod.sequences,
-        aveperiod.beam_iter,
-        experiment.cpid,
-        experiment.experiment_name,
-        experiment.scheduling_mode,
-        experiment.output_rx_rate,
-        experiment.comment_string,
-        decimation_scheme.filter_scaling_factors,
-        experiment.slice_dict[0].rxctrfreq,
-        options.router_address,
-        debug_samples=debug_samples,
-    )
+    return message
 
 
 def round_up_time(dt=None, round_to=60):
@@ -721,6 +724,9 @@ def main():
     driver_comms_socket = zmq.Context().instance().socket(zmq.PAIR)
     driver_comms_socket.bind("inproc://radctrl_driver")
 
+    dw_comms_socket = zmq.Context().isinstance().socket(zmq.PAIR)
+    dw_comms_socket.bind("inproc://radctrl_dw")
+
     # seqnum is used as an identifier in all packets while radar is running so set it up here.
     # seqnum will get increased by num_sequences (number of averages or sequences in the averaging period)
     # at the end of every averaging period.
@@ -769,8 +775,18 @@ def main():
         ),
     )
 
+    dw_comms = threading.Thread(
+        target=dw_comms_thread,
+        args=(
+            options.radctrl_to_dw_identity,
+            options.dw_to_radctrl_identity,
+            options.router_address,
+        ),
+    )
+
     metadata_thread.start()
     driver_comms.start()
+    dw_comms.start()
 
     driver_comms_socket.send_pyobj(driver_args)
     driver_comms_socket.recv_string()
@@ -1105,6 +1121,7 @@ def main():
                                 "decimation_scheme": sequence.decimation_scheme,
                             }
                         )
+                        decimation_scheme = (sequence.decimation_scheme,)
 
                         # These three things can happen simultaneously. We can spawn them as threads.
                         threads = [
@@ -1211,9 +1228,33 @@ def main():
                     }
                 )
 
-                thread = threading.Thread(target=send_dw(**ave_period_run))
-                thread.daemon = True
-                thread.start()
+                dw_message_contents = {
+                    "seqnum": seqnum_start + num_sequences,
+                    "num_sequences": num_sequences,
+                    "scan_flag": scan_flag,
+                    "inttime": averaging_period_time,
+                    "sequences": aveperiod.sequences,
+                    "beam_iter": aveperiod.beam_iter,
+                    "experiment_id": experiment.cpid,
+                    "experiment_name": experiment.experiment_name,
+                    "scheduling_mode": experiment.scheduling_mode,
+                    "output_sample_rate": experiment.output_rx_rate,
+                    "experiment_comment": experiment.comment_string,
+                    "filter_scaling_factors": decimation_scheme.filter_scaling_factors,
+                    "rx_center_freq": experiment.slice_dict[0].rxctrfreq,
+                    "debug_samples": None,
+                }
+                if len(debug_samples) > 0:
+                    dw_message_contents["debug_samples"] = debug_samples
+                dw_comms_socket.send_pyobj(dw_message_contents)
+                # Send metadata to dw_comms_thread, so it can package into a message for data write
+
+                dw_comms_socket.send_string("Data write wants metadata")
+                # Let dw_comms_thread know that it is good to send the metadata to data write
+
+                # dw_comms_socket.recv_string()
+                # Wait for DW to signal that the metadata has been sent
+
                 # end of the averaging period loop - move onto the next averaging period.
                 # Increment the sequence number by the number of sequences that were in this
                 # averaging period.
