@@ -364,7 +364,7 @@ def main():
             # Process intf samples if intf exists
             mark_timer = time.perf_counter()
             intf_sequence_samples_shape = None
-            log.info("intf antennas", antennas=intf_antennas)
+            log_dict["intf antennas"] = intf_antennas
             if len(intf_antennas) > 0:
                 intf_sequence_samples = sequence_samples[
                     len(options.rx_main_antennas) :, :
