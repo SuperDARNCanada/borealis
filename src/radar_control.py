@@ -407,7 +407,7 @@ def dw_comms_thread(radctrl_dw_iden, dw_socket_iden, router_addr):
             metadata_dict["output_sample_rate"],
             metadata_dict["experiment_comment"],
             metadata_dict["filter_scaling_factors"],
-            metadata_dict["rx_cetner_freq"],
+            metadata_dict["rx_center_freq"],
             metadata_dict["debug_samples"],
         )
 
@@ -718,13 +718,14 @@ def main():
     radar_control_to_exp_handler = sockets_list[0]
     radctrl_brian_socket = sockets_list[1]
 
+    # Sockets for thread communication
     radctrl_inproc_socket = zmq.Context().instance().socket(zmq.PAIR)
     radctrl_inproc_socket.bind("inproc://radctrl")
 
     driver_comms_socket = zmq.Context().instance().socket(zmq.PAIR)
     driver_comms_socket.bind("inproc://radctrl_driver")
 
-    dw_comms_socket = zmq.Context().isinstance().socket(zmq.PAIR)
+    dw_comms_socket = zmq.Context().instance().socket(zmq.PAIR)
     dw_comms_socket.bind("inproc://radctrl_dw")
 
     # seqnum is used as an identifier in all packets while radar is running so set it up here.
@@ -1240,7 +1241,9 @@ def main():
                     "scheduling_mode": experiment.scheduling_mode,
                     "output_sample_rate": experiment.output_rx_rate,
                     "experiment_comment": experiment.comment_string,
-                    "filter_scaling_factors": decimation_scheme.filter_scaling_factors,
+                    "filter_scaling_factors": aveperiod.sequences[
+                        0
+                    ].decimation_scheme.filter_scaling_factors,
                     "rx_center_freq": experiment.slice_dict[0].rxctrfreq,
                     "debug_samples": None,
                 }
