@@ -44,6 +44,7 @@ class RadctrlParameters:
     options: ...
     decimation_scheme: ... = field(init=False)
     seqnum_start: int
+    startup_flag: bool
     num_sequences: int = 0
     last_sequence_num: int = 0
     sequence_index: int = 0
@@ -58,7 +59,10 @@ class RadctrlParameters:
 
     def __post_init__(self):
         self.slice_dict = self.experiment.slice_dict
-        self.decimation_scheme = self.sequence.decimation_scheme
+        if self.sequence:
+            self.decimation_scheme = self.sequence.decimation_scheme
+        else:
+            self.decimation_scheme = None
 
 
 def driver_comms_thread(radctrl_driver_iden, driver_socket_iden, router_addr):
@@ -95,69 +99,87 @@ def create_driver_message(driver_params, pulse_transmit_data):
     """
     Place data in the driver packet and send it via zeromq to the driver.
 
-    :param driver_params: The current averaging period parameters dataclass. The message extracts:
-        sequence.txctrfreq: the transmit center frequency to tune to,
-        sequence.rxctrfreq: the receive center frequency to tune to. With rx_sample_rate from config.ini file, this
+    :param driver_params: The current averaging period parameters dataclass. The message extracts,
+        sequence.txctrfreq - the transmit center frequency to tune to,
+        sequence.rxctrfreq - the receive center frequency to tune to. With rx_sample_rate from config.ini file, this
         determines the received signal band,
-        experiment.txrate: the tx sampling rate (Hz),
-        experiment.rxrate: the rx sampling rate (Hz),
-        sequence.numberofreceivesamples: number of samples to receive at the rx_sample_rate from config.ini file. This
-            determines length of Scope Sync GPIO being high for this sequence,
-        sequence.seqtime: relative timing offset
-        seqnum: the sequence number. This is a unique identifier for the sequence that is always increasing
-            with increasing sequences while radar_control is running. It is only reset when program restarts. It is
-            determined as seqnum_start + num_sequences,
-            sequence.align_sequences: a boolean indicating whether to align the start of the sequence to a clean tenth
-            of a second.
-    :param pulse_transmit_data: dictionary of current transmit pulse data. The message extracts:
-        ['samples_array']: this is a list of length main_antenna_count from the config file. It contains one
-            numpy array of complex values per antenna. If the antenna will not be transmitted on, it contains a
-            numpy array of zeros of the same length as the rest. All arrays will have the same length according to
-            the pulse length,
-        ['startofburst']: start of burst boolean, true for first pulse in sequence,
-        ['endofburst']: end of burst boolean, true for last pulse in sequence,
-        ['timing']: in us, the time past timezero to send this pulse. Timezero is the start of the sequence,
-        ['isarepeat']: a boolean indicating whether the pulse is the exact same as the last pulse
-            in the sequence, in which case we will save the time and not send the samples list and other
-            params that will be the same.
+        experiment.txrate - the tx sampling rate (Hz),
+        experiment.rxrate - the rx sampling rate (Hz),
+        sequence.numberofreceivesamples - number of samples to receive at the rx_sample_rate from config.ini file. This
+        determines length of Scope Sync GPIO being high for this sequence,
+        sequence.seqtime - relative timing offset
+        seqnum - the sequence number. This is a unique identifier for the sequence that is always increasing
+        with increasing sequences while radar_control is running. It is only reset when program restarts. It is
+        determined as seqnum_start + num_sequences,
+        sequence.align_sequences: a boolean indicating whether to align the start of the sequence to a clean tenth
+        of a second.
+    :param pulse_transmit_data: dictionary of current transmit pulse data. The message extracts,
+        ['samples_array'] - this is a list of length main_antenna_count from the config file. It contains one
+        numpy array of complex values per antenna. If the antenna will not be transmitted on, it contains a
+        numpy array of zeros of the same length as the rest. All arrays will have the same length according to
+        the pulse length,
+        ['startofburst'] - start of burst boolean, true for first pulse in sequence,
+        ['endofburst'] - end of burst boolean, true for last pulse in sequence,
+        ['timing'] - in us, the time past timezero to send this pulse. Timezero is the start of the sequence,
+        ['isarepeat'] - a boolean indicating whether the pulse is the exact same as the last pulse
+        in the sequence, in which case we will save the time and not send the samples list and other
+        params that will be the same.
     """
 
     message = DriverPacket()
-    timing = pulse_transmit_data["timing"]
-    SOB = pulse_transmit_data["startofburst"]
-    EOB = pulse_transmit_data["endofburst"]
 
-    message.timetosendsamples = timing
-    message.SOB = SOB
-    message.EOB = EOB
-    message.sequence_num = driver_params.seqnum_start + driver_params.num_sequences
-    message.numberofreceivesamples = driver_params.sequence.numberofreceivesamples
-    message.seqtime = (driver_params.sequence.seqtime,)
-    message.align_sequences = driver_params.sequence.align_sequences
-
-    if pulse_transmit_data["isarepeat"]:
-        # antennas empty
-        # samples empty
-        # ctrfreq empty
-        # rxrate and txrate empty
-        log.debug("repeat timing", timing=timing, sob=SOB, eob=EOB)
-    else:
-        # Setup data to send to driver for transmit.
-        log.debug("non-repeat timing", timing=timing, sob=SOB, eob=EOB)
-        samples_array = pulse_transmit_data["samples_array"]
-        for ant_idx in range(samples_array.shape[0]):
-            sample_add = message.channel_samples.add()
-            # Add one Samples message for each channel possible in config.
-            # Any unused channels will be sent zeros.
-            # Protobuf expects types: int, long, or float, will reject numpy types and
-            # throw a TypeError so we must convert the numpy arrays to lists
-            sample_add.real.extend(samples_array[ant_idx, :].real.tolist())
-            sample_add.imag.extend(samples_array[ant_idx, :].imag.tolist())
-        message.txcenterfreq = driver_params.sequence.txctrfreq * 1000  # convert to Hz
-        message.rxcenterfreq = driver_params.sequence.rxctrfreq * 1000  # convert to Hz
+    if driver_params.startup_flag:
+        message.txcenterfreq = (
+            driver_params.slice_dict[0].txctrfreq * 1000
+        )  # convert to Hz
+        message.rxcenterfreq = (
+            driver_params.slice_dict[0].rxctrfreq * 1000
+        )  # convert to Hz
         message.txrate = driver_params.experiment.txrate
         message.rxrate = driver_params.experiment.rxrate
+    else:
+        timing = pulse_transmit_data["timing"]
+        SOB = pulse_transmit_data["startofburst"]
+        EOB = pulse_transmit_data["endofburst"]
+
+        message.timetosendsamples = timing
+        message.SOB = SOB
+        message.EOB = EOB
+        message.sequence_num = driver_params.seqnum_start + driver_params.num_sequences
         message.numberofreceivesamples = driver_params.sequence.numberofreceivesamples
+        message.seqtime = driver_params.sequence.seqtime
+        message.align_sequences = driver_params.sequence.align_sequences
+
+        if pulse_transmit_data["isarepeat"]:
+            # antennas empty
+            # samples empty
+            # ctrfreq empty
+            # rxrate and txrate empty
+            log.debug("repeat timing", timing=timing, sob=SOB, eob=EOB)
+        else:
+            # Setup data to send to driver for transmit.
+            log.debug("non-repeat timing", timing=timing, sob=SOB, eob=EOB)
+            samples_array = pulse_transmit_data["samples_array"]
+            for ant_idx in range(samples_array.shape[0]):
+                sample_add = message.channel_samples.add()
+                # Add one Samples message for each channel possible in config.
+                # Any unused channels will be sent zeros.
+                # Protobuf expects types: int, long, or float, will reject numpy types and
+                # throw a TypeError so we must convert the numpy arrays to lists
+                sample_add.real.extend(samples_array[ant_idx, :].real.tolist())
+                sample_add.imag.extend(samples_array[ant_idx, :].imag.tolist())
+
+            message.txcenterfreq = (
+                driver_params.sequence.txctrfreq * 1000
+            )  # convert to Hz
+            message.rxcenterfreq = (
+                driver_params.sequence.rxctrfreq * 1000
+            )  # convert to Hz
+            message.txrate = driver_params.experiment.txrate
+            message.rxrate = driver_params.experiment.rxrate
+            message.numberofreceivesamples = (
+                driver_params.sequence.numberofreceivesamples
+            )
 
     return message.SerializeToString()
 
@@ -195,27 +217,27 @@ def create_dsp_message(dsp_params):
     Happens every sequence.
 
     :param dsp_params: The radar control parameter dataclass updated during the averaging period. The message grabs,
-        experiment.rxrate: The receiver sampling rate (Hz),
-        experiment.output_rx_rate: The output sample rate desired for the output data (Hz),
-        seqnum: the sequence number. This is a unique identifier for the sequence that is always increasing
-            with increasing sequences while radar_control is running. It is only reset when program restarts.
-            It is calculated from seqnum_start + num_sequences,
-        sequence.slice_ids: The identifiers of the slices that are combined in this sequence. These IDs tell us where
-            to look in the beam dictionary and slice dictionary for frequency information and beam direction
-            information about this sequence to give to the signal processing unit,
-        sequence.slice_dict: The slice dictionary, which contains information about all slices and will be referenced
-            for information about the slices in this sequence. Namely, we get the frequency we want to receive at,
-            the number of ranges and the first range information,
-        beam_dict: The dictionary containing beam directions for each slice generated using
-            sequence.get_rx_phases(aveperiod.beam_iter),
-        sequence.seqtime: entire duration of sequence, including receive time after all transmissions,
-        sequence.first_rx_sample_start: The sample where the first rx sample will start relative to the
-            tx data,
-        sequence.rxctrfreq: the center frequency of receiving,
-        sequence.output_encodings: Phase offsets (degrees) applied to each pulse in the sequence,
-        decimation_scheme: object of type DecimationScheme that has all decimation and
-            filtering data,
-        cfs_scan_flag: flag indicating of sequence is a clear frequency search rx only sequence
+        experiment.rxrate - The receiver sampling rate (Hz),
+        experiment.output_rx_rate - The output sample rate desired for the output data (Hz),
+        seqnum - the sequence number. This is a unique identifier for the sequence that is always increasing
+        with increasing sequences while radar_control is running. It is only reset when program restarts.
+        It is calculated from seqnum_start + num_sequences,
+        sequence.slice_ids - The identifiers of the slices that are combined in this sequence. These IDs tell us where
+        to look in the beam dictionary and slice dictionary for frequency information and beam direction
+        information about this sequence to give to the signal processing unit,
+        sequence.slice_dict - The slice dictionary, which contains information about all slices and will be referenced
+        for information about the slices in this sequence. Namely, we get the frequency we want to receive at,
+        the number of ranges and the first range information,
+        beam_dict - The dictionary containing beam directions for each slice generated using
+        sequence.get_rx_phases(aveperiod.beam_iter),
+        sequence.seqtime - entire duration of sequence, including receive time after all transmissions,
+        sequence.first_rx_sample_start - The sample where the first rx sample will start relative to the
+        tx data,
+        sequence.rxctrfreq - the center frequency of receiving,
+        sequence.output_encodings - Phase offsets (degrees) applied to each pulse in the sequence,
+        decimation_scheme - object of type DecimationScheme that has all decimation and
+        filtering data,
+        cfs_scan_flag - flag indicating of sequence is a clear frequency search rx only sequence
     """
     # TODO: does the for loop below need to happen every time. Could be only updated
     #       as necessary to make it more efficient.
@@ -237,7 +259,10 @@ def create_dsp_message(dsp_params):
             message.add_decimation_stage(dm_stage_add)
 
     slice_dict = dsp_params.sequence.slice_dict
-    beam_dict = dsp_params.sequence.get_rx_phases(dsp_params.aveperiod.beam_iter)
+    if dsp_params.aveperiod.cfs_flag:
+        beam_dict = dsp_params.sequence.get_rx_phases(0)
+    else:
+        beam_dict = dsp_params.sequence.get_rx_phases(dsp_params.aveperiod.beam_iter)
     for slice_id in dsp_params.sequence.slice_ids:
         chan_add = messages.RxChannel(slice_id)
         chan_add.tau_spacing = slice_dict[slice_id].tau_spacing
@@ -374,36 +399,36 @@ def create_dw_message(dw_params):
     Send the metadata about this averaging period to datawrite so that it can be recorded.
 
     :param dw_params: The radar control parameter dataclass updated during the aveperiod. The message grabs,
-        seqnum: The last sequence number (identifier) that is valid for this averaging
-            period. Used to verify and synchronize driver, dsp, datawrite. Calcualted with
-            seqnum_start + num_sequences,
-        num_sequences: The number of sequences that were sent in this averaging period. (number of
-            sequences to average together),
-        scan_flag: True if this averaging period is the first in a scan,
-        averaging_period_time: The time that expired during this averaging period,
-        aveperiod.sequences: The sequences of class Sequence for this averaging period (AveragingPeriod),
-        aveperiod.beam_iter: The beam iterator of this averaging period,
-        experiment.cpid: the ID of the experiment that is running,
-        experiment.experiment_name: the experiment name to be placed in the data files,
-        experiment.scheduling_mode: the type of scheduling mode running at this time, to write to file,
-        experiment.output_rx_rate: The output sample rate of the output data, defined by the
-            experiment, in Hz,
-        experiment.comment_string: The comment string for the experiment, user-defined,
-        decimation_scheme.filter_scaling_factors: The decimation scheme scaling factors used for the
-            experiment, to get the scaling for the data for accurate power measurements between experiments,
-        experiment.slice_dict[0].rxctrfreq: The receive center frequency (kHz),
-        debug_samples: the debug samples for this averaging period, to be written to the
-            file if debug is set. This is a list of dictionaries for each Sequence in the
-            AveragingPeriod. The dictionary is set up in the sample_building module function
-            create_debug_sequence_samples. The keys are 'txrate', 'txctrfreq', 'pulse_timing',
-            'pulse_sample_start', 'sequence_samples', 'decimated_sequence', and 'dmrate'.
-            The 'sequence_samples' and 'decimated_samples' values are themselves dictionaries, where the
-            keys are the antenna numbers (there is a sample set for each transmit antenna).
+        seqnum - The last sequence number (identifier) that is valid for this averaging
+        period. Used to verify and synchronize driver, dsp, datawrite. Calcualted with
+        seqnum_start + num_sequences,
+        num_sequences- The number of sequences that were sent in this averaging period. (number of
+        sequences to average together),
+        scan_flag - True if this averaging period is the first in a scan,
+        averaging_period_time - The time that expired during this averaging period,
+        aveperiod.sequences - The sequences of class Sequence for this averaging period (AveragingPeriod),
+        aveperiod.beam_iter - The beam iterator of this averaging period,
+        experiment.cpid - the ID of the experiment that is running,
+        experiment.experiment_name - the experiment name to be placed in the data files,
+        experiment.scheduling_mode - the type of scheduling mode running at this time, to write to file,
+        experiment.output_rx_rate - The output sample rate of the output data, defined by the
+        experiment, in Hz,
+        experiment.comment_string - The comment string for the experiment, user-defined,
+        decimation_scheme.filter_scaling_factors - The decimation scheme scaling factors used for the
+        experiment, to get the scaling for the data for accurate power measurements between experiments,
+        experiment.slice_dict[0].rxctrfreq - The receive center frequency (kHz),
+        debug_samples - the debug samples for this averaging period, to be written to the
+        file if debug is set. This is a list of dictionaries for each Sequence in the
+        AveragingPeriod. The dictionary is set up in the sample_building module function
+        create_debug_sequence_samples. The keys are 'txrate', 'txctrfreq', 'pulse_timing',
+        'pulse_sample_start', 'sequence_samples', 'decimated_sequence', and 'dmrate'.
+        The 'sequence_samples' and 'decimated_samples' values are themselves dictionaries, where the
+        keys are the antenna numbers (there is a sample set for each transmit antenna).
     """
 
     message = messages.AveperiodMetadataMessage()
     message.experiment_id = dw_params.experiment.cpid
-    message.experiment_name = (dw_params.experiment.experiment_name,)
+    message.experiment_name = dw_params.experiment.experiment_name
     message.experiment_comment = dw_params.experiment.comment_string
     message.rx_ctr_freq = dw_params.experiment.slice_dict[0].rxctrfreq
     message.num_sequences = dw_params.num_sequences
@@ -654,12 +679,11 @@ def main():
 
     # Send driver initial setup data - rates and center frequency from experiment.
     # Wait for acknowledgment that USRP object is set up.
-    driver_args = (
-        experiment.slice_dict[0].txctrfreq,
-        experiment.slice_dict[0].rxctrfreq,
-        experiment.txrate,
-        experiment.rxrate,
+
+    start_up_params = RadctrlParameters(
+        experiment, None, None, options, seqnum_start, True
     )
+    driver_start_message = create_driver_message(start_up_params, None)
 
     metadata_thread = threading.Thread(
         target=dsp_comms_thread,
@@ -692,7 +716,7 @@ def main():
     driver_comms.start()
     dw_comms.start()
 
-    driver_comms_socket.send_pyobj(driver_args)
+    driver_comms_socket.send_pyobj(driver_start_message)
     driver_comms_socket.recv_string()
     # Wait until driver acknowledges that it is good to start
 
@@ -950,14 +974,20 @@ def main():
 
                 # Time to start averaging in the below loop
                 ave_params = RadctrlParameters(
-                    experiment, aveperiod, aveperiod.sequences[0], options, seqnum_start
+                    experiment,
+                    aveperiod,
+                    aveperiod.sequences[0],
+                    options,
+                    seqnum_start,
+                    False,
                 )
                 time_remains = True
 
                 while time_remains:
 
                     # CFS block
-                    if aveperiod.num_sequences == 0 and aveperiod.cfs_flag:
+                    if ave_params.num_sequences == 0 and aveperiod.cfs_flag:
+                        ave_params.sequence = aveperiod.cfs_sequence
                         freq_spectrum = run_cfs_scan(
                             radctrl_inproc_socket,
                             radctrl_brian_socket,
