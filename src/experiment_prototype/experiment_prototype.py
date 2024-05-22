@@ -102,7 +102,6 @@ of experiment building-block to the lowest level:
 
 possible_scheduling_modes = frozenset(["common", "special", "discretionary"])
 default_rx_bandwidth = 5.0e6
-default_output_rx_rate = 10.0e3 / 3
 transition_bandwidth = 750.0e3
 
 
@@ -131,9 +130,6 @@ class ExperimentPrototype:
     :param  cpid:               Unique id necessary for each control program (experiment). Cannot be
                                 changed after instantiation.
     :type   cpid:               int
-    :param  output_rx_rate:     The desired output rate for the data, to be decimated to, in Hz.
-                                Cannot be changed after instantiation. Default 3.333 kHz.
-    :type   output_rx_rate:     float
     :param  rx_bandwidth:       The desired bandwidth for the experiment. Directly determines rx
                                 sampling rate of the USRPs. Cannot be changed after instantiation.
                                 Default 5.0 MHz.
@@ -160,7 +156,6 @@ class ExperimentPrototype:
     def __init__(
         self,
         cpid,
-        output_rx_rate=default_output_rx_rate,
         rx_bandwidth=default_rx_bandwidth,
         tx_bandwidth=5.0e6,
         comment_string="",
@@ -222,19 +217,11 @@ class ExperimentPrototype:
         )  # Load the config, hardware, and restricted frequency data
         self.__cpid = cpid
         self.__scheduling_mode = "unknown"
-        self.__output_rx_rate = float(output_rx_rate)
         if comment_string is None:
             comment_string = ""
         self.__comment_string = comment_string
         self.__slice_dict = {}
         self.__new_slice_id = 0
-
-        if self.output_rx_rate > self.options.max_output_sample_rate:
-            errmsg = (
-                f"Experiment's output sample rate is too high: {self.output_rx_rate} "
-                f"greater than max {self.options.max_output_sample_rate}."
-            )
-            raise ExperimentException(errmsg)
 
         self.__txrate = float(tx_bandwidth)  # sampling rate, samples per sec, Hz.
         self.__rxrate = float(rx_bandwidth)  # sampling rate for rx in samples per sec
@@ -270,7 +257,6 @@ class ExperimentPrototype:
         # cannot change within the experiment and is used in the scan classes to pass information
         # to where the samples are built.
         self.__transmit_metadata = {
-            "output_rx_rate": self.output_rx_rate,
             "tx_main_antennas": self.options.tx_main_antennas,
             "rx_main_antennas": self.options.rx_main_antennas,
             "rx_intf_antennas": self.options.rx_intf_antennas,
@@ -283,6 +269,7 @@ class ExperimentPrototype:
             "max_usrp_dac_amplitude": self.options.max_usrp_dac_amplitude,
             "rx_sample_rate": self.rxrate,
             "min_pulse_separation": self.options.min_pulse_separation,
+            "rxrate": self.rxrate,
             "txrate": self.txrate,
             "intf_offset": self.options.intf_offset,
         }
@@ -305,7 +292,6 @@ class ExperimentPrototype:
         self.__slice_restrictions = {
             "tx_bandwidth": self.tx_bandwidth,
             "rx_bandwidth": self.rx_bandwidth,
-            "output_rx_rate": self.output_rx_rate,
             "transition_bandwidth": transition_bandwidth,
         }
 
@@ -332,16 +318,6 @@ class ExperimentPrototype:
         :rtype:     str
         """
         return self.__experiment_name
-
-    @property
-    def output_rx_rate(self):
-        """
-        The output receive rate of the data, Hz.
-
-        :returns:   output_rx_rate - read-only
-        :rtype:     float
-        """
-        return self.__output_rx_rate
 
     @property
     def tx_bandwidth(self):
