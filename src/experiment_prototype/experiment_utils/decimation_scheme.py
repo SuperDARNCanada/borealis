@@ -191,8 +191,29 @@ def create_default_scheme():
 
 
 def create_default_cfs_scheme():
-    # Place holder for default cfs scheme
-    return create_default_scheme()
+    """
+    Wide passband decimation scheme for listening only (high output sample rate, beware!)
+    This default clear frequency search scheme is designed for a 300kHz range.
+    """
+    sample_rate = 5e6  # 5 MHz
+    dm_rate = [15]  # downsampling rates after filters
+    transition_width = [100e3]  # transition from passband to stopband
+    cutoff_hz = [165e3]  # bandwidth for output of filter
+    ripple_db = [200]  # Stopband suppression in dB
+
+    dm_rate_so_far = 1
+    stages = []
+    for i in range(len(ripple_db)):
+        rate = sample_rate / dm_rate_so_far
+        taps = create_firwin_filter_by_attenuation(
+            rate, transition_width[i], cutoff_hz[i], ripple_db[i]
+        )
+        stages.append(DecimationStage(i, rate, dm_rate[i], taps.tolist()))
+        dm_rate_so_far *= dm_rate[i]
+
+    scheme = DecimationScheme(sample_rate, sample_rate / dm_rate_so_far, stages=stages)
+
+    return scheme
 
 
 def calculate_num_filter_taps(sampling_freq, trans_width, k):

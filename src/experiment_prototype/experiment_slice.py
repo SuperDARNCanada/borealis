@@ -496,17 +496,33 @@ class ExperimentSlice:
     @validator("cfs_scheme")
     def check_cfs_scheme(cls, cfs_scheme, values):
 
-        # place holder scheme validator
         if values["cfs_flag"]:
+            if len(cfs_scheme.stages) > options.max_filtering_stages:
+                errmsg = (
+                    f"Number of cfs decimation stages ({len(cfs_scheme.stages)}) is greater than max"
+                    f" available {options.max_filtering_stages}"
+                )
+                raise ValueError(errmsg)
+
+            # Check that the rx_bandwidth matches input rate of the DecimationScheme
+            input_rate = cfs_scheme.input_rates[0]
+            if input_rate != values["rx_bandwidth"]:
+                raise ValueError(
+                    f"decimation_scheme input data rate {input_rate} does not match rx_bandwidth "
+                    f"{values['rx_bandwidth']}"
+                )
+
+            # Make sure default cfs scheme is only used with expected 300kHz range
             if "cfs_range" in values:
                 cfs_width = int(values["cfs_range"][1] - values["cfs_range"][0])
-
-                if cfs_width != 300 and cfs_scheme:
-                    raise ValueError(
-                        f"CFS slice {values['slice_id']} does not have the default 300kHz width. You must "
-                        f"define a custom decimation scheme to match the {cfs_width}kHz width or "
-                        f"adjust the cfs_range values of the experiment."
-                    )
+                if cfs_width != 300:
+                    test_scheme = create_default_cfs_scheme()
+                    if cfs_scheme == test_scheme:
+                        raise ValueError(
+                            f"CFS slice {values['slice_id']} does not have the default 300kHz width. You must "
+                            f"define a custom decimation scheme to match the {cfs_width}kHz width or "
+                            f"adjust the cfs_range values of the experiment."
+                        )
 
         return cfs_scheme
 
