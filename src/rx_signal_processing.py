@@ -45,7 +45,7 @@ from utils.message_formats import (
 from utils.signals import DSP
 
 
-def fill_datawrite_message(processed_data, slice_details, data_outputs):
+def fill_datawrite_message(processed_data, slice_details, data_outputs, cfs_scan_flag):
     """
     Fills the datawrite message with processed data.
 
@@ -56,8 +56,10 @@ def fill_datawrite_message(processed_data, slice_details, data_outputs):
     :param      data_outputs:    The processed data outputs.
     :type       data_outputs:    dict
     """
+    if cfs_scan_flag:
+        processed_data.cfs_freq = data_outputs["cfs_freq"]
 
-    for sd in slice_details:
+    for slice_num, sd in enumerate(slice_details):
         output_dataset = OutputDataset(
             sd["slice_id"], sd["num_beams"], sd["num_range_gates"], sd["num_lags"]
         )
@@ -82,22 +84,29 @@ def fill_datawrite_message(processed_data, slice_details, data_outputs):
                 shm.close()
                 return name
 
-        main_corrs = data_outputs["main_corrs"][sd["slice_num"]]
-        output_dataset.main_acf_shm = add_array(main_corrs)
+        if cfs_scan_flag:
+            cfs_data = data_outputs["cfs_data"]
+            output_dataset.cfs_data = cfs_data[slice_num]
 
-        intf_available = True
-        try:
-            intf_corrs = data_outputs["intf_corrs"][sd["slice_num"]]
-            cross_corrs = data_outputs["cross_corrs"][sd["slice_num"]]
-        except KeyError as e:
-            # No interferometer data
-            intf_available = False
+            processed_data.add_output_dataset(output_dataset)
+            # if a clear frequency search was performed, add cfs data to message
+        else:
+            main_corrs = data_outputs["main_corrs"][sd["slice_num"]]
+            output_dataset.main_acf_shm = add_array(main_corrs)
 
-        if intf_available:
-            output_dataset.intf_acf_shm = add_array(intf_corrs)
-            output_dataset.xcf_shm = add_array(cross_corrs)
+            intf_available = True
+            try:
+                intf_corrs = data_outputs["intf_corrs"][sd["slice_num"]]
+                cross_corrs = data_outputs["cross_corrs"][sd["slice_num"]]
+            except KeyError as e:
+                # No interferometer data
+                intf_available = False
 
-        processed_data.add_output_dataset(output_dataset)
+            if intf_available:
+                output_dataset.intf_acf_shm = add_array(intf_corrs)
+                output_dataset.xcf_shm = add_array(cross_corrs)
+
+            processed_data.add_output_dataset(output_dataset)
 
 
 def sequence_worker(options, ringbuffer):
@@ -179,52 +188,78 @@ def sequence_worker(options, ringbuffer):
         so.send_bytes(dspbegin_to_brian, options.brian_to_dspbegin_identity, msg)
         log_dict["dsp_begin_msg_time"] = (time.perf_counter() - mark_timer) * 1e3
 
-        # Process main samples
-        mark_timer = time.perf_counter()
-        main_sequence_samples = sequence_samples[: len(options.rx_main_antennas), :]
-        main_sequence_samples_shape = main_sequence_samples.shape
-        main_processor = DSP(rx_rate, filter_taps, mixing_freqs, downsample_rates)
-        main_processor.apply_filters(main_sequence_samples)
-        main_processor.move_filter_results()
-        main_processor.beamform(main_beam_angles)
-        main_corrs = DSP.correlations_from_samples(
-            main_processor.beamformed_samples,
-            main_processor.beamformed_samples,
-            output_sample_rate,
-            slice_details,
-        )
-        log_dict["main_dsp_time"] = (time.perf_counter() - mark_timer) * 1e3
-
-        # Process intf samples if intf exists
-        mark_timer = time.perf_counter()
-        intf_sequence_samples_shape = None
-        log.info("intf antennas", antennas=intf_antennas)
-        if len(intf_antennas) > 0:
-            intf_sequence_samples = sequence_samples[len(options.rx_main_antennas) :, :]
-            intf_sequence_samples_shape = intf_sequence_samples.shape
-            intf_processor = DSP(rx_rate, filter_taps, mixing_freqs, downsample_rates)
-            intf_processor.apply_filters(intf_sequence_samples)
-            intf_processor.move_filter_results()
-            intf_processor.beamform(intf_beam_angles)
-            intf_corrs = DSP.correlations_from_samples(
-                intf_processor.beamformed_samples,
-                intf_processor.beamformed_samples,
-                output_sample_rate,
+        if cfs_scan_flag:
+            # CFS analysis
+            mark_timer = time.perf_counter()
+            cfs_processor = DSP(
+                rx_rate,
+                filter_taps,
+                mixing_freqs,
+                downsample_rates,
+                use_shared_mem=False,
+            )
+            cfs_processor.apply_filters(sequence_samples)
+            cfs_processor.move_filter_results()  # TODO: Is this required if not using shared mem?
+            cfs_data, cfs_freq = cfs_processor.cfs_freq_analysis(
+                cfs_processor.antennas_iq_samples,
                 slice_details,
             )
-            cross_corrs = DSP.correlations_from_samples(
-                intf_processor.beamformed_samples,
+            log_dict["cfs_dsp_time"] = (time.perf_counter() - mark_timer) * 1e3
+
+        else:
+            # Process main samples
+            mark_timer = time.perf_counter()
+            main_sequence_samples = sequence_samples[: len(options.rx_main_antennas), :]
+            main_sequence_samples_shape = main_sequence_samples.shape
+            main_processor = DSP(rx_rate, filter_taps, mixing_freqs, downsample_rates)
+            main_processor.apply_filters(main_sequence_samples)
+            main_processor.move_filter_results()
+            main_processor.beamform(main_beam_angles)
+            main_corrs = DSP.correlations_from_samples(
+                main_processor.beamformed_samples,
                 main_processor.beamformed_samples,
                 output_sample_rate,
                 slice_details,
             )
-        log_dict["intf_dsp_time"] = (time.perf_counter() - mark_timer) * 1e3
+            log_dict["main_dsp_time"] = (time.perf_counter() - mark_timer) * 1e3
+
+            # Process intf samples if intf exists
+            mark_timer = time.perf_counter()
+            intf_sequence_samples_shape = None
+            log.info("intf antennas", antennas=intf_antennas)
+            if len(intf_antennas) > 0:
+                intf_sequence_samples = sequence_samples[
+                    len(options.rx_main_antennas) :, :
+                ]
+                intf_sequence_samples_shape = intf_sequence_samples.shape
+                intf_processor = DSP(
+                    rx_rate, filter_taps, mixing_freqs, downsample_rates
+                )
+                intf_processor.apply_filters(intf_sequence_samples)
+                intf_processor.move_filter_results()
+                intf_processor.beamform(intf_beam_angles)
+                intf_corrs = DSP.correlations_from_samples(
+                    intf_processor.beamformed_samples,
+                    intf_processor.beamformed_samples,
+                    output_sample_rate,
+                    slice_details,
+                )
+                cross_corrs = DSP.correlations_from_samples(
+                    intf_processor.beamformed_samples,
+                    main_processor.beamformed_samples,
+                    output_sample_rate,
+                    slice_details,
+                )
+            log_dict["intf_dsp_time"] = (time.perf_counter() - mark_timer) * 1e3
 
         # Tell brian DSP how long it took
         mark_timer = time.perf_counter()
-        reply_packet["kerneltime"] = (
-            log_dict["main_dsp_time"] + log_dict["intf_dsp_time"]
-        )
+        if cfs_scan_flag:
+            reply_packet["kerneltime"] = log_dict["cfs_dsp_time"]
+        else:
+            reply_packet["kerneltime"] = (
+                log_dict["main_dsp_time"] + log_dict["intf_dsp_time"]
+            )
         msg = pickle.dumps(reply_packet, protocol=pickle.HIGHEST_PROTOCOL)
         so.recv_bytes(dspend_to_brian, options.brian_to_dspend_identity, log)
         so.send_bytes(dspend_to_brian, options.brian_to_dspend_identity, msg)
@@ -232,17 +267,23 @@ def sequence_worker(options, ringbuffer):
 
         total_processing_time = (time.perf_counter() - start_timer) * 1e3
         log_dict["total_sequence_process_time"] = total_processing_time
-        log.verbose(
-            "processing sequence",
-            sequence_num=sequence_num,
-            mixing_freqs=mixing_freqs,
-            mixing_freqs_units="Hz",
-            main_beam_angles=main_beam_angles.shape,
-            intf_beam_angles=main_beam_angles.shape,
-            main_buffer_shape=main_sequence_samples_shape,
-            intf_buffer_shape=intf_sequence_samples_shape,
-            **log_dict,
-        )
+        if cfs_scan_flag:
+            log.verbose(
+                "CFS processing sequence",
+                **log_dict,
+            )
+        else:
+            log.verbose(
+                "processing sequence",
+                sequence_num=sequence_num,
+                mixing_freqs=mixing_freqs,
+                mixing_freqs_units="Hz",
+                main_beam_angles=main_beam_angles.shape,
+                intf_beam_angles=main_beam_angles.shape,
+                main_buffer_shape=main_sequence_samples_shape,
+                intf_buffer_shape=intf_sequence_samples_shape,
+                **log_dict,
+            )
 
         # Generate a new timer dict for a uniform log
         log_dict = {"time_units": "ms"}
@@ -251,108 +292,128 @@ def sequence_worker(options, ringbuffer):
         # Extract outputs from processing into groups that will be put into message fields.
         data_outputs = {}
 
-        def debug_data_in_shm(holder, data_array, array_name):
-            """
-            Adds an array of antennas data (filter outputs or antennas_iq) into a dictionary
-            for later entry in a processed data message.
+        if cfs_scan_flag:
+            mark_timer = time.perf_counter()
+            data_outputs["cfs_data"] = cfs_data
+            data_outputs["cfs_freq"] = cfs_freq
 
-            :param  holder:     Dictionary to store the shared memory parameters.
-            :type   holder:     dict
-            :param  data_array: array to hold the data
-            :type   data_array: cp.ndarray or np.ndarray
-            :param  array_name: 'main' or 'intf'
-            :type   array_name: str
-            """
-
-            shm = shared_memory.SharedMemory(create=True, size=data_array.nbytes)
-            data = np.ndarray(data_array.shape, dtype=np.complex64, buffer=shm.buf)
-            if cupy_available:
-                data[...] = xp.asnumpy(data_array)
-            else:
-                data[...] = data_array
-
-            if array_name == "main":
-                holder.main_shm = shm.name
-            elif array_name == "intf":
-                holder.intf_shm = shm.name
-            else:
-                log.error(f"unknown array name {array_name} not in [main, intf]")
-                log.exception(f"unknown array name {array_name} [main, intf]")
-                sys.exit(1)
-
-            holder.num_samps = data_array.shape[-1]
-            shm.close()
-
-        # Add the filter stage data if in debug mode
-        if __debug__:
-            for i, main_data in enumerate(main_processor.filter_outputs[:-1]):
-                stage = DebugDataStage(f"stage_{i}")
-                debug_data_in_shm(stage, main_data, "main")
-
-                if options.intf_antenna_count > 0:
-                    intf_data = intf_processor.filter_outputs[i]
-                    debug_data_in_shm(stage, intf_data, "intf")
-
-                processed_data.add_debug_data(stage)
-
-        # Add antennas_iq data
-        stage = DebugDataStage()
-        stage.stage_name = "antennas"
-        main_shm = main_processor.shared_mem["antennas_iq"]
-        stage.main_shm = main_shm.name
-        stage.num_samps = main_processor.antennas_iq_samples.shape[-1]
-        main_shm.close()
-        if len(intf_antennas) > 0:
-            intf_shm = intf_processor.shared_mem["antennas_iq"]
-            stage.intf_shm = intf_shm.name
-            intf_shm.close()
-        processed_data.add_debug_data(stage)
-        log_dict["add_antiq_to_stage_time"] = (time.perf_counter() - start_timer) * 1e3
-        mark_timer = time.perf_counter()
-
-        # Add rawrf data
-        if __debug__:
-            # np.complex64 in bytes * num_antennas * num_samps
-            rawrf_size = (
-                np.dtype(np.complex64).itemsize
-                * ringbuffer.shape[0]
-                * indices.shape[-1]
+            # Fill message with the slice-specific fields
+            fill_datawrite_message(
+                processed_data, slice_details, data_outputs, cfs_scan_flag
             )
-            rawrf_shm = shared_memory.SharedMemory(create=True, size=rawrf_size)
-            rawrf_array = np.ndarray(
-                (ringbuffer.shape[0], indices.shape[-1]),
-                dtype=np.complex64,
-                buffer=rawrf_shm.buf,
+            sqn_message = pickle.dumps(processed_data, protocol=pickle.HIGHEST_PROTOCOL)
+            log_dict["cfs_to_stage_time"] = (time.perf_counter() - mark_timer) * 1e3
+
+        else:
+
+            def debug_data_in_shm(holder, data_array, array_name):
+                """
+                Adds an array of antennas data (filter outputs or antennas_iq) into a dictionary
+                for later entry in a processed data message.
+
+                :param  holder:     Dictionary to store the shared memory parameters.
+                :type   holder:     dict
+                :param  data_array: array to hold the data
+                :type   data_array: cp.ndarray or np.ndarray
+                :param  array_name: 'main' or 'intf'
+                :type   array_name: str
+                """
+
+                shm = shared_memory.SharedMemory(create=True, size=data_array.nbytes)
+                data = np.ndarray(data_array.shape, dtype=np.complex64, buffer=shm.buf)
+                if cupy_available:
+                    data[...] = xp.asnumpy(data_array)
+                else:
+                    data[...] = data_array
+
+                if array_name == "main":
+                    holder.main_shm = shm.name
+                elif array_name == "intf":
+                    holder.intf_shm = shm.name
+                else:
+                    log.error(f"unknown array name {array_name} not in [main, intf]")
+                    log.exception(f"unknown array name {array_name} [main, intf]")
+                    sys.exit(1)
+
+                holder.num_samps = data_array.shape[-1]
+                shm.close()
+
+            # Add the filter stage data if in debug mode
+            if __debug__:
+                for i, main_data in enumerate(main_processor.filter_outputs[:-1]):
+                    stage = DebugDataStage(f"stage_{i}")
+                    debug_data_in_shm(stage, main_data, "main")
+
+                    if options.intf_antenna_count > 0:
+                        intf_data = intf_processor.filter_outputs[i]
+                        debug_data_in_shm(stage, intf_data, "intf")
+
+                    processed_data.add_debug_data(stage)
+
+            # Add antennas_iq data
+            stage = DebugDataStage()
+            stage.stage_name = "antennas"
+            main_shm = main_processor.shared_mem["antennas_iq"]
+            stage.main_shm = main_shm.name
+            stage.num_samps = main_processor.antennas_iq_samples.shape[-1]
+            main_shm.close()
+            if len(intf_antennas) > 0:
+                intf_shm = intf_processor.shared_mem["antennas_iq"]
+                stage.intf_shm = intf_shm.name
+                intf_shm.close()
+            processed_data.add_debug_data(stage)
+            log_dict["add_antiq_to_stage_time"] = (
+                time.perf_counter() - start_timer
+            ) * 1e3
+            mark_timer = time.perf_counter()
+
+            # Add rawrf data
+            if __debug__:
+                # np.complex64 in bytes * num_antennas * num_samps
+                rawrf_size = (
+                    np.dtype(np.complex64).itemsize
+                    * ringbuffer.shape[0]
+                    * indices.shape[-1]
+                )
+                rawrf_shm = shared_memory.SharedMemory(create=True, size=rawrf_size)
+                rawrf_array = np.ndarray(
+                    (ringbuffer.shape[0], indices.shape[-1]),
+                    dtype=np.complex64,
+                    buffer=rawrf_shm.buf,
+                )
+                rawrf_array[...] = ringbuffer.take(indices, axis=1, mode="wrap")
+                processed_data.rawrf_shm = rawrf_shm.name
+                processed_data.rawrf_num_samps = indices.shape[-1]
+                rawrf_shm.close()
+                log_dict["put_rawrf_in_shm_time"] = (
+                    time.perf_counter() - mark_timer
+                ) * 1e3
+
+            # Add bfiq and correlations data
+            mark_timer = time.perf_counter()
+            # beamformed_m: [num_slices, num_beams, num_samps]
+            beamformed_m = main_processor.beamformed_samples
+            processed_data.bfiq_main_shm = main_processor.shared_mem["bfiq"].name
+            processed_data.max_num_beams = beamformed_m.shape[1]
+            processed_data.num_samps = beamformed_m.shape[-1]
+            main_processor.shared_mem["bfiq"].close()
+
+            data_outputs["main_corrs"] = main_corrs
+
+            if len(intf_antennas) > 0:
+                data_outputs["cross_corrs"] = cross_corrs
+                data_outputs["intf_corrs"] = intf_corrs
+                processed_data.bfiq_intf_shm = intf_processor.shared_mem["bfiq"].name
+                intf_processor.shared_mem["bfiq"].close()
+
+            # Fill message with the slice-specific fields
+            fill_datawrite_message(
+                processed_data, slice_details, data_outputs, cfs_scan_flag
             )
-            rawrf_array[...] = ringbuffer.take(indices, axis=1, mode="wrap")
-            processed_data.rawrf_shm = rawrf_shm.name
-            processed_data.rawrf_num_samps = indices.shape[-1]
-            rawrf_shm.close()
-            log_dict["put_rawrf_in_shm_time"] = (time.perf_counter() - mark_timer) * 1e3
-
-        # Add bfiq and correlations data
-        mark_timer = time.perf_counter()
-        # beamformed_m: [num_slices, num_beams, num_samps]
-        beamformed_m = main_processor.beamformed_samples
-        processed_data.bfiq_main_shm = main_processor.shared_mem["bfiq"].name
-        processed_data.max_num_beams = beamformed_m.shape[1]
-        processed_data.num_samps = beamformed_m.shape[-1]
-        main_processor.shared_mem["bfiq"].close()
-
-        data_outputs["main_corrs"] = main_corrs
-
-        if len(intf_antennas) > 0:
-            data_outputs["cross_corrs"] = cross_corrs
-            data_outputs["intf_corrs"] = intf_corrs
-            processed_data.bfiq_intf_shm = intf_processor.shared_mem["bfiq"].name
-            intf_processor.shared_mem["bfiq"].close()
-
-        # Fill message with the slice-specific fields
-        fill_datawrite_message(processed_data, slice_details, data_outputs)
-        sqn_message = pickle.dumps(processed_data, protocol=pickle.HIGHEST_PROTOCOL)
-        log_dict["add_bfiq_and_acfs_to_stage_time"] = (
-            time.perf_counter() - mark_timer
-        ) * 1e3
+            sqn_message = pickle.dumps(processed_data, protocol=pickle.HIGHEST_PROTOCOL)
+            log_dict["add_bfiq_and_acfs_to_stage_time"] = (
+                time.perf_counter() - mark_timer
+            ) * 1e3
 
         log.info(
             "Sending processed data",
@@ -461,6 +522,7 @@ def main():
             intf_beams = chan.beam_phases[:, len(options.rx_main_antennas) :]
 
             detail["num_beams"] = main_beams.shape[0]
+            detail["pulses"] = chan.pulses
 
             slice_details.append(detail)
             main_beam_angles.append(main_beams)

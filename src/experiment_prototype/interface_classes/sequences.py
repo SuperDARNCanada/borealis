@@ -150,6 +150,8 @@ class Sequence(InterfaceClassBase):
 
         if not self.cfs_flag:
             self.build_sequence_pulses()
+            # Only build sequence pulses if cfs_flag is not set. During clear frequency
+            # search, pulses can only be built after cfs slices are assigned frequencies
 
     def build_sequence_pulses(self):
         dm_rate = 1

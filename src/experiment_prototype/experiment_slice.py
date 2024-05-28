@@ -357,7 +357,7 @@ class ExperimentSlice:
     pulse_phase_offset: Optional[Callable] = default_callable
     cfs_range: Optional[conlist(freq_int_khz, min_items=2, max_items=2)] = None
     cfs_flag: StrictBool = Field(init=False)
-    cfs_duration: Optional[int] = 90
+    cfs_duration: Optional[int] = 90  # ms
     cfs_scheme: DecimationScheme = Field(default_factory=create_default_cfs_scheme)
     decimation_scheme: DecimationScheme = Field(default_factory=create_default_scheme)
 

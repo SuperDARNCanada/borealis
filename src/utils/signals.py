@@ -15,6 +15,7 @@ from multiprocessing import shared_memory
 
 from scipy.constants import speed_of_light
 import numpy as np
+import numpy.fft as fft
 
 try:
     import cupy as xp
@@ -152,6 +153,62 @@ class DSP:
         self.beamformed_samples[...] = self.beamform_samples(
             self.antennas_iq_samples, beam_phases
         )
+
+    def cfs_freq_analysis(self, data, metadata):
+        """
+        Performs decimation and frequency analysis on clear frequency search data. Data will not be
+        in shared memory.
+
+        :param  data:       Clear frequency search antenna's iq samples
+        :type   data:       numpy array
+        :param  metadata:   Clear frequency search sequence metadata
+        :type   metadata:   dict
+        """
+        # TODO: Examine what parameters need to be passed to this function.
+        fs = self.rx_rate / np.prod(self.dm_rates)  # Sampling frequency in Hz
+
+        masks = []
+        for i, slice_metadata in enumerate(metadata):
+            pulses = slice_metadata["pulses"]
+            tau = round(
+                slice_metadata["tau_spacing"] * 1e-6 * fs
+            )  # puts into units of samples
+            pulses_in_samples = [int(round(p * tau)) for p in pulses]
+            pulse_dur = round(0.0006 * fs)
+            mask = np.zeros(data.shape[-1], dtype=bool)
+            for pulse in pulses_in_samples:
+                start_mask = int(round(pulse - pulse_dur / 2))
+                end_mask = int(round(pulse + pulse_dur / 2))
+                if start_mask < 0:
+                    start_mask = 0
+                if end_mask >= len(mask):
+                    end_mask = len(mask) - 1
+                mask[start_mask:end_mask] = 1
+            masks.append(mask)
+
+        for i in range(len(masks)):
+            data[i, :, masks[i]] = 0.0 + 0.0j
+            # Masks samples recorded during transmission pulses
+
+        masked_fft = np.sum(np.abs(fft.fftshift(fft.fft(data), axes=-1)), axis=0)
+
+        freqs = fft.fftshift(fft.fftfreq(data.shape[-1], d=1 / fs))
+        df = freqs[1] - freqs[0]
+        output_freq_resolution = 1000  # Hz
+        sample_resolution = int(round(output_freq_resolution / df))
+
+        kernel = np.ones((sample_resolution,)) / sample_resolution
+
+        reduced_fft = np.array(
+            [
+                np.convolve(masked_fft[i, :], kernel, mode="same")
+                for i in range(masked_fft.shape[0])
+            ]
+        )[..., ::sample_resolution]
+        cfs_data = reduced_fft
+        cfs_freqs = freqs[::sample_resolution] - df / 2
+
+        return cfs_data, cfs_freqs
 
     @staticmethod
     def create_filters(filter_taps, mixing_freqs, rx_rate):

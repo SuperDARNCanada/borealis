@@ -15,9 +15,11 @@ import inspect
 from pathlib import Path
 
 # third party
+import numpy as np
 import structlog
 
 # local
+from utils.options import Options
 from experiment_prototype.interface_classes.sequences import Sequence
 from experiment_prototype.interface_classes.interface_class_base import (
     InterfaceClassBase,
@@ -36,6 +38,8 @@ run ave. 20-30 times after a clear frequency search.  Sequences are made up of p
 which give timing, slice, and pulsenumber. CPObject provides channels, pulseshift (if any), freq,
 pulse length, beamdir, and wavetype.
 """
+
+options = Options()
 
 
 class AveragingPeriod(InterfaceClassBase):
@@ -208,28 +212,95 @@ class AveragingPeriod(InterfaceClassBase):
 
         return slice_to_beamdir_dict
 
-    def update_cfs_freqs(
-        self, frequency_spectrum
-    ):  # DSP return is 2d array or object, change to cfs_spectrum
+    def update_cfs_freqs(self, cfs_spectrum):
         """
         Accepts the analysis results of the clear frequency search and uses the passed frequencies and powers
         to determine what frequencies to set each clear frequency search slice to.
 
-        :param      cfs_powers: Power measured at each frequency stored in cfs_freqs
-        :type       cfs_powers: float array
-
-        :param      cfs_freqs: All frequencies measured for the clear frequency search in kHz
-        :type       cfs_powers: int array
+        :param      cfs_spectrum: Analyzed CFS sequence data
+        :type       cfs_spectrum: dictionary
         """
+        freq = cfs_spectrum.cfs_freq
+        mags = [mag.cfs_data for mag in cfs_spectrum.output_datasets]
+        sorted_freqs = [
+            [x for _, x in sorted(zip(mags[slc], freq))] for slc in range(len(mags))
+        ]
+        # extract and sort frequencies based on magnitudes. Lowest noise to highest noise.
 
-        # sorted_freqs = [x for _, x in sorted(zip(cfs_powers, cfs_freqs))]
-        for sequence in self.cfs_sequences:
+        df = 1  # buffer frequency in kHz
+        for sqn_num, sequence in enumerate(self.cfs_sequences):
+            freq_index = 0  # starting (most ideal) cfs spectrum frequency index
+            used_freqs = []
+            for slice_obj in sequence.slice_dict.values():
+                if not slice_obj.cfs_flag:
+                    used_freqs.append(slice_obj.freq)
+                    # record all non-cfs frequencies already in use
             for slice_obj in sequence.slice_dict.values():
                 if slice_obj.cfs_flag:
-                    slice_obj.freq = (
-                        12000  # TODO: Get this value from frequency_spectrum
-                    )
+                    slice_range = slice_obj.cfs_range
+                    center_freq = int((slice_range[0] + slice_range[1]) / 2)
+                    shifted_freq = np.array(sorted_freqs[sqn_num]) / 1000 + center_freq
+
+                    mask = np.full(len(shifted_freq), True)
+                    for f_rng in options.restricted_ranges:
+                        mask[
+                            np.argwhere(
+                                np.logical_and(
+                                    shifted_freq >= f_rng[0] - 0.51,
+                                    shifted_freq <= f_rng[1] + 0.5,
+                                )
+                            )
+                        ] = False
+                        # Rounding when setting the freq below could cause the freq to set to a restricted value
+                        # increase the restricted ranges by 0.5 to prevent rounding error
+                    f_rng = slice_obj.cfs_range
+                    mask[
+                        np.argwhere(
+                            np.logical_or(
+                                shifted_freq < f_rng[0], shifted_freq > f_rng[1]
+                            )
+                        )
+                    ] = False
+                    shifted_freq = shifted_freq[mask]
+                    # Mask all restricted frequencies and frequencies outside cfs_range in the
+                    # cfs spectrum frequencies
+
+                    repeat = True
+                    while repeat:
+                        # Search for lowest noise usable frequency
+                        if freq_index >= len(shifted_freq):
+                            log.critical(
+                                f"All given frequencies were to close to used frequencies or the tx or rx"
+                                f"center frequencies. The radar will crash!!!",
+                                used_freqs=used_freqs,
+                                cfs_sorted_freqs=shifted_freq,
+                            )
+
+                        if any(
+                            abs(shifted_freq[freq_index] - x) <= df for x in used_freqs
+                        ):
+                            freq_index += 1
+                            # skip current shifted freq index if it is too close to a used frequency
+                        elif abs(shifted_freq[freq_index] - self.txctrfreq) <= 50:
+                            freq_index += 1
+                            # Skip frequency if too close to tx center frequency
+                        elif abs(shifted_freq[freq_index] - self.rxctrfreq) <= 50:
+                            freq_index += 1
+                            # Skip frequency if too close to rx center frequency
+                        else:
+                            repeat = False
+                            log.info(
+                                "setting cfs slice freq",
+                                id=slice_obj.slice_id,
+                                freq=int(np.round(shifted_freq[freq_index])),
+                            )
+                            slice_obj.freq = int(np.round(shifted_freq[freq_index]))
+                            used_freqs.append(int(np.round(shifted_freq[freq_index])))
+                            # Set cfs slice frequency and add frequency to used_freqs for this sequence
+                            freq_index += 1
+
             sequence.build_sequence_pulses()
+            # Build sequence pulses once all cfs slices have been assigned a frequency
 
     def build_cfs_sequence(self):
         """
@@ -239,7 +310,9 @@ class AveragingPeriod(InterfaceClassBase):
         import borealis_experiments.superdarn_common_fields as scf
         from experiment_prototype.experiment_slice import ExperimentSlice
 
-        num_ranges = self.slice_dict[0].cfs_duration  # And some math
+        pulse_length = 100  # us
+        num_ranges = int(round((self.slice_dict[0].cfs_duration * 1000) / pulse_length))
+        # calculate number of ranges (cfs_duration is in ms)
 
         # Create a CFS slice for the pulse
         default_slice = {
@@ -252,7 +325,7 @@ class AveragingPeriod(InterfaceClassBase):
             "rxonly": True,
             "pulse_sequence": [0],
             "tau_spacing": scf.TAU_SPACING_7P,
-            "pulse_len": 100,  # us
+            "pulse_len": pulse_length,
             "num_ranges": num_ranges,
             "first_range": scf.STD_FIRST_RANGE,
             "intn": 1,  # number of integration times

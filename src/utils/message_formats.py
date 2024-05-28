@@ -31,6 +31,7 @@ class OutputDataset:
     main_acf_shm: str = None
     intf_acf_shm: str = None
     xcf_shm: str = None
+    cfs_data: list = field(default_factory=list)
 
 
 @dataclass
@@ -62,6 +63,7 @@ class ProcessedSequenceMessage:
     rawrf_num_samps: int = None
     debug_data: list[DebugDataStage] = field(default_factory=list)
     output_datasets: list[OutputDataset] = field(default_factory=list)
+    cfs_freq: list = field(default_factory=list)
 
     def add_debug_data(self, stage: DebugDataStage):
         """Add a stage of debug data to the message"""
@@ -107,6 +109,7 @@ class RxChannel:
     rx_intf_antennas: list[int] = field(default_factory=list)
     beam_phases: np.ndarray = None
     lags: list[Lag] = field(default_factory=list)
+    pulses: list = field(default_factory=list)
 
     def add_lag(self, lag: Lag):
         """Add a Lag dataclass to the message."""

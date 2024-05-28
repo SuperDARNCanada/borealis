@@ -1654,7 +1654,7 @@ def main():
                 data_parsing.update(pd)
                 parse_time = time.perf_counter() - start
                 log.info(
-                    "parsed record",
+                    f"parsed sequence {pd.sequence_num}",
                     parse_time=parse_time * 1e3,
                     time_units="ms",
                     slice_ids=[dset.slice_id for dset in pd.output_datasets],
