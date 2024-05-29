@@ -246,6 +246,9 @@ class AveperiodMetadataMessage:
     data_normalization_factor: float = None
     scheduling_mode: str = None
     sequences: list = field(default_factory=list)
+    cfs_freqs: list = field(default_factory=list)
+    cfs_noise: list = field(default_factory=list)
+    cfs_range: list = field(default_factory=list)
 
     def add_sequence(self, sequence: dict):
         """Add a sequence dict to the message."""

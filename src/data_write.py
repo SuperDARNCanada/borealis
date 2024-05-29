@@ -86,6 +86,24 @@ class SliceData:
             "description": "Version and commit hash of Borealis at runtime",
         }
     )
+    cfs_freqs: np.ndarray = field(
+        metadata={
+            "groups": ["antennas_iq", "bfiq", "rawacf"],
+            "description": "Frequencies measured during clear frequency search",
+        }
+    )
+    cfs_noise: np.ndarray = field(
+        metadata={
+            "groups": ["antennas_iq", "bfiq", "rawacf"],
+            "description": "Power measured during clear frequency search",
+        }
+    )
+    cfs_range: np.ndarray = field(
+        metadata={
+            "groups": ["antennas_iq", "bfiq", "rawacf"],
+            "description": "Range of frequencies examined by clear frequency search",
+        }
+    )
     data: np.ndarray = field(
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawrf"],
@@ -1403,6 +1421,9 @@ class DataWrite(object):
                 ]
                 parameters.blanked_samples = np.array(sqn_meta.blanks, dtype=np.uint32)
                 parameters.borealis_git_hash = self.git_hash.decode("utf-8")
+                parameters.cfs_freqs = np.array(aveperiod_meta.cfs_freqs)
+                parameters.cfs_noise = np.array(aveperiod_meta.cfs_noise)
+                parameters.cfs_range = np.array(aveperiod_meta.cfs_range)
                 parameters.data_normalization_factor = (
                     aveperiod_meta.data_normalization_factor
                 )
