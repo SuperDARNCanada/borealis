@@ -118,6 +118,7 @@ class Sequence(InterfaceClassBase):
         for stage in self.decimation_scheme.stages:
             dm_rate *= stage.dm_rate
 
+        self.output_rx_rate = self.transmit_metadata["rxrate"] / dm_rate
         txrate = self.transmit_metadata["txrate"]
         main_antenna_count = self.transmit_metadata["main_antenna_count"]
         main_antenna_spacing = self.transmit_metadata["main_antenna_spacing"]

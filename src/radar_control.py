@@ -336,7 +336,7 @@ def send_datawrite_metadata(
     experiment_id,
     experiment_name,
     scheduling_mode,
-    output_sample_rate,
+    input_sample_rate,
     experiment_comment,
     filter_scaling_factors,
     rx_center_freq,
@@ -358,8 +358,7 @@ def send_datawrite_metadata(
     :param experiment_id: the ID of the experiment that is running
     :param experiment_name: the experiment name to be placed in the data files.
     :param scheduling_mode: the type of scheduling mode running at this time, to write to file.
-    :param output_sample_rate: The output sample rate of the output data, defined by the
-        experiment, in Hz.
+    :param input_sample_rate: The input sample rate of the data, defined by the experiment, in Hz.
     :param experiment_comment: The comment string for the experiment, user-defined.
     :param filter_scaling_factors: The decimation scheme scaling factors used for the experiment,
         to get the scaling for the data for accurate power measurements between experiments.
@@ -382,7 +381,7 @@ def send_datawrite_metadata(
     message.last_sqn_num = seqnum
     message.scan_flag = scan_flag
     message.aveperiod_time = inttime.total_seconds()
-    message.output_sample_rate = output_sample_rate
+    message.input_sample_rate = input_sample_rate
     message.data_normalization_factor = reduce(
         lambda x, y: x * y, filter_scaling_factors
     )  # multiply all
@@ -391,6 +390,7 @@ def send_datawrite_metadata(
     for sequence_index, sequence in enumerate(sequences):
         sequence_add = messages.Sequence()
         sequence_add.blanks = sequence.blanks
+        sequence_add.output_sample_rate = sequence.output_rx_rate
 
         if debug_samples:
             tx_data = messages.TxData()
@@ -910,7 +910,7 @@ def main():
                                 radar_control_to_brian,
                                 options.brian_to_radctrl_identity,
                                 experiment.rxrate,
-                                experiment.output_rx_rate,
+                                sequence.output_rx_rate,
                                 seqnum_start + num_sequences,
                                 sequence.slice_ids,
                                 experiment.slice_dict,
@@ -1008,7 +1008,7 @@ def main():
                         experiment.cpid,
                         experiment.experiment_name,
                         experiment.scheduling_mode,
-                        experiment.output_rx_rate,
+                        experiment.rxrate,
                         experiment.comment_string,
                         decimation_scheme.filter_scaling_factors,
                         experiment.slice_dict[0].rxctrfreq,
