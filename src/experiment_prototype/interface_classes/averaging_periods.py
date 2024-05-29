@@ -227,11 +227,13 @@ class AveragingPeriod(InterfaceClassBase):
         ]
         # extract and sort frequencies based on magnitudes. Lowest noise to highest noise.
 
-        df = 1  # buffer frequency in kHz
         for sqn_num, sequence in enumerate(self.cfs_sequences):
             freq_index = 0  # starting (most ideal) cfs spectrum frequency index
             used_freqs = []
             for slice_obj in sequence.slice_dict.values():
+                df = int(
+                    round(1e3 / (2 * slice_obj.pulse_len))
+                )  # bandwidth of tx pulse / 2 in kHz
                 if not slice_obj.cfs_flag:
                     used_freqs.append(slice_obj.freq)
                     # record all non-cfs frequencies already in use
@@ -289,15 +291,15 @@ class AveragingPeriod(InterfaceClassBase):
                             # Skip frequency if too close to rx center frequency
                         else:
                             repeat = False
-                            log.info(
-                                "setting cfs slice freq",
-                                id=slice_obj.slice_id,
-                                freq=int(np.round(shifted_freq[freq_index])),
-                            )
                             slice_obj.freq = int(np.round(shifted_freq[freq_index]))
                             used_freqs.append(int(np.round(shifted_freq[freq_index])))
                             # Set cfs slice frequency and add frequency to used_freqs for this sequence
                             freq_index += 1
+                            log.verbose(
+                                "setting cfs slice freq",
+                                slice_id=slice_obj.slice_id,
+                                set_freq=slice_obj.freq,
+                            )
 
             sequence.build_sequence_pulses()
             # Build sequence pulses once all cfs slices have been assigned a frequency
@@ -322,6 +324,8 @@ class AveragingPeriod(InterfaceClassBase):
             "output_rx_rate": self.slice_dict[0].output_rx_rate,
             "rx_bandwidth": self.slice_dict[0].rx_bandwidth,
             "tx_bandwidth": self.slice_dict[0].tx_bandwidth,
+            "txctrfreq": self.txctrfreq,
+            "rxctrfreq": self.rxctrfreq,
             "rxonly": True,
             "pulse_sequence": [0],
             "tau_spacing": scf.TAU_SPACING_7P,

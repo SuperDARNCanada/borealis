@@ -357,7 +357,7 @@ class ExperimentSlice:
     pulse_phase_offset: Optional[Callable] = default_callable
     cfs_range: Optional[conlist(freq_int_khz, min_items=2, max_items=2)] = None
     cfs_flag: StrictBool = Field(init=False)
-    cfs_duration: Optional[int] = 90  # ms
+    cfs_duration: Optional[conint(ge=0, strict=True)] = 90  # ms
     cfs_scheme: DecimationScheme = Field(default_factory=create_default_cfs_scheme)
     decimation_scheme: DecimationScheme = Field(default_factory=create_default_scheme)
 
@@ -489,7 +489,11 @@ class ExperimentSlice:
     @validator("cfs_duration")
     def check_cfs_duration(cls, cfs_duration, values):
         if values["cfs_flag"]:
-            pass
+            if cfs_duration < 10:
+                raise ValueError(
+                    f"Clear frequency search duration of {cfs_duration} ms is too short. "
+                    f"Must be at least 10 ms long."
+                )
 
         return cfs_duration
 
@@ -515,12 +519,12 @@ class ExperimentSlice:
             # Make sure default cfs scheme is only used with expected 300kHz range
             if "cfs_range" in values:
                 cfs_width = int(values["cfs_range"][1] - values["cfs_range"][0])
-                if cfs_width != 300:
+                if cfs_width > 300:
                     test_scheme = create_default_cfs_scheme()
                     if cfs_scheme == test_scheme:
                         raise ValueError(
-                            f"CFS slice {values['slice_id']} does not have the default 300kHz width. You must "
-                            f"define a custom decimation scheme to match the {cfs_width}kHz width or "
+                            f"CFS slice {values['slice_id']} range is greater than the default 300kHz width. "
+                            f"You must define a custom decimation scheme to match the {cfs_width}kHz width or "
                             f"adjust the cfs_range values of the experiment."
                         )
 
@@ -909,7 +913,7 @@ class ExperimentSlice:
             or cfs_range[0] < values["rx_bound_freqs"][0]
         ):
             raise ValueError(
-                f"Slice {values['slice_id']} cfs_range minimum value needs to be equal to"
+                f"Slice {values['slice_id']} cfs_range minimum value needs to be equal to "
                 f"or greater than the tx and rx minimum operating frequencies: "
                 f"{values['tx_bound_freqs'][0]} and {values['rx_bound_freqs'][0]}"
             )
@@ -919,7 +923,7 @@ class ExperimentSlice:
             or cfs_range[1] > values["rx_bound_freqs"][1]
         ):
             raise ValueError(
-                f"Slice {values['slice_id']} cfs_range maximum value needs to be equal to"
+                f"Slice {values['slice_id']} cfs_range maximum value needs to be equal to "
                 f"or less than the tx and rx maximum operating frequencies: "
                 f"{values['tx_bound_freqs'][1]} and {values['rx_bound_freqs'][1]}"
             )
@@ -932,6 +936,26 @@ class ExperimentSlice:
                         f"cfs_range is entirely within restricted range {freq_range}. Slice: "
                         f"{values['slice_id']}"
                     )
+
+        if "txctrfreq" in values:
+            tx_band = (values["txctrfreq"] - 50, values["txctrfreq"] + 50)
+            if cfs_range[0] <= tx_band[1] and cfs_range[1] >= tx_band[0]:
+                log.warning(
+                    f"Slice {values['slice_id']} cfs range {cfs_range} is close to the "
+                    f"tx center frequency {values['txctrfreq']}. The cfs frequency "
+                    f"selection cannot chose a frequency within 50kHz of the center freq. "
+                    f"Frequencies within {tx_band} will not be used for transmission"
+                )
+
+        if "rxctrfreq" in values:
+            rx_band = (values["rxctrfreq"] - 50, values["rxctrfreq"] + 50)
+            if cfs_range[0] <= rx_band[1] and cfs_range[1] >= rx_band[0]:
+                log.warning(
+                    f"Slice {values['slice_id']} cfs range {cfs_range} is close to the "
+                    f"rx center frequency {values['rxctrfreq']}. The cfs frequency "
+                    f"selection cannot chose a frequency within 50kHz of the center freq. "
+                    f"Frequencies within {rx_band} will not be used for transmission"
+                )
 
         return cfs_range
 
@@ -961,7 +985,7 @@ class ExperimentSlice:
     def check_xcf(cls, xcf, values):
         if "acf" not in values or not values["acf"]:
             xcf = False
-            log.info(
+            log.verbose(
                 f"XCF defaulted to False as ACF not set. Slice: {values['slice_id']}"
             )
             return False
@@ -977,7 +1001,7 @@ class ExperimentSlice:
     def check_acfint(cls, acfint, values):
         if "acf" not in values or not values["acf"]:
             acfint = False
-            log.info(
+            log.verbose(
                 f"ACFINT defaulted to False as ACF not set. Slice: {values['slice_id']}"
             )
         if (
@@ -1014,7 +1038,7 @@ class ExperimentSlice:
         if "acf" in values and values["acf"]:
             return averaging_method or "mean"
         else:
-            log.info(
+            log.verbose(
                 f"Averaging method unset as ACF not set. Slice: {values['slice_id']}"
             )
             return None
@@ -1044,7 +1068,7 @@ class ExperimentSlice:
                     [values["pulse_sequence"][-1], values["pulse_sequence"][-1]]
                 )  # alternate lag 0
         else:
-            log.info(f"Lag table unused as ACF not set. Slice: {values['slice_id']}")
+            log.verbose(f"Lag table unused as ACF not set. Slice: {values['slice_id']}")
             lag_table = []
         return lag_table
 
