@@ -194,6 +194,11 @@ class ExperimentSlice:
     averaging_method *defaults*
         a string defining the type of averaging to be done. Current methods are 'mean' or 'median'. The
         default is 'mean'.
+    cfs_duration *defaults*
+        Amount of time a clear frequency search will listen for in ms.
+    cfs_scheme *defaults*
+        Decimation scheme to be used in analyzing data collected during a clear ferquency search when
+        determining transmit frequencies for CFS experiment slices
     comment *defaults*
         a comment string that will be placed in the borealis files describing the slice. Defaults to
         empty string.
