@@ -92,6 +92,21 @@ The file fields in the rawacf array files are:
 | |                                 | | characters. Typically begins with the     |
 | |                                 | | latest git tag of the software.           |
 +-----------------------------------+---------------------------------------------+
+| | **cfs_freq**                    | | Frequencies sampled during the clear      |
+| | *float32*                       | | frequency search centered around          |
+| | [] or [num_cfs_samps]           | | baseband. The number of cfs samples is    |
+| |                                 | | the rx rate / the decimation stages.      |
++-----------------------------------+---------------------------------------------+
+| | **cfs_noise**                   | | Power measurements for each frequency in  |
+| | *float32*                       | | the clear frequency search analysis.      |
+| | [] or [num_cfs_slices,          | | A separate power array is generated for   |
+| | num_cfs_samps]                  | | cfs slice.                                |
++-----------------------------------+---------------------------------------------+
+| | **cfs_range**                   | | The range of frequencies scanned by the   |
+| | *float32*                       | | clear frequency search for each cfs slice |
+| | [] or [num_cfs_slices, 2]       | | in the experiment. If not set in the      |
+| |                                 | | experiment, all cfs parameters will be [] |
++-----------------------------------+---------------------------------------------+
 | | **data_descriptors**            | | Denotes what each data dimension          |
 | | *bytes*                         | | (in main_acfs, intf_acfs, xcfs)           |
 | | [4]                             | | represents. = 'num_records',              |

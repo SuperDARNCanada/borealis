@@ -199,11 +199,8 @@ def sequence_worker(options, ringbuffer):
                 use_shared_mem=False,
             )
             cfs_processor.apply_filters(sequence_samples)
-            cfs_processor.move_filter_results()  # TODO: Is this required if not using shared mem?
-            cfs_data, cfs_freq = cfs_processor.cfs_freq_analysis(
-                cfs_processor.antennas_iq_samples,
-                slice_details,
-            )
+            cfs_processor.move_filter_results()
+            cfs_data, cfs_freq = cfs_processor.cfs_freq_analysis(slice_details)
             log_dict["cfs_dsp_time"] = (time.perf_counter() - mark_timer) * 1e3
 
         else:

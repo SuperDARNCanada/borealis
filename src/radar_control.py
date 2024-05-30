@@ -447,7 +447,10 @@ def create_dw_message(dw_params):
     message.experiment_name = dw_params.experiment.experiment_name
     message.experiment_comment = dw_params.experiment.comment_string
     message.rx_ctr_freq = dw_params.experiment.slice_dict[0].rxctrfreq
-    message.num_sequences = dw_params.num_sequences
+    if dw_params.aveperiod.cfs_flag:
+        message.num_sequences = dw_params.num_sequences - 1  # first sequence was CFS
+    else:
+        message.num_sequences = dw_params.num_sequences
     message.last_sqn_num = dw_params.last_sequence_num
     message.scan_flag = dw_params.scan_flag
     message.aveperiod_time = dw_params.averaging_period_time.total_seconds()

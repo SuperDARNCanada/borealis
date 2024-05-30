@@ -154,17 +154,16 @@ class DSP:
             self.antennas_iq_samples, beam_phases
         )
 
-    def cfs_freq_analysis(self, data, metadata):
+    def cfs_freq_analysis(self, metadata):
         """
         Performs decimation and frequency analysis on clear frequency search data. Data will not be
         in shared memory.
 
-        :param  data:       Clear frequency search antenna's iq samples
-        :type   data:       numpy array
         :param  metadata:   Clear frequency search sequence metadata
         :type   metadata:   dict
         """
         # TODO: Examine what parameters need to be passed to this function.
+        data = self.antennas_iq_samples
         fs = self.rx_rate / np.prod(self.dm_rates)  # Sampling frequency in Hz
 
         masks = []
