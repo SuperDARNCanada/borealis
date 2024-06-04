@@ -30,7 +30,7 @@ ids = [
     options.dspend_to_brian_identity,
 ]
 
-sockets_list = so.create_sockets(ids, options.router_address)
+sockets_list = so.create_sockets(options.router_address, ids)
 
 dsp_to_radctrl = sockets_list[0]
 driver_to_radctrl = sockets_list[1]

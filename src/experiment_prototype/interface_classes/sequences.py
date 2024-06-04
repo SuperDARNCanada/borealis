@@ -115,19 +115,18 @@ class Sequence(InterfaceClassBase):
                 raise ExperimentException(errmsg)
 
         slice_freqs = []
-        if not self.slice_dict[self.slice_ids[0]].rxonly:
-            for slice_id in self.slice_ids:
-                check_freq = self.slice_dict[slice_id].freq
-                for freq in slice_freqs:
-                    if isinstance(freq, (float, int, complex)):
-                        if freq - 1 <= check_freq <= freq + 1:
-                            errmsg = (
-                                f"Slice {slice_id} frequency {check_freq} is within 1kHz "
-                                f"of another CONCURRENT slice frequency. Adjust the slice "
-                                f"frequencies to have at least 1kHz separation."
-                            )
-                            raise ExperimentException(errmsg)
-                slice_freqs.append(check_freq)
+        for slice_id in self.slice_ids:
+            check_freq = self.slice_dict[slice_id].freq
+            for freq in slice_freqs:
+                if freq is not None:  # cfs slices have freq == None
+                    if freq - 1 <= check_freq <= freq + 1:
+                        errmsg = (
+                            f"Slice {slice_id} frequency {check_freq} is within 1kHz "
+                            f"of another CONCURRENT slice frequency. Adjust the slice "
+                            f"frequencies to have at least 1kHz separation."
+                        )
+                        raise ExperimentException(errmsg)
+            slice_freqs.append(check_freq)
 
         self.tx_main_antennas = self.transmit_metadata["tx_main_antennas"]
         self.rx_main_antennas = self.transmit_metadata["rx_main_antennas"]
@@ -284,13 +283,13 @@ class Sequence(InterfaceClassBase):
                 # tx_phases:        [num_beams, num_antennas]
                 # basic_samples:    [num_samples]
                 # phased_samps_for_beams: [num_beams, num_antennas, num_samples]
-                # log.verbose(
-                #     "slice information",
-                #     slice_id=slice_id,
-                #     tx_main_phases=tx_phases,
-                #     tx_main_magnitudes=np.abs(tx_phases),
-                #     tx_main_angles=np.rad2deg(np.angle(tx_phases)),
-                # )
+                log.verbose(
+                    "slice information",
+                    slice_id=slice_id,
+                    tx_main_phases=tx_phases,
+                    tx_main_magnitudes=np.abs(tx_phases),
+                    tx_main_angles=np.rad2deg(np.angle(tx_phases)),
+                )
                 phased_samps_for_beams = np.einsum(
                     "ij,k->ijk", tx_phases, basic_samples
                 )

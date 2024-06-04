@@ -13,18 +13,18 @@
 import zmq
 
 
-def create_sockets(identities, router_addr):
+def create_sockets(router_addr, *identities):
     """
     Creates a DEALER socket for each identity in the list argument. Each socket is then connected
     to the router
 
-    :param      identities:     Unique identities to give to sockets.
-    :type       identities:     list
     :param      router_addr:    Address of the router socket
     :type       router_addr:    str
+    :param      identities:     Unique identities to give to sockets.
+    :type       identities:     tuple
 
     :returns:   Newly created and connected sockets.
-    :rtype:     list
+    :rtype:     tuple
     """
     context = zmq.Context().instance()
     num_sockets = len(identities)
@@ -33,7 +33,7 @@ def create_sockets(identities, router_addr):
         sk.setsockopt_string(zmq.IDENTITY, iden)
         sk.connect(router_addr)
 
-    return sockets
+    return tuple(sockets)
 
 
 def recv_data(socket, sender_identity, log):
@@ -145,8 +145,3 @@ def send_bytes(socket, receiver_identity, bytes_object, log=None):
         )
     frames = [receiver_identity.encode("utf-8"), b"", bytes_object]
     socket.send_multipart(frames)
-
-
-send_obj = send_exp = send_bytes
-
-recv_obj = recv_exp = recv_bytes

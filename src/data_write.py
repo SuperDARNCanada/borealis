@@ -92,6 +92,12 @@ class SliceData:
             "description": "Frequencies measured during clear frequency search",
         }
     )
+    cfs_masls: np.ndarray = field(
+        metadata={
+            "groups": ["antennas_iq", "bfiq", "rawacf"],
+            "description": "Mask for cfs_freqs restricting freqs available for setting cfs slice freq",
+        }
+    )
     cfs_noise: np.ndarray = field(
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf"],
@@ -1424,6 +1430,7 @@ class DataWrite(object):
                 parameters.cfs_freqs = np.array(aveperiod_meta.cfs_freqs)
                 parameters.cfs_noise = np.array(aveperiod_meta.cfs_noise)
                 parameters.cfs_range = np.array(aveperiod_meta.cfs_range)
+                parameters.cfs_masks = np.array(aveperiod_meta.cfs_masks)
                 parameters.data_normalization_factor = (
                     aveperiod_meta.data_normalization_factor
                 )
@@ -1542,13 +1549,13 @@ def main():
 
     options = Options()
     sockets = so.create_sockets(
+        options.router_address,
         [
             options.dw_to_dsp_identity,
             options.dw_to_radctrl_identity,
             options.dw_to_rt_identity,
             options.dw_cfs_identity,
         ],
-        options.router_address,
     )
 
     dsp_to_data_write = sockets[0]
@@ -1600,8 +1607,8 @@ def main():
             cfs_nums.append(cfs_sqn_num)
 
         if expected_sqn_num in cfs_nums:
-            # Update the expected sequence number if that sequence is a CFS sequence,
-            # and so will not be sent to data_write.
+            # If the current expected sqn num was a CFS sequence, increase the expected
+            # sqn num by 1 to skip over the CFS sequence.
             cfs_nums.remove(expected_sqn_num)
             expected_sqn_num += 1
 

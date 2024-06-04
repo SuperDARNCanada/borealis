@@ -122,7 +122,7 @@ Clear frequency searching is now supported in borealis to determine a transmit f
 specified band. In an experiment slice, the ``freq`` parameter should be unset, and the ``cfs_range``
 parameter set to a two element list containing the upper and lower frequency limits of the CFS band::
 
-    slice['cfs_range'] = [11000, 11300]  # Upper and lower freq limit in kHz
+    slice['cfs_range'] = [11000, 11300]  # Lower and upper freq limit in kHz
 
 Multiple experiment slices within an averaging period can be configured to receive a transmit frequency
 from the CFS as long as the each slice has ``cfs_range`` set. Each slice can choose any band within the
@@ -157,8 +157,8 @@ The following parameters can be set for a CFS slice:
      - Decimation scheme used in analyzing the CFS data. The default scheme is designed for bands
        of 300kHz or less
 
-When a CFS slice is to be run during an averaging period, the first the sequence of the averaging period
+When a CFS slice is to be run during an averaging period, the first sequence of the averaging period
 is used to listen for the length of time specified by ``cfs_duration``. The data from this measurement
 is analyzed to evaluate the frequency spectrum of the collected data to select the least noisy frequencies
-for transmission. The analysis results are also recorded to any generated rawacf, antenans_iq, and/or
-bifq files.
+for transmission. The analysis results are also recorded to any generated rawacf, antennas_iq, and/or
+bfiq files.

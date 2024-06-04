@@ -95,7 +95,8 @@ if __name__ == "__main__":
 
     # Socket for receiving data from data_write
     data_write_socket = so.create_sockets(
-        [options.rt_to_dw_identity], options.router_address
+        options.router_address,
+        [options.rt_to_dw_identity],
     )[0]
 
     # Socket for serving data over the web

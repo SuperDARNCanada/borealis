@@ -170,7 +170,7 @@ def send_experiment(exp_handler_to_radar_control, iden, serialized_exp):
     """
 
     try:
-        socket_operations.send_exp(exp_handler_to_radar_control, iden, serialized_exp)
+        socket_operations.send_bytes(exp_handler_to_radar_control, iden, serialized_exp)
     except zmq.ZMQError as e:  # the queue was full - radar_control not receiving.
         log.warning("zmq queue full not receiving", error=e)
         pass  # TODO handle this. Shutdown and restart all modules.
@@ -201,7 +201,7 @@ def experiment_handler(semaphore, args):
 
     options = Options()
     ids = [options.exphan_to_radctrl_identity, options.exphan_to_dsp_identity]
-    sockets_list = socket_operations.create_sockets(ids, options.router_address)
+    sockets_list = socket_operations.create_sockets(options.router_address, ids)
 
     exp_handler_to_radar_control = sockets_list[0]
     exp_handler_to_dsp = sockets_list[1]

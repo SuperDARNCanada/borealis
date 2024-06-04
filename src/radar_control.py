@@ -63,6 +63,7 @@ class RadctrlParameters:
     cfs_freq: list = field(default_factory=list)
     cfs_mags: list = field(default_factory=list)
     cfs_range: list = field(default_factory=list)
+    cfs_masks: list = field(default_factory=list)
     scan_flag: bool = False
 
     def __post_init__(self):
@@ -77,14 +78,14 @@ class RadctrlParameters:
 
 def driver_comms_thread(radctrl_driver_iden, driver_socket_iden, router_addr):
     """
-    Thread for handling communication between radar_control and rx_signal_processing.
+    Thread for handling communication between radar_control and usrp_driver.
     """
 
     driver_comms_socket = zmq.Context().instance().socket(zmq.PAIR)
     driver_comms_socket.connect("inproc://radctrl_driver")
 
     radctrl_driver_socket = socket_operations.create_sockets(
-        [radctrl_driver_iden], router_addr
+        router_addr, [radctrl_driver_iden]
     )[0]
 
     first_time = True
@@ -105,11 +106,11 @@ def driver_comms_thread(radctrl_driver_iden, driver_socket_iden, router_addr):
             first_time = False
 
 
-def create_driver_message(driver_params, pulse_transmit_data):
+def create_driver_message(radctrl_params, pulse_transmit_data):
     """
     Place data in the driver packet and send it via zeromq to the driver.
 
-    :param driver_params: The current averaging period parameters dataclass. The message extracts,
+    :param radctrl_params: The current averaging period parameters dataclass. The message extracts,
         * ``sequence.txctrfreq`` - the transmit center frequency to tune to
         * ``sequence.rxctrfreq`` - the receive center frequency to tune to. With rx_sample_rate from config.ini
         file, this determines the received signal band
@@ -124,14 +125,14 @@ def create_driver_message(driver_params, pulse_transmit_data):
         * ``sequence.align_sequences`` - a boolean indicating whether to align the start of the sequence to a
         clean tenth of a second.
     :param pulse_transmit_data: dictionary of current transmit pulse data. The message extracts,
-        * ``[samples_array]`` - this is a list of length main_antenna_count from the config file. It contains one
+        * ``samples_array`` - this is a list of length main_antenna_count from the config file. It contains one
         numpy array of complex values per antenna. If the antenna will not be transmitted on, it contains a
         numpy array of zeros of the same length as the rest. All arrays will have the same length according to
         the pulse length
-        * ``[startofburst]`` - start of burst boolean, true for first pulse in sequence
-        * ``[endofburst]`` - end of burst boolean, true for last pulse in sequence
-        * ``[timing]`` - in us, the time past timezero to send this pulse. Timezero is the start of the sequence
-        * ``[isarepeat]`` - a boolean indicating whether the pulse is the exact same as the last pulse
+        * ``startofburst`` - start of burst boolean, true for first pulse in sequence
+        * ``endofburst`` - end of burst boolean, true for last pulse in sequence
+        * ``timing`` - in us, the time past timezero to send this pulse. Timezero is the start of the sequence
+        * ``sarepeat`` - a boolean indicating whether the pulse is the exact same as the last pulse
         in the sequence, in which case we will save the time and not send the samples list and other
         params that will be the same
     :return: The compiled ``DriverPacket`` message to send to the usrp driver
@@ -141,15 +142,15 @@ def create_driver_message(driver_params, pulse_transmit_data):
     message = DriverPacket()
 
     # If this is the first time the driver is being set-up, only send tx and rx rates and center frequencies
-    if driver_params.startup_flag:
+    if radctrl_params.startup_flag:
         message.txcenterfreq = (
-            driver_params.slice_dict[0].txctrfreq * 1000
+            radctrl_params.slice_dict[0].txctrfreq * 1000
         )  # convert to Hz
         message.rxcenterfreq = (
-            driver_params.slice_dict[0].rxctrfreq * 1000
+            radctrl_params.slice_dict[0].rxctrfreq * 1000
         )  # convert to Hz
-        message.txrate = driver_params.experiment.txrate
-        message.rxrate = driver_params.experiment.rxrate
+        message.txrate = radctrl_params.experiment.txrate
+        message.rxrate = radctrl_params.experiment.rxrate
     else:
         timing = pulse_transmit_data["timing"]
         SOB = pulse_transmit_data["startofburst"]
@@ -158,10 +159,12 @@ def create_driver_message(driver_params, pulse_transmit_data):
         message.timetosendsamples = timing
         message.SOB = SOB
         message.EOB = EOB
-        message.sequence_num = driver_params.seqnum_start + driver_params.num_sequences
-        message.numberofreceivesamples = driver_params.sequence.numberofreceivesamples
-        message.seqtime = driver_params.sequence.seqtime
-        message.align_sequences = driver_params.sequence.align_sequences
+        message.sequence_num = (
+            radctrl_params.seqnum_start + radctrl_params.num_sequences
+        )
+        message.numberofreceivesamples = radctrl_params.sequence.numberofreceivesamples
+        message.seqtime = radctrl_params.sequence.seqtime
+        message.align_sequences = radctrl_params.sequence.align_sequences
 
         if pulse_transmit_data["isarepeat"]:
             # antennas empty
@@ -183,15 +186,15 @@ def create_driver_message(driver_params, pulse_transmit_data):
                 sample_add.imag.extend(samples_array[ant_idx, :].imag.tolist())
 
             message.txcenterfreq = (
-                driver_params.sequence.txctrfreq * 1000
+                radctrl_params.sequence.txctrfreq * 1000
             )  # convert to Hz
             message.rxcenterfreq = (
-                driver_params.sequence.rxctrfreq * 1000
+                radctrl_params.sequence.rxctrfreq * 1000
             )  # convert to Hz
-            message.txrate = driver_params.experiment.txrate
-            message.rxrate = driver_params.experiment.rxrate
+            message.txrate = radctrl_params.experiment.txrate
+            message.rxrate = radctrl_params.experiment.rxrate
             message.numberofreceivesamples = (
-                driver_params.sequence.numberofreceivesamples
+                radctrl_params.sequence.numberofreceivesamples
             )
 
     return message.SerializeToString()
@@ -203,10 +206,10 @@ def dsp_comms_thread(radctrl_dsp_iden, dsp_socket_iden, router_addr):
     """
 
     inproc_socket = zmq.Context().instance().socket(zmq.PAIR)
-    inproc_socket.connect("inproc://radctrl")
+    inproc_socket.connect("inproc://radctrl_dsp")
 
     radctrl_dsp_socket = socket_operations.create_sockets(
-        [radctrl_dsp_iden], router_addr
+        router_addr, [radctrl_dsp_iden]
     )[0]
 
     while True:
@@ -214,7 +217,7 @@ def dsp_comms_thread(radctrl_dsp_iden, dsp_socket_iden, router_addr):
         # Wait for metadata from the main thread
 
         bytes_packet = pickle.dumps(message, protocol=pickle.HIGHEST_PROTOCOL)
-        socket_operations.send_obj(radctrl_dsp_socket, dsp_socket_iden, bytes_packet)
+        socket_operations.send_bytes(radctrl_dsp_socket, dsp_socket_iden, bytes_packet)
         # Send the message to rx_signal_processing
 
         socket_operations.recv_data(radctrl_dsp_socket, dsp_socket_iden, log)
@@ -224,12 +227,12 @@ def dsp_comms_thread(radctrl_dsp_iden, dsp_socket_iden, router_addr):
         # Let the main thread know that DSP has received the metadata
 
 
-def create_dsp_message(dsp_params):
+def create_dsp_message(radctrl_params):
     """
     Place data in the receiver packet and send it via zeromq to the signal processing unit and brian.
     Happens every sequence.
 
-    :param dsp_params: The radar control parameter dataclass updated during the averaging period. The message grabs,
+    :param radctrl_params: The radar control parameter dataclass updated during the averaging period. The message grabs,
         * ``experiment.rxrate`` - The receiver sampling rate (Hz)
         * ``experiment.output_rx_rate`` - The output sample rate desired for the output data (Hz)
         * ``seqnum`` - the sequence number. This is a unique identifier for the sequence that is always increasing
@@ -253,31 +256,31 @@ def create_dsp_message(dsp_params):
     :return: The compiled ``SequenceMetadataMessage`` message to send to rx signal processing
     :rtype: dataclass
     """
-    # TODO: does the for loop below need to happen every time. Could be only updated
-    #       as necessary to make it more efficient.
 
     message = messages.SequenceMetadataMessage()
-    message.sequence_time = dsp_params.sequence.seqtime
-    message.sequence_num = dsp_params.seqnum_start + dsp_params.num_sequences
-    message.offset_to_first_rx_sample = dsp_params.sequence.first_rx_sample_start
-    message.rx_rate = dsp_params.experiment.rxrate
-    message.output_sample_rate = dsp_params.experiment.output_rx_rate
-    message.rx_ctr_freq = dsp_params.sequence.rxctrfreq * 1.0e3
-    message.cfs_scan_flag = dsp_params.cfs_scan_flag
+    message.sequence_time = radctrl_params.sequence.seqtime
+    message.sequence_num = radctrl_params.seqnum_start + radctrl_params.num_sequences
+    message.offset_to_first_rx_sample = radctrl_params.sequence.first_rx_sample_start
+    message.rx_rate = radctrl_params.experiment.rxrate
+    message.output_sample_rate = radctrl_params.experiment.output_rx_rate
+    message.rx_ctr_freq = radctrl_params.sequence.rxctrfreq * 1.0e3
+    message.cfs_scan_flag = radctrl_params.cfs_scan_flag
 
-    if dsp_params.decimation_scheme is not None:
-        for stage in dsp_params.decimation_scheme.stages:
+    if radctrl_params.decimation_scheme is not None:
+        for stage in radctrl_params.decimation_scheme.stages:
             dm_stage_add = messages.DecimationStageMessage(
                 stage.stage_num, stage.input_rate, stage.dm_rate, stage.filter_taps
             )
             message.add_decimation_stage(dm_stage_add)
 
-    slice_dict = dsp_params.sequence.slice_dict
-    if dsp_params.aveperiod.cfs_flag:
-        beam_dict = dsp_params.sequence.get_rx_phases(0)
+    slice_dict = radctrl_params.sequence.slice_dict
+    if radctrl_params.aveperiod.cfs_flag:
+        beam_dict = radctrl_params.sequence.get_rx_phases(0)
     else:
-        beam_dict = dsp_params.sequence.get_rx_phases(dsp_params.aveperiod.beam_iter)
-    for slice_id in dsp_params.sequence.slice_ids:
+        beam_dict = radctrl_params.sequence.get_rx_phases(
+            radctrl_params.aveperiod.beam_iter
+        )
+    for slice_id in radctrl_params.sequence.slice_ids:
         chan_add = messages.RxChannel(slice_id)
         chan_add.tau_spacing = slice_dict[slice_id].tau_spacing
 
@@ -300,7 +303,7 @@ def create_dsp_message(dsp_params):
             lag_add = messages.Lag(lag[0], lag[1], int(lag[1] - lag[0]))
 
             # Get the phase offset for this pulse combination
-            pulse_phase_offsets = dsp_params.sequence.output_encodings
+            pulse_phase_offsets = radctrl_params.sequence.output_encodings
             if len(pulse_phase_offsets[slice_id]) != 0:
                 pulse_phase_offset = pulse_phase_offsets[slice_id][-1]
                 lag0_idx = slice_dict[slice_id].pulse_sequence.index(lag[0])
@@ -345,7 +348,7 @@ def search_for_experiment(radar_control_to_exp_handler, exphan_to_radctrl_iden, 
     new_experiment_received = False
 
     try:
-        serialized_exp = socket_operations.recv_exp(
+        serialized_exp = socket_operations.recv_bytes(
             radar_control_to_exp_handler, exphan_to_radctrl_iden, log
         )
     except zmq.ZMQBaseError as e:
@@ -368,19 +371,19 @@ def search_for_experiment(radar_control_to_exp_handler, exphan_to_radctrl_iden, 
     return new_experiment_received, experiment
 
 
-def make_next_samples(sample_params):
-    sqn, dbg = sample_params.sequence.make_sequence(
-        sample_params.aveperiod.beam_iter,
-        sample_params.num_sequences + len(sample_params.aveperiod.sequences),
+def make_next_samples(radctrl_params):
+    sqn, dbg = radctrl_params.sequence.make_sequence(
+        radctrl_params.aveperiod.beam_iter,
+        radctrl_params.num_sequences + len(radctrl_params.aveperiod.sequences),
     )
     if dbg:
-        sample_params.debug_samples.append(dbg)
-    sample_params.pulse_transmit_data_tracker[sample_params.sequence_index][
-        sample_params.num_sequences + len(sample_params.aveperiod.sequences)
+        radctrl_params.debug_samples.append(dbg)
+    radctrl_params.pulse_transmit_data_tracker[radctrl_params.sequence_index][
+        radctrl_params.num_sequences + len(radctrl_params.aveperiod.sequences)
     ] = sqn
 
     if TIME_PROFILE:
-        new_sequence_time = datetime.utcnow() - sample_params.start_time
+        new_sequence_time = datetime.utcnow() - radctrl_params.start_time
         log.verbose(
             "make new sequence time",
             new_sequence_time=new_sequence_time,
@@ -390,14 +393,14 @@ def make_next_samples(sample_params):
 
 def dw_comms_thread(radctrl_dw_iden, dw_socket_iden, router_addr):
     """
-    Thread for handling communication between radar_control and data write.
+    Thread for handling communication between radar_control and data_write.
     """
 
     inproc_socket = zmq.Context().instance().socket(zmq.PAIR)
     inproc_socket.connect("inproc://radctrl_dw")
 
     radctrl_dw_socket = socket_operations.create_sockets(
-        [radctrl_dw_iden], router_addr
+        router_addr, [radctrl_dw_iden]
     )[0]
 
     while True:
@@ -405,15 +408,15 @@ def dw_comms_thread(radctrl_dw_iden, dw_socket_iden, router_addr):
         # Wait for metadata from the main thread
 
         bytes_packet = pickle.dumps(message, protocol=pickle.HIGHEST_PROTOCOL)
-        socket_operations.send_obj(radctrl_dw_socket, dw_socket_iden, bytes_packet)
+        socket_operations.send_bytes(radctrl_dw_socket, dw_socket_iden, bytes_packet)
         # Send the message to data write
 
 
-def create_dw_message(dw_params):
+def create_dw_message(radctrl_params):
     """
     Send the metadata about this averaging period to datawrite so that it can be recorded.
 
-    :param dw_params: The radar control parameter dataclass updated during the aveperiod. The message grabs,
+    :param radctrl_params: The radar control parameter dataclass updated during the aveperiod. The message grabs,
         * ``seqnum`` - The last sequence number (identifier) that is valid for this averaging period. Used
         to verify and synchronize driver, dsp, datawrite. Calculated with ``seqnum_start`` + ``num_sequences``
         * ``num_sequences``- The number of sequences that were sent in this averaging period. (number of
@@ -443,45 +446,50 @@ def create_dw_message(dw_params):
     """
 
     message = messages.AveperiodMetadataMessage()
-    message.experiment_id = dw_params.experiment.cpid
-    message.experiment_name = dw_params.experiment.experiment_name
-    message.experiment_comment = dw_params.experiment.comment_string
-    message.rx_ctr_freq = dw_params.experiment.slice_dict[0].rxctrfreq
-    if dw_params.aveperiod.cfs_flag:
-        message.num_sequences = dw_params.num_sequences - 1  # first sequence was CFS
+    message.experiment_id = radctrl_params.experiment.cpid
+    message.experiment_name = radctrl_params.experiment.experiment_name
+    message.experiment_comment = radctrl_params.experiment.comment_string
+    message.rx_ctr_freq = radctrl_params.experiment.slice_dict[0].rxctrfreq
+    if radctrl_params.aveperiod.cfs_flag:
+        message.num_sequences = (
+            radctrl_params.num_sequences - 1
+        )  # first sequence was CFS
     else:
-        message.num_sequences = dw_params.num_sequences
-    message.last_sqn_num = dw_params.last_sequence_num
-    message.scan_flag = dw_params.scan_flag
-    message.aveperiod_time = dw_params.averaging_period_time.total_seconds()
-    message.output_sample_rate = dw_params.experiment.output_rx_rate
+        message.num_sequences = radctrl_params.num_sequences
+    message.last_sqn_num = radctrl_params.last_sequence_num
+    message.scan_flag = radctrl_params.scan_flag
+    message.aveperiod_time = radctrl_params.averaging_period_time.total_seconds()
+    message.output_sample_rate = radctrl_params.experiment.output_rx_rate
     message.data_normalization_factor = reduce(
-        lambda x, y: x * y, dw_params.decimation_scheme.filter_scaling_factors
+        lambda x, y: x * y, radctrl_params.decimation_scheme.filter_scaling_factors
     )  # multiply all
-    message.scheduling_mode = dw_params.experiment.scheduling_mode
-    message.cfs_freqs = dw_params.cfs_freq
-    message.cfs_noise = dw_params.cfs_mags
-    message.cfs_range = dw_params.cfs_range
+    message.scheduling_mode = radctrl_params.experiment.scheduling_mode
+    message.cfs_freqs = radctrl_params.cfs_freq
+    message.cfs_noise = radctrl_params.cfs_mags
+    message.cfs_range = radctrl_params.cfs_range
+    message.cfs_masks = radctrl_params.cfs_masks
 
-    for sequence_index, sequence in enumerate(dw_params.aveperiod.sequences):
+    for sequence_index, sequence in enumerate(radctrl_params.aveperiod.sequences):
         sequence_add = messages.Sequence()
         sequence_add.blanks = sequence.blanks
 
-        if len(dw_params.debug_samples) > 0:
+        if len(radctrl_params.debug_samples) > 0:
             tx_data = messages.TxData()
-            tx_data.tx_rate = dw_params.debug_samples[sequence_index]["txrate"]
-            tx_data.tx_ctr_freq = dw_params.debug_samples[sequence_index]["txctrfreq"]
-            tx_data.pulse_timing_us = dw_params.debug_samples[sequence_index][
+            tx_data.tx_rate = radctrl_params.debug_samples[sequence_index]["txrate"]
+            tx_data.tx_ctr_freq = radctrl_params.debug_samples[sequence_index][
+                "txctrfreq"
+            ]
+            tx_data.pulse_timing_us = radctrl_params.debug_samples[sequence_index][
                 "pulse_timing"
             ]
-            tx_data.pulse_sample_start = dw_params.debug_samples[sequence_index][
+            tx_data.pulse_sample_start = radctrl_params.debug_samples[sequence_index][
                 "pulse_sample_start"
             ]
-            tx_data.tx_samples = dw_params.debug_samples[sequence_index][
+            tx_data.tx_samples = radctrl_params.debug_samples[sequence_index][
                 "sequence_samples"
             ]
-            tx_data.dm_rate = dw_params.debug_samples[sequence_index]["dmrate"]
-            tx_data.decimated_tx_samples = dw_params.debug_samples[sequence_index][
+            tx_data.dm_rate = radctrl_params.debug_samples[sequence_index]["dmrate"]
+            tx_data.decimated_tx_samples = radctrl_params.debug_samples[sequence_index][
                 "decimated_samples"
             ]
             sequence_add.tx_data = tx_data
@@ -501,7 +509,7 @@ def create_dw_message(dw_params):
             # We always build one sequence in advance, so we trim the last one from when radar
             # control stops processing the averaging period.
             for encoding in sequence.output_encodings[slice_id][
-                : dw_params.num_sequences
+                : radctrl_params.num_sequences
             ]:
                 rxchannel.add_sqn_encodings(encoding.flatten().tolist())
             sequence.output_encodings[slice_id] = []
@@ -509,10 +517,10 @@ def create_dw_message(dw_params):
             rxchannel.rx_main_antennas = sqn_slice.rx_main_antennas
             rxchannel.rx_intf_antennas = sqn_slice.rx_intf_antennas
             rxchannel.tx_antenna_phases = sequence.tx_main_phase_shifts[slice_id][
-                dw_params.aveperiod.beam_iter
+                radctrl_params.aveperiod.beam_iter
             ]
 
-            beams = sqn_slice.rx_beam_order[dw_params.aveperiod.beam_iter]
+            beams = sqn_slice.rx_beam_order[radctrl_params.aveperiod.beam_iter]
             if isinstance(beams, int):
                 beams = [beams]
 
@@ -578,38 +586,38 @@ def round_up_time(dt=None, round_to=60):
 
 
 def run_cfs_scan(
-    radctrl_process_socket, radctrl_brian_socket, cfs_params, to_driver_inproc_sock
+    radctrl_process_socket, radctrl_brian_socket, radctrl_params, to_driver_inproc_sock
 ):
     # 2. Send DSP meta data
     # 3. Retrieve DSP results
 
-    dsp_socket_iden = cfs_params.options.dsp_cfs_identity
-    router_addr = cfs_params.options.router_address
+    dsp_socket_iden = radctrl_params.options.dsp_cfs_identity
+    router_addr = radctrl_params.options.router_address
     cfs_socket = socket_operations.create_sockets(
-        [cfs_params.options.radctrl_cfs_identity], router_addr
+        router_addr, [radctrl_params.options.radctrl_cfs_identity]
     )[0]
 
-    aveperiod = cfs_params.aveperiod
+    aveperiod = radctrl_params.aveperiod
     sequence = aveperiod.cfs_sequence
     sqn, dbg = sequence.make_sequence(aveperiod.beam_iter, 0)
 
     socket_operations.send_bytes(
         cfs_socket,
-        cfs_params.options.dw_cfs_identity,
-        pickle.dumps(cfs_params.seqnum_start + cfs_params.num_sequences),
+        radctrl_params.options.dw_cfs_identity,
+        pickle.dumps(radctrl_params.seqnum_start + radctrl_params.num_sequences),
     )
 
-    brian_socket_iden = cfs_params.options.brian_to_radctrl_identity
+    brian_socket_iden = radctrl_params.options.brian_to_radctrl_identity
     socket_operations.recv_data(radctrl_brian_socket, brian_socket_iden, log)
     # The above call is blocking; will wait until something is received
 
     for pulse_transmit_data in sqn:
-        driver_message = create_driver_message(cfs_params, pulse_transmit_data)
+        driver_message = create_driver_message(radctrl_params, pulse_transmit_data)
         to_driver_inproc_sock.send_pyobj(driver_message)
 
-    cfs_params.cfs_scan_flag = True
+    radctrl_params.cfs_scan_flag = True
 
-    dsp_message = create_dsp_message(cfs_params)
+    dsp_message = create_dsp_message(radctrl_params)
     radctrl_process_socket.send_pyobj(dsp_message)
     # Send metadata to dsp_comms_thread, so it can package into a message for rx_signal_processing
 
@@ -659,7 +667,7 @@ def main():
     # TODO test: need to make sure that we know that all sockets are set up after this try...except block.
     # TODO test: starting the programs in different orders.
     try:
-        sockets_list = socket_operations.create_sockets(ids, options.router_address)
+        sockets_list = socket_operations.create_sockets(options.router_address, ids)
     except zmq.ZMQBaseError as e:
         log.error("zmq failed setting up sockets", error=e)
         log.exception("zmq failed setting up sockets", exception=e)
@@ -670,7 +678,7 @@ def main():
 
     # Sockets for thread communication
     radctrl_inproc_socket = zmq.Context().instance().socket(zmq.PAIR)
-    radctrl_inproc_socket.bind("inproc://radctrl")
+    radctrl_inproc_socket.bind("inproc://radctrl_dsp")
 
     driver_comms_socket = zmq.Context().instance().socket(zmq.PAIR)
     driver_comms_socket.bind("inproc://radctrl_driver")
@@ -707,7 +715,7 @@ def main():
     )
     driver_start_message = create_driver_message(start_up_params, None)
 
-    metadata_thread = threading.Thread(
+    dsp_comms = threading.Thread(
         target=dsp_comms_thread,
         args=(
             options.radctrl_to_dsp_identity,
@@ -734,7 +742,7 @@ def main():
         ),
     )
 
-    metadata_thread.start()
+    dsp_comms.start()
     driver_comms.start()
     dw_comms.start()
 
@@ -1020,7 +1028,7 @@ def main():
                             driver_comms_socket,
                         )
 
-                        aveperiod.update_cfs_freqs(freq_spectrum)
+                        ave_params.cfs_masks = aveperiod.update_cfs_freqs(freq_spectrum)
                         ave_params.aveperiod = aveperiod
                         ave_params.num_sequences += 1
                         ave_params.cfs_scan_flag = False

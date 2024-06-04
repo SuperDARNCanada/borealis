@@ -82,7 +82,7 @@ if __name__ == "__main__":
         options.rxaffinity_to_driver_identity,
     ]
 
-    sockets_list = so.create_sockets(ids, options.router_address)
+    sockets_list = so.create_sockets(options.router_address, ids)
     mainaffinity_to_driver = sockets_list[0]
 
     set_main_uhd = so.recv_data(

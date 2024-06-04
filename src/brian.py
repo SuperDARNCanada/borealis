@@ -106,7 +106,7 @@ def sequence_timing(options):
         options.brian_to_dspend_identity,
     ]
 
-    sockets_list = so.create_sockets(ids, options.router_address)
+    sockets_list = so.create_sockets(options.router_address, ids)
 
     brian_to_radar_control = sockets_list[0]
     brian_to_driver = sockets_list[1]
@@ -212,7 +212,9 @@ def sequence_timing(options):
         if brian_to_driver in socks and socks[brian_to_driver] == zmq.POLLIN:
 
             # Receive metadata of completed sequence from driver such as timing
-            reply = so.recv_obj(brian_to_driver, options.driver_to_brian_identity, log)
+            reply = so.recv_bytes(
+                brian_to_driver, options.driver_to_brian_identity, log
+            )
             meta = rxsamplesmetadata_pb2.RxSamplesMetadata()
             meta.ParseFromString(reply)
 
@@ -236,7 +238,7 @@ def sequence_timing(options):
         ):
 
             # Get new sequence metadata from radar control
-            reply = so.recv_obj(
+            reply = so.recv_bytes(
                 brian_to_radar_control, options.radctrl_to_brian_identity, log
             )
 

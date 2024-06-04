@@ -7,7 +7,6 @@
     :author: Keith Kotyk
 """
 
-import copy
 import math
 import mmap
 from multiprocessing import shared_memory
@@ -16,6 +15,7 @@ import pickle
 import sys
 import threading
 import time
+from dataclasses import dataclass
 
 import numpy as np
 import posix_ipc as ipc
@@ -43,6 +43,29 @@ from utils.message_formats import (
     OutputDataset,
 )
 from utils.signals import DSP
+
+
+@dataclass
+class RxProcessingParameters:
+    """
+    dataclass to hold parameters used in writing data
+    """
+
+    sequence_num: int
+    main_beam_angles: list
+    intf_beam_angles: list
+    mixing_freqs: list
+    slice_details: list
+    start_sample: int
+    end_sample: int
+    processed_data: list
+    intf_antennas: list
+    filter_taps: list
+    downsample_rates: list
+    cfs_scan_flag: bool
+    samples_needed: int
+    rx_rate: float
+    output_sample_rate: float
 
 
 def fill_datawrite_message(processed_data, slice_details, data_outputs, cfs_scan_flag):
@@ -115,41 +138,44 @@ def sequence_worker(options, ringbuffer):
     inproc_socket.connect("inproc://sqn_worker")
 
     while True:
-        kwargs = inproc_socket.recv_pyobj()
+        rx_params = inproc_socket.recv_pyobj()
         # Wait until kwargs received from main thread
 
-        sequence_num = kwargs["sequence_num"]
-        main_beam_angles = kwargs["main_beam_angles"]
-        intf_beam_angles = kwargs["intf_beam_angles"]
-        mixing_freqs = kwargs["mixing_freqs"]
-        slice_details = kwargs["slice_details"]
-        start_sample = kwargs["start_sample"]
-        end_sample = kwargs["end_sample"]
-        processed_data = kwargs["processed_data"]
-        intf_antennas = kwargs["intf_antennas"]
-        filter_taps = kwargs["filter_taps"]
-        downsample_rates = kwargs["downsample_rates"]
-        cfs_scan_flag = kwargs["cfs_scan_flag"]
-        samples_needed = kwargs["samples_needed"]
-        rx_rate = kwargs["rx_rate"]
-        output_sample_rate = kwargs["output_sample_rate"]
+        # sequence_num = kwargs["sequence_num"]
+        # main_beam_angles = kwargs["main_beam_angles"]
+        # intf_beam_angles = kwargs["intf_beam_angles"]
+        # mixing_freqs = kwargs["mixing_freqs"]
+        # slice_details = kwargs["slice_details"]
+        # start_sample = kwargs["start_sample"]
+        # end_sample = kwargs["end_sample"]
+        # processed_data = kwargs["processed_data"]
+        # intf_antennas = kwargs["intf_antennas"]
+        # filter_taps = kwargs["filter_taps"]
+        # downsample_rates = kwargs["downsample_rates"]
+        # cfs_scan_flag = kwargs["cfs_scan_flag"]
+        # samples_needed = kwargs["samples_needed"]
+        # rx_rate = kwargs["rx_rate"]
+        # output_sample_rate = kwargs["output_sample_rate"]
 
-        seq_begin_iden = options.dspbegin_to_brian_identity + str(sequence_num)
-        seq_end_iden = options.dspend_to_brian_identity + str(sequence_num)
-        if cfs_scan_flag:
+        seq_begin_iden = options.dspbegin_to_brian_identity + str(
+            rx_params.sequence_num
+        )
+        seq_end_iden = options.dspend_to_brian_identity + str(rx_params.sequence_num)
+        if rx_params.cfs_scan_flag:
             sender_iden = options.dsp_cfs_identity
             recipient_iden = options.radctrl_cfs_identity
         else:
-            sender_iden = options.dsp_to_dw_identity + str(sequence_num)
+            sender_iden = options.dsp_to_dw_identity + str(rx_params.sequence_num)
             recipient_iden = options.dw_to_dsp_identity
         log.info(
             "socket identities:",
             sender=sender_iden,
             recip=recipient_iden,
-            cfs_flag=cfs_scan_flag,
+            cfs_flag=rx_params.cfs_scan_flag,
         )
         sequence_worker_sockets = so.create_sockets(
-            [seq_begin_iden, seq_end_iden, sender_iden], options.router_address
+            options.router_address,
+            [seq_begin_iden, seq_end_iden, sender_iden],
         )
 
         dspbegin_to_brian = sequence_worker_sockets[0]
@@ -161,19 +187,23 @@ def sequence_worker(options, ringbuffer):
         start_timer = time.perf_counter()
 
         # Copy samples from ring buffer
-        indices = np.arange(start_sample, start_sample + samples_needed)
+        indices = np.arange(
+            rx_params.start_sample, rx_params.start_sample + rx_params.samples_needed
+        )
         # x.take makes a copy of the array. We want to avoid making a copy using Cupy so that
         # data is moved directly from the ring buffer to the GPU. Simple indexing creates a view
         # of existing data without making a copy.
         if cupy_available:
-            if end_sample > ringbuffer.shape[1]:
-                piece1 = ringbuffer[:, start_sample:]
-                piece2 = ringbuffer[:, : end_sample - ringbuffer.shape[1]]
+            if rx_params.end_sample > ringbuffer.shape[1]:
+                piece1 = ringbuffer[:, rx_params.start_sample :]
+                piece2 = ringbuffer[:, : rx_params.end_sample - ringbuffer.shape[1]]
                 tmp1 = xp.array(piece1)
                 tmp2 = xp.array(piece2)
                 sequence_samples = xp.concatenate((tmp1, tmp2), axis=1)
             else:
-                sequence_samples = xp.array(ringbuffer[:, start_sample:end_sample])
+                sequence_samples = xp.array(
+                    ringbuffer[:, rx_params.start_sample : rx_params.end_sample]
+                )
         else:
             sequence_samples = ringbuffer.take(indices, axis=1, mode="wrap")
         log_dict["copy_samples_from_ringbuffer_time"] = (
@@ -182,25 +212,27 @@ def sequence_worker(options, ringbuffer):
 
         # Tell brian DSP is about to begin
         mark_timer = time.perf_counter()
-        reply_packet = {"sequence_num": sequence_num}
+        reply_packet = {"sequence_num": rx_params.sequence_num}
         msg = pickle.dumps(reply_packet, protocol=pickle.HIGHEST_PROTOCOL)
         so.recv_bytes(dspbegin_to_brian, options.brian_to_dspbegin_identity, log)
         so.send_bytes(dspbegin_to_brian, options.brian_to_dspbegin_identity, msg)
         log_dict["dsp_begin_msg_time"] = (time.perf_counter() - mark_timer) * 1e3
 
-        if cfs_scan_flag:
+        if rx_params.cfs_scan_flag:
             # CFS analysis
             mark_timer = time.perf_counter()
             cfs_processor = DSP(
-                rx_rate,
-                filter_taps,
-                mixing_freqs,
-                downsample_rates,
+                rx_params.rx_rate,
+                rx_params.filter_taps,
+                rx_params.mixing_freqs,
+                rx_params.downsample_rates,
                 use_shared_mem=False,
             )
             cfs_processor.apply_filters(sequence_samples)
             cfs_processor.move_filter_results()
-            cfs_data, cfs_freq = cfs_processor.cfs_freq_analysis(slice_details)
+            cfs_data, cfs_freq = cfs_processor.cfs_freq_analysis(
+                rx_params.slice_details
+            )
             log_dict["cfs_dsp_time"] = (time.perf_counter() - mark_timer) * 1e3
 
         else:
@@ -208,50 +240,58 @@ def sequence_worker(options, ringbuffer):
             mark_timer = time.perf_counter()
             main_sequence_samples = sequence_samples[: len(options.rx_main_antennas), :]
             main_sequence_samples_shape = main_sequence_samples.shape
-            main_processor = DSP(rx_rate, filter_taps, mixing_freqs, downsample_rates)
+            main_processor = DSP(
+                rx_params.rx_rate,
+                rx_params.filter_taps,
+                rx_params.mixing_freqs,
+                rx_params.downsample_rates,
+            )
             main_processor.apply_filters(main_sequence_samples)
             main_processor.move_filter_results()
-            main_processor.beamform(main_beam_angles)
+            main_processor.beamform(rx_params.main_beam_angles)
             main_corrs = DSP.correlations_from_samples(
                 main_processor.beamformed_samples,
                 main_processor.beamformed_samples,
-                output_sample_rate,
-                slice_details,
+                rx_params.output_sample_rate,
+                rx_params.slice_details,
             )
             log_dict["main_dsp_time"] = (time.perf_counter() - mark_timer) * 1e3
 
             # Process intf samples if intf exists
             mark_timer = time.perf_counter()
             intf_sequence_samples_shape = None
-            log.info("intf antennas", antennas=intf_antennas)
-            if len(intf_antennas) > 0:
+            log.info("intf antennas", antennas=rx_params.intf_antennas)
+            if len(rx_params.intf_antennas) > 0:
                 intf_sequence_samples = sequence_samples[
                     len(options.rx_main_antennas) :, :
                 ]
                 intf_sequence_samples_shape = intf_sequence_samples.shape
                 intf_processor = DSP(
-                    rx_rate, filter_taps, mixing_freqs, downsample_rates
+                    rx_params.rx_rate,
+                    rx_params.filter_taps,
+                    rx_params.mixing_freqs,
+                    rx_params.downsample_rates,
                 )
                 intf_processor.apply_filters(intf_sequence_samples)
                 intf_processor.move_filter_results()
-                intf_processor.beamform(intf_beam_angles)
+                intf_processor.beamform(rx_params.intf_beam_angles)
                 intf_corrs = DSP.correlations_from_samples(
                     intf_processor.beamformed_samples,
                     intf_processor.beamformed_samples,
-                    output_sample_rate,
-                    slice_details,
+                    rx_params.output_sample_rate,
+                    rx_params.slice_details,
                 )
                 cross_corrs = DSP.correlations_from_samples(
                     intf_processor.beamformed_samples,
                     main_processor.beamformed_samples,
-                    output_sample_rate,
-                    slice_details,
+                    rx_params.output_sample_rate,
+                    rx_params.slice_details,
                 )
             log_dict["intf_dsp_time"] = (time.perf_counter() - mark_timer) * 1e3
 
         # Tell brian DSP how long it took
         mark_timer = time.perf_counter()
-        if cfs_scan_flag:
+        if rx_params.cfs_scan_flag:
             reply_packet["kerneltime"] = log_dict["cfs_dsp_time"]
         else:
             reply_packet["kerneltime"] = (
@@ -264,7 +304,7 @@ def sequence_worker(options, ringbuffer):
 
         total_processing_time = (time.perf_counter() - start_timer) * 1e3
         log_dict["total_sequence_process_time"] = total_processing_time
-        if cfs_scan_flag:
+        if rx_params.cfs_scan_flag:
             log.verbose(
                 "CFS processing sequence",
                 **log_dict,
@@ -272,11 +312,11 @@ def sequence_worker(options, ringbuffer):
         else:
             log.verbose(
                 "processing sequence",
-                sequence_num=sequence_num,
-                mixing_freqs=mixing_freqs,
+                sequence_num=rx_params.sequence_num,
+                mixing_freqs=rx_params.mixing_freqs,
                 mixing_freqs_units="Hz",
-                main_beam_angles=main_beam_angles.shape,
-                intf_beam_angles=main_beam_angles.shape,
+                main_beam_angles=rx_params.main_beam_angles.shape,
+                intf_beam_angles=rx_params.main_beam_angles.shape,
                 main_buffer_shape=main_sequence_samples_shape,
                 intf_buffer_shape=intf_sequence_samples_shape,
                 **log_dict,
@@ -289,16 +329,21 @@ def sequence_worker(options, ringbuffer):
         # Extract outputs from processing into groups that will be put into message fields.
         data_outputs = {}
 
-        if cfs_scan_flag:
+        if rx_params.cfs_scan_flag:
             mark_timer = time.perf_counter()
             data_outputs["cfs_data"] = cfs_data
             data_outputs["cfs_freq"] = cfs_freq
 
             # Fill message with the slice-specific fields
             fill_datawrite_message(
-                processed_data, slice_details, data_outputs, cfs_scan_flag
+                rx_params.processed_data,
+                rx_params.slice_details,
+                data_outputs,
+                rx_params.cfs_scan_flag,
             )
-            sqn_message = pickle.dumps(processed_data, protocol=pickle.HIGHEST_PROTOCOL)
+            sqn_message = pickle.dumps(
+                rx_params.processed_data, protocol=pickle.HIGHEST_PROTOCOL
+            )
             log_dict["cfs_to_stage_time"] = (time.perf_counter() - mark_timer) * 1e3
 
         else:
@@ -345,7 +390,7 @@ def sequence_worker(options, ringbuffer):
                         intf_data = intf_processor.filter_outputs[i]
                         debug_data_in_shm(stage, intf_data, "intf")
 
-                    processed_data.add_debug_data(stage)
+                    rx_params.processed_data.add_debug_data(stage)
 
             # Add antennas_iq data
             stage = DebugDataStage()
@@ -354,11 +399,11 @@ def sequence_worker(options, ringbuffer):
             stage.main_shm = main_shm.name
             stage.num_samps = main_processor.antennas_iq_samples.shape[-1]
             main_shm.close()
-            if len(intf_antennas) > 0:
+            if len(rx_params.intf_antennas) > 0:
                 intf_shm = intf_processor.shared_mem["antennas_iq"]
                 stage.intf_shm = intf_shm.name
                 intf_shm.close()
-            processed_data.add_debug_data(stage)
+            rx_params.processed_data.add_debug_data(stage)
             log_dict["add_antiq_to_stage_time"] = (
                 time.perf_counter() - start_timer
             ) * 1e3
@@ -379,8 +424,8 @@ def sequence_worker(options, ringbuffer):
                     buffer=rawrf_shm.buf,
                 )
                 rawrf_array[...] = ringbuffer.take(indices, axis=1, mode="wrap")
-                processed_data.rawrf_shm = rawrf_shm.name
-                processed_data.rawrf_num_samps = indices.shape[-1]
+                rx_params.processed_data.rawrf_shm = rawrf_shm.name
+                rx_params.processed_data.rawrf_num_samps = indices.shape[-1]
                 rawrf_shm.close()
                 log_dict["put_rawrf_in_shm_time"] = (
                     time.perf_counter() - mark_timer
@@ -390,24 +435,33 @@ def sequence_worker(options, ringbuffer):
             mark_timer = time.perf_counter()
             # beamformed_m: [num_slices, num_beams, num_samps]
             beamformed_m = main_processor.beamformed_samples
-            processed_data.bfiq_main_shm = main_processor.shared_mem["bfiq"].name
-            processed_data.max_num_beams = beamformed_m.shape[1]
-            processed_data.num_samps = beamformed_m.shape[-1]
+            rx_params.processed_data.bfiq_main_shm = main_processor.shared_mem[
+                "bfiq"
+            ].name
+            rx_params.processed_data.max_num_beams = beamformed_m.shape[1]
+            rx_params.processed_data.num_samps = beamformed_m.shape[-1]
             main_processor.shared_mem["bfiq"].close()
 
             data_outputs["main_corrs"] = main_corrs
 
-            if len(intf_antennas) > 0:
+            if len(rx_params.intf_antennas) > 0:
                 data_outputs["cross_corrs"] = cross_corrs
                 data_outputs["intf_corrs"] = intf_corrs
-                processed_data.bfiq_intf_shm = intf_processor.shared_mem["bfiq"].name
+                rx_params.processed_data.bfiq_intf_shm = intf_processor.shared_mem[
+                    "bfiq"
+                ].name
                 intf_processor.shared_mem["bfiq"].close()
 
             # Fill message with the slice-specific fields
             fill_datawrite_message(
-                processed_data, slice_details, data_outputs, cfs_scan_flag
+                rx_params.processed_data,
+                rx_params.slice_details,
+                data_outputs,
+                rx_params.cfs_scan_flag,
             )
-            sqn_message = pickle.dumps(processed_data, protocol=pickle.HIGHEST_PROTOCOL)
+            sqn_message = pickle.dumps(
+                rx_params.processed_data, protocol=pickle.HIGHEST_PROTOCOL
+            )
             log_dict["add_bfiq_and_acfs_to_stage_time"] = (
                 time.perf_counter() - mark_timer
             ) * 1e3
@@ -424,20 +478,20 @@ def sequence_worker(options, ringbuffer):
         ) * 1e3
         log.info(
             "done with sequence",
-            sequence_num=sequence_num,
+            sequence_num=rx_params.sequence_num,
             processing_time=total_processing_time,
             time_units="ms",
-            slice_ids=[d["slice_id"] for d in slice_details],
+            slice_ids=[d["slice_id"] for d in rx_params.slice_details],
         )
-        log.verbose("sequence timing", sequence_num=sequence_num, **log_dict)
+        log.verbose("sequence timing", sequence_num=rx_params.sequence_num, **log_dict)
 
 
 def main():
     options = Options()
 
     sockets = so.create_sockets(
-        [options.dsp_to_radctrl_identity, options.dsp_to_driver_identity],
         options.router_address,
+        [options.dsp_to_radctrl_identity, options.dsp_to_driver_identity],
     )
 
     dsp_to_radar_control = sockets[0]
@@ -638,25 +692,25 @@ def main():
         processed_data.lp_status_bank_l = rx_metadata.lp_status_bank_l
         processed_data.gps_locked = rx_metadata.gps_locked
 
-        args = {
-            "sequence_num": copy.deepcopy(sqn_meta_message.sequence_num),
-            "main_beam_angles": copy.deepcopy(padded_main_phases),
-            "intf_beam_angles": copy.deepcopy(padded_intf_phases),
-            "mixing_freqs": copy.deepcopy(mixing_freqs),
-            "slice_details": copy.deepcopy(slice_details),
-            "start_sample": copy.deepcopy(start_sample),
-            "end_sample": copy.deepcopy(end_sample),
-            "processed_data": copy.deepcopy(processed_data),
-            "intf_antennas": copy.deepcopy(intf_antennas),
-            "filter_taps": copy.deepcopy(dm_scheme_taps),
-            "downsample_rates": copy.deepcopy(dm_rates),
-            "cfs_scan_flag": cfs_scan_flag,
-            "samples_needed": samples_needed,
-            "rx_rate": rx_rate,
-            "output_sample_rate": output_sample_rate,
-        }
+        rx_params = RxProcessingParameters(
+            sqn_meta_message.sequence_num,
+            padded_main_phases,
+            padded_intf_phases,
+            mixing_freqs,
+            slice_details,
+            start_sample,
+            end_sample,
+            processed_data,
+            intf_antennas,
+            dm_scheme_taps,
+            dm_rates,
+            cfs_scan_flag,
+            samples_needed,
+            rx_rate,
+            output_sample_rate,
+        )
 
-        sequence_worker_socket.send_pyobj(args)
+        sequence_worker_socket.send_pyobj(rx_params)
 
 
 if __name__ == "__main__":

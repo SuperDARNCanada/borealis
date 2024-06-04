@@ -4,8 +4,8 @@
     averaging_periods
     ~~~~~~~~~~~~~~~~~
     This is the module containing the AveragingPeriod class. The AveragingPeriod class contains the
-    InterfaceClassBase members, as well as cfs_flag (to be implemented), intn (number of integrations
-    to run), or intt(max time for integrations), and it contains sequences of class Sequence.
+    InterfaceClassBase members, as well as cfs_flag, intn (number of integrations to run),
+    or intt(max time for integrations), and it contains sequences of class Sequence.
 
     :copyright: 2018 SuperDARN Canada
     :author: Marci Detwiller
@@ -13,18 +13,21 @@
 # built-in
 import inspect
 from pathlib import Path
+import copy
 
 # third party
 import numpy as np
 import structlog
 
 # local
+import borealis_experiments.superdarn_common_fields as scf
 from utils.options import Options
 from experiment_prototype.interface_classes.sequences import Sequence
 from experiment_prototype.interface_classes.interface_class_base import (
     InterfaceClassBase,
 )
 from experiment_prototype.experiment_exception import ExperimentException
+from experiment_prototype.experiment_slice import ExperimentSlice
 
 # Obtain the module name that imported this log_config
 caller = Path(inspect.stack()[-1].filename)
@@ -107,9 +110,6 @@ class AveragingPeriod(InterfaceClassBase):
                 self.cfs_flag = True
                 self.cfs_slice_ids.append(slice_id)
                 self.cfs_range.append(self.slice_dict[slice_id].cfs_range)
-
-        # TODO: SET UP CLEAR FREQUENCY SEARCH CAPABILITY
-        # also note for when setting this up cfs_ranges may overlap
 
         self.intt = self.slice_dict[self.slice_ids[0]].intt
         self.intn = self.slice_dict[self.slice_ids[0]].intn
@@ -220,98 +220,109 @@ class AveragingPeriod(InterfaceClassBase):
         :param      cfs_spectrum: Analyzed CFS sequence data
         :type       cfs_spectrum: dictionary
         """
-        freq = cfs_spectrum.cfs_freq
-        mags = [mag.cfs_data for mag in cfs_spectrum.output_datasets]
-        sorted_freqs = [
-            [x for _, x in sorted(zip(mags[slc], freq))] for slc in range(len(mags))
-        ]
-        # extract and sort frequencies based on magnitudes. Lowest noise to highest noise.
+        cfs_freq_hz = cfs_spectrum.cfs_freq  # at baseband
+        cfs_data = [dset.cfs_data for dset in cfs_spectrum.output_datasets]
+        # Sort measured frequencies based on measured power at each freq
+        slice_masks = []
+        sorted_freqs_hz = []
+        for data in cfs_data:
+            ind = np.argsort(data)
+            sorted_freqs_hz.append(np.array(cfs_freq_hz)[ind])
 
         for sqn_num, sequence in enumerate(self.cfs_sequences):
             freq_index = 0  # starting (most ideal) cfs spectrum frequency index
-            used_freqs = []
+            used_range = []
             for slice_obj in sequence.slice_dict.values():
-                df = int(
-                    round(1e3 / (2 * slice_obj.pulse_len))
-                )  # bandwidth of tx pulse / 2 in kHz
                 if not slice_obj.cfs_flag:
-                    used_freqs.append(slice_obj.freq)
-                    # record all non-cfs frequencies already in use
+                    df = int(round(1e3 / (2 * slice_obj.pulse_len)))
+                    # bandwidth of tx pulse / 2 in kHz
+                    used_range.append([slice_obj.freq - df, slice_obj.freq + df])
+                    # record pulse widths of all non-cfs slices in use
+
             for slice_obj in sequence.slice_dict.values():
                 if slice_obj.cfs_flag:
+                    df = int(round(1e3 / (2 * slice_obj.pulse_len)))
                     slice_range = slice_obj.cfs_range
-                    center_freq = int((slice_range[0] + slice_range[1]) / 2)
-                    shifted_freq = np.array(sorted_freqs[sqn_num]) / 1000 + center_freq
+                    center_freq_khz = int((slice_range[0] + slice_range[1]) / 2)
+                    shifted_cfs_khz = sorted_freqs_hz[sqn_num] / 1000 + center_freq_khz
 
-                    mask = np.full(len(shifted_freq), True)
+                    mask = np.full(len(shifted_cfs_khz), True)
                     for f_rng in options.restricted_ranges:
                         mask[
                             np.argwhere(
                                 np.logical_and(
-                                    shifted_freq >= f_rng[0] - 0.51,
-                                    shifted_freq <= f_rng[1] + 0.5,
+                                    shifted_cfs_khz >= np.floor(f_rng[0]),
+                                    shifted_cfs_khz <= np.ceil(f_rng[1]),
                                 )
                             )
                         ] = False
                         # Rounding when setting the freq below could cause the freq to set to a restricted value
-                        # increase the restricted ranges by 0.5 to prevent rounding error
+                        # so ceil and floor are used to ensure restricted ranges are avoided
+
+                    for tx_range in used_range:
+                        mask[
+                            np.argwhere(
+                                np.logical_and(
+                                    shifted_cfs_khz >= tx_range[0] - df,
+                                    shifted_cfs_khz <= tx_range[1] + df,
+                                )
+                            )
+                        ] = False
+                        # Mask pulse width around all used frequencies
+
+                    for ctr_freq in [self.txctrfreq, self.rxctrfreq]:
+                        mask[
+                            np.argwhere(
+                                np.logical_and(
+                                    shifted_cfs_khz >= ctr_freq - 50,
+                                    shifted_cfs_khz <= ctr_freq + 50,
+                                )
+                            )
+                        ] = False
+                        # Avoid frequencies within 50 kHz for the center freqs
+
                     f_rng = slice_obj.cfs_range
                     mask[
                         np.argwhere(
                             np.logical_or(
-                                shifted_freq < f_rng[0], shifted_freq > f_rng[1]
+                                shifted_cfs_khz < f_rng[0], shifted_cfs_khz > f_rng[1]
                             )
                         )
                     ] = False
-                    shifted_freq = shifted_freq[mask]
-                    # Mask all restricted frequencies and frequencies outside cfs_range in the
-                    # cfs spectrum frequencies
+                    shifted_cfs_khz = shifted_cfs_khz[mask]
+                    # Mask all restricted frequencies, all frequencies within the tx pulse
+                    # of used frequencies, frequencies outside cfs_range, and frequencies
+                    # too close to the center frequencies in the cfs spectrum frequencies
 
-                    repeat = True
-                    while repeat:
-                        # Search for lowest noise usable frequency
-                        if freq_index >= len(shifted_freq):
-                            log.critical(
-                                f"All given frequencies were to close to used frequencies or the tx or rx"
-                                f"center frequencies. The radar will crash!!!",
-                                used_freqs=used_freqs,
-                                cfs_sorted_freqs=shifted_freq,
-                            )
+                    if len(shifted_cfs_khz) < 1:
+                        log.critical(
+                            f"All searched frequencies were too close to used frequencies or the tx or rx"
+                            f"center frequencies or were restricted. The radar will crash!!!",
+                            current_slice_id=slice_obj.slice_id,
+                            used_freq_tx_widths=used_range,
+                            cfs_sorted_freqs=shifted_cfs_khz,
+                        )
 
-                        if any(
-                            abs(shifted_freq[freq_index] - x) <= df for x in used_freqs
-                        ):
-                            freq_index += 1
-                            # skip current shifted freq index if it is too close to a used frequency
-                        elif abs(shifted_freq[freq_index] - self.txctrfreq) <= 50:
-                            freq_index += 1
-                            # Skip frequency if too close to tx center frequency
-                        elif abs(shifted_freq[freq_index] - self.rxctrfreq) <= 50:
-                            freq_index += 1
-                            # Skip frequency if too close to rx center frequency
-                        else:
-                            repeat = False
-                            slice_obj.freq = int(np.round(shifted_freq[freq_index]))
-                            used_freqs.append(int(np.round(shifted_freq[freq_index])))
-                            # Set cfs slice frequency and add frequency to used_freqs for this sequence
-                            freq_index += 1
-                            log.verbose(
-                                "setting cfs slice freq",
-                                slice_id=slice_obj.slice_id,
-                                set_freq=slice_obj.freq,
-                            )
+                    selected_freq = int(np.round(shifted_cfs_khz[0]))
+                    slice_obj.freq = copy.deepcopy(selected_freq)
+                    used_range.append([selected_freq - df, selected_freq + df])
+                    # Set cfs slice frequency and add frequency to used_freqs for this sequence
+                    slice_masks.append(mask)
+
+                    log.verbose(
+                        "setting cfs slice freq",
+                        slice_id=slice_obj.slice_id,
+                        set_freq=slice_obj.freq,
+                    )
 
             sequence.build_sequence_pulses()
             # Build sequence pulses once all cfs slices have been assigned a frequency
+        return slice_masks
 
     def build_cfs_sequence(self):
         """
         Builds an empty rx only pulse sequence to collect clear frequency search data
         """
-        import copy
-        import borealis_experiments.superdarn_common_fields as scf
-        from experiment_prototype.experiment_slice import ExperimentSlice
-
         pulse_length = 100  # us
         num_ranges = int(round((self.slice_dict[0].cfs_duration * 1000) / pulse_length))
         # calculate number of ranges (cfs_duration is in ms)
@@ -339,7 +350,7 @@ class AveragingPeriod(InterfaceClassBase):
             "decimation_scheme": self.slice_dict[0].cfs_scheme,
         }
 
-        CFS_slices = {}
+        cfs_slices = {}
         seq_keys = []
         slice_counter = 0
         for cfs_id in self.cfs_slice_ids:
@@ -348,16 +359,16 @@ class AveragingPeriod(InterfaceClassBase):
             listening_slice["freq"] = int((slice_range[0] + slice_range[1]) / 2)
             listening_slice["slice_id"] = slice_counter
 
-            CFS_slices[slice_counter] = ExperimentSlice(**listening_slice)
+            cfs_slices[slice_counter] = ExperimentSlice(**listening_slice)
             seq_keys.append(slice_counter)
             slice_counter += 1
 
         # Build interface dictionary
         interface_dict = {}
-        for ref_ind in range(slice_counter):
-            for int_ind in range(ref_ind + 1, slice_counter):
-                interface_dict[(ref_ind, int_ind)] = "CONCURRENT"
+        for i in range(slice_counter):
+            for j in range(i + 1, slice_counter):
+                interface_dict[(i, j)] = "CONCURRENT"
 
         self.cfs_sequence = Sequence(
-            seq_keys, CFS_slices, interface_dict, self.transmit_metadata
+            seq_keys, cfs_slices, interface_dict, self.transmit_metadata
         )

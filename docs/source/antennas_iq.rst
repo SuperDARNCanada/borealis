@@ -96,13 +96,17 @@ The file fields in the antennas_iq array files are:
 +-----------------------------------+---------------------------------------------+
 | | **cfs_freq**                    | | Frequencies sampled during the clear      |
 | | *float32*                       | | frequency search centered around          |
-| | [] or [num_cfs_samps]           | | baseband. The number of cfs samples is    |
-| |                                 | | the rx rate / the decimation stages.      |
+| | [] or [num_freqs]               | | baseband.                                 |
++-----------------------------------+---------------------------------------------+
+| | **cfs_masks**                   | | Masks for each cfs slice indicating which |
+| | *bool*                          | | frequencies cannot be selected for the    |
+| | [] or [num_cfs_slices,          | | slice tx freq.                            |
+| | num_freqs]                      | |                                           |
 +-----------------------------------+---------------------------------------------+
 | | **cfs_noise**                   | | Power measurements for each frequency in  |
 | | *float32*                       | | the clear frequency search analysis.      |
 | | [] or [num_cfs_slices,          | | A separate power array is generated for   |
-| | num_cfs_samps]                  | | cfs slice.                                |
+| | num_freqs]                      | | each cfs slice.                           |
 +-----------------------------------+---------------------------------------------+
 | | **cfs_range**                   | | The range of frequencies scanned by the   |
 | | *float32*                       | | clear frequency search for each cfs slice |
