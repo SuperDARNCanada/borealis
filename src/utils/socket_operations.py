@@ -11,6 +11,7 @@
 """
 
 import zmq
+import pickle
 
 
 def create_sockets(router_addr, *identities):
@@ -78,13 +79,6 @@ def send_data(socket, receiver_identity, msg):
     socket.send_multipart(frames)
 
 
-# Aliases for sending to a socket
-send_reply = send_request = send_data
-
-# Aliases for receiving from a socket
-recv_reply = recv_request = recv_data
-
-
 def recv_bytes(socket, sender_identity, log):
     """
     Receives data from a socket and verifies it comes from the correct sender.
@@ -145,3 +139,44 @@ def send_bytes(socket, receiver_identity, bytes_object, log=None):
         )
     frames = [receiver_identity.encode("utf-8"), b"", bytes_object]
     socket.send_multipart(frames)
+
+
+def recv_pyobj(socket, expected_type=None, log=None):
+    """Receives message from another python process through a router using
+    pickle to serialize the message.
+
+    Args:
+        socket:
+        expected_type:
+        log:
+    """
+    message = socket.recv_pyobj()
+    if expected_type:
+        if not isinstance(message, expected_type):
+            if log:
+                log.error(
+                    "received message != expected message",
+                    received_message=type(message),
+                    expected_message=expected_type,
+                )
+            return None
+    return message
+
+
+def send_pyobj(socket, receiver_identity, message, log=None):
+    """Sends message to another python process through a router using pickle
+    to serialize the message.
+
+    Args:
+        socket:
+        receiver_identity:
+        message:
+        log:
+    """
+    if log:
+        log.debug(
+            "Sending message",
+            sender=socket.get(zmq.IDENTITY),
+            receiver=receiver_identity,
+        )
+    socket.send_pyobj(message, protocol=pickle.HIGHEST_PROTOCOL)

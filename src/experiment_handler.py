@@ -235,7 +235,7 @@ def experiment_handler(semaphore, args):
 
     def update_experiment():
         # Recv complete processed data from DSP or datawrite? TODO
-        # socket_operations.send_request(exp_handler_to_dsp,
+        # socket_operations.send_data(exp_handler_to_dsp,
         #                               options.dsp_to_exphan_identity,
         #                               "Need completed data")
 
@@ -273,7 +273,7 @@ def experiment_handler(semaphore, args):
             change_flag = False
 
         # Wait until radar_control is ready to receive a changed experiment
-        message = socket_operations.recv_request(
+        message = socket_operations.recv_data(
             exp_handler_to_radar_control, options.radctrl_to_exphan_identity, log
         )
 
