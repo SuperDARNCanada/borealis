@@ -532,6 +532,16 @@ class ExperimentSlice:
                             f"adjust the cfs_range values of the experiment."
                         )
 
+            for stage, dm_rate in enumerate(cfs_scheme.dm_rates):
+                if (
+                    cfs_scheme.input_rates[stage]
+                    > dm_rate * cfs_scheme.output_rates[stage]
+                ):
+                    raise ValueError(
+                        f"CFS scheme decimation stage {stage} is aliasing. Ensure that input_rate/output_rate "
+                        f"is greater than the decimation rate."
+                    )
+
         return cfs_scheme
 
     @validator("tx_antennas")
@@ -978,6 +988,20 @@ class ExperimentSlice:
                 f"decimation_scheme input data rate {input_rate} does not match rx_bandwidth "
                 f"{values['rx_bandwidth']}"
             )
+
+        for stage, dm_rate in enumerate(decimation_scheme.dm_rates):
+            if (
+                round(
+                    decimation_scheme.input_rates[stage]
+                    / decimation_scheme.output_rates[stage]
+                )
+                > dm_rate
+            ):
+                raise ValueError(
+                    f"Experiment decimation stage {stage} is aliasing. Ensure that input_rate/output_rate "
+                    f"({decimation_scheme.input_rates[stage]}/{decimation_scheme.output_rates[stage]}) is "
+                    f"greater than the decimation rate ({dm_rate})."
+                )
 
         return decimation_scheme
 

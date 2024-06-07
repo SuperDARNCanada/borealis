@@ -25,7 +25,7 @@ def create_sockets(router_addr, *identities):
     :type       identities:     tuple
 
     :returns:   Newly created and connected sockets.
-    :rtype:     tuple
+    :rtype:     list or str
     """
     context = zmq.Context().instance()
     num_sockets = len(identities)
@@ -34,7 +34,10 @@ def create_sockets(router_addr, *identities):
         sk.setsockopt_string(zmq.IDENTITY, iden)
         sk.connect(router_addr)
 
-    return tuple(sockets)
+    if num_sockets == 1:
+        return sockets[0]
+
+    return sockets
 
 
 def recv_data(socket, sender_identity, log):
@@ -141,31 +144,31 @@ def send_bytes(socket, receiver_identity, bytes_object, log=None):
     socket.send_multipart(frames)
 
 
-def recv_pyobj(socket, expected_type=None, log=None):
-    """Receives message from another python process through a router using
-    pickle to serialize the message.
+def recv_pyobj(socket, sender_identity, log, expected_type=None):
+    """Un-packs a pickled object received from recv_bytes. Can be used
+    to check if the received object is of the expected type.
 
     Args:
         socket:
         expected_type:
         log:
     """
-    message = socket.recv_pyobj()
+    bytes_packet = recv_bytes(socket, sender_identity, log)
+    message = pickle.loads(bytes_packet)
     if expected_type:
         if not isinstance(message, expected_type):
-            if log:
-                log.error(
-                    "received message != expected message",
-                    received_message=type(message),
-                    expected_message=expected_type,
-                )
+            log.error(
+                "received message != expected message",
+                received_message=type(message),
+                expected_message=expected_type,
+            )
             return None
     return message
 
 
 def send_pyobj(socket, receiver_identity, message, log=None):
-    """Sends message to another python process through a router using pickle
-    to serialize the message.
+    """Pickles the message and passes it to send bytes to be communicated
+    over the router.
 
     Args:
         socket:
@@ -173,10 +176,5 @@ def send_pyobj(socket, receiver_identity, message, log=None):
         message:
         log:
     """
-    if log:
-        log.debug(
-            "Sending message",
-            sender=socket.get(zmq.IDENTITY),
-            receiver=receiver_identity,
-        )
-    socket.send_pyobj(message, protocol=pickle.HIGHEST_PROTOCOL)
+    bytes_packet = pickle.dumps(message, protocol=pickle.HIGHEST_PROTOCOL)
+    send_bytes(socket, receiver_identity, bytes_packet, log)

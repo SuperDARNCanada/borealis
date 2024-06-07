@@ -106,7 +106,7 @@ def sequence_timing(options):
         options.brian_to_dspend_identity,
     ]
 
-    sockets_list = so.create_sockets(options.router_address, ids)
+    sockets_list = so.create_sockets(options.router_address, *ids)
 
     brian_to_radar_control = sockets_list[0]
     brian_to_driver = sockets_list[1]
@@ -238,11 +238,9 @@ def sequence_timing(options):
         ):
 
             # Get new sequence metadata from radar control
-            reply = so.recv_bytes(
+            sigp = so.recv_pyobj(
                 brian_to_radar_control, options.radctrl_to_brian_identity, log
             )
-
-            sigp = pickle.loads(reply)
 
             log.debug(
                 "radar control sent",

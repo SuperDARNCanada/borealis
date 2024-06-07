@@ -33,7 +33,7 @@ from scipy.constants import speed_of_light
 
 # local
 from utils import socket_operations as so
-from utils.message_formats import ProcessedSequenceMessage
+from utils.message_formats import ProcessedSequenceMessage, AveperiodMetadataMessage
 from utils.options import Options
 
 
@@ -92,7 +92,7 @@ class SliceData:
             "description": "Frequencies measured during clear frequency search",
         }
     )
-    cfs_masls: np.ndarray = field(
+    cfs_masks: np.ndarray = field(
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf"],
             "description": "Mask for cfs_freqs restricting freqs available for setting cfs slice freq",
@@ -1058,9 +1058,7 @@ class DataWrite(object):
                                 data = np.array(data)
                         group[relevant_field] = data
                     full_dict = {epoch_milliseconds: group}
-                    so.send_bytes(
-                        dw_rt["socket"], dw_rt["iden"], pickle.dumps(full_dict)
-                    )
+                    so.send_pyobj(dw_rt["socket"], dw_rt["iden"], full_dict)
 
             elif file_ext == "json":
                 self.write_json_file(tmp_file, aveperiod_data, file_type)
@@ -1550,12 +1548,10 @@ def main():
     options = Options()
     sockets = so.create_sockets(
         options.router_address,
-        [
-            options.dw_to_dsp_identity,
-            options.dw_to_radctrl_identity,
-            options.dw_to_rt_identity,
-            options.dw_cfs_identity,
-        ],
+        options.dw_to_dsp_identity,
+        options.dw_to_radctrl_identity,
+        options.dw_to_rt_identity,
+        options.dw_cfs_identity,
     )
 
     dsp_to_data_write = sockets[0]
@@ -1590,15 +1586,17 @@ def main():
             radctrl_to_data_write in socks
             and socks[radctrl_to_data_write] == zmq.POLLIN
         ):
-            data = so.recv_bytes(
-                radctrl_to_data_write, options.radctrl_to_dw_identity, log
+            aveperiod_meta = so.recv_pyobj(
+                radctrl_to_data_write,
+                options.radctrl_to_dw_identity,
+                log,
+                expected_type=AveperiodMetadataMessage,
             )
-            aveperiod_meta = pickle.loads(data)
             aveperiod_metadata_dict[aveperiod_meta.last_sqn_num] = aveperiod_meta
 
         if cfs_sequence_socket in socks and socks[cfs_sequence_socket] == zmq.POLLIN:
-            cfs_sqn_num = pickle.loads(
-                so.recv_bytes(cfs_sequence_socket, options.radctrl_cfs_identity, log)
+            cfs_sqn_num = so.recv_pyobj(
+                cfs_sequence_socket, options.radctrl_cfs_identity, log
             )
             log.debug(
                 "Received CFS sequence, increasing expected_sqn_num",

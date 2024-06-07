@@ -95,9 +95,8 @@ if __name__ == "__main__":
 
     # Socket for receiving data from data_write
     data_write_socket = so.create_sockets(
-        options.router_address,
-        [options.rt_to_dw_identity],
-    )[0]
+        options.router_address, options.rt_to_dw_identity
+    )
 
     # Socket for serving data over the web
     publish_socket = context.socket(zmq.PUB)

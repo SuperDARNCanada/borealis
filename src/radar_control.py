@@ -25,7 +25,7 @@ from dataclasses import dataclass, field
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 from utils.options import Options
 import utils.message_formats as messages
-from utils import socket_operations
+from utils import socket_operations as so
 
 sys.path.append(os.environ["BOREALISPATH"])
 if __debug__:
@@ -65,6 +65,11 @@ class RadctrlParameters:
     cfs_range: list = field(default_factory=list)
     cfs_masks: list = field(default_factory=list)
     scan_flag: bool = False
+    dsp_cfs_identity: str = ""
+    router_address: str = ""
+    radctrl_cfs_identity: str = ""
+    dw_cfs_identity: str = ""
+    brian_to_radctrl_identity: str = ""
 
     def __post_init__(self):
         self.slice_dict = self.experiment.slice_dict
@@ -75,6 +80,12 @@ class RadctrlParameters:
             self.decimation_scheme = None
         # define decimation scheme only is a sequence was defined
 
+        self.dsp_cfs_identity = self.options.dsp_cfs_identity
+        self.router_address = self.options.router_address
+        self.radctrl_cfs_identity = self.options.radctrl_cfs_identity
+        self.dw_cfs_identity = self.options.dw_cfs_identity
+        self.brian_to_radctrl_identity = self.brian_to_radctrl_identity
+
 
 def driver_comms_thread(radctrl_driver_iden, driver_socket_iden, router_addr):
     """
@@ -84,20 +95,18 @@ def driver_comms_thread(radctrl_driver_iden, driver_socket_iden, router_addr):
     driver_comms_socket = zmq.Context().instance().socket(zmq.PAIR)
     driver_comms_socket.connect("inproc://radctrl_driver")
 
-    radctrl_driver_socket = socket_operations.create_sockets(
-        router_addr, [radctrl_driver_iden]
-    )[0]
+    radctrl_driver_socket = so.create_sockets(router_addr, radctrl_driver_iden)
 
     first_time = True
     while True:
         message = driver_comms_socket.recv_pyobj()
         # Wait until the main thread sends a message intended for the driver
 
-        socket_operations.send_bytes(radctrl_driver_socket, driver_socket_iden, message)
+        so.send_bytes(radctrl_driver_socket, driver_socket_iden, message)
         # Send the message to the driver
 
         if first_time:
-            socket_operations.recv_data(radctrl_driver_socket, driver_socket_iden, log)
+            so.recv_data(radctrl_driver_socket, driver_socket_iden, log)
             # Driver sends back an ACK on the first communication
 
             driver_comms_socket.send_string("Driver ready to go")
@@ -208,19 +217,16 @@ def dsp_comms_thread(radctrl_dsp_iden, dsp_socket_iden, router_addr):
     inproc_socket = zmq.Context().instance().socket(zmq.PAIR)
     inproc_socket.connect("inproc://radctrl_dsp")
 
-    radctrl_dsp_socket = socket_operations.create_sockets(
-        router_addr, [radctrl_dsp_iden]
-    )[0]
+    radctrl_dsp_socket = so.create_sockets(router_addr, radctrl_dsp_iden)
 
     while True:
         message = inproc_socket.recv_pyobj()
         # Wait for metadata from the main thread
 
-        bytes_packet = pickle.dumps(message, protocol=pickle.HIGHEST_PROTOCOL)
-        socket_operations.send_bytes(radctrl_dsp_socket, dsp_socket_iden, bytes_packet)
+        so.send_pyobj(radctrl_dsp_socket, dsp_socket_iden, message)
         # Send the message to rx_signal_processing
 
-        socket_operations.recv_data(radctrl_dsp_socket, dsp_socket_iden, log)
+        so.recv_data(radctrl_dsp_socket, dsp_socket_iden, log)
         # Wait for rx_signal_processing to acknowledge that it received the metadata
 
         inproc_socket.send_string("DSP acknowledged metadata")
@@ -336,9 +342,7 @@ def search_for_experiment(radar_control_to_exp_handler, exphan_to_radctrl_iden, 
     """
 
     try:
-        socket_operations.send_request(
-            radar_control_to_exp_handler, exphan_to_radctrl_iden, status
-        )
+        so.send_data(radar_control_to_exp_handler, exphan_to_radctrl_iden, status)
     except zmq.ZMQBaseError as e:
         log.error("zmq failed request", error=e)
         log.exception("zmq failed request", exception=e)
@@ -348,7 +352,7 @@ def search_for_experiment(radar_control_to_exp_handler, exphan_to_radctrl_iden, 
     new_experiment_received = False
 
     try:
-        serialized_exp = socket_operations.recv_bytes(
+        serialized_exp = so.recv_bytes(
             radar_control_to_exp_handler, exphan_to_radctrl_iden, log
         )
     except zmq.ZMQBaseError as e:
@@ -399,16 +403,13 @@ def dw_comms_thread(radctrl_dw_iden, dw_socket_iden, router_addr):
     inproc_socket = zmq.Context().instance().socket(zmq.PAIR)
     inproc_socket.connect("inproc://radctrl_dw")
 
-    radctrl_dw_socket = socket_operations.create_sockets(
-        router_addr, [radctrl_dw_iden]
-    )[0]
+    radctrl_dw_socket = so.create_sockets(router_addr, radctrl_dw_iden)
 
     while True:
         message = inproc_socket.recv_pyobj()
         # Wait for metadata from the main thread
 
-        bytes_packet = pickle.dumps(message, protocol=pickle.HIGHEST_PROTOCOL)
-        socket_operations.send_bytes(radctrl_dw_socket, dw_socket_iden, bytes_packet)
+        so.send_pyobj(radctrl_dw_socket, dw_socket_iden, message)
         # Send the message to data write
 
 
@@ -591,24 +592,19 @@ def run_cfs_scan(
     # 2. Send DSP meta data
     # 3. Retrieve DSP results
 
-    dsp_socket_iden = radctrl_params.options.dsp_cfs_identity
-    router_addr = radctrl_params.options.router_address
-    cfs_socket = socket_operations.create_sockets(
-        router_addr, [radctrl_params.options.radctrl_cfs_identity]
-    )[0]
+    dsp_socket_iden = radctrl_params.dsp_cfs_identity
+    router_addr = radctrl_params.router_address
+    cfs_socket = so.create_sockets(router_addr, radctrl_params.radctrl_cfs_identity)
 
     aveperiod = radctrl_params.aveperiod
     sequence = aveperiod.cfs_sequence
     sqn, dbg = sequence.make_sequence(aveperiod.beam_iter, 0)
 
-    socket_operations.send_bytes(
-        cfs_socket,
-        radctrl_params.options.dw_cfs_identity,
-        pickle.dumps(radctrl_params.seqnum_start + radctrl_params.num_sequences),
-    )
+    cfs_sqn_num = radctrl_params.seqnum_start + radctrl_params.num_sequences
+    so.send_pyobj(cfs_socket, radctrl_params.dw_cfs_identity, cfs_sqn_num)
 
-    brian_socket_iden = radctrl_params.options.brian_to_radctrl_identity
-    socket_operations.recv_data(radctrl_brian_socket, brian_socket_iden, log)
+    brian_socket_iden = radctrl_params.brian_to_radctrl_identity
+    so.recv_data(radctrl_brian_socket, brian_socket_iden, log)
     # The above call is blocking; will wait until something is received
 
     for pulse_transmit_data in sqn:
@@ -621,14 +617,10 @@ def run_cfs_scan(
     radctrl_process_socket.send_pyobj(dsp_message)
     # Send metadata to dsp_comms_thread, so it can package into a message for rx_signal_processing
 
-    socket_operations.send_bytes(
-        radctrl_brian_socket, brian_socket_iden, pickle.dumps(dsp_message)
-    )
+    so.send_pyobj(radctrl_brian_socket, brian_socket_iden, dsp_message)
     # Send the metadata along to brian
 
-    processed_cfs = socket_operations.recv_bytes(cfs_socket, dsp_socket_iden, log)
-    # Receive the processed data back from CFS
-    freq_data = pickle.loads(processed_cfs)
+    freq_data = so.recv_pyobj(cfs_socket, dsp_socket_iden, log)
 
     radctrl_process_socket.recv_string()
     # Consume the DSP ACK that dsp_comms_thread will send
@@ -667,7 +659,7 @@ def main():
     # TODO test: need to make sure that we know that all sockets are set up after this try...except block.
     # TODO test: starting the programs in different orders.
     try:
-        sockets_list = socket_operations.create_sockets(options.router_address, ids)
+        sockets_list = so.create_sockets(options.router_address, *ids)
     except zmq.ZMQBaseError as e:
         log.error("zmq failed setting up sockets", error=e)
         log.exception("zmq failed setting up sockets", exception=e)
@@ -1101,10 +1093,10 @@ def main():
                         radctrl_inproc_socket.send_pyobj(dsp_message)
                         # Send metadata to dsp_comms_thread, so it can pass it to rx_signal_processing
 
-                        socket_operations.send_bytes(
+                        so.send_pyobj(
                             radctrl_brian_socket,
                             options.brian_to_radctrl_identity,
-                            pickle.dumps(dsp_message),
+                            dsp_message,
                         )
                         # Send the metadata along to brian
 

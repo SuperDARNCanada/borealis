@@ -175,7 +175,9 @@ def sequence_worker(options, ringbuffer):
         )
         sequence_worker_sockets = so.create_sockets(
             options.router_address,
-            [seq_begin_iden, seq_end_iden, sender_iden],
+            seq_begin_iden,
+            seq_end_iden,
+            sender_iden,
         )
 
         dspbegin_to_brian = sequence_worker_sockets[0]
@@ -341,9 +343,6 @@ def sequence_worker(options, ringbuffer):
                 data_outputs,
                 rx_params.cfs_scan_flag,
             )
-            sqn_message = pickle.dumps(
-                rx_params.processed_data, protocol=pickle.HIGHEST_PROTOCOL
-            )
             log_dict["cfs_to_stage_time"] = (time.perf_counter() - mark_timer) * 1e3
 
         else:
@@ -459,9 +458,6 @@ def sequence_worker(options, ringbuffer):
                 data_outputs,
                 rx_params.cfs_scan_flag,
             )
-            sqn_message = pickle.dumps(
-                rx_params.processed_data, protocol=pickle.HIGHEST_PROTOCOL
-            )
             log_dict["add_bfiq_and_acfs_to_stage_time"] = (
                 time.perf_counter() - mark_timer
             ) * 1e3
@@ -471,7 +467,9 @@ def sequence_worker(options, ringbuffer):
             recieve=recipient_iden,
             sender=processed_socket.get(zmq.IDENTITY),
         )
-        so.send_bytes(processed_socket, recipient_iden, sqn_message, log=log)
+        so.send_pyobj(
+            processed_socket, recipient_iden, rx_params.processed_data, log=log
+        )
 
         log_dict["total_serialize_send_time"] = (
             time.perf_counter() - start_timer
@@ -491,7 +489,8 @@ def main():
 
     sockets = so.create_sockets(
         options.router_address,
-        [options.dsp_to_radctrl_identity, options.dsp_to_driver_identity],
+        options.dsp_to_radctrl_identity,
+        options.dsp_to_driver_identity,
     )
 
     dsp_to_radar_control = sockets[0]
@@ -506,12 +505,9 @@ def main():
 
     first_time = True
     while True:
-
-        reply = so.recv_bytes(
+        sqn_meta_message = so.recv_pyobj(
             dsp_to_radar_control, options.radctrl_to_dsp_identity, log
         )
-
-        sqn_meta_message = pickle.loads(reply)
 
         log.debug("Sending ACK to radctrl")
         so.send_data(
