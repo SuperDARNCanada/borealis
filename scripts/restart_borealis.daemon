@@ -1,0 +1,76 @@
+#!/bin/bash
+# Copyright 2023 SuperDARN Canada, University of Saskatchewan
+# Author: Theodore Kolkman
+#
+# Script that runs continuously and periodically runs restart_borealis.py to check if Borealis is
+# running, and if not restart Borealis. This script keeps track of how often restart_borealis.py
+# is called. If it is called repeatedly, an alert will be sent to the specified webhook (Slack in
+# our case) notifying us that something is likely wrong with Borealis.
+#
+# Dependencies:
+#   - mutt (Installed with zypper)
+#   - postfix enabled and started
+#   - SLACK_WEBHOOK defined in ~/.profile to a valid Slack webhook URL
+#   - Any email or SMS-to-email addresses to be notified should be defined in the CONTACTS array
+#     within .profile
+#   - RADAR_ID, BOREALISPATH, and PYTHON_VERSION defined in ~/.profile
+#
+# This script should be ran as a systemd daemon. An example .service file is shown below:
+# /usr/lib/systemd/system/restart_borealis.service
+# [Unit]
+# Description=Restart borealis daemon
+#
+# [Service]
+# User=radar
+# ExecStart=/home/radar/borealis/scripts/restart_borealis.daemon
+# Restart=always
+#
+# [Install]
+# WantedBy=multi-user.target
+#
+# Reference: https://www.howtogeek.com/devops/how-to-send-a-message-to-slack-from-a-bash-script/
+
+###################################################################################################
+
+source "${HOME}/.profile"   # Source BOREALISPATH, RADAR_ID, PYTHON_VERSION, and SLACK_WEBHOOK
+source "${BOREALISPATH}/borealis_env${PYTHON_VERSION}/bin/activate"
+
+readonly THRESHOLD=3     # Number of consecutive Borealis restarts before sending alert
+readonly INTERVAL=300    # Time in seconds between restart_borealis.py calls
+
+readonly LOGFILE="${HOME}/logs/restart_borealis.log"
+
+###################################################################################################
+
+exec &>> $LOGFILE  # Redirect all stdout/stderr in this script to LOGFILE
+
+TIMESTAMP=$(date --utc "+%Y%m%d %H:%M:%S UTC")
+printf "\n$TIMESTAMP Daemon $0 starting on $(hostname) for ${RADAR_ID}\n"
+
+restarts=0  # Number of consecutive restarts
+while true; do
+    python3 /home/radar/borealis/scripts/restart_borealis.py --restart-after-seconds $INTERVAL
+    retval=$?
+    if [[ $retval -eq 0 ]]; then
+        restarts=0
+    else
+        restarts=$((restarts + 1))
+    fi
+
+    # [[ -eq ]] so only one alert is sent each time
+    if [[ $restarts -eq $THRESHOLD ]]; then  # Send alert to Slack
+        TIMESTAMP=$(date --utc "+%Y%m%d %H:%M:%S UTC")
+        printf "$TIMESTAMP Sending alert to Slack, restart #$restarts\n"
+
+        message="restart_borealis: Borealis has been restarted consecutive times at $RADAR_ID"
+        # Send message to Slack
+        curl --silent --header "Content-type: application/json" --data "{'text':'${message}'}" $SLACK_WEBHOOK
+        # Send message to all listed in $CONTACTS environment variable
+        for address in "${CONTACTS[@]}"; do
+            echo -e $message | mutt -- $address
+        done
+        printf "\n"
+    fi
+
+    sleep $INTERVAL
+done

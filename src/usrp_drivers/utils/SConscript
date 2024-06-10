@@ -1,0 +1,9 @@
+#Copyright 2016 SuperDARN
+
+"""Scons sconscript file to generate utilities library"""
+import os
+
+Import('*')
+
+# Build utils library out of all C[++] files in this directory.
+Lib('utils', Glob('./*.c*'))

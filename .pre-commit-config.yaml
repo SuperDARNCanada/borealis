@@ -1,0 +1,41 @@
+exclude: "tests/archive|src/borealis_experiments"
+repos:
+  - repo: meta
+    hooks:
+      - id: check-hooks-apply  # Check that all hooks apply to at least one file
+      - id: check-useless-excludes  # Check that all excludes apply to at least one file
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v2.3.0
+    hooks:
+      - id: end-of-file-fixer  # Ensures that files are either empty or end in newline
+      - id: trailing-whitespace  # Trims trailing whitespace
+      - id: requirements-txt-fixer  # Sorts entries in requirements.txt files (docs in our case)
+      - id: check-toml  # Checks toml files for parseable syntax
+      - id: check-yaml  # Checks yaml files for parseable syntax
+
+  - repo: https://github.com/psf/black-pre-commit-mirror
+    rev: 24.4.2
+    hooks:
+      - id: black  # Reformats Python code according to Black standard
+
+  - repo: https://github.com/pre-commit/pygrep-hooks
+    rev: v1.10.0
+    hooks:
+      - id: rst-backticks  # Warns if single backticks used (e.g. `test` instead of ``test``)
+      - id: rst-directive-colons  # Warns if rst directives either don't end in "::", or have space before "::"
+      - id: rst-inline-touching-normal  # Warns if inline code is not properly separated from text
+
+  - repo: https://github.com/PyCQA/autoflake
+    rev: v2.3.1
+    hooks:
+      - id: autoflake  # This hook is for removing unused imports from Python files
+        args: [--remove-all-unused-imports, --in-place]
+
+  - repo: https://gitlab.com/daverona/pre-commit/cpp
+    rev: 0.8.0
+    hooks:
+      - id: clang-format  # Formatter for C++ code based on a style guide (Google C++ guide default)
+      #- id: cpplint  # Linter (style error-checker) for Google C++ style guide
+      - id: cppcheck  # Static analyzer for C++ code
+        exclude: "tests"

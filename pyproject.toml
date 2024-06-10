@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "borealis"
+version = "0.7"
+description = "SuperDARN Digital Radar System"
+readme = "README.md"
+authors = [{name = "SuperDARN Canada"}]
+license = {file = "LICENSE"}
+requires-python = ">=3.8"
+dependencies = [
+    "backscatter @ git+https://github.com/SuperDARNCanada/backscatter.git",
+    "graypy",
+    "h5py>=3.3.0",
+    "inotify",
+    "numpy",
+    "posix_ipc",
+    "protobuf==3.19.5",
+    "pydantic<2",
+    "pyDARNio @ git+https://github.com/SuperDARN/pyDARNio.git@develop",
+    "rich",
+    "scipy",
+    "structlog==24.1.0",
+    "zmq",
+]
+
+[project.optional-dependencies]
+gpu = ["cupy"]
+dev = [
+    "black ~= 24.0",
+    "pre-commit",
+    "jupyter"
+]
+
+[project.urls]
+Homepage = "https://borealis.readthedocs.io"
+
+[project.scripts]
+steamed_hams = "scripts.steamed_hams:main"
+restart_borealis = "scripts.restart_borealis:main"
+
+[tool.setuptools.packages.find]
+where = ["borealis", "build"]
+exclude = ["usrp_drivers", "src.borealis_experiments.testing_archive*"]

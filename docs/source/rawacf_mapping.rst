@@ -4,7 +4,8 @@ rawacf_mapping
 
 RAWACF SDARN FIELDS
 
-This conversion is done in pyDARNio here in the __convert_rawacf_record method: `Link to Source <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_convert.py>`_
+This conversion is done in pyDARNio here in the __convert_rawacf_record method: `Link to Source
+<https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_convert.py>`_
 
 +-----------------------------------+---------------------------------------------+
 | | **SDARN DMAP FIELD NAME**       | **Borealis Conversion**                     |
@@ -12,11 +13,11 @@ This conversion is done in pyDARNio here in the __convert_rawacf_record method: 
 | | SDARN description               |                                             |
 +===================================+=============================================+
 | | **radar.revision.major**        | | *borealis_git_hash* major version number  |
-| | *char*                          | | or 255 if not a commit with a version tag |  
+| | *char*                          | | or 255 if not a commit with a version tag |
 | | Major version number            | |                                           |
 +-----------------------------------+---------------------------------------------+
 | | **radar.revision.minor**        | | *borealis_git_hash* minor version number  |
-| | *char*                          | | or 255 if not a commit with a version tag | 
+| | *char*                          | | or 255 if not a commit with a version tag |
 | | Minor version number            | |                                           |
 +-----------------------------------+---------------------------------------------+
 | | **origin.code**                 | | = 100, this can be used as a flag that the|
@@ -35,7 +36,7 @@ This conversion is done in pyDARNio here in the __convert_rawacf_record method: 
 | | data                            | |                                           |
 +-----------------------------------+---------------------------------------------+
 | | **cp**                          | | *experiment_id*, truncated to short       |
-| | *short*                         | |                                           | 
+| | *short*                         | |                                           |
 | | Control program identifier      | |                                           |
 +-----------------------------------+---------------------------------------------+
 | | **stid**                        | | *station* conversion                      |
@@ -43,7 +44,7 @@ This conversion is done in pyDARNio here in the __convert_rawacf_record method: 
 | | Station identifier              | |                                           |
 +-----------------------------------+---------------------------------------------+
 | | **time.yr**                     | | *sqn_timestamps* [0] conversion           |
-| | *short*                         | |                                           |      
+| | *short*                         | |                                           |
 | | Year                            | |                                           |
 +-----------------------------------+---------------------------------------------+
 | | **time.mo**                     | | *sqn_timestamps* [0] conversion           |
@@ -55,7 +56,7 @@ This conversion is done in pyDARNio here in the __convert_rawacf_record method: 
 | | Day                             | |                                           |
 +-----------------------------------+---------------------------------------------+
 | | **time.hr**                     | | *sqn_timestamps* [0] conversion           |
-| | *short*                         | |                                           |      
+| | *short*                         | |                                           |
 | | Hour                            | |                                           |
 +-----------------------------------+---------------------------------------------+
 | | **time.mt**                     | | *sqn_timestamps* [0] conversion           |
@@ -172,9 +173,9 @@ This conversion is done in pyDARNio here in the __convert_rawacf_record method: 
 | | *short*                         | |                                           |
 | | Number of lags in sequence      | |                                           |
 +-----------------------------------+---------------------------------------------+
-| | **nrang**                       | | *correlation_dimensions*[1]               |
+| | **nrang**                       | | *correlation_dimensions* [1]              |
 | | *short*                         | |                                           |
-| | Number of ranges                | |                                           | 
+| | Number of ranges                | |                                           |
 +-----------------------------------+---------------------------------------------+
 | | **frang**                       | | *first_range*                             |
 | | *short*                         | |                                           |
@@ -213,12 +214,12 @@ This conversion is done in pyDARNio here in the __convert_rawacf_record method: 
 +-----------------------------------+---------------------------------------------+
 | | **combf**                       | | Original Borealis filename, ‘converted    |
 | | *string*                        | | from Borealis file beam number ’ X,       |
-| | Comment buffer                  | | number of beams in this original record   | 
+| | Comment buffer                  | | number of beams in this original record   |
 | | Comment buffer                  | | (len(beam_nums)), experiment_comment and  |
 | |                                 | | slice_comment from the file               |
 +-----------------------------------+---------------------------------------------+
-| | **thr**                         | | = 0.0 (filler)                            | 
-| | *float*                         | |                                           |      
+| | **thr**                         | | = 0.0 (filler)                            |
+| | *float*                         | |                                           |
 | | Thresholding factor             | |                                           |
 +-----------------------------------+---------------------------------------------+
 | | **ptab[mppul]**                 | | pulses                                    |
@@ -229,7 +230,7 @@ This conversion is done in pyDARNio here in the __convert_rawacf_record method: 
 | | *short*                         | |                                           |
 | | Lag table                       | |                                           |
 +-----------------------------------+---------------------------------------------+
-| | **pwr0[nrang]**                 | | Calculated from *main_acfs*               | 
+| | **pwr0[nrang]**                 | | Calculated from *main_acfs*               |
 | | *[float]*                       | |                                           |
 | | Lag zero power for main         | |                                           |
 +-----------------------------------+---------------------------------------------+
@@ -248,4 +249,5 @@ This conversion is done in pyDARNio here in the __convert_rawacf_record method: 
 | | Calculated XCFs                 | |                                           |
 +-----------------------------------+---------------------------------------------+
 
-If blanked\_samples != ptab, or pulse\_phase\_offset contains non-zeroes, no conversion to dmap rawacf is possible.
+If blanked\_samples != ptab, or pulse\_phase\_offset contains non-zeroes, no conversion to dmap
+rawacf is possible.

@@ -1,23 +1,16 @@
-utils package
-=============
+================
+Borealis Options
+================
 
-
-.. automodule:: utils.data_write_options.data_write_options
+.. autoclass:: src.utils.options.Options()
     :members:
     :undoc-members:
-    :show-inheritance:
 
-.. automodule:: utils.driver_options
-    :members:
-    :undoc-members:
-    :show-inheritance:
+.. toctree::
+   :glob:
 
-.. automodule:: utils.experiment_options.experimentoptions
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-.. automodule:: utils.options
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   file/options_8hpp
+   file/driveroptions_8hpp
+   file/shared__memory_8hpp
+   file/zmq__borealis__helpers_8hpp
+   file/shared__macros_8hpp

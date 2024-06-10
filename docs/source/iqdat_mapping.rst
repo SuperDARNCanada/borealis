@@ -4,7 +4,8 @@ iqdat_mapping
 
 IQDAT SDARN FIELDS
 
-This conversion is done in pyDARNio here in the __convert_bfiq_record method: `Link to Source <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_convert.py>`_
+This conversion is done in pyDARNio here in the __convert_bfiq_record method: `Link to Source
+<https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_convert.py>`_
 
 +-----------------------------------+---------------------------------------------+
 | | **SDARN DMAP FIELD NAME**       | **Borealis Conversion**                     |
@@ -12,11 +13,11 @@ This conversion is done in pyDARNio here in the __convert_bfiq_record method: `L
 | | SDARN description               |                                             |
 +===================================+=============================================+
 | | **radar.revision.major**        | | *borealis_git_hash* major version number  |
-| | *char*                          | | or 255 if not a commit with a version tag |  
+| | *char*                          | | or 255 if not a commit with a version tag |
 | | Major version number            | |                                           |
 +-----------------------------------+---------------------------------------------+
 | | **radar.revision.minor**        | | *borealis_git_hash* minor version number  |
-| | *char*                          | | or 255 if not a commit with a version tag | 
+| | *char*                          | | or 255 if not a commit with a version tag |
 | | Minor version number            | |                                           |
 +-----------------------------------+---------------------------------------------+
 | | **origin.code**                 | | = 100, this can be used as a flag that the|
@@ -35,7 +36,7 @@ This conversion is done in pyDARNio here in the __convert_bfiq_record method: `L
 | | data                            | |                                           |
 +-----------------------------------+---------------------------------------------+
 | | **cp**                          | | *experiment_id*, truncated to short       |
-| | *short*                         | |                                           | 
+| | *short*                         | |                                           |
 | | Control program identifier      | |                                           |
 +-----------------------------------+---------------------------------------------+
 | | **stid**                        | | *station* conversion                      |
@@ -43,7 +44,7 @@ This conversion is done in pyDARNio here in the __convert_bfiq_record method: `L
 | | Station identifier              | |                                           |
 +-----------------------------------+---------------------------------------------+
 | | **time.yr**                     | | *sqn_timestamps* [0] conversion           |
-| | *short*                         | |                                           |      
+| | *short*                         | |                                           |
 | | Year                            | |                                           |
 +-----------------------------------+---------------------------------------------+
 | | **time.mo**                     | | *sqn_timestamps* [0] conversion           |
@@ -55,7 +56,7 @@ This conversion is done in pyDARNio here in the __convert_bfiq_record method: `L
 | | Day                             | |                                           |
 +-----------------------------------+---------------------------------------------+
 | | **time.hr**                     | | *sqn_timestamps* [0] conversion           |
-| | *short*                         | |                                           |      
+| | *short*                         | |                                           |
 | | Hour                            | |                                           |
 +-----------------------------------+---------------------------------------------+
 | | **time.mt**                     | | *sqn_timestamps* [0] conversion           |
@@ -174,7 +175,7 @@ This conversion is done in pyDARNio here in the __convert_bfiq_record method: `L
 +-----------------------------------+---------------------------------------------+
 | | **nrang**                       | | *num_ranges*                              |
 | | *short*                         | |                                           |
-| | Number of ranges                | |                                           | 
+| | Number of ranges                | |                                           |
 +-----------------------------------+---------------------------------------------+
 | | **frang**                       | | *first_range*                             |
 | | *short*                         | |                                           |
@@ -212,7 +213,7 @@ This conversion is done in pyDARNio here in the __convert_bfiq_record method: `L
 | | iqdata library                  | |                                           |
 +-----------------------------------+---------------------------------------------+
 | | **combf**                       | | Original Borealis filename, ‘converted    |
-| | *string*                        | | from Borealis file ’ , number of beams in | 
+| | *string*                        | | from Borealis file ’ , number of beams in |
 | | Comment buffer                  | | this original record (len(beam_nums)),    |
 | |                                 | | experiment_comment and slice_comment      |
 | |                                 | | from the file                             |
@@ -235,7 +236,7 @@ This conversion is done in pyDARNio here in the __convert_bfiq_record method: `L
 +-----------------------------------+---------------------------------------------+
 | | **skpnum**                      | | math.ceil(first_range/range_sep). In      |
 | | *int*                           | | theory this should =0 due to Borealis     |
-| | Number of samples to skip       | | functionality(no rise time).              | 
+| | Number of samples to skip       | | functionality(no rise time).              |
 | | before the first valid sample   | | However make_raw in RST requires this to  |
 | |                                 | | be indicative of the first range so we    |
 | |                                 | | provide this.                             |
@@ -273,7 +274,7 @@ This conversion is done in pyDARNio here in the __convert_bfiq_record method: `L
 | | Offset into the sample buffer   | | offset for i in range(v['num_sequences'])]|
 | | for each pulse sequence         | |                                           |
 +-----------------------------------+---------------------------------------------+
-| | **tsze[seqnum]**                | | = [offset, offset, offset….]              | 
+| | **tsze[seqnum]**                | | = [offset, offset, offset….]              |
 | | *int*                           | |                                           |
 | | Number of words stored for this | |                                           |
 | | pulse sequence                  | |                                           |
@@ -287,4 +288,5 @@ This conversion is done in pyDARNio here in the __convert_bfiq_record method: `L
 | | 2*seqnum*chnnum*smpnum          | |                                           |
 +-----------------------------------+---------------------------------------------+
 
-If *blanked_samples* != *ptab*, or *pulse_phase_offset* contains non-zeroes, no conversion to iqdat is possible.
+If *blanked_samples* != *ptab*, or *pulse_phase_offset* contains non-zeroes, no conversion to iqdat
+is possible.
