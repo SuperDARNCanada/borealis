@@ -687,7 +687,7 @@ def main():
         processed_data.agc_status_bank_l = rx_metadata.agc_status_bank_l
         processed_data.lp_status_bank_l = rx_metadata.lp_status_bank_l
         processed_data.gps_locked = rx_metadata.gps_locked
-        
+
         rx_params = RxProcessingParameters(
             sqn_meta_message.sequence_num,
             padded_main_phases,
