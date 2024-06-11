@@ -220,14 +220,10 @@ class AveragingPeriod(InterfaceClassBase):
         :param      cfs_spectrum: Analyzed CFS sequence data
         :type       cfs_spectrum: dictionary
         """
-        cfs_freq_hz = cfs_spectrum.cfs_freq  # at baseband
+        cfs_freq_hz = np.array(cfs_spectrum.cfs_freq)  # at baseband
         cfs_data = [dset.cfs_data for dset in cfs_spectrum.output_datasets]
         # Sort measured frequencies based on measured power at each freq
         slice_masks = []
-        sorted_freqs_hz = []
-        for data in cfs_data:
-            ind = np.argsort(data)
-            sorted_freqs_hz.append(np.array(cfs_freq_hz)[ind])
 
         for sqn_num, sequence in enumerate(self.cfs_sequences):
             freq_index = 0  # starting (most ideal) cfs spectrum frequency index
@@ -244,7 +240,7 @@ class AveragingPeriod(InterfaceClassBase):
                     df = int(round(1e3 / (2 * slice_obj.pulse_len)))
                     slice_range = slice_obj.cfs_range
                     center_freq_khz = int((slice_range[0] + slice_range[1]) / 2)
-                    shifted_cfs_khz = sorted_freqs_hz[sqn_num] / 1000 + center_freq_khz
+                    shifted_cfs_khz = cfs_freq_hz / 1000 + center_freq_khz
 
                     mask = np.full(len(shifted_cfs_khz), True)
                     for f_rng in options.restricted_ranges:
@@ -303,7 +299,9 @@ class AveragingPeriod(InterfaceClassBase):
                             cfs_sorted_freqs=shifted_cfs_khz,
                         )
 
-                    selected_freq = int(np.round(shifted_cfs_khz[0]))
+                    ind = np.argsort(cfs_data[sqn_num][mask])
+                    sorted_freqs_khz = shifted_cfs_khz[ind]
+                    selected_freq = int(np.round(sorted_freqs_khz[0]))
                     slice_obj.freq = copy.deepcopy(selected_freq)
                     used_range.append([selected_freq - df, selected_freq + df])
                     # Set cfs slice frequency and add frequency to used_freqs for this sequence

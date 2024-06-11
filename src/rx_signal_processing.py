@@ -233,7 +233,7 @@ def sequence_worker(options, ringbuffer):
             cfs_processor.apply_filters(sequence_samples)
             cfs_processor.move_filter_results()
             cfs_data, cfs_freq = cfs_processor.cfs_freq_analysis(
-                rx_params.slice_details
+                rx_params.slice_details[0]
             )
             log_dict["cfs_dsp_time"] = (time.perf_counter() - mark_timer) * 1e3
 
