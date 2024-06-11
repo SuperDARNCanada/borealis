@@ -305,7 +305,6 @@ class ExperimentSlice:
     # compatible with the experiment settings.
     tx_bandwidth: float
     rx_bandwidth: float
-    output_rx_rate: float
     transition_bandwidth: float
 
     # These fields can be specified in exp_slice_dict, subject to some conditions. Some may have dynamic default values.
@@ -439,32 +438,6 @@ class ExperimentSlice:
         return v_list
 
     # Validators that depend on other previously-validated fields
-
-    @validator("tau_spacing")
-    def check_tau_spacing(cls, tau_spacing, values):
-        # TODO : tau_spacing needs to be an integer multiple of pulse_len in ros - is there a max ratio
-        #  allowed for pulse_len/tau_spacing ? Add this check and add check for each slice's tx duty-cycle
-        #  and make sure we aren't transmitting the entire time after combination with all slices
-        if not math.isclose(
-            (tau_spacing * values["output_rx_rate"] % 1.0), 0.0, abs_tol=0.0001
-        ):
-            raise ValueError(
-                f"Slice {values['slice_id']} correlation lags will be off because tau_spacing "
-                f"{tau_spacing} us is not a multiple of the output rx sampling period "
-                f"(1/output_rx_rate {values['output_rx_rate']} Hz)."
-            )
-        return tau_spacing
-
-    @validator("pulse_len")
-    def check_pulse_len(cls, pulse_len, values):
-        if "tau_spacing" in values and pulse_len > values["tau_spacing"]:
-            raise ValueError(
-                f"Slice {values['slice_id']} pulse length greater than tau_spacing"
-            )
-        if pulse_len <= 2 * options.pulse_ramp_time * 1.0e6:
-            raise ValueError(f"Slice {values['slice_id']} pulse length too small")
-
-        return pulse_len
 
     @validator("intt")
     def check_intt(cls, intt, values):
@@ -1102,23 +1075,58 @@ class ExperimentSlice:
     # validated. E.g. could not validate pulse_len fully off the bat because it depends on acf, which gets validated
     # later.
 
-    @root_validator()
-    def check_pulse_len_given_acf(cls, values):
-        """
-        This must be checked after all validation as pulse_len is validated before acf (since acf has a default).
-        """
-        if "acf" in values and values["acf"] and "pulse_len" in values:
+    @root_validator
+    def check_tau_spacing(cls, values):
+        # TODO : tau_spacing needs to be an integer multiple of pulse_len in ros - is there a max ratio
+        #  allowed for pulse_len/tau_spacing ? Add this check and add check for each slice's tx duty-cycle
+        #  and make sure we aren't transmitting the entire time after combination with all slices
+        if "tau_spacing" not in values or "decimation_scheme" not in values:
+            return values
+
+        tau_spacing = values["tau_spacing"]
+        filter_scheme = values["decimation_scheme"]
+        dm_rate = 1
+        for stage in filter_scheme.stages:
+            dm_rate *= stage.dm_rate
+        output_rx_rate = values["rx_bandwidth"] / dm_rate
+        if not math.isclose((tau_spacing * output_rx_rate % 1.0), 0.0, abs_tol=0.0001):
+            raise ValueError(
+                f"Slice {values['slice_id']} correlation lags will be off because tau_spacing "
+                f"{tau_spacing} us is not a multiple of the output rx sampling period "
+                f"(1/output_rx_rate {output_rx_rate:.3f} Hz)."
+            )
+        return values
+
+    @root_validator
+    def check_pulse_len(cls, values):
+        if "pulse_len" not in values:
+            return values
+
+        pulse_len = values["pulse_len"]
+        if "tau_spacing" in values and pulse_len > values["tau_spacing"]:
+            raise ValueError(
+                f"Slice {values['slice_id']} pulse length greater than tau_spacing"
+            )
+        if pulse_len <= 2 * options.pulse_ramp_time * 1.0e6:
+            raise ValueError(f"Slice {values['slice_id']} pulse length too small")
+
+        if "acf" in values and values["acf"] and "decimation_scheme" in values:
+            filter_scheme = values["decimation_scheme"]
+            dm_rate = 1
+            for stage in filter_scheme.stages:
+                dm_rate *= stage.dm_rate
+            output_rx_rate = values["rx_bandwidth"] / dm_rate
             # The below check is an assumption that is made during acf calculation
             # (1 output received sample = 1 range separation)
             if not math.isclose(
                 values["pulse_len"],
-                (1 / values["output_rx_rate"] * 1e6),
+                (1 / output_rx_rate * 1e6),
                 abs_tol=0.0000001,
             ):
                 raise ValueError(
                     f"For an experiment slice with real-time acfs, pulse length must be equal (within 1 "
                     f"us) to 1/output_rx_rate to make acfs valid. Current pulse length is "
-                    f"{values['pulse_len']} us, output rate is {values['output_rx_rate']} Hz. "
+                    f"{values['pulse_len']} us, output rate is {output_rx_rate:.3f} Hz. "
                     f"Slice: {values['slice_id']}"
                 )
         return values

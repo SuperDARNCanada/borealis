@@ -219,6 +219,7 @@ class Sequence:
 
     blanks: list[int] = field(default_factory=list)
     tx_data: TxData = None
+    output_sample_rate: float = None
     rx_channels: list[RxChannelMetadata] = field(default_factory=list)
 
     def add_rx_channel(self, channel: RxChannelMetadata):
@@ -242,7 +243,7 @@ class AveperiodMetadataMessage:
     last_sqn_num: int = None
     scan_flag: bool = None
     aveperiod_time: float = None
-    output_sample_rate: float = None
+    input_sample_rate: float = None
     data_normalization_factor: float = None
     scheduling_mode: str = None
     sequences: list = field(default_factory=list)

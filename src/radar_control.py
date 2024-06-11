@@ -473,6 +473,7 @@ def create_dw_message(radctrl_params):
     for sequence_index, sequence in enumerate(radctrl_params.aveperiod.sequences):
         sequence_add = messages.Sequence()
         sequence_add.blanks = sequence.blanks
+        sequence_add.output_sample_rate = sequence.output_rx_rate
 
         if len(radctrl_params.debug_samples) > 0:
             tx_data = messages.TxData()

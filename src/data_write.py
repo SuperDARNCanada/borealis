@@ -443,12 +443,10 @@ class ParseData(object):
     mainacfs_accumulator: dict = field(default_factory=dict)
     mainacfs_available: bool = False
     options: Options = None
-    output_sample_rate: float = 0.0
     processed_data: ProcessedSequenceMessage = field(init=False)
     rawrf_available: bool = False
     rawrf_locations: list[str] = field(default_factory=list)
     rawrf_num_samps: int = 0
-    rx_rate: float = 0.0
     sequence_num: int = field(init=False)
     slice_ids: set = field(default_factory=set)
     timestamps: list[float] = field(default_factory=list)
@@ -712,8 +710,6 @@ class ParseData(object):
         self.processed_data = data
         self.sequence_num = data.sequence_num
         self.timestamps.append(data.sequence_start_time)
-        self.rx_rate = data.rx_sample_rate
-        self.output_sample_rate = data.output_sample_rate
 
         for data_set in data.output_datasets:
             self.slice_ids.add(data_set.slice_id)
@@ -1349,7 +1345,7 @@ class DataWrite(object):
                 shared_memory_locations.append(shared_mem)
 
             slice_data.data = np.stack(samples_list, axis=0)
-            slice_data.rx_sample_rate = np.float32(data_parsing.rx_rate)
+            slice_data.rx_sample_rate = np.float32(aveperiod_meta.input_sample_rate)
             slice_data.num_samps = np.uint32(len(samples_list[0]) / total_ants)
             slice_data.data_descriptors = ["num_sequences", "num_antennas", "num_samps"]
             slice_data.data_dimensions = np.array(
@@ -1463,7 +1459,7 @@ class DataWrite(object):
                 parameters.pulses = np.array(rx_channel.ptab, dtype=np.uint32)
                 parameters.range_sep = np.float32(rx_channel.range_sep)
                 parameters.rx_center_freq = aveperiod_meta.rx_ctr_freq
-                parameters.rx_sample_rate = data_parsing.output_sample_rate
+                parameters.rx_sample_rate = sqn_meta.output_sample_rate
                 # TODO: Include these in a future release
                 # parameters.rx_main_phases = rx_channel.rx_main_phases
                 # parameters.rx_intf_phases = rx_channel.rx_intf_phases
