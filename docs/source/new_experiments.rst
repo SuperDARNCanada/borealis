@@ -115,12 +115,13 @@ may have drifted, and the ``sqn_timestamps`` field may be inaccurate.
 .. _clear frequency search:
 
 ----------------------
-Clear Frequency Search
+Clear Frequency Search (Experimental)
 ----------------------
 
-Clear frequency searching is now supported in borealis to determine a transmit frequency within a
-specified band. In an experiment slice, the ``freq`` parameter should be unset, and the ``cfs_range``
-parameter set to a two element list containing the upper and lower frequency limits of the CFS band::
+An experimental implementation of clear frequency searching is now supported in borealis to determine
+a transmit frequency within a specified band. In an experiment slice, the ``freq`` parameter should be
+unset, and the ``cfs_range`` parameter set to a two element list containing the upper and lower
+frequency limits of the CFS band::
 
     slice['cfs_range'] = [11000, 11300]  # Lower and upper freq limit in kHz
 

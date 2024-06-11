@@ -332,7 +332,6 @@ class AveragingPeriod(InterfaceClassBase):
             "cpid": self.slice_dict[0].cpid,
             "slice_id": 0,
             "transition_bandwidth": self.slice_dict[0].transition_bandwidth,
-            "output_rx_rate": self.slice_dict[0].output_rx_rate,
             "rx_bandwidth": self.slice_dict[0].rx_bandwidth,
             "tx_bandwidth": self.slice_dict[0].tx_bandwidth,
             "txctrfreq": self.txctrfreq,

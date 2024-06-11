@@ -84,7 +84,7 @@ class RadctrlParameters:
         self.router_address = self.options.router_address
         self.radctrl_cfs_identity = self.options.radctrl_cfs_identity
         self.dw_cfs_identity = self.options.dw_cfs_identity
-        self.brian_to_radctrl_identity = self.brian_to_radctrl_identity
+        self.brian_to_radctrl_identity = self.options.brian_to_radctrl_identity
 
 
 def driver_comms_thread(radctrl_driver_iden, driver_socket_iden, router_addr):
@@ -268,7 +268,7 @@ def create_dsp_message(radctrl_params):
     message.sequence_num = radctrl_params.seqnum_start + radctrl_params.num_sequences
     message.offset_to_first_rx_sample = radctrl_params.sequence.first_rx_sample_start
     message.rx_rate = radctrl_params.experiment.rxrate
-    message.output_sample_rate = radctrl_params.experiment.output_rx_rate
+    message.output_sample_rate = radctrl_params.sequence.output_rx_rate
     message.rx_ctr_freq = radctrl_params.sequence.rxctrfreq * 1.0e3
     message.cfs_scan_flag = radctrl_params.cfs_scan_flag
 
@@ -460,7 +460,7 @@ def create_dw_message(radctrl_params):
     message.last_sqn_num = radctrl_params.last_sequence_num
     message.scan_flag = radctrl_params.scan_flag
     message.aveperiod_time = radctrl_params.averaging_period_time.total_seconds()
-    message.output_sample_rate = radctrl_params.experiment.output_rx_rate
+    message.input_sample_rate = radctrl_params.experiment.rxrate
     message.data_normalization_factor = reduce(
         lambda x, y: x * y, radctrl_params.decimation_scheme.filter_scaling_factors
     )  # multiply all
