@@ -114,9 +114,9 @@ may have drifted, and the ``sqn_timestamps`` field may be inaccurate.
 
 .. _clear frequency search:
 
-----------------------
+-------------------------------------
 Clear Frequency Search (Experimental)
-----------------------
+-------------------------------------
 
 An experimental implementation of clear frequency searching is now supported in borealis to determine
 a transmit frequency within a specified band. In an experiment slice, the ``freq`` parameter should be
