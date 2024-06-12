@@ -41,6 +41,7 @@ from utils.message_formats import (
     ProcessedSequenceMessage,
     DebugDataStage,
     OutputDataset,
+    SequenceMetadataMessage,
 )
 from utils.signals import DSP
 
@@ -140,22 +141,6 @@ def sequence_worker(options, ringbuffer):
     while True:
         rx_params = inproc_socket.recv_pyobj()
         # Wait until kwargs received from main thread
-
-        # sequence_num = kwargs["sequence_num"]
-        # main_beam_angles = kwargs["main_beam_angles"]
-        # intf_beam_angles = kwargs["intf_beam_angles"]
-        # mixing_freqs = kwargs["mixing_freqs"]
-        # slice_details = kwargs["slice_details"]
-        # start_sample = kwargs["start_sample"]
-        # end_sample = kwargs["end_sample"]
-        # processed_data = kwargs["processed_data"]
-        # intf_antennas = kwargs["intf_antennas"]
-        # filter_taps = kwargs["filter_taps"]
-        # downsample_rates = kwargs["downsample_rates"]
-        # cfs_scan_flag = kwargs["cfs_scan_flag"]
-        # samples_needed = kwargs["samples_needed"]
-        # rx_rate = kwargs["rx_rate"]
-        # output_sample_rate = kwargs["output_sample_rate"]
 
         seq_begin_iden = options.dspbegin_to_brian_identity + str(
             rx_params.sequence_num
@@ -262,7 +247,7 @@ def sequence_worker(options, ringbuffer):
             # Process intf samples if intf exists
             mark_timer = time.perf_counter()
             intf_sequence_samples_shape = None
-            log.info("intf antennas", antennas=rx_params.intf_antennas)
+            log_dict["intf antennas"] = rx_params.intf_antennas
             if len(rx_params.intf_antennas) > 0:
                 intf_sequence_samples = sequence_samples[
                     len(options.rx_main_antennas) :, :
@@ -506,11 +491,14 @@ def main():
     first_time = True
     while True:
         sqn_meta_message = so.recv_pyobj(
-            dsp_to_radar_control, options.radctrl_to_dsp_identity, log
+            dsp_to_radar_control,
+            options.radctrl_to_dsp_identity,
+            log,
+            expected_type=SequenceMetadataMessage,
         )
 
         log.debug("Sending ACK to radctrl")
-        so.send_data(
+        so.send_string(
             dsp_to_radar_control, options.radctrl_to_dsp_identity, "Received metadata"
         )
         log.debug("ACK sent")
@@ -609,7 +597,7 @@ def main():
 
         # Get meta from driver
         message = "Need data to process"
-        so.send_data(dsp_to_driver, options.driver_to_dsp_identity, message)
+        so.send_string(dsp_to_driver, options.driver_to_dsp_identity, message)
         log.debug("Requested driver for data")
         reply = so.recv_bytes(dsp_to_driver, options.driver_to_dsp_identity, log)
         log.debug("Received data from driver")

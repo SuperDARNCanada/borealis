@@ -17,6 +17,7 @@ import zmq
 import pickle
 from utils import socket_operations as so
 from utils.options import Options
+from utils.message_formats import SequenceMetadataMessage
 
 sys.path.append(os.environ["BOREALISPATH"])
 if __debug__:
@@ -156,7 +157,7 @@ def sequence_timing(options):
             if want_to_start and good_to_start and dsp_finish_counter:
                 # Acknowledge new sequence can begin to Radar Control by requesting new sequence metadata
                 log.debug("requesting metadata from radar_control")
-                so.send_data(
+                so.send_string(
                     brian_to_radar_control,
                     options.radctrl_to_brian_identity,
                     "Requesting metadata",
@@ -200,7 +201,7 @@ def sequence_timing(options):
         if first_time:
             # Request new sequence metadata
             log.debug("requesting metadata from radar control")
-            so.send_data(
+            so.send_string(
                 brian_to_radar_control,
                 options.radctrl_to_brian_identity,
                 "Requesting metadata",
@@ -228,7 +229,7 @@ def sequence_timing(options):
             # Requesting acknowledgement of work begins from DSP
             log.debug("requesting work begins from dsp")
             iden = options.dspbegin_to_brian_identity + str(meta.sequence_num)
-            so.send_data(brian_to_dsp_begin, iden, "Requesting work begins")
+            so.send_string(brian_to_dsp_begin, iden, "Requesting work begins")
 
             start_new_sock.send_string("want_to_start")
 
@@ -239,7 +240,10 @@ def sequence_timing(options):
 
             # Get new sequence metadata from radar control
             sigp = so.recv_pyobj(
-                brian_to_radar_control, options.radctrl_to_brian_identity, log
+                brian_to_radar_control,
+                options.radctrl_to_brian_identity,
+                log,
+                expected_type=SequenceMetadataMessage,
             )
 
             log.debug(
@@ -251,7 +255,7 @@ def sequence_timing(options):
 
             # Request acknowledgement of sequence from driver
             log.debug("requesting ack from driver")
-            so.send_data(
+            so.send_string(
                 brian_to_driver, options.driver_to_brian_identity, "Requesting ack"
             )
 
@@ -268,7 +272,7 @@ def sequence_timing(options):
 
             log.debug("requesting work end from dsp")
             iden = options.dspend_to_brian_identity + str(sig_p["sequence_num"])
-            so.send_data(brian_to_dsp_end, iden, "Requesting work ends")
+            so.send_string(brian_to_dsp_end, iden, "Requesting work ends")
 
             # Acknowledge we want to start something new.
             start_new_sock.send_string("good_to_start")

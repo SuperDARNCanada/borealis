@@ -16,7 +16,6 @@ import sys
 import time
 from datetime import datetime, timedelta
 import zmq
-import pickle
 import threading
 import numpy as np
 from functools import reduce
@@ -106,7 +105,7 @@ def driver_comms_thread(radctrl_driver_iden, driver_socket_iden, router_addr):
         # Send the message to the driver
 
         if first_time:
-            so.recv_data(radctrl_driver_socket, driver_socket_iden, log)
+            so.recv_string(radctrl_driver_socket, driver_socket_iden, log)
             # Driver sends back an ACK on the first communication
 
             driver_comms_socket.send_string("Driver ready to go")
@@ -228,7 +227,7 @@ def dsp_comms_thread(radctrl_dsp_iden, dsp_socket_iden, router_addr):
         so.send_pyobj(radctrl_dsp_socket, dsp_socket_iden, message)
         # Send the message to rx_signal_processing
 
-        so.recv_data(radctrl_dsp_socket, dsp_socket_iden, log)
+        so.recv_string(radctrl_dsp_socket, dsp_socket_iden, log)
         # Wait for rx_signal_processing to acknowledge that it received the metadata
 
         inproc_socket.send_string("DSP acknowledged metadata")
@@ -345,7 +344,7 @@ def search_for_experiment(radar_control_to_exp_handler, exphan_to_radctrl_iden, 
     """
 
     try:
-        so.send_data(radar_control_to_exp_handler, exphan_to_radctrl_iden, status)
+        so.send_string(radar_control_to_exp_handler, exphan_to_radctrl_iden, status)
     except zmq.ZMQBaseError as e:
         log.error("zmq failed request", error=e)
         log.exception("zmq failed request", exception=e)
@@ -355,22 +354,21 @@ def search_for_experiment(radar_control_to_exp_handler, exphan_to_radctrl_iden, 
     new_experiment_received = False
 
     try:
-        serialized_exp = so.recv_bytes(
-            radar_control_to_exp_handler, exphan_to_radctrl_iden, log
+        new_exp = so.recv_pyobj(
+            radar_control_to_exp_handler,
+            exphan_to_radctrl_iden,
+            log,
+            expected_type=ExperimentPrototype,
         )
     except zmq.ZMQBaseError as e:
         log.error("zmq failed receive", error=e)
         log.exception("zmq failed receive", exception=e)
         sys.exit(1)
 
-    new_exp = pickle.loads(serialized_exp)  # Protocol detected automatically
-
-    if isinstance(new_exp, ExperimentPrototype):
+    if new_exp is not None:
         experiment = new_exp
         new_experiment_received = True
         log.info("new experiment found")
-    elif new_exp is not None:
-        log.debug("received non experiment_prototype type")
     else:
         log.debug("experiment continuing without update")
         # TODO decide what to do here. I think we need this case if someone doesn't build their experiment properly
@@ -609,7 +607,7 @@ def run_cfs_scan(
     so.send_pyobj(cfs_socket, radctrl_params.dw_cfs_identity, cfs_sqn_num)
 
     brian_socket_iden = radctrl_params.brian_to_radctrl_identity
-    so.recv_data(radctrl_brian_socket, brian_socket_iden, log)
+    so.recv_string(radctrl_brian_socket, brian_socket_iden, log)
     # The above call is blocking; will wait until something is received
 
     for pulse_transmit_data in sqn:
@@ -625,7 +623,12 @@ def run_cfs_scan(
     so.send_pyobj(radctrl_brian_socket, brian_socket_iden, dsp_message)
     # Send the metadata along to brian
 
-    freq_data = so.recv_pyobj(cfs_socket, dsp_socket_iden, log)
+    freq_data = so.recv_pyobj(
+        cfs_socket,
+        dsp_socket_iden,
+        log,
+        expected_type=messages.ProcessedSequenceMessage,
+    )
 
     radctrl_process_socket.recv_string()
     # Consume the DSP ACK that dsp_comms_thread will send

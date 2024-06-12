@@ -25,7 +25,7 @@ def create_sockets(router_addr, *identities):
     :type       identities:     tuple
 
     :returns:   Newly created and connected sockets.
-    :rtype:     list or str
+    :rtype:     list or zmq.socket
     """
     context = zmq.Context().instance()
     num_sockets = len(identities)
@@ -40,7 +40,7 @@ def create_sockets(router_addr, *identities):
     return sockets
 
 
-def recv_data(socket, sender_identity, log):
+def recv_string(socket, sender_identity, log):
     """
     Receives data from a socket and verifies it comes from the correct sender.
 
@@ -67,7 +67,7 @@ def recv_data(socket, sender_identity, log):
         return data.decode("utf-8")
 
 
-def send_data(socket, receiver_identity, msg):
+def send_string(socket, receiver_identity, msg):
     """
     Sends data to another identity.
 
@@ -148,14 +148,18 @@ def recv_pyobj(socket, sender_identity, log, expected_type=None):
     """Un-packs a pickled object received from recv_bytes. Can be used
     to check if the received object is of the expected type.
 
-    Args:
-        socket:
-        expected_type:
-        log:
+    :param  socket:     Socket to receive from.
+    :type   socket:     ZMQ socket
+    :param  sender_identity:    The identity of the sender.
+    :type   sender_identity:    str
+    :param  log:    A logging object.
+    :type   log:    Class
+    :param  expected_type:      The data type expected when receiving
+    :type   expected_type:      any
     """
     bytes_packet = recv_bytes(socket, sender_identity, log)
     message = pickle.loads(bytes_packet)
-    if expected_type:
+    if expected_type is not None:
         if not isinstance(message, expected_type):
             log.error(
                 "received message != expected message",
@@ -170,11 +174,14 @@ def send_pyobj(socket, receiver_identity, message, log=None):
     """Pickles the message and passes it to send bytes to be communicated
     over the router.
 
-    Args:
-        socket:
-        receiver_identity:
-        message:
-        log:
+    :param  socket:     Socket to send from.
+    :type   socket:     ZMQ socket
+    :param  receiver_identity:    The identity of the receover.
+    :type   receiver_identity:    str
+    :param  message:    The object to send.
+    :type   message:    Object
+    :param  log:    A logging object.
+    :type   log:    Class
     """
     bytes_packet = pickle.dumps(message, protocol=pickle.HIGHEST_PROTOCOL)
     send_bytes(socket, receiver_identity, bytes_packet, log)

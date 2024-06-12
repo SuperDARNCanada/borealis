@@ -98,8 +98,8 @@ The file fields in the rawacf array files are:
 +-----------------------------------+---------------------------------------------+
 | | **cfs_masks**                   | | Masks for each cfs slice indicating which |
 | | *bool*                          | | frequencies cannot be selected for the    |
-| | [] or [num_cfs_slices,          | | slice tx freq.                            |
-| | num_freqs]                      | |                                           |
+| | [] or [num_freqs]               | | slice tx freq.                            |
+| |                                 | |                                           |
 +-----------------------------------+---------------------------------------------+
 | | **cfs_noise**                   | | Power measurements for each frequency in  |
 | | *float32*                       | | the clear frequency search analysis.      |

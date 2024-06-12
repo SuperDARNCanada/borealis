@@ -505,16 +505,6 @@ class ExperimentSlice:
                             f"adjust the cfs_range values of the experiment."
                         )
 
-            for stage, dm_rate in enumerate(cfs_scheme.dm_rates):
-                if (
-                    cfs_scheme.input_rates[stage]
-                    > dm_rate * cfs_scheme.output_rates[stage]
-                ):
-                    raise ValueError(
-                        f"CFS scheme decimation stage {stage} is aliasing. Ensure that input_rate/output_rate "
-                        f"is greater than the decimation rate."
-                    )
-
         return cfs_scheme
 
     @validator("tx_antennas")
@@ -858,25 +848,30 @@ class ExperimentSlice:
         tx_center = values.get("txctrfreq", 12000)
         rx_center = values.get("rxctrfreq", 12000)
 
-        # Frequency must be withing bandwidth of rx and tx center frequency
-        if (freq > values["rx_freq_bounds"][1]) or (freq < values["rx_freq_bounds"][0]):
-            raise ValueError(
-                f"Slice frequency is outside bandwidth around rx center frequency {int(rx_center)}"
-            )
-        if (freq > values["tx_freq_bounds"][1]) or (freq < values["tx_freq_bounds"][0]):
-            raise ValueError(
-                f"Slice frequency is outside bandwidth around tx center frequency {int(tx_center)}"
-            )
+        if not values["rxonly"]:
+            # Frequency must be within bandwidth of rx and tx center frequency
+            if (freq > values["rx_freq_bounds"][1]) or (
+                freq < values["rx_freq_bounds"][0]
+            ):
+                raise ValueError(
+                    f"Slice frequency is outside bandwidth around rx center frequency {int(rx_center)}"
+                )
+            if (freq > values["tx_freq_bounds"][1]) or (
+                freq < values["tx_freq_bounds"][0]
+            ):
+                raise ValueError(
+                    f"Slice frequency is outside bandwidth around tx center frequency {int(tx_center)}"
+                )
 
-        # Frequency cannot be set to the rx or tx center frequency (100kHz bandwidth around center freqs)
-        if abs(freq - rx_center) < 50:
-            raise ValueError(
-                f"Slice frequency cannot be within 50kHz of rx center frequency {int(rx_center)}"
-            )
-        if abs(freq - tx_center) < 50:
-            raise ValueError(
-                f"Slice frequency cannot be within 50kHz of tx center frequency {int(tx_center)}"
-            )
+            # Frequency cannot be set to the rx or tx center frequency (100kHz bandwidth around center freqs)
+            if abs(freq - rx_center) < 50:
+                raise ValueError(
+                    f"Slice frequency cannot be within 50kHz of rx center frequency {int(rx_center)}"
+                )
+            if abs(freq - tx_center) < 50:
+                raise ValueError(
+                    f"Slice frequency cannot be within 50kHz of tx center frequency {int(tx_center)}"
+                )
 
         return freq
 
@@ -961,20 +956,6 @@ class ExperimentSlice:
                 f"decimation_scheme input data rate {input_rate} does not match rx_bandwidth "
                 f"{values['rx_bandwidth']}"
             )
-
-        for stage, dm_rate in enumerate(decimation_scheme.dm_rates):
-            if (
-                round(
-                    decimation_scheme.input_rates[stage]
-                    / decimation_scheme.output_rates[stage]
-                )
-                > dm_rate
-            ):
-                raise ValueError(
-                    f"Experiment decimation stage {stage} is aliasing. Ensure that input_rate/output_rate "
-                    f"({decimation_scheme.input_rates[stage]}/{decimation_scheme.output_rates[stage]}) is "
-                    f"greater than the decimation rate ({dm_rate})."
-                )
 
         return decimation_scheme
 

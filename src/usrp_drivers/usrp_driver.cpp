@@ -187,8 +187,8 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
     uint32_t lp_status_bank_l = 0b0;
     while (more_pulses) {
       auto pulse_data =
-          recv_data(driver_to_radar_control,
-                    driver_options.get_radctrl_to_driver_identity());
+          recv_string(driver_to_radar_control,
+                      driver_options.get_radctrl_to_driver_identity());
 
       // Here we accept our driver_packet from the radar_control. We use that
       // info in order to configure the USRP devices based on experiment
@@ -690,8 +690,8 @@ int32_t UHD_SAFE_MAIN(int32_t argc, char *argv[]) {
   // that it can begin processing experiments without low averages in the first
   // integration period.
 
-  auto setup_data = recv_data(driver_to_radar_control,
-                              driver_options.get_radctrl_to_driver_identity());
+  auto setup_data = recv_string(
+      driver_to_radar_control, driver_options.get_radctrl_to_driver_identity());
 
   driverpacket::DriverPacket driver_packet;
   if (driver_packet.ParseFromString(setup_data) == false) {

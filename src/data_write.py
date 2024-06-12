@@ -1592,7 +1592,10 @@ def main():
 
         if cfs_sequence_socket in socks and socks[cfs_sequence_socket] == zmq.POLLIN:
             cfs_sqn_num = so.recv_pyobj(
-                cfs_sequence_socket, options.radctrl_cfs_identity, log
+                cfs_sequence_socket,
+                options.radctrl_cfs_identity,
+                log,
+                expected_type=int,
             )
             log.debug(
                 "Received CFS sequence, increasing expected_sqn_num",

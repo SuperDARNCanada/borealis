@@ -301,8 +301,8 @@ class AveragingPeriod(InterfaceClassBase):
 
                     ind = np.argsort(cfs_data[sqn_num][mask])
                     sorted_freqs_khz = shifted_cfs_khz[ind]
-                    selected_freq = int(np.round(sorted_freqs_khz[0]))
-                    slice_obj.freq = copy.deepcopy(selected_freq)
+                    selected_freq = np.round(sorted_freqs_khz[0])
+                    slice_obj.freq = int(selected_freq)
                     used_range.append([selected_freq - df, selected_freq + df])
                     # Set cfs slice frequency and add frequency to used_freqs for this sequence
                     slice_masks.append(mask)

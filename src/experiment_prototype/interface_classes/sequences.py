@@ -114,20 +114,28 @@ class Sequence(InterfaceClassBase):
                 )
                 raise ExperimentException(errmsg)
 
-        slice_freqs = []
+        slice_freq_ranges = []
         for slice_id in self.slice_ids:
-            check_freq = self.slice_dict[slice_id].freq
-            for freq in slice_freqs:
-                if freq is not None:  # cfs slices have freq == None
-                    if freq - 1 <= check_freq <= freq + 1:
-                        errmsg = (
-                            f"Slice {slice_id} frequency {check_freq} is within 1kHz "
-                            f"of another CONCURRENT slice frequency. Adjust the slice "
-                            f"frequencies to have at least 1kHz separation."
-                        )
-                        raise ExperimentException(errmsg)
-            slice_freqs.append(check_freq)
+            if self.slice_dict[slice_id].freq is None:  # cfs slices have freq == None
+                continue
+            pulse_width_khz = int(
+                round(1e3 / (2 * self.slice_dict[slice_id].pulse_len))
+            )
+            check_freq = (
+                self.slice_dict[slice_id].freq - pulse_width_khz,
+                self.slice_dict[slice_id].freq + pulse_width_khz,
+            )
+            for freq_range in slice_freq_ranges:
+                if freq_range[0] <= check_freq[1] or freq_range[1] >= check_freq[0]:
+                    errmsg = (
+                        f"Slice {slice_id} frequency {self.slice_dict[slice_id].freq} "
+                        f"it too close to another CONCURRENT slice frequency. Adjust slice"
+                        f"frequencies to have at least {pulse_width_khz} separation."
+                    )
+                    raise ExperimentException(errmsg)
+            slice_freq_ranges.append(check_freq)
 
+        self.output_rx_rate = self.decimation_scheme.output_rates[-1]
         self.tx_main_antennas = self.transmit_metadata["tx_main_antennas"]
         self.rx_main_antennas = self.transmit_metadata["rx_main_antennas"]
         self.rx_intf_antennas = self.transmit_metadata["rx_intf_antennas"]
@@ -153,11 +161,6 @@ class Sequence(InterfaceClassBase):
             # search, pulses can only be built after cfs slices are assigned frequencies
 
     def build_sequence_pulses(self):
-        dm_rate = 1
-        for stage in self.decimation_scheme.stages:
-            dm_rate *= stage.dm_rate
-
-        self.output_rx_rate = self.transmit_metadata["rxrate"] / dm_rate
         txrate = self.transmit_metadata["txrate"]
         main_antenna_count = self.transmit_metadata["main_antenna_count"]
         main_antenna_spacing = self.transmit_metadata["main_antenna_spacing"]
