@@ -191,7 +191,7 @@ class DSP:
         freqs = fft.fftshift(fft.fftfreq(n, d=1 / fs))
         df = freqs[1] - freqs[0]
 
-        cfs_data = np.sum(np.abs(np.mean(fft_data, axis=2)), axis=1)
+        cfs_data = np.sum(np.abs(np.average(fft_data, axis=2)), axis=1)
         cfs_freqs = freqs - df / 2
 
         return cfs_data, cfs_freqs

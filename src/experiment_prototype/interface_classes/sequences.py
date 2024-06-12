@@ -126,11 +126,13 @@ class Sequence(InterfaceClassBase):
                 self.slice_dict[slice_id].freq + pulse_width_khz,
             )
             for freq_range in slice_freq_ranges:
-                if freq_range[0] <= check_freq[1] or freq_range[1] >= check_freq[0]:
+                lower_bound = freq_range[0] <= check_freq[0] <= freq_range[1]
+                upper_bound = freq_range[0] <= check_freq[1] <= freq_range[1]
+                if lower_bound or upper_bound:
                     errmsg = (
                         f"Slice {slice_id} frequency {self.slice_dict[slice_id].freq} "
-                        f"it too close to another CONCURRENT slice frequency. Adjust slice"
-                        f"frequencies to have at least {pulse_width_khz} separation."
+                        f"it too close to CONCURRENT slice frequency {int((freq_range[0] + freq_range[1]) / 2)}. "
+                        f"Adjust slice frequencies to have at least {pulse_width_khz} khz separation. "
                     )
                     raise ExperimentException(errmsg)
             slice_freq_ranges.append(check_freq)
@@ -161,6 +163,10 @@ class Sequence(InterfaceClassBase):
             # search, pulses can only be built after cfs slices are assigned frequencies
 
     def build_sequence_pulses(self):
+        dm_rate = 1
+        for stage in self.decimation_scheme.stages:
+            dm_rate *= stage.dm_rate
+
         txrate = self.transmit_metadata["txrate"]
         main_antenna_count = self.transmit_metadata["main_antenna_count"]
         main_antenna_spacing = self.transmit_metadata["main_antenna_spacing"]

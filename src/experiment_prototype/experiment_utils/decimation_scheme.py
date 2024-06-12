@@ -129,6 +129,9 @@ class DecimationScheme(object):
             if (
                 self.input_rates[stage_num]
                 > self.dm_rates[stage_num] * self.output_rates[stage_num]
+            ) and not math.isclose(
+                self.input_rates[stage_num],
+                self.dm_rates[stage_num] * self.output_rates[stage_num],
             ):
                 errmsg = (
                     f"Experiment decimation stage {stage_num} is aliasing. Ensure that "

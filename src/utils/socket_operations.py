@@ -157,6 +157,8 @@ def recv_pyobj(socket, sender_identity, log, expected_type=None):
     :param  expected_type:      The data type expected when receiving
     :type   expected_type:      any
     """
+    # TODO: Account for if multiple types are allowed to be returned.
+
     bytes_packet = recv_bytes(socket, sender_identity, log)
     message = pickle.loads(bytes_packet)
     if expected_type is not None:

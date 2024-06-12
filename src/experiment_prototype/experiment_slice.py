@@ -848,7 +848,11 @@ class ExperimentSlice:
         tx_center = values.get("txctrfreq", 12000)
         rx_center = values.get("rxctrfreq", 12000)
 
-        if not values["rxonly"]:
+        transmitting = True
+        if "rxonly" in values and values["rxonly"]:
+            transmitting = False
+
+        if transmitting:
             # Frequency must be within bandwidth of rx and tx center frequency
             if (freq > values["rx_freq_bounds"][1]) or (
                 freq < values["rx_freq_bounds"][0]

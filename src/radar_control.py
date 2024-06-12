@@ -21,7 +21,6 @@ import numpy as np
 from functools import reduce
 from dataclasses import dataclass, field
 
-from experiment_prototype.experiment_prototype import ExperimentPrototype
 from utils.options import Options
 import utils.message_formats as messages
 from utils import socket_operations as so
@@ -358,7 +357,6 @@ def search_for_experiment(radar_control_to_exp_handler, exphan_to_radctrl_iden, 
             radar_control_to_exp_handler,
             exphan_to_radctrl_iden,
             log,
-            expected_type=ExperimentPrototype,
         )
     except zmq.ZMQBaseError as e:
         log.error("zmq failed receive", error=e)
