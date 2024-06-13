@@ -126,19 +126,21 @@ class DecimationScheme(object):
                 )
                 raise ValueError(errmsg)
 
-            if (
-                self.input_rates[stage_num]
-                > self.dm_rates[stage_num] * self.output_rates[stage_num]
-            ) and not math.isclose(
-                self.input_rates[stage_num],
-                self.dm_rates[stage_num] * self.output_rates[stage_num],
-            ):
-                errmsg = (
-                    f"Experiment decimation stage {stage_num} is aliasing. Ensure that "
-                    f"input_rate/output_rate ({self.input_rates[stage_num]}/{self.output_rates[stage_num]}) is "
-                    f"greater than the decimation rate ({self.dm_rates[stage_num]})."
-                )
-                raise ValueError(errmsg)
+            # TODO: Enable checking of if decimation scheme will alias.
+            #  Code below needs the passband width, not output rate
+            # if (
+            #     self.input_rates[stage_num]
+            #     > self.dm_rates[stage_num] * self.output_rates[stage_num]
+            # ) and not math.isclose(
+            #     self.input_rates[stage_num],
+            #     self.dm_rates[stage_num] * self.output_rates[stage_num],
+            # ):
+            #     errmsg = (
+            #         f"Experiment decimation stage {stage_num} is aliasing. Ensure that "
+            #         f"input_rate/output_rate ({self.input_rates[stage_num]}/{self.output_rates[stage_num]}) is "
+            #         f"greater than the decimation rate ({self.dm_rates[stage_num]})."
+            #     )
+            #     raise ValueError(errmsg)
 
         if not math.isclose(
             self.output_rates[-1], self.output_sample_rate, abs_tol=0.001

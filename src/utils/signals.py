@@ -188,11 +188,8 @@ class DSP:
         data_chunks = np.reshape(data, data.shape[:-1] + (num_intervals, n))
 
         fft_data = fft.fftshift(fft.fft(data_chunks, axis=-1), axes=-1)
-        freqs = fft.fftshift(fft.fftfreq(n, d=1 / fs))
-        df = freqs[1] - freqs[0]
-
         cfs_data = np.sum(np.abs(np.average(fft_data, axis=2)), axis=1)
-        cfs_freqs = freqs - df / 2
+        cfs_freqs = fft.fftshift(fft.fftfreq(n, d=1 / fs))
 
         return cfs_data, cfs_freqs
 
