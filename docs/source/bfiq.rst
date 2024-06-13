@@ -89,6 +89,25 @@ The file fields in the bfiq array files are:
 | |                                 | | characters. Typically begins with the     |
 | |                                 | | latest git tag of the software.           |
 +-----------------------------------+---------------------------------------------+
+| | **cfs_freq**                    | | Frequencies sampled during the clear      |
+| | *float32*                       | | frequency search centered around          |
+| | [] or [num_freqs]               | | baseband.                                 |
++-----------------------------------+---------------------------------------------+
+| | **cfs_masks**                   | | Masks for each cfs slice indicating which |
+| | *bool*                          | | frequencies cannot be selected for the    |
+| | [] or [num_freqs]               | | slice tx freq.                            |
+| |                                 | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **cfs_noise**                   | | Power measurements for each frequency in  |
+| | *float32*                       | | the clear frequency search analysis.      |
+| | [] or [num_cfs_slices,          | | A separate power array is generated for   |
+| | num_freqs]                      | | each cfs slice.                           |
++-----------------------------------+---------------------------------------------+
+| | **cfs_range**                   | | The range of frequencies scanned by the   |
+| | *float32*                       | | clear frequency search for each cfs slice |
+| | [] or [num_cfs_slices, 2]       | | in the experiment. If not set in the      |
+| |                                 | | experiment, all cfs parameters will be [] |
++-----------------------------------+---------------------------------------------+
 | | **data**                        | | A set of samples (complex float) at given |
 | | *complex64*                     | | sample rate. Note that records that do not|
 | | [num_records x                  | | have num_sequences = max_num_sequences or |

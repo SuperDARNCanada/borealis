@@ -11,20 +11,21 @@
 """
 
 import zmq
+import pickle
 
 
-def create_sockets(identities, router_addr):
+def create_sockets(router_addr, *identities):
     """
     Creates a DEALER socket for each identity in the list argument. Each socket is then connected
     to the router
 
-    :param      identities:     Unique identities to give to sockets.
-    :type       identities:     list
     :param      router_addr:    Address of the router socket
     :type       router_addr:    str
+    :param      identities:     Unique identities to give to sockets.
+    :type       identities:     tuple
 
     :returns:   Newly created and connected sockets.
-    :rtype:     list
+    :rtype:     list or zmq.socket
     """
     context = zmq.Context().instance()
     num_sockets = len(identities)
@@ -33,10 +34,13 @@ def create_sockets(identities, router_addr):
         sk.setsockopt_string(zmq.IDENTITY, iden)
         sk.connect(router_addr)
 
+    if num_sockets == 1:
+        return sockets[0]
+
     return sockets
 
 
-def recv_data(socket, sender_identity, log):
+def recv_string(socket, sender_identity, log):
     """
     Receives data from a socket and verifies it comes from the correct sender.
 
@@ -63,7 +67,7 @@ def recv_data(socket, sender_identity, log):
         return data.decode("utf-8")
 
 
-def send_data(socket, receiver_identity, msg):
+def send_string(socket, receiver_identity, msg):
     """
     Sends data to another identity.
 
@@ -76,13 +80,6 @@ def send_data(socket, receiver_identity, msg):
     """
     frames = [receiver_identity.encode("utf-8"), b"", msg.encode("utf-8")]
     socket.send_multipart(frames)
-
-
-# Aliases for sending to a socket
-send_reply = send_request = send_data
-
-# Aliases for receiving from a socket
-recv_reply = recv_request = recv_data
 
 
 def recv_bytes(socket, sender_identity, log):
@@ -126,7 +123,7 @@ def recv_bytes_from_any_iden(socket):
     return bytes_object
 
 
-def send_bytes(socket, receiver_identity, bytes_object):
+def send_bytes(socket, receiver_identity, bytes_object, log=None):
     """Sends experiment to another identity.
 
     :param  socket:         Socket to send from.
@@ -137,10 +134,56 @@ def send_bytes(socket, receiver_identity, bytes_object):
                             available.
     :type   bytes_object:   bytes
     """
+    if log:
+        log.debug(
+            "Sending message",
+            sender=socket.get(zmq.IDENTITY),
+            receiver=receiver_identity,
+        )
     frames = [receiver_identity.encode("utf-8"), b"", bytes_object]
     socket.send_multipart(frames)
 
 
-send_pulse = send_obj = send_exp = send_bytes
+def recv_pyobj(socket, sender_identity, log, expected_type=None):
+    """Un-packs a pickled object received from recv_bytes. Can be used
+    to check if the received object is of the expected type.
 
-recv_pulse = recv_obj = recv_exp = recv_bytes
+    :param  socket:     Socket to receive from.
+    :type   socket:     ZMQ socket
+    :param  sender_identity:    The identity of the sender.
+    :type   sender_identity:    str
+    :param  log:    A logging object.
+    :type   log:    Class
+    :param  expected_type:      The data type expected when receiving
+    :type   expected_type:      any
+    """
+    # TODO: Account for if multiple types are allowed to be returned.
+
+    bytes_packet = recv_bytes(socket, sender_identity, log)
+    message = pickle.loads(bytes_packet)
+    if expected_type is not None:
+        if not isinstance(message, expected_type):
+            log.error(
+                "received message != expected message",
+                received_message=type(message),
+                expected_message=expected_type,
+            )
+            return None
+    return message
+
+
+def send_pyobj(socket, receiver_identity, message, log=None):
+    """Pickles the message and passes it to send bytes to be communicated
+    over the router.
+
+    :param  socket:     Socket to send from.
+    :type   socket:     ZMQ socket
+    :param  receiver_identity:    The identity of the receover.
+    :type   receiver_identity:    str
+    :param  message:    The object to send.
+    :type   message:    Object
+    :param  log:    A logging object.
+    :type   log:    Class
+    """
+    bytes_packet = pickle.dumps(message, protocol=pickle.HIGHEST_PROTOCOL)
+    send_bytes(socket, receiver_identity, bytes_packet, log)

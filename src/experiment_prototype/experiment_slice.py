@@ -39,6 +39,7 @@ from utils.options import Options
 from experiment_prototype.experiment_utils.decimation_scheme import (
     DecimationScheme,
     create_default_scheme,
+    create_default_cfs_scheme,
 )
 
 # Obtain the module name that imported this log_config
@@ -55,7 +56,7 @@ slice_key_set = frozenset(
         "align_sequences",
         "averaging_method",
         "beam_angle",
-        "clrfrqrange",
+        "cfs_range",
         "comment",
         "cpid",
         "first_range",
@@ -86,7 +87,9 @@ slice_key_set = frozenset(
         "xcf",
     ]
 )
-hidden_key_set = frozenset(["clrfrqflag", "slice_interfacing"])
+hidden_key_set = frozenset(
+    ["cfs_flag", "slice_interfacing", "tx_freq_bounds", "rx_freq_bounds"]
+)
 """
 These are used by the build_scans method (called from the experiment_handler every time the
 experiment is run). If set by the user, the values will be overwritten and therefore ignored.
@@ -139,13 +142,12 @@ class ExperimentSlice:
         them as beam -19.64 degrees, we refer as beam 1, beam 2. Beam 0 will be the 0th element in the
         list, beam 1 will be the 1st, etc. These beam numbers are needed to write the [rx|tx]_beam_order
         list. This is like a mapping of beam number (list index) to beam direction off boresight.
-    clrfrqrange *required or freq required*
+    cfs_range *required or freq required*
         range for clear frequency search, should be a list of length = 2, [min_freq, max_freq] in kHz.
-        **Not currently supported.**
     first_range *required*
         first range gate, in km
-    freq *required or clrfrqrange required*
-        transmit/receive frequency, in kHz. Note if you specify clrfrqrange it won't be used.
+    freq *required or cfs_range required*
+        transmit/receive frequency, in kHz. Note if you specify cfs_range it won't be used.
     intt *required or intn required*
         duration of an averaging period (integration), in ms. (maximum)
     intn *required or intt required*
@@ -191,6 +193,11 @@ class ExperimentSlice:
     averaging_method *defaults*
         a string defining the type of averaging to be done. Current methods are 'mean' or 'median'. The
         default is 'mean'.
+    cfs_duration *defaults*
+        Amount of time a clear frequency search will listen for in ms.
+    cfs_scheme *defaults*
+        Decimation scheme to be used in analyzing data collected during a clear frequency search when
+        determining transmit frequencies for CFS experiment slices
     comment *defaults*
         a comment string that will be placed in the borealis files describing the slice. Defaults to
         empty string.
@@ -274,7 +281,7 @@ class ExperimentSlice:
 
     **Read-only Slice Keys**
 
-    clrfrqflag *read-only*
+    cfs_flag *read-only*
         A boolean flag to indicate that a clear frequency search will be done. **Not currently
         supported.**
     cpid *read-only*
@@ -317,6 +324,8 @@ class ExperimentSlice:
     # parameter is defined by slice, the max and min rx frequencies must be determined after center freq validation
     txctrfreq: Optional[freq_khz] = None
     rxctrfreq: Optional[freq_khz] = None
+    tx_freq_bounds: Optional[tuple] = (options.min_freq / 1000, options.max_freq / 1000)
+    rx_freq_bounds: Optional[tuple] = (options.min_freq / 1000, options.max_freq / 1000)
     freq: Optional[freq_khz] = None
 
     # These fields have default values. Some have specification requirements in conjunction with each other
@@ -349,8 +358,10 @@ class ExperimentSlice:
     intt: Optional[confloat(ge=0)] = None
     scanbound: Optional[list[confloat(ge=0)]] = Field(default_factory=list)
     pulse_phase_offset: Optional[Callable] = default_callable
-    clrfrqrange: Optional[conlist(freq_int_khz, min_items=2, max_items=2)] = None
-    clrfrqflag: StrictBool = Field(init=False)
+    cfs_range: Optional[conlist(freq_int_khz, min_items=2, max_items=2)] = None
+    cfs_flag: StrictBool = Field(init=False)
+    cfs_duration: Optional[conint(ge=0, strict=True)] = 90  # ms
+    cfs_scheme: DecimationScheme = Field(default_factory=create_default_cfs_scheme)
     decimation_scheme: DecimationScheme = Field(default_factory=create_default_scheme)
 
     acf: Optional[StrictBool] = False
@@ -402,19 +413,19 @@ class ExperimentSlice:
         return values
 
     @root_validator(pre=True)
-    def check_freq_clrfrqrange(cls, values):
-        if "clrfrqrange" in values and values["clrfrqrange"]:
-            values["clrfrqflag"] = True
+    def check_freq_cfs_range(cls, values):
+        if "cfs_range" in values and values["cfs_range"]:
+            values["cfs_flag"] = True
             if "freq" in values and values["freq"]:
                 log.info(
-                    f"Slice parameter 'freq' removed as 'clrfrqrange' takes precedence. If this is not desired,"
-                    f"remove 'clrfrqrange' parameter from experiment. Slice: {values['slice_id']}"
+                    f"Slice parameter 'freq' removed as 'cfs_range' takes precedence. If this is not desired,"
+                    f"remove 'cfs_range' parameter from experiment. Slice: {values['slice_id']}"
                 )
         elif "freq" in values and values["freq"]:
-            values["clrfrqflag"] = False
+            values["cfs_flag"] = False
         else:
             raise ValueError(
-                f"A freq or clrfrqrange must be specified in a slice. Slice: {values['slice_id']}"
+                f"A freq or cfs_range must be specified in a slice. Slice: {values['slice_id']}"
             )
         return values
 
@@ -451,6 +462,50 @@ class ExperimentSlice:
                     f"Slice {values['slice_id']}: pulse sequence is too long for integration time given"
                 )
         return intt
+
+    @validator("cfs_duration")
+    def check_cfs_duration(cls, cfs_duration, values):
+        if values["cfs_flag"]:
+            if cfs_duration < 10:
+                raise ValueError(
+                    f"Clear frequency search duration of {cfs_duration} ms is too short. "
+                    f"Must be at least 10 ms long."
+                )
+
+        return cfs_duration
+
+    @validator("cfs_scheme")
+    def check_cfs_scheme(cls, cfs_scheme, values):
+
+        if values["cfs_flag"]:
+            if len(cfs_scheme.stages) > options.max_filtering_stages:
+                errmsg = (
+                    f"Number of cfs decimation stages ({len(cfs_scheme.stages)}) is greater than max"
+                    f" available {options.max_filtering_stages}"
+                )
+                raise ValueError(errmsg)
+
+            # Check that the rx_bandwidth matches input rate of the DecimationScheme
+            input_rate = cfs_scheme.input_rates[0]
+            if input_rate != values["rx_bandwidth"]:
+                raise ValueError(
+                    f"decimation_scheme input data rate {input_rate} does not match rx_bandwidth "
+                    f"{values['rx_bandwidth']}"
+                )
+
+            # Make sure default cfs scheme is only used with expected 300kHz range
+            if "cfs_range" in values:
+                cfs_width = int(values["cfs_range"][1] - values["cfs_range"][0])
+                if cfs_width > 300:
+                    test_scheme = create_default_cfs_scheme()
+                    if cfs_scheme == test_scheme:
+                        raise ValueError(
+                            f"CFS slice {values['slice_id']} range is greater than the default 300kHz width. "
+                            f"You must define a custom decimation scheme to match the {cfs_width}kHz width or "
+                            f"adjust the cfs_range values of the experiment."
+                        )
+
+        return cfs_scheme
 
     @validator("tx_antennas")
     def check_tx_antennas(cls, tx_antennas):
@@ -695,63 +750,8 @@ class ExperimentSlice:
                     )
         return ppo
 
-    @validator("clrfrqrange")
-    def check_clrfrqrange(cls, clrfrqrange, values):
-        if not clrfrqrange:
-            return clrfrqrange
-
-        if clrfrqrange[0] >= clrfrqrange[1]:
-            raise ValueError(
-                f"Slice {values['slice_id']} clrfrqrange must be between min and max tx frequencies "
-                f"and rx frequencies according to license and/or center "
-                f"frequencies / sampling rates / transition bands, and must have lower frequency first."
-            )
-
-        still_checking = True
-        while still_checking:
-            for freq_range in options.restricted_ranges:
-                if freq_range[0] <= clrfrqrange[0] <= freq_range[1]:
-                    if freq_range[0] <= clrfrqrange[1] <= freq_range[1]:
-                        # the range is entirely within the restricted range.
-                        raise ValueError(
-                            f"clrfrqrange is entirely within restricted range {freq_range}. Slice: "
-                            f"{values['slice_id']}"
-                        )
-                    else:
-                        log.warning(
-                            f"Slice: {values['slice_id']} clrfrqrange will be modified because it is partially "
-                            f"in a restricted range."
-                        )
-                        clrfrqrange[0] = freq_range[1] + 1
-                        # outside of restricted range now.
-                        break  # we have changed the 'clrfrqrange' - must restart the
-                        # check in case it's in another range.
-                else:
-                    # lower end is not in restricted frequency range.
-                    if freq_range[0] <= clrfrqrange[1] <= freq_range[1]:
-                        log.warning(
-                            f"Slice: {values['slice_id']} clrfrqrange will be modified because it is partially "
-                            f"in a restricted range."
-                        )
-                        clrfrqrange[1] = freq_range[0] - 1
-                        # outside of restricted range now.
-                        break  # we have changed the 'clrfrqrange' - must restart the for loop
-                        # checking in case it's in another range.
-                    else:  # neither end of clrfrqrange is inside the restricted range but
-                        # we should check if the range is inside the clrfrqrange.
-                        if clrfrqrange[0] <= freq_range[0] <= clrfrqrange[1]:
-                            log.warning(
-                                f"There is a restricted range within the clrfrqrange - STOP. Slice: "
-                                f"{values['slice_id']}"
-                            )
-                            # TODO: Error. Still need to implement clear frequency searching.
-            else:  # no break, so no changes to the clrfrqrange
-                still_checking = False
-
-        return values
-
     @validator("txctrfreq", always=True)
-    def check_txctrfreq(cls, txctrfreq):
+    def check_txctrfreq(cls, txctrfreq, values):
         if not txctrfreq:
             txctrfreq = 12000.0  # Default value when not set
 
@@ -766,8 +766,33 @@ class ExperimentSlice:
 
         return txctrfreq
 
+    @validator("tx_freq_bounds")
+    def check_tx_freq_bounds(cls, tx_freq_bounds, values):
+        # max frequency is defined as [center freq] + [bandwidth / 2] - [bandwidth * 0.15]
+        # min frequency is defined as [center freq] - [bandwidth / 2] + [bandwidth * 0.15]
+        # [bandwidth * 0.15] is the transition bandwidth. This was set a 750 kHz originally
+        # but for smaller bandwidth this value is too large. For the typical operating
+        # bandwidth of 5 MHz, the calculated transition bandwidth here will be 750 kHz
+        tx_center = 12000
+        if "txctrfreq" in values:
+            tx_center = values["txctrfreq"]
+        tx_maxfreq = (
+            tx_center * 1000
+            + (values["tx_bandwidth"] / 2.0)
+            - (values["tx_bandwidth"] * 0.15)
+        )
+        tx_minfreq = (
+            tx_center * 1000
+            - (values["tx_bandwidth"] / 2.0)
+            + (values["tx_bandwidth"] * 0.15)
+        )
+
+        tx_freq_bounds = (tx_minfreq / 1000, tx_maxfreq / 1000)
+
+        return tx_freq_bounds
+
     @validator("rxctrfreq", always=True)
-    def check_rxctrfreq(cls, rxctrfreq):
+    def check_rxctrfreq(cls, rxctrfreq, values):
         if not rxctrfreq:
             rxctrfreq = 12000.0  # Default value when not set
 
@@ -782,77 +807,141 @@ class ExperimentSlice:
 
         return rxctrfreq
 
+    @validator("rx_freq_bounds")
+    def check_rx_freq_bounds(cls, rx_freq_bounds, values):
+        # max frequency is defined as [center freq] + [bandwidth / 2] - [bandwidth * 0.15]
+        # min frequency is defined as [center freq] - [bandwidth / 2] + [bandwidth * 0.15]
+        # [bandwidth * 0.15] is the transition bandwidth. This was set a 750 kHz originally
+        # but for smaller bandwidth this value is too large. For the typical operating
+        # bandwidth of 5 MHz, the calculated transition bandwidth here will be 750 kHz
+        rx_center = 12000
+        if "rxctrfreq" in values:
+            rx_center = values["rxctrfreq"]
+        rx_maxfreq = (
+            rx_center * 1000
+            + (values["rx_bandwidth"] / 2.0)
+            - (values["rx_bandwidth"] * 0.15)
+        )
+        rx_minfreq = (
+            rx_center * 1000
+            - (values["rx_bandwidth"] / 2.0)
+            + (values["rx_bandwidth"] * 0.15)
+        )
+
+        rx_freq_bounds = (rx_minfreq / 1000, rx_maxfreq / 1000)
+
+        return rx_freq_bounds
+
     @validator("freq")
     def check_freq(cls, freq, values):
+        if freq is None:
+            return
+
         for freq_range in options.restricted_ranges:
             if freq_range[0] <= freq <= freq_range[1]:
                 raise ValueError(
                     f"freq is within a restricted frequency range {freq_range}"
                 )
 
-        # max frequency is defined as [center freq] + [bandwidth / 2] - [bandwidth * 0.15]
-        # min frequency is defined as [center freq] - [bandwidth / 2] + [bandwidth * 0.15]
-        # [bandwidth * 0.15] is the transition bandwidth. This was set a 750 kHz originally
-        # but for smaller bandwidth this value is too large. For the typical operating
-        # bandwidth of 5 MHz, the calculated transition bandwidth here will be 750 kHz
+        # TODO review issue #195 - Characterize transmit waveforms near edge of tx bandwidth
+        # Default center freqs to 12000 if not set in values
+        tx_center = values.get("txctrfreq", 12000)
+        rx_center = values.get("rxctrfreq", 12000)
 
-        # TODO review issue #195
+        transmitting = True
+        if "rxonly" in values and values["rxonly"]:
+            transmitting = False
 
-        if "rxctrfreq" in values:
-            rx_maxfreq = (
-                values["rxctrfreq"] * 1000
-                + (values["rx_bandwidth"] / 2.0)
-                - (values["rx_bandwidth"] * 0.15)
-            )
-            rx_minfreq = (
-                values["rxctrfreq"] * 1000
-                - (values["rx_bandwidth"] / 2.0)
-                + (values["rx_bandwidth"] * 0.15)
-            )
-            rx_center = values["rxctrfreq"]
-        else:
-            rx_maxfreq = options.max_freq
-            rx_minfreq = options.min_freq
-            rx_center = 0
+        if transmitting:
+            # Frequency must be within bandwidth of rx and tx center frequency
+            if (freq > values["rx_freq_bounds"][1]) or (
+                freq < values["rx_freq_bounds"][0]
+            ):
+                raise ValueError(
+                    f"Slice frequency is outside bandwidth around rx center frequency {int(rx_center)}"
+                )
+            if (freq > values["tx_freq_bounds"][1]) or (
+                freq < values["tx_freq_bounds"][0]
+            ):
+                raise ValueError(
+                    f"Slice frequency is outside bandwidth around tx center frequency {int(tx_center)}"
+                )
 
-        if "txctrfreq" in values:
-            tx_maxfreq = (
-                values["txctrfreq"] * 1000
-                + (values["tx_bandwidth"] / 2.0)
-                - (values["tx_bandwidth"] * 0.15)
-            )
-            tx_minfreq = (
-                values["txctrfreq"] * 1000
-                - (values["tx_bandwidth"] / 2.0)
-                + (values["tx_bandwidth"] * 0.15)
-            )
-            tx_center = values["txctrfreq"]
-        else:
-            tx_maxfreq = options.max_freq
-            tx_minfreq = options.min_freq
-            tx_center = 0
-
-        # Frequency must be withing bandwidth of rx and tx center frequency
-        if (freq > rx_maxfreq / 1000) or (freq < rx_minfreq / 1000):
-            raise ValueError(
-                f"Slice frequency is outside bandwidth around rx center frequency {int(rx_center)}"
-            )
-        if (freq > tx_maxfreq / 1000) or (freq < tx_minfreq / 1000):
-            raise ValueError(
-                f"Slice frequency is outside bandwidth around tx center frequency {int(tx_center)}"
-            )
-
-        # Frequency cannot be set to the rx or tx center frequency (100kHz bandwidth around center freqs)
-        if abs(freq - rx_center) < 50:
-            raise ValueError(
-                f"Slice frequency cannot be within 50kHz of rx center frequency {int(rx_center)}"
-            )
-        if abs(freq - tx_center) < 50:
-            raise ValueError(
-                f"Slice frequency cannot be within 50kHz of tx center frequency {int(tx_center)}"
-            )
+            # Frequency cannot be set to the rx or tx center frequency (100kHz bandwidth around center freqs)
+            if abs(freq - rx_center) < 50:
+                raise ValueError(
+                    f"Slice frequency cannot be within 50kHz of rx center frequency {int(rx_center)}"
+                )
+            if abs(freq - tx_center) < 50:
+                raise ValueError(
+                    f"Slice frequency cannot be within 50kHz of tx center frequency {int(tx_center)}"
+                )
 
         return freq
+
+    @validator("cfs_range")
+    def check_cfs_range(cls, cfs_range, values):
+        if not cfs_range:
+            return cfs_range
+
+        if cfs_range[0] >= cfs_range[1]:
+            raise ValueError(
+                f"Slice {values['slice_id']} cfs_range must be between min and max tx frequencies "
+                f"and rx frequencies according to license and/or center "
+                f"frequencies / sampling rates / transition bands, and must have lower frequency first."
+            )
+
+        # Need to prevent the cfs_range from being outside the tx and rx operating ranges.
+        if (
+            cfs_range[0] < values["tx_freq_bounds"][0]
+            or cfs_range[0] < values["rx_freq_bounds"][0]
+        ):
+            raise ValueError(
+                f"Slice {values['slice_id']} cfs_range minimum value needs to be equal to "
+                f"or greater than the tx and rx minimum operating frequencies: "
+                f"{values['tx_freq_bounds'][0]} and {values['rx_freq_bounds'][0]}"
+            )
+
+        if (
+            cfs_range[1] > values["tx_freq_bounds"][1]
+            or cfs_range[1] > values["rx_freq_bounds"][1]
+        ):
+            raise ValueError(
+                f"Slice {values['slice_id']} cfs_range maximum value needs to be equal to "
+                f"or less than the tx and rx maximum operating frequencies: "
+                f"{values['tx_freq_bounds'][1]} and {values['rx_freq_bounds'][1]}"
+            )
+
+        for freq_range in options.restricted_ranges:
+            if freq_range[0] <= cfs_range[0] <= freq_range[1]:
+                if freq_range[0] <= cfs_range[1] <= freq_range[1]:
+                    # the range is entirely within the restricted range.
+                    raise ValueError(
+                        f"cfs_range is entirely within restricted range {freq_range}. Slice: "
+                        f"{values['slice_id']}"
+                    )
+
+        if "txctrfreq" in values:
+            tx_band = (values["txctrfreq"] - 50, values["txctrfreq"] + 50)
+            if cfs_range[0] <= tx_band[1] and cfs_range[1] >= tx_band[0]:
+                log.warning(
+                    f"Slice {values['slice_id']} cfs range {cfs_range} is close to the "
+                    f"tx center frequency {values['txctrfreq']}. The cfs frequency "
+                    f"selection cannot chose a frequency within 50kHz of the center freq. "
+                    f"Frequencies within {tx_band} will not be used for transmission"
+                )
+
+        if "rxctrfreq" in values:
+            rx_band = (values["rxctrfreq"] - 50, values["rxctrfreq"] + 50)
+            if cfs_range[0] <= rx_band[1] and cfs_range[1] >= rx_band[0]:
+                log.warning(
+                    f"Slice {values['slice_id']} cfs range {cfs_range} is close to the "
+                    f"rx center frequency {values['rxctrfreq']}. The cfs frequency "
+                    f"selection cannot chose a frequency within 50kHz of the center freq. "
+                    f"Frequencies within {rx_band} will not be used for transmission"
+                )
+
+        return cfs_range
 
     @validator("decimation_scheme")
     def check_decimation_rates(cls, decimation_scheme, values):
@@ -880,7 +969,7 @@ class ExperimentSlice:
     def check_xcf(cls, xcf, values):
         if "acf" not in values or not values["acf"]:
             xcf = False
-            log.info(
+            log.verbose(
                 f"XCF defaulted to False as ACF not set. Slice: {values['slice_id']}"
             )
             return False
@@ -896,7 +985,7 @@ class ExperimentSlice:
     def check_acfint(cls, acfint, values):
         if "acf" not in values or not values["acf"]:
             acfint = False
-            log.info(
+            log.verbose(
                 f"ACFINT defaulted to False as ACF not set. Slice: {values['slice_id']}"
             )
         if (
@@ -933,7 +1022,7 @@ class ExperimentSlice:
         if "acf" in values and values["acf"]:
             return averaging_method or "mean"
         else:
-            log.info(
+            log.verbose(
                 f"Averaging method unset as ACF not set. Slice: {values['slice_id']}"
             )
             return None
@@ -963,7 +1052,7 @@ class ExperimentSlice:
                     [values["pulse_sequence"][-1], values["pulse_sequence"][-1]]
                 )  # alternate lag 0
         else:
-            log.info(f"Lag table unused as ACF not set. Slice: {values['slice_id']}")
+            log.verbose(f"Lag table unused as ACF not set. Slice: {values['slice_id']}")
             lag_table = []
         return lag_table
 

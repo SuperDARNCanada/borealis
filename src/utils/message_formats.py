@@ -31,6 +31,7 @@ class OutputDataset:
     main_acf_shm: str = None
     intf_acf_shm: str = None
     xcf_shm: str = None
+    cfs_data: list = field(default_factory=list)
 
 
 @dataclass
@@ -62,6 +63,7 @@ class ProcessedSequenceMessage:
     rawrf_num_samps: int = None
     debug_data: list[DebugDataStage] = field(default_factory=list)
     output_datasets: list[OutputDataset] = field(default_factory=list)
+    cfs_freq: list = field(default_factory=list)
 
     def add_debug_data(self, stage: DebugDataStage):
         """Add a stage of debug data to the message"""
@@ -100,13 +102,14 @@ class RxChannel:
     slice_id: int = None
     tau_spacing: int = None
     rx_freq: float = None
-    clrfrqflag: bool = None
+    cfs_flag: bool = None
     num_ranges: int = None
     first_range: int = None
     range_sep: float = None
     rx_intf_antennas: list[int] = field(default_factory=list)
     beam_phases: np.ndarray = None
     lags: list[Lag] = field(default_factory=list)
+    pulses: list = field(default_factory=list)
 
     def add_lag(self, lag: Lag):
         """Add a Lag dataclass to the message."""
@@ -129,6 +132,7 @@ class SequenceMetadataMessage:
     rx_ctr_freq: float = None
     decimation_stages: list[DecimationStageMessage] = field(default_factory=list)
     rx_channels: list[RxChannel] = field(default_factory=list)
+    cfs_scan_flag: bool = False
 
     def add_decimation_stage(self, stage: DecimationStageMessage):
         """Add a decimation stage to the message."""
@@ -243,6 +247,10 @@ class AveperiodMetadataMessage:
     data_normalization_factor: float = None
     scheduling_mode: str = None
     sequences: list = field(default_factory=list)
+    cfs_freqs: list = field(default_factory=list)
+    cfs_noise: list = field(default_factory=list)
+    cfs_range: list = field(default_factory=list)
+    cfs_masks: list = field(default_factory=list)
 
     def add_sequence(self, sequence: dict):
         """Add a sequence dict to the message."""

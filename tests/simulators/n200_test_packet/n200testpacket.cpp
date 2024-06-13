@@ -12,17 +12,13 @@
 #include "utils/shared_memory/shared_memory.hpp"
 #include "utils/zmq_borealis_helpers/zmq_borealis_helpers.hpp"
 
-#define PULSE7 \
-  { 0, 9, 12, 20, 22, 26, 27 }
-#define PULSE27                                                            \
-  {                                                                        \
-    0, 3, 15, 41, 66, 95, 97, 106, 142, 152, 220, 221, 225, 242, 295, 330, \
-        338, 354, 382, 388, 402, 415, 486, 504, 523, 546, 553              \
-  }
+#define PULSE7 {0, 9, 12, 20, 22, 26, 27}
+#define PULSE27                                                          \
+  {0,   3,   15,  41,  66,  95,  97,  106, 142, 152, 220, 221, 225, 242, \
+   295, 330, 338, 354, 382, 388, 402, 415, 486, 504, 523, 546, 553}
 #define PULSE16 \
-  { 0, 1, 4, 11, 26, 32, 56, 68, 76, 115, 117, 134, 150, 163, 168, 177 }
-#define longdelay \
-  { 0, 9, 12, 20, 22, 26, 10000 }
+  {0, 1, 4, 11, 26, 32, 56, 68, 76, 115, 117, 134, 150, 163, 168, 177}
+#define longdelay {0, 9, 12, 20, 22, 26, 10000}
 
 std::vector<std::complex<float>> make_pulse(DriverOptions &driver_options) {
   auto amp = 1.0 / sqrt(2.0);
@@ -60,13 +56,13 @@ std::vector<std::complex<float>> make_pulse(DriverOptions &driver_options) {
   auto ramp_size = int(10e-6 * tx_rate);
 
   for (auto j = tr_start_pad, k = 0; j < tr_start_pad + ramp_size; j++, k++) {
-    auto a = ((k)*1.0) / ramp_size;
+    auto a = ((k) * 1.0) / ramp_size;
     samples[j] *= std::complex<float>(a, 0);
   }
 
   for (auto j = num_samps_per_antenna - tr_end_pad - 1, k = 0;
        j > num_samps_per_antenna - tr_end_pad - 1 - ramp_size; j--, k++) {
-    auto a = ((k)*1.0) / ramp_size;
+    auto a = ((k) * 1.0) / ramp_size;
     samples[j] *= std::complex<float>(a, 0);
   }
 

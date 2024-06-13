@@ -111,3 +111,55 @@ will make it much easier to compare data from the transmit and recieve sites as 
 periods should line up exactly. Lastly, it is recommended that you check the data files for both
 radars afterwards and ensure that the ``gps_locked`` flag is True for all times. If not, the clock
 may have drifted, and the ``sqn_timestamps`` field may be inaccurate.
+
+.. _clear frequency search:
+
+-------------------------------------
+Clear Frequency Search (Experimental)
+-------------------------------------
+
+An experimental implementation of clear frequency searching is now supported in borealis to determine
+a transmit frequency within a specified band. In an experiment slice, the ``freq`` parameter should be
+unset, and the ``cfs_range`` parameter set to a two element list containing the upper and lower
+frequency limits of the CFS band::
+
+    slice['cfs_range'] = [11000, 11300]  # Lower and upper freq limit in kHz
+
+Multiple experiment slices within an averaging period can be configured to receive a transmit frequency
+from the CFS as long as the each slice has ``cfs_range`` set. Each slice can choose any band within the
+transmit and receive bandwidth of the system. Be aware when choosing a ``cfs_range`` that if the range
+has any part within +/- 50kHz around the ``txctrfreq`` and ``rxctrfreq`` a warning will be raised as
+no tx frequency can be chosen that is within 50kHz of the center frequencies. The user should be aware
+of any restricted bands within the desired range, as CFS will exclude restricted bands when selecting
+transmit frequencies.
+
+Additionally, if a ``cfs_range`` with a band greater than 300kHz is desired, the user will need to
+design a custom decimation scheme for the CFS analysis, as the default is designed only for bands of
+300kHz or smaller. All CFS slices with **CONCURRENT** or **SEQUENCE** interfacing must have the same
+decimation scheme.
+
+The following parameters can be set for a CFS slice:
+
+.. list-table:: Clear Frequency Search Experiment Parameters
+   :widths: 25 25 50
+   :header-rows: 1
+
+   * - CFS Parameter
+     - Default Value
+     - Description
+   * - ``cfs_range``
+     - None
+     - Sets the band to search. Must be set to perform CFS
+   * - ``cfs_duration``
+     - 90 ms
+     - Determines how long the CFS sequence will listen for
+   * - ``cfs_scheme``
+     - ``create_default_cfs_scheme()``
+     - Decimation scheme used in analyzing the CFS data. The default scheme is designed for bands
+       of 300kHz or less
+
+When a CFS slice is to be run during an averaging period, the first sequence of the averaging period
+is used to listen for the length of time specified by ``cfs_duration``. The data from this measurement
+is analyzed to evaluate the frequency spectrum of the collected data to select the least noisy frequencies
+for transmission. The analysis results are also recorded to any generated rawacf, antennas_iq, and/or
+bfiq files.

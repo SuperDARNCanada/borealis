@@ -26,7 +26,7 @@ import structlog
 import zmq
 
 from utils.options import Options
-from utils import socket_operations
+from utils import socket_operations as so
 from experiment_prototype.experiment_exception import ExperimentException
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 
@@ -170,7 +170,7 @@ def send_experiment(exp_handler_to_radar_control, iden, serialized_exp):
     """
 
     try:
-        socket_operations.send_exp(exp_handler_to_radar_control, iden, serialized_exp)
+        so.send_bytes(exp_handler_to_radar_control, iden, serialized_exp)
     except zmq.ZMQError as e:  # the queue was full - radar_control not receiving.
         log.warning("zmq queue full not receiving", error=e)
         pass  # TODO handle this. Shutdown and restart all modules.
@@ -201,7 +201,7 @@ def experiment_handler(semaphore, args):
 
     options = Options()
     ids = [options.exphan_to_radctrl_identity, options.exphan_to_dsp_identity]
-    sockets_list = socket_operations.create_sockets(ids, options.router_address)
+    sockets_list = so.create_sockets(options.router_address, *ids)
 
     exp_handler_to_radar_control = sockets_list[0]
     exp_handler_to_dsp = sockets_list[1]
@@ -235,11 +235,11 @@ def experiment_handler(semaphore, args):
 
     def update_experiment():
         # Recv complete processed data from DSP or datawrite? TODO
-        # socket_operations.send_request(exp_handler_to_dsp,
+        # so.send_string(exp_handler_to_dsp,
         #                               options.dsp_to_exphan_identity,
         #                               "Need completed data")
 
-        # data = socket_operations.recv_data(exp_handler_to_dsp,
+        # data = so.recv_string(exp_handler_to_dsp,
         #                             options.dsp_to_exphan_identity, log)
 
         some_data = None  # TODO get the data from data socket and pass to update
@@ -273,7 +273,7 @@ def experiment_handler(semaphore, args):
             change_flag = False
 
         # Wait until radar_control is ready to receive a changed experiment
-        message = socket_operations.recv_request(
+        message = so.recv_string(
             exp_handler_to_radar_control, options.radctrl_to_exphan_identity, log
         )
 

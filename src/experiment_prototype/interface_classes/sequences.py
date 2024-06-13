@@ -114,23 +114,33 @@ class Sequence(InterfaceClassBase):
                 )
                 raise ExperimentException(errmsg)
 
-        dm_rate = 1
-        for stage in self.decimation_scheme.stages:
-            dm_rate *= stage.dm_rate
+        slice_freq_ranges = []
+        for slice_id in self.slice_ids:
+            if self.slice_dict[slice_id].freq is None:  # cfs slices have freq == None
+                continue
+            pulse_width_khz = int(
+                round(1e3 / (2 * self.slice_dict[slice_id].pulse_len))
+            )
+            check_freq = (
+                self.slice_dict[slice_id].freq - pulse_width_khz,
+                self.slice_dict[slice_id].freq + pulse_width_khz,
+            )
+            for freq_range in slice_freq_ranges:
+                lower_bound = freq_range[0] <= check_freq[0] <= freq_range[1]
+                upper_bound = freq_range[0] <= check_freq[1] <= freq_range[1]
+                if lower_bound or upper_bound:
+                    errmsg = (
+                        f"Slice {slice_id} frequency {self.slice_dict[slice_id].freq} "
+                        f"it too close to CONCURRENT slice frequency {int((freq_range[0] + freq_range[1]) / 2)}. "
+                        f"Adjust slice frequencies to have at least {pulse_width_khz} khz separation. "
+                    )
+                    raise ExperimentException(errmsg)
+            slice_freq_ranges.append(check_freq)
 
-        self.output_rx_rate = self.transmit_metadata["rxrate"] / dm_rate
-        txrate = self.transmit_metadata["txrate"]
-        main_antenna_count = self.transmit_metadata["main_antenna_count"]
-        main_antenna_spacing = self.transmit_metadata["main_antenna_spacing"]
-        intf_antenna_count = self.transmit_metadata["intf_antenna_count"]
-        intf_antenna_spacing = self.transmit_metadata["intf_antenna_spacing"]
+        self.output_rx_rate = self.decimation_scheme.output_rates[-1]
         self.tx_main_antennas = self.transmit_metadata["tx_main_antennas"]
         self.rx_main_antennas = self.transmit_metadata["rx_main_antennas"]
         self.rx_intf_antennas = self.transmit_metadata["rx_intf_antennas"]
-        pulse_ramp_time = self.transmit_metadata["pulse_ramp_time"]
-        max_usrp_dac_amplitude = self.transmit_metadata["max_usrp_dac_amplitude"]
-        tr_window_time = self.transmit_metadata["tr_window_time"]
-        intf_offset = self.transmit_metadata["intf_offset"]
 
         self.basic_slice_pulses = {}
         self.rx_beam_phases = {}
@@ -140,6 +150,34 @@ class Sequence(InterfaceClassBase):
         self.tx_antenna_indices = {}
         self.txctrfreq = self.slice_dict[self.slice_ids[0]].txctrfreq
         self.rxctrfreq = self.slice_dict[self.slice_ids[0]].rxctrfreq
+
+        # if any slice has cfs flag set, set the sequence cfs_flag to true
+        self.cfs_flag = False
+        for slice_id in self.slice_ids:
+            if self.slice_dict[slice_id].cfs_flag:
+                self.cfs_flag = True
+
+        if not self.cfs_flag:
+            self.build_sequence_pulses()
+            # Only build sequence pulses if cfs_flag is not set. During clear frequency
+            # search, pulses can only be built after cfs slices are assigned frequencies
+
+    def build_sequence_pulses(self):
+        dm_rate = 1
+        for stage in self.decimation_scheme.stages:
+            dm_rate *= stage.dm_rate
+
+        txrate = self.transmit_metadata["txrate"]
+        main_antenna_count = self.transmit_metadata["main_antenna_count"]
+        main_antenna_spacing = self.transmit_metadata["main_antenna_spacing"]
+        intf_antenna_count = self.transmit_metadata["intf_antenna_count"]
+        intf_antenna_spacing = self.transmit_metadata["intf_antenna_spacing"]
+
+        pulse_ramp_time = self.transmit_metadata["pulse_ramp_time"]
+        max_usrp_dac_amplitude = self.transmit_metadata["max_usrp_dac_amplitude"]
+        tr_window_time = self.transmit_metadata["tr_window_time"]
+        intf_offset = self.transmit_metadata["intf_offset"]
+
         single_pulse_timing = []
 
         # For each slice calculate beamformed samples and place into the basic_slice_pulses

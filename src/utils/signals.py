@@ -15,6 +15,7 @@ from multiprocessing import shared_memory
 
 from scipy.constants import speed_of_light
 import numpy as np
+import numpy.fft as fft
 
 try:
     import cupy as xp
@@ -152,6 +153,45 @@ class DSP:
         self.beamformed_samples[...] = self.beamform_samples(
             self.antennas_iq_samples, beam_phases
         )
+
+    def cfs_freq_analysis(self, metadata):
+        """
+        Performs decimation and frequency analysis on clear frequency search data. Data will not be
+        in shared memory.
+
+        :param  metadata:   Clear frequency search sequence metadata
+        :type   metadata:   dict
+        """
+        fs = self.rx_rate / np.prod(self.dm_rates)  # Sampling frequency in Hz
+        output_freq_resolution = 1000  # Hz TODO: define in experiment
+
+        pulses = metadata["pulses"]
+        tau = round(metadata["tau_spacing"] * 1e-6 * fs)  # puts into units of samples
+        pulses_in_samples = [int(round(p * tau)) for p in pulses]
+        pulse_dur = round(0.0006 * fs)  # TODO: determine way to derive 0.0006
+        start_sample = int(round(pulses_in_samples[0] + pulse_dur / 2))
+        if len(pulses_in_samples) > 1:
+            end_sample = int(round(pulses_in_samples[1] - pulse_dur / 2))
+        else:
+            end_sample = self.antennas_iq_samples.shape[-1]
+
+        # If FFT resolution should be determined first, then N calculated based on the rate
+        # n = int(round(fs / output_freq_resolution))
+
+        # If an N should be chosen and FFT resolution calculated based on N
+        n = 512  # An ideal size of fft
+        output_freq_resolution = fs / n
+
+        num_intervals = int((end_sample - start_sample) / n)
+        end_sample = start_sample + num_intervals * n
+        data = self.antennas_iq_samples[:, :, start_sample:end_sample]
+        data_chunks = np.reshape(data, data.shape[:-1] + (num_intervals, n))
+
+        fft_data = fft.fftshift(fft.fft(data_chunks, axis=-1), axes=-1)
+        cfs_data = np.sum(np.abs(np.average(fft_data, axis=2)), axis=1)
+        cfs_freqs = fft.fftshift(fft.fftfreq(n, d=1 / fs))
+
+        return cfs_data, cfs_freqs
 
     @staticmethod
     def create_filters(filter_taps, mixing_freqs, rx_rate):

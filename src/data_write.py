@@ -33,7 +33,7 @@ from scipy.constants import speed_of_light
 
 # local
 from utils import socket_operations as so
-from utils.message_formats import ProcessedSequenceMessage
+from utils.message_formats import ProcessedSequenceMessage, AveperiodMetadataMessage
 from utils.options import Options
 
 
@@ -84,6 +84,30 @@ class SliceData:
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "description": "Version and commit hash of Borealis at runtime",
+        }
+    )
+    cfs_freqs: np.ndarray = field(
+        metadata={
+            "groups": ["antennas_iq", "bfiq", "rawacf"],
+            "description": "Frequencies measured during clear frequency search",
+        }
+    )
+    cfs_masks: np.ndarray = field(
+        metadata={
+            "groups": ["antennas_iq", "bfiq", "rawacf"],
+            "description": "Mask for cfs_freqs restricting freqs available for setting cfs slice freq",
+        }
+    )
+    cfs_noise: np.ndarray = field(
+        metadata={
+            "groups": ["antennas_iq", "bfiq", "rawacf"],
+            "description": "Power measured during clear frequency search",
+        }
+    )
+    cfs_range: np.ndarray = field(
+        metadata={
+            "groups": ["antennas_iq", "bfiq", "rawacf"],
+            "description": "Range of frequencies examined by clear frequency search",
         }
     )
     data: np.ndarray = field(
@@ -1030,9 +1054,7 @@ class DataWrite(object):
                                 data = np.array(data)
                         group[relevant_field] = data
                     full_dict = {epoch_milliseconds: group}
-                    so.send_bytes(
-                        dw_rt["socket"], dw_rt["iden"], pickle.dumps(full_dict)
-                    )
+                    so.send_pyobj(dw_rt["socket"], dw_rt["iden"], full_dict)
 
             elif file_ext == "json":
                 self.write_json_file(tmp_file, aveperiod_data, file_type)
@@ -1399,6 +1421,10 @@ class DataWrite(object):
                 ]
                 parameters.blanked_samples = np.array(sqn_meta.blanks, dtype=np.uint32)
                 parameters.borealis_git_hash = self.git_hash.decode("utf-8")
+                parameters.cfs_freqs = np.array(aveperiod_meta.cfs_freqs)
+                parameters.cfs_noise = np.array(aveperiod_meta.cfs_noise)
+                parameters.cfs_range = np.array(aveperiod_meta.cfs_range)
+                parameters.cfs_masks = np.array(aveperiod_meta.cfs_masks)
                 parameters.data_normalization_factor = (
                     aveperiod_meta.data_normalization_factor
                 )
@@ -1517,21 +1543,22 @@ def main():
 
     options = Options()
     sockets = so.create_sockets(
-        [
-            options.dw_to_dsp_identity,
-            options.dw_to_radctrl_identity,
-            options.dw_to_rt_identity,
-        ],
         options.router_address,
+        options.dw_to_dsp_identity,
+        options.dw_to_radctrl_identity,
+        options.dw_to_rt_identity,
+        options.dw_cfs_identity,
     )
 
     dsp_to_data_write = sockets[0]
     radctrl_to_data_write = sockets[1]
     data_write_to_realtime = sockets[2]
+    cfs_sequence_socket = sockets[3]
 
     poller = zmq.Poller()
     poller.register(dsp_to_data_write, zmq.POLLIN)
     poller.register(radctrl_to_data_write, zmq.POLLIN)
+    poller.register(cfs_sequence_socket, zmq.POLLIN)
 
     log.debug("socket connected")
 
@@ -1542,6 +1569,7 @@ def main():
     first_time = True
     expected_sqn_num = 0
     queued_sqns = []
+    cfs_nums = []
     aveperiod_metadata_dict = dict()
     while True:
         try:
@@ -1554,16 +1582,38 @@ def main():
             radctrl_to_data_write in socks
             and socks[radctrl_to_data_write] == zmq.POLLIN
         ):
-            data = so.recv_bytes(
-                radctrl_to_data_write, options.radctrl_to_dw_identity, log
+            aveperiod_meta = so.recv_pyobj(
+                radctrl_to_data_write,
+                options.radctrl_to_dw_identity,
+                log,
+                expected_type=AveperiodMetadataMessage,
             )
-            aveperiod_meta = pickle.loads(data)
             aveperiod_metadata_dict[aveperiod_meta.last_sqn_num] = aveperiod_meta
+
+        if cfs_sequence_socket in socks and socks[cfs_sequence_socket] == zmq.POLLIN:
+            cfs_sqn_num = so.recv_pyobj(
+                cfs_sequence_socket,
+                options.radctrl_cfs_identity,
+                log,
+                expected_type=int,
+            )
+            log.debug(
+                "Received CFS sequence, increasing expected_sqn_num",
+                cfs_sqn_num=cfs_sqn_num,
+            )
+            cfs_nums.append(cfs_sqn_num)
+
+        if expected_sqn_num in cfs_nums:
+            # If the current expected sqn num was a CFS sequence, increase the expected
+            # sqn num by 1 to skip over the CFS sequence.
+            cfs_nums.remove(expected_sqn_num)
+            expected_sqn_num += 1
 
         if dsp_to_data_write in socks and socks[dsp_to_data_write] == zmq.POLLIN:
             data = so.recv_bytes_from_any_iden(dsp_to_data_write)
             processed_data = pickle.loads(data)
             queued_sqns.append(processed_data)
+            log.debug("Received from DSP", sequence_num=processed_data.sequence_num)
 
             # Check if any data processing finished out of order.
             if processed_data.sequence_num != expected_sqn_num:
@@ -1629,7 +1679,7 @@ def main():
                 data_parsing.update(pd)
                 parse_time = time.perf_counter() - start
                 log.info(
-                    "parsed record",
+                    f"parsed sequence {pd.sequence_num}",
                     parse_time=parse_time * 1e3,
                     time_units="ms",
                     slice_ids=[dset.slice_id for dset in pd.output_datasets],

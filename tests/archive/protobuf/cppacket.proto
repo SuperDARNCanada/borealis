@@ -30,7 +30,7 @@ message ControlProg{
         message AvePeriod {
             repeated uint32 keys=1;
             uint32 clrfrqf=2;
-            repeated uint32 clrfrqrange=3; /* in kHz, which will be around the pulse freq.*/
+            repeated uint32 cfs_range=3; /* in kHz, which will be around the pulse freq.*/
             /* TODO: include frequencies around which to search here */
             uint32 intt=4; /*in ms */
             uint32 intn=5; /*nave goal */
