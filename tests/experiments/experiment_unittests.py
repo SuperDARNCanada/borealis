@@ -117,26 +117,6 @@ class TestExperimentEnvSetup(unittest.TestCase):
         os.environ["BOREALISPATH"] = BOREALISPATH
         sys.path.append(BOREALISPATH)
 
-    @unittest.skip("Skip because it is annoying")
-    def test_config_file(self):
-        """
-        Test the code that checks for the config file
-        """
-        # Rename the config file temporarily
-        site_id = scf.options.site_id
-        os.rename(
-            f"{BOREALISPATH}/config/{site_id}/{site_id}_config.ini",
-            f"{BOREALISPATH}/_config.ini",
-        )
-        with self.assertRaisesRegex(ValueError, "Cannot open config file at "):
-            ehmain()
-
-        # Now rename the config file and move on
-        os.rename(
-            f"{BOREALISPATH}/_config.ini",
-            f"{BOREALISPATH}/config/{site_id}/{site_id}_config.ini",
-        )
-
     @unittest.skip("Cannot test this while hdw.dat files are in /usr/local/hdw")
     def test_hdw_file(self):
         """

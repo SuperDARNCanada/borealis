@@ -4,7 +4,7 @@ import sys
 import deepdish
 import random
 
-from plotting_borealis_data_utils import plot_output_tx_data
+from tests.testing_utils.plotting_borealis_data_utils import plot_output_tx_data
 
 filename = sys.argv[1]
 

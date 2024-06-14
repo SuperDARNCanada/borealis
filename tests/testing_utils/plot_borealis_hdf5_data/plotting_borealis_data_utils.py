@@ -334,7 +334,6 @@ def fft_and_plot_bfiq_data(
                 record_dict["rx_sample_rate"],
                 plot_width=plot_width,
             )
-        len_samples = len(record_dict["data"][index, sequence, beam, :])
         if antenna_array == "main":
             ax1.set_title(
                 "FFT Main Array {} sequence {}".format(record_info_string, sequence)
@@ -496,7 +495,6 @@ def fft_and_plot_txdata(
     antenna_indices=None,
     plot_width=None,
 ):
-
     record_dict = reshape_txdata(record_dict)
     # new data dimensions are num_sequences, num_antennas, num_samps
 

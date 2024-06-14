@@ -46,11 +46,18 @@ where = ["borealis", "build"]
 exclude = ["usrp_drivers", "src.borealis_experiments.testing_archive*"]
 
 [tool.ruff]
-extend-include = ["*.ipynb"]
+include = [
+    "scheduler/**/*.py",
+    "scripts/**/*.py",
+    "src/**/*.py",
+    "tests/**/*.ipynb",
+    "tests/**/*.py",
+    "**/pyproject.toml"
+]
 extend-exclude = [
     "src/borealis_experiments/**/*.py",
     "tests/archive/**/*",
-    "borealis_env*/**/*.py",
-    "site_scons/*.py",
-#    "build/**/*.py"
 ]
+
+[tool.ruff.lint]
+ignore = ["E402"]   # Module level import not at top of file (required for sys.path.append() before import)
