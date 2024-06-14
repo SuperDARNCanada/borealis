@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 
 """
-    experiment_exception
-    ~~~~~~~~~~~~~~~~~~~~
-    This is the exception that is raised when there are problems with the experiment that
-    cannot be remedied using experiment_prototype methods.
+experiment_exception
+~~~~~~~~~~~~~~~~~~~~
+This is the exception that is raised when there are problems with the experiment that
+cannot be remedied using experiment_prototype methods.
 
-    :copyright: 2018 SuperDARN Canada
-    :author: Marci Detwiller
+:copyright: 2018 SuperDARN Canada
+:author: Marci Detwiller
 """
 
 

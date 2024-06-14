@@ -1404,7 +1404,7 @@ class TestLocalServer(unittest.TestCase):
 
         self.assertTrue(os.path.exists(scd_dir))
         with self.assertRaises(FileNotFoundError):
-            params = swg.parse_swg_to_scd(modes, site_id, first_run=True)
+            swg.parse_swg_to_scd(modes, site_id, first_run=True)
 
     @unittest.skip  # TODO: Should the scheduler check for gaps in the schedule?
     def test_missing_hours(self):
@@ -1432,7 +1432,7 @@ class TestLocalServer(unittest.TestCase):
         self.assertTrue(os.path.exists(swg_file))
         self.assertTrue(os.path.exists(new_swg_file))
         with self.assertRaises(ValueError):
-            params = swg.parse_swg_to_scd(modes, site_id, first_run=True)
+            swg.parse_swg_to_scd(modes, site_id, first_run=True)
 
         # Remove the files we wrote
         shutil.rmtree(new_swg_file)
@@ -1467,7 +1467,7 @@ class TestLocalServer(unittest.TestCase):
         self.assertTrue(os.path.exists(swg_file))
         self.assertTrue(os.path.exists(new_swg_file))
         with self.assertRaises(ValueError):
-            params = swg.parse_swg_to_scd(modes, site_id, first_run=True)
+            swg.parse_swg_to_scd(modes, site_id, first_run=True)
 
         # Remove the swg dir again
         shutil.rmtree(swg_dir)

@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 
 """
-    radar_control process
-    ~~~~~~~~~~~~~~~~~~~~~
-    Radar_control is the process that runs the radar (sends pulses to the driver with
-    timing information and sends processing information to the signal processing process).
-    Experiment_handler provides the experiment for radar_control to run. It iterates
-    through the interface_class_base objects to control the radar.
+radar_control process
+~~~~~~~~~~~~~~~~~~~~~
+Radar_control is the process that runs the radar (sends pulses to the driver with
+timing information and sends processing information to the signal processing process).
+Experiment_handler provides the experiment for radar_control to run. It iterates
+through the interface_class_base objects to control the radar.
 
-    :copyright: 2018 SuperDARN Canada
-    :author: Marci Detwiller
+:copyright: 2018 SuperDARN Canada
+:author: Marci Detwiller
 """
+
 import os
 import sys
 import time
@@ -1012,7 +1013,6 @@ def main():
                 time_remains = True
 
                 while time_remains:
-
                     # CFS block
                     if ave_params.num_sequences == 0 and aveperiod.cfs_flag:
                         ave_params.sequence = aveperiod.cfs_sequence
@@ -1176,10 +1176,10 @@ if __name__ == "__main__":
     from utils import log_config
 
     log = log_config.log()
-    log.info(f"RADAR_CONTROL BOOTED")
+    log.info("RADAR_CONTROL BOOTED")
     try:
         main()
-        log.info(f"RADAR_CONTROL EXITED")
+        log.info("RADAR_CONTROL EXITED")
     except Exception as main_exception:
         log.critical("RADAR_CONTROL CRASHED", error=main_exception)
         log.exception("RADAR_CONTROL CRASHED", exception=main_exception)

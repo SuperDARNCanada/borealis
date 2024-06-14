@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 
 """
-    socket_operations.py
-    ~~~~~~~~~~~~~~~~~~~~
-    Socket operations utility file, recv, send, setup, etc...
+socket_operations.py
+~~~~~~~~~~~~~~~~~~~~
+Socket operations utility file, recv, send, setup, etc...
 
-    :copyright: 2017 SuperDARN Canada
+:copyright: 2017 SuperDARN Canada
 
-    :todo: log.debug all functions
+:todo: log.debug all functions
 """
 
 import zmq

@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 
 """
-    experiment_prototype
-    ~~~~~~~~~~~~~~~~~~~~
-    This is the base module for all experiments. An experiment will only run if it inherits from
-    this class.
+experiment_prototype
+~~~~~~~~~~~~~~~~~~~~
+This is the base module for all experiments. An experiment will only run if it inherits from
+this class.
 
-    :copyright: 2018 SuperDARN Canada
-    :author: Marci Detwiller
+:copyright: 2018 SuperDARN Canada
+:author: Marci Detwiller
 """
+
 # built-in
 import copy
 import inspect
@@ -828,7 +829,7 @@ class ExperimentPrototype:
             # reset all slice_interfacing back
             self.__update_slice_interfacing()
 
-            log.error(f"Slice has errors, unable to add to experiment", errors=err)
+            log.error("Slice has errors, unable to add to experiment", errors=err)
 
             return edit_slice_id
 

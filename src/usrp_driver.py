@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 
 """
-    usrp_driver
-    ~~~~~~~~~~~
-    A python wrapper which launches the usrp_driver, captures logs into structlog,
-    and enables python controllers and managers to interact with the drivers.
+usrp_driver
+~~~~~~~~~~~
+A python wrapper which launches the usrp_driver, captures logs into structlog,
+and enables python controllers and managers to interact with the drivers.
 
-    :copyright: 2023 SuperDARN Canada
-    :author: Adam Lozinsky
+:copyright: 2023 SuperDARN Canada
+:author: Adam Lozinsky
 """
+
 import os
 import subprocess
 import faulthandler
@@ -107,10 +108,10 @@ if __name__ == "__main__":
     from utils import log_config
 
     log = log_config.log()
-    log.info(f"USRP_DRIVER BOOTED")
+    log.info("USRP_DRIVER BOOTED")
     try:
         main()
-        log.info(f"USRP_DRIVER EXITED")
+        log.info("USRP_DRIVER EXITED")
     except Exception as main_exception:
         log.critical("USRP_DRIVER CRASHED", error=main_exception)
         log.exception("USRP_DRIVER CRASHED", exception=main_exception)

@@ -874,8 +874,8 @@ class YAGI(object):
         :param current_real: The real part of the current source
         :param current_imag: The imaginary part of the current source
         """
-        self.comment_string = (
-            "CM YAGI\r\n" "CM Height: {} m\r\n" "CE\r\n".format(height)
+        self.comment_string = "CM YAGI\r\n" "CM Height: {} m\r\n" "CE\r\n".format(
+            height
         )
         self.directors = []
         self.reflectors = []

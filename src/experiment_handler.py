@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
 
 """
-    experiment_handler process
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~
-    This program runs a given experiment. It will use the experiment's build_scans method to
-    create the iterable InterfaceClassBase objects that will be used by the radar_control block,
-    then it will pass the experiment to the radar_control block to run.
+experiment_handler process
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+This program runs a given experiment. It will use the experiment's build_scans method to
+create the iterable InterfaceClassBase objects that will be used by the radar_control block,
+then it will pass the experiment to the radar_control block to run.
 
-    It will be passed some data to use in its update method at the end of every integration time.
-    This has yet to be implemented but will allow experiment_prototype to modify itself
-    based on received data as feedback.
+It will be passed some data to use in its update method at the end of every integration time.
+This has yet to be implemented but will allow experiment_prototype to modify itself
+based on received data as feedback.
 
-    :copyright: 2018 SuperDARN Canada
-    :author: Marci Detwiller
+:copyright: 2018 SuperDARN Canada
+:author: Marci Detwiller
 """
+
 import argparse
 import importlib
 import inspect
@@ -200,11 +201,9 @@ def experiment_handler(semaphore, args):
     """
 
     options = Options()
-    ids = [options.exphan_to_radctrl_identity, options.exphan_to_dsp_identity]
-    sockets_list = so.create_sockets(options.router_address, *ids)
-
-    exp_handler_to_radar_control = sockets_list[0]
-    exp_handler_to_dsp = sockets_list[1]
+    exp_handler_to_radar_control = so.create_sockets(
+        options.router_address, options.exphan_to_radctrl_identity
+    )
 
     experiment_name = args.experiment_module
     scheduling_mode_type = args.scheduling_mode_type
@@ -313,10 +312,10 @@ if __name__ == "__main__":
     from utils import log_config
 
     log = log_config.log()
-    log.info(f"EXPERIMENT_HANDLER BOOTED")
+    log.info("EXPERIMENT_HANDLER BOOTED")
     try:
         main(sys.argv[1:])
-        log.info(f"EXPERIMENT_HANDLER EXITED")
+        log.info("EXPERIMENT_HANDLER EXITED")
     except Exception as main_exception:
         log.critical("EXPERIMENT_HANDLER CRASHED", error=main_exception)
         log.exception("EXPERIMENT_HANDLER CRASHED", exception=main_exception)

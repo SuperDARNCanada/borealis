@@ -1,13 +1,14 @@
 #!/usr/bin/python3
 
 """
-    data_write package
-    ~~~~~~~~~~~~~~~~~~
-    This package contains utilities to parse protobuf packets containing antennas_iq data, bfiq
-    data, rawacf data, etc. and write that data to HDF5 or JSON files.
+data_write package
+~~~~~~~~~~~~~~~~~~
+This package contains utilities to parse protobuf packets containing antennas_iq data, bfiq
+data, rawacf data, etc. and write that data to HDF5 or JSON files.
 
-    :copyright: 2017 SuperDARN Canada
+:copyright: 2017 SuperDARN Canada
 """
+
 # built-in
 import argparse as ap
 import collections
@@ -634,9 +635,9 @@ class ParseData(object):
                 stage_name = debug_stage["stage_name"]
 
                 if stage_name not in self.antenna_iq_accumulator[slice_id]:
-                    self.antenna_iq_accumulator[slice_id][
-                        stage_name
-                    ] = collections.OrderedDict()
+                    self.antenna_iq_accumulator[slice_id][stage_name] = (
+                        collections.OrderedDict()
+                    )
 
                 antenna_iq_stage = self.antenna_iq_accumulator[slice_id][stage_name]
 
@@ -1025,7 +1026,7 @@ class DataWrite(object):
                     fd = os.open(full_two_hr_file, os.O_CREAT)
                     os.close(fd)
                 except OSError as err:
-                    if e.args[0] == errno.ENOSPC:
+                    if err.args[0] == errno.ENOSPC:
                         log.critical("no space left on device", error=err)
                         log.exception("no space left on device", exception=err)
                         sys.exit(-1)
@@ -1397,7 +1398,6 @@ class DataWrite(object):
         all_slice_data = {}
         for sqn_meta in aveperiod_meta.sequences:
             for rx_channel in sqn_meta.rx_channels:
-
                 # time to first range and back. convert to meters, div by c then convert to us
                 rtt = (rx_channel.first_range * 2 * 1.0e3 / speed_of_light) * 1.0e6
 
@@ -1692,10 +1692,10 @@ if __name__ == "__main__":
     from utils import log_config
 
     log = log_config.log()
-    log.info(f"DATA_WRITE BOOTED")
+    log.info("DATA_WRITE BOOTED")
     try:
         main()
-        log.info(f"DATA_WRITE EXITED")
+        log.info("DATA_WRITE EXITED")
     except Exception as main_exception:
         log.critical("DATA_WRITE CRASHED", error=main_exception)
         log.exception("DATA_WRITE CRASHED", exception=main_exception)

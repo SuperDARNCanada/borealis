@@ -29,7 +29,7 @@ dependencies = [
 [project.optional-dependencies]
 gpu = ["cupy"]
 dev = [
-    "black ~= 24.0",
+    "ruff",
     "pre-commit",
     "jupyter"
 ]
@@ -44,3 +44,13 @@ restart_borealis = "scripts.restart_borealis:main"
 [tool.setuptools.packages.find]
 where = ["borealis", "build"]
 exclude = ["usrp_drivers", "src.borealis_experiments.testing_archive*"]
+
+[tool.ruff]
+extend-include = ["*.ipynb"]
+extend-exclude = [
+    "src/borealis_experiments/**/*.py",
+    "tests/archive/**/*",
+    "borealis_env*/**/*.py",
+    "site_scons/*.py",
+#    "build/**/*.py"
+]

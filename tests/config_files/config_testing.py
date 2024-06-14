@@ -535,7 +535,7 @@ class TestConfig(unittest.TestCase):
         # Do this to avoid logging from ExperimentSlice
         from utils import log_config
 
-        log = log_config.log(console=False, logfile=False, aggregator=False)
+        log_config.log(console=False, logfile=False, aggregator=False)
 
         # Set up a slice to test with ExperimentSlice
         from borealis_experiments import superdarn_common_fields as scf
@@ -590,7 +590,7 @@ class TestConfig(unittest.TestCase):
         # Do this to avoid logging from ExperimentSlice
         from utils import log_config
 
-        log = log_config.log(console=False, logfile=False, aggregator=False)
+        log_config.log(console=False, logfile=False, aggregator=False)
 
         # Set up a slice to test with ExperimentSlice
         from borealis_experiments import superdarn_common_fields as scf
@@ -645,7 +645,7 @@ class TestConfig(unittest.TestCase):
         # Do this to avoid logging from ExperimentSlice
         from utils import log_config
 
-        log = log_config.log(console=False, logfile=False, aggregator=False)
+        log_config.log(console=False, logfile=False, aggregator=False)
 
         # Set up a slice to test with ExperimentSlice
         from borealis_experiments import superdarn_common_fields as scf
