@@ -545,7 +545,6 @@ class TestConfig(unittest.TestCase):
             "cpid": 0,  # arbitrary
             "tx_bandwidth": 5e6,  # default
             "rx_bandwidth": 5e6,  # default
-            "output_rx_rate": 10e3 / 3,  # default
             "transition_bandwidth": 750e3,  # default
             "pulse_sequence": scf.SEQUENCE_7P,  # default
             "tau_spacing": scf.TAU_SPACING_7P,  # default
@@ -600,7 +599,6 @@ class TestConfig(unittest.TestCase):
             "cpid": 0,  # arbitrary
             "tx_bandwidth": 5e6,  # default
             "rx_bandwidth": 5e6,  # default
-            "output_rx_rate": 10e3 / 3,  # default
             "transition_bandwidth": 750e3,  # default
             "pulse_sequence": scf.SEQUENCE_7P,  # default
             "tau_spacing": scf.TAU_SPACING_7P,  # default
@@ -655,7 +653,6 @@ class TestConfig(unittest.TestCase):
             "cpid": 0,  # arbitrary
             "tx_bandwidth": 5e6,  # default
             "rx_bandwidth": 5e6,  # default
-            "output_rx_rate": 10e3 / 3,  # default
             "transition_bandwidth": 750e3,  # default
             "pulse_sequence": scf.SEQUENCE_7P,  # default
             "tau_spacing": scf.TAU_SPACING_7P,  # default
