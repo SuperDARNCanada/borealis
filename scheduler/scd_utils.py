@@ -1,11 +1,12 @@
 #!/usr/bin/python3
 """
-    scd_utils.py
-    ~~~~~~~~~~~~
-    Utilities for working with scd files
+scd_utils.py
+~~~~~~~~~~~~
+Utilities for working with scd files
 
-    :copyright: 2019 SuperDARN Canada
+:copyright: 2019 SuperDARN Canada
 """
+
 import os
 import datetime as dt
 import shutil

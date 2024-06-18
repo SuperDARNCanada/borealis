@@ -1,22 +1,22 @@
 #!/usr/bin/python3
 
 """
-    plot_ntp_stats process
-    ~~~~~~~~~~~~~~~~~~~~~
+plot_ntp_stats process
+~~~~~~~~~~~~~~~~~~~~~
 
-    plot_ntp_stats has utility scripts to analyze and plot the statistics logged by NTP
-    :copyright: 2020 SuperDARN Canada
-    :author: Kevin Krieger
+plot_ntp_stats has utility scripts to analyze and plot the statistics logged by NTP
+:copyright: 2020 SuperDARN Canada
+:author: Kevin Krieger
 
-    Some references used:
+Some references used:
 
-    https://deltafabri.wordpress.com/2014/11/12/how-to-build-a-portable-stratum-1-ntp-server/
-    https://www.phidgets.com/docs/Allan_Deviation_Primer
-    http://www.ko4bb.com/getsimple/index.php?id=timing-faq-2-clock-stability-analysis-allan-deviation
-    https://www.eecis.udel.edu/~mills/ntp/html/drivers/driver22.html
-    https://www.eecis.udel.edu/~mills/ntp/html/pps.html
-    https://www.eecis.udel.edu/~mills/ntp/html/kern.html
-    https://www.eecis.udel.edu/~mills/ntp/html/kernpps.html
+https://deltafabri.wordpress.com/2014/11/12/how-to-build-a-portable-stratum-1-ntp-server/
+https://www.phidgets.com/docs/Allan_Deviation_Primer
+http://www.ko4bb.com/getsimple/index.php?id=timing-faq-2-clock-stability-analysis-allan-deviation
+https://www.eecis.udel.edu/~mills/ntp/html/drivers/driver22.html
+https://www.eecis.udel.edu/~mills/ntp/html/pps.html
+https://www.eecis.udel.edu/~mills/ntp/html/kern.html
+https://www.eecis.udel.edu/~mills/ntp/html/kernpps.html
 """
 
 import matplotlib.pyplot as plt

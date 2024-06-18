@@ -1,13 +1,13 @@
 """
-    experiment_slice
-    ~~~~~~~~~~~~~~~~~~~~
-    This module contains the class for experiment slices, the base unit of a Borealis experiment.
-    Each field of a slice has allowed types, and some have limits on the values they can take.
-    The class also defines methods for complex validation of a slice, to confirm that all values
-    make sense in the context of SuperDARN operations.
+experiment_slice
+~~~~~~~~~~~~~~~~~~~~
+This module contains the class for experiment slices, the base unit of a Borealis experiment.
+Each field of a slice has allowed types, and some have limits on the values they can take.
+The class also defines methods for complex validation of a slice, to confirm that all values
+make sense in the context of SuperDARN operations.
 
-    :copyright: 2023 SuperDARN Canada
-    :author: Remington Rohel
+:copyright: 2023 SuperDARN Canada
+:author: Remington Rohel
 """
 
 # built-in
@@ -476,7 +476,6 @@ class ExperimentSlice:
 
     @validator("cfs_scheme")
     def check_cfs_scheme(cls, cfs_scheme, values):
-
         if values["cfs_flag"]:
             if len(cfs_scheme.stages) > options.max_filtering_stages:
                 errmsg = (

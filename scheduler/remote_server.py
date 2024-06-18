@@ -57,7 +57,7 @@ def format_to_atq(
 
     start_cmd = f"echo 'screen -d -m -S starter {borealis_path}/scripts/steamed_hams.py {experiment} release {scheduling_mode}"
     if embargo:
-        start_cmd += f" --embargo"
+        start_cmd += " --embargo"
     if kwargs:
         start_cmd += f" --kwargs {kwargs}"
     start_cmd += "'"  # Terminate the echo string
@@ -203,7 +203,6 @@ def convert_scd_to_timeline(scd_lines, time_of_interest):
                 # broken up. We continually loop to readjust the timeline to account for the
                 # priorities and durations of new lines added.
                 while holder:  # or first_time:
-
                     item_to_add = holder.pop()
                     duration_td = datetime.timedelta(
                         minutes=int(item_to_add["duration"])
@@ -418,7 +417,6 @@ def _main():
                 f.write(error_msg)
 
         else:
-
             timeline, warnings = convert_scd_to_timeline(
                 relevant_lines, time_of_interest
             )

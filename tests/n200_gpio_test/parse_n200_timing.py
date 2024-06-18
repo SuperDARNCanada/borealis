@@ -93,7 +93,6 @@ for row_num, row in enumerate(test_file):
         print("Bits value : " + str(bits_value))
 
     for case in Switch(bits_value):
-
         # TR and RF bits are low, so we are unknown, between sequences or between pulses.
         # Valid previous states are: unknown and tr_post_pulse
         if case(0):

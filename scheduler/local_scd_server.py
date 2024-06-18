@@ -1,11 +1,11 @@
 #!/usr/bin/python3
 
 """
-    local_scd_server.py
-    ~~~~~~~~~~~~~~~~~~~
-    Monitors for new SWG files and adds the SWG info to the scd if there is an update.
+local_scd_server.py
+~~~~~~~~~~~~~~~~~~~
+Monitors for new SWG files and adds the SWG info to the scd if there is an update.
 
-    :copyright: 2022 SuperDARN Canada
+:copyright: 2022 SuperDARN Canada
 """
 
 import subprocess as sp
@@ -231,8 +231,8 @@ class SWG(object):
             if not mode_to_use or not mode_type:
                 raise ValueError(f"SWG line couldn't be parsed: {line}")
             param = {
-                f"yyyymmdd": f"{year}{month}{start_day}",
-                f"hhmm": f"{start_hr}:00",
+                "yyyymmdd": f"{year}{month}{start_day}",
+                "hhmm": f"{start_hr}:00",
                 "experiment": mode_to_use,
                 "scheduling_mode": mode_type,
             }

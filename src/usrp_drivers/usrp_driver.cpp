@@ -390,7 +390,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
                         md.set_end_of_burst(true);
                         tx_stream->send("", 0, md.get_md());
                       }()  // pulse lambda
-                  );  // pulse timeit macro
+                  );       // pulse timeit macro
                 }
 
                 // Read AGC and Low Power signals, bitwise OR to catch any time
@@ -451,9 +451,9 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
                             << i);
                 }
               }()  // all pulses lambda
-          );  // all pulses timeit macro
-        }()  // full usrp function lambda
-    );  // full usrp function timeit macro
+          );       // all pulses timeit macro
+        }()        // full usrp function lambda
+    );             // full usrp function timeit macro
 
     rxsamplesmetadata::RxSamplesMetadata samples_metadata;
 

@@ -1,17 +1,18 @@
 #!/usr/bin/python
 
 """
-    sequences
-    ~~~~~~~~~
-    This is the module containing the Sequence class. The Sequence class contains the InterfaceClassBase
-    members, as well as a list of pulse dictionaries, the total_combined_pulses in the sequence,
-    power_divider, last_pulse_len, ssdelay, seqtime, which together give sstime (scope synce time,
-    or time for receiving, and numberofreceivesamples to sample during the receiving window
-    (calculated using the receive sampling rate).
+sequences
+~~~~~~~~~
+This is the module containing the Sequence class. The Sequence class contains the InterfaceClassBase
+members, as well as a list of pulse dictionaries, the total_combined_pulses in the sequence,
+power_divider, last_pulse_len, ssdelay, seqtime, which together give sstime (scope synce time,
+or time for receiving, and numberofreceivesamples to sample during the receiving window
+(calculated using the receive sampling rate).
 
-    :copyright: 2018 SuperDARN Canada
-    :author: Marci Detwiller
+:copyright: 2018 SuperDARN Canada
+:author: Marci Detwiller
 """
+
 # built-in
 import collections
 import copy
@@ -493,12 +494,12 @@ class Sequence(InterfaceClassBase):
         # specific rxrate (given by the config).
 
         # number ranges to the first range for all slice ids
-
-        range_as_samples = lambda x, y: int(math.ceil(x / y))
         num_ranges_to_first_range = {
-            slice_id: range_as_samples(
-                self.slice_dict[slice_id].first_range,
-                self.slice_dict[slice_id].range_sep,
+            slice_id: int(
+                math.ceil(
+                    self.slice_dict[slice_id].first_range
+                    / self.slice_dict[slice_id].range_sep
+                )
             )
             for slice_id in self.slice_ids
         }

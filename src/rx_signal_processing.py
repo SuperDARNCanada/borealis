@@ -1,10 +1,10 @@
 """
-    rx_signal_processing
-    ~~~~~~~~~~~~~~~~~~~~~
-    This process handles the digital signal processing side of Borealis
+rx_signal_processing
+~~~~~~~~~~~~~~~~~~~~~
+This process handles the digital signal processing side of Borealis
 
-    :copyright: 2020 SuperDARN Canada
-    :author: Keith Kotyk
+:copyright: 2020 SuperDARN Canada
+:author: Keith Kotyk
 """
 
 import math
@@ -122,7 +122,7 @@ def fill_datawrite_message(processed_data, slice_details, data_outputs, cfs_scan
             try:
                 intf_corrs = data_outputs["intf_corrs"][sd["slice_num"]]
                 cross_corrs = data_outputs["cross_corrs"][sd["slice_num"]]
-            except KeyError as e:
+            except KeyError:
                 # No interferometer data
                 intf_available = False
 
@@ -134,7 +134,6 @@ def fill_datawrite_message(processed_data, slice_details, data_outputs, cfs_scan
 
 
 def sequence_worker(options, ringbuffer):
-
     inproc_socket = zmq.Context().instance().socket(zmq.PAIR)
     inproc_socket.connect("inproc://sqn_worker")
 
@@ -703,12 +702,12 @@ if __name__ == "__main__":
     from utils import log_config
 
     log = log_config.log()
-    log.info(f"RX_SIGNAL_PROCESSING BOOTED")
+    log.info("RX_SIGNAL_PROCESSING BOOTED")
     if not cupy_available:
         log.warning("cupy not installed")
     try:
         main()
-        log.info(f"RX_SIGNAL_PROCESSING EXITED")
+        log.info("RX_SIGNAL_PROCESSING EXITED")
     except Exception as main_exception:
         log.critical("RX_SIGNAL_PROCESSING CRASHED", error=main_exception)
         log.exception("RX_SIGNAL_PROCESSING CRASHED", exception=main_exception)

@@ -1,11 +1,11 @@
 #!/usr/bin/python3
 
 """
-    realtime package
-    ~~~~~~~~~~~~~~~~
-    Sends data to realtime applications.
+realtime package
+~~~~~~~~~~~~~~~~
+Sends data to realtime applications.
 
-    :copyright: 2019 SuperDARN Canada
+:copyright: 2019 SuperDARN Canada
 """
 
 import inspect
@@ -88,7 +88,7 @@ if __name__ == "__main__":
     from utils.options import Options
 
     log = log_config.log()
-    log.info(f"REALTIME BOOTED")
+    log.info("REALTIME BOOTED")
 
     options = Options()
     context = zmq.Context().instance()
@@ -116,7 +116,7 @@ if __name__ == "__main__":
 
     try:
         realtime_server(data_write_socket, publish_socket)
-        log.info(f"REALTIME EXITED")
+        log.info("REALTIME EXITED")
     except KeyboardInterrupt:
         log.critical("REALTIME INTERRUPTED")
     except Exception as main_exception:

@@ -1,11 +1,11 @@
 #!/usr/bin/python
 
 """
-    brian process
-    ~~~~~~~~~~~~~
-    This program communicates with all processes to administrate the Borealis software
+brian process
+~~~~~~~~~~~~~
+This program communicates with all processes to administrate the Borealis software
 
-    :copyright: 2017 SuperDARN Canada
+:copyright: 2017 SuperDARN Canada
 """
 
 import os
@@ -52,12 +52,12 @@ def router(options, realtime_off):
             dd = router.recv_multipart()
             sender, receiver, empty, data = dd
             log.debug(
-                f"router input: sender->receiver", sender=sender, receiver=receiver
+                "router input: sender->receiver", sender=sender, receiver=receiver
             )
             frames_received = [receiver, sender, empty, data]
             frames_to_send.append(frames_received)
             log.debug(
-                f"router output: receiver->sender", sender=sender, receiver=receiver
+                "router output: receiver->sender", sender=sender, receiver=receiver
             )
 
         non_sent = []
@@ -170,21 +170,21 @@ def sequence_timing(options):
                 if TIME_PROFILE:
                     time_mark = time.perf_counter() - time_now
                     time_now = time.perf_counter()
-                    log.verbose(f"driver ready", driver_time=time_mark)
+                    log.verbose("driver ready", driver_time=time_mark)
                 want_to_start = True
 
             if message == "good_to_start":
                 if TIME_PROFILE:
                     time_mark = time.perf_counter() - time_now
                     time_now = time.perf_counter()
-                    log.verbose(f"copied to gpu", copy2gpu_time=time_mark)
+                    log.verbose("copied to gpu", copy2gpu_time=time_mark)
                 good_to_start = True
 
             if message == "extra_good_to_start":
                 if TIME_PROFILE:
                     time_mark = time.perf_counter() - time_now
                     time_now = time.perf_counter()
-                    log.verbose(f"dsp done with data", dsp_time=time_mark)
+                    log.verbose("dsp done with data", dsp_time=time_mark)
                 dsp_finish_counter = 1
 
     thread = threading.Thread(target=start_new)
@@ -211,7 +211,6 @@ def sequence_timing(options):
         socks = dict(sequence_poller.poll())
 
         if brian_to_driver in socks and socks[brian_to_driver] == zmq.POLLIN:
-
             # Receive metadata of completed sequence from driver such as timing
             reply = so.recv_bytes(
                 brian_to_driver, options.driver_to_brian_identity, log
@@ -220,7 +219,7 @@ def sequence_timing(options):
             meta.ParseFromString(reply)
 
             log.debug(
-                f"driver sent",
+                "driver sent",
                 sequence_time=meta.sequence_time * 1e3,
                 sequence_time_unit="ms",
                 sequence_num=meta.sequence_num,
@@ -237,7 +236,6 @@ def sequence_timing(options):
             brian_to_radar_control in socks
             and socks[brian_to_radar_control] == zmq.POLLIN
         ):
-
             # Get new sequence metadata from radar control
             sigp = so.recv_pyobj(
                 brian_to_radar_control,
@@ -260,7 +258,6 @@ def sequence_timing(options):
             )
 
         if brian_to_dsp_begin in socks and socks[brian_to_dsp_begin] == zmq.POLLIN:
-
             # Get acknowledgement that work began in processing.
             reply = so.recv_bytes_from_any_iden(brian_to_dsp_begin)
 
@@ -278,7 +275,6 @@ def sequence_timing(options):
             start_new_sock.send_string("good_to_start")
 
         if brian_to_dsp_end in socks and socks[brian_to_dsp_end] == zmq.POLLIN:
-
             # Receive ack that work finished on previous sequence.
             reply = so.recv_bytes_from_any_iden(brian_to_dsp_end)
 
@@ -334,10 +330,10 @@ if __name__ == "__main__":
     from utils import log_config
 
     log = log_config.log()
-    log.info(f"BRIAN BOOTED")
+    log.info("BRIAN BOOTED")
     try:
         main()
-        log.info(f"BRIAN EXITED")
+        log.info("BRIAN EXITED")
     except Exception as main_exception:
         log.critical("BRIAN CRASHED", error=main_exception)
         log.exception("BRIAN CRASHED", exception=main_exception)

@@ -1,14 +1,15 @@
 #!/usr/bin/python3
 
 """
-    Borealis Start up script
-    ~~~~~~~~~~~~~~~~~~~~~~~~
+Borealis Start up script
+~~~~~~~~~~~~~~~~~~~~~~~~
 
-    The Simpsons, Season 7 Episode 21
+The Simpsons, Season 7 Episode 21
 
-    :copyright: 2020 SuperDARN Canada
-    :author: Keith Kotyk
+:copyright: 2020 SuperDARN Canada
+:author: Keith Kotyk
 """
+
 import argparse
 import sys
 import subprocess as sp

@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 
 """
-    install_radar_deps
-    ~~~~~~~~~~~~~~~~~~
-    Installation script for Borealis utilities.
-    NOTE: This script has been tested on:
-        OpenSUSE Leap 15.5
-        Ubuntu 19.10
-        Ubuntu 20.04
+install_radar_deps
+~~~~~~~~~~~~~~~~~~
+Installation script for Borealis utilities.
+NOTE: This script has been tested on:
+    OpenSUSE Leap 15.5
+    Ubuntu 19.10
+    Ubuntu 20.04
 
-    :copyright: 2020-2024 SuperDARN Canada
+:copyright: 2020-2024 SuperDARN Canada
 """
+
 import subprocess as sp
 import sys
 import os

@@ -1,12 +1,12 @@
 """
-    signals
-    ~~~~~~~~~~~~~~~~~~~~~
-    This file contains the digital signal processing functionality of Borealis. This includes generation of pulses,
-    determination of antenna phases for beamforming, filtering and downsampling of received signals, beamforming of
-    filtered signals, and extraction of lag profiles from beamformed samples.
+signals
+~~~~~~~~~~~~~~~~~~~~~
+This file contains the digital signal processing functionality of Borealis. This includes generation of pulses,
+determination of antenna phases for beamforming, filtering and downsampling of received signals, beamforming of
+filtered signals, and extraction of lag profiles from beamformed samples.
 
-    :copyright: 2024 SuperDARN Canada
-    :author: Remington Rohel
+:copyright: 2024 SuperDARN Canada
+:author: Remington Rohel
 """
 
 from functools import reduce
@@ -163,7 +163,6 @@ class DSP:
         :type   metadata:   dict
         """
         fs = self.rx_rate / np.prod(self.dm_rates)  # Sampling frequency in Hz
-        output_freq_resolution = 1000  # Hz TODO: define in experiment
 
         pulses = metadata["pulses"]
         tau = round(metadata["tau_spacing"] * 1e-6 * fs)  # puts into units of samples
@@ -180,7 +179,6 @@ class DSP:
 
         # If an N should be chosen and FFT resolution calculated based on N
         n = 512  # An ideal size of fft
-        output_freq_resolution = fs / n
 
         num_intervals = int((end_sample - start_sample) / n)
         end_sample = start_sample + num_intervals * n

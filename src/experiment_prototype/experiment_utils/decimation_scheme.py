@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 
 """
-    decimation_scheme
-    ~~~~~~~~~~~~~~~~~
-    This file contains classes and functions for building decimation schemes
+decimation_scheme
+~~~~~~~~~~~~~~~~~
+This file contains classes and functions for building decimation schemes
 
-    :copyright: 2018 SuperDARN Canada
+:copyright: 2018 SuperDARN Canada
 """
+
 # built-in
 import math
 
@@ -15,7 +16,6 @@ from scipy.signal import firwin, remez, kaiserord
 
 
 class DecimationStage(object):
-
     def __init__(self, stage_num, input_rate, dm_rate, filter_taps):
         """
         Create a decimation stage with given decimation rate, input sample rate, and filter taps.

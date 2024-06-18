@@ -1,15 +1,16 @@
 #!/usr/bin/python
 
 """
-    averaging_periods
-    ~~~~~~~~~~~~~~~~~
-    This is the module containing the AveragingPeriod class. The AveragingPeriod class contains the
-    InterfaceClassBase members, as well as cfs_flag, intn (number of integrations to run),
-    or intt(max time for integrations), and it contains sequences of class Sequence.
+averaging_periods
+~~~~~~~~~~~~~~~~~
+This is the module containing the AveragingPeriod class. The AveragingPeriod class contains the
+InterfaceClassBase members, as well as cfs_flag, intn (number of integrations to run),
+or intt(max time for integrations), and it contains sequences of class Sequence.
 
-    :copyright: 2018 SuperDARN Canada
-    :author: Marci Detwiller
+:copyright: 2018 SuperDARN Canada
+:author: Marci Detwiller
 """
+
 # built-in
 import inspect
 from pathlib import Path
@@ -90,7 +91,6 @@ class AveragingPeriod(InterfaceClassBase):
         slice_to_beamorder_dict,
         slice_to_beamdir_dict,
     ):
-
         InterfaceClassBase.__init__(
             self, ave_keys, ave_slice_dict, ave_interface, transmit_metadata
         )
@@ -226,7 +226,6 @@ class AveragingPeriod(InterfaceClassBase):
         slice_masks = []
 
         for sqn_num, sequence in enumerate(self.cfs_sequences):
-            freq_index = 0  # starting (most ideal) cfs spectrum frequency index
             used_range = []
             for slice_obj in sequence.slice_dict.values():
                 if not slice_obj.cfs_flag:
@@ -292,8 +291,8 @@ class AveragingPeriod(InterfaceClassBase):
 
                     if len(shifted_cfs_khz) < 1:
                         log.critical(
-                            f"All searched frequencies were too close to used frequencies or the tx or rx"
-                            f"center frequencies or were restricted. The radar will crash!!!",
+                            "All searched frequencies were too close to used frequencies or the tx or rx"
+                            "center frequencies or were restricted. The radar will crash!!!",
                             current_slice_id=slice_obj.slice_id,
                             used_freq_tx_widths=used_range,
                             cfs_sorted_freqs=shifted_cfs_khz,

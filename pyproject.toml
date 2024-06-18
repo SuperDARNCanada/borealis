@@ -29,7 +29,7 @@ dependencies = [
 [project.optional-dependencies]
 gpu = ["cupy"]
 dev = [
-    "black ~= 24.0",
+    "ruff",
     "pre-commit",
     "jupyter"
 ]
@@ -44,3 +44,20 @@ restart_borealis = "scripts.restart_borealis:main"
 [tool.setuptools.packages.find]
 where = ["borealis", "build"]
 exclude = ["usrp_drivers", "src.borealis_experiments.testing_archive*"]
+
+[tool.ruff]
+include = [
+    "scheduler/**/*.py",
+    "scripts/**/*.py",
+    "src/**/*.py",
+    "tests/**/*.ipynb",
+    "tests/**/*.py",
+    "**/pyproject.toml"
+]
+extend-exclude = [
+    "src/borealis_experiments/**/*.py",
+    "tests/archive/**/*",
+]
+
+[tool.ruff.lint]
+ignore = ["E402"]   # Module level import not at top of file (required for sys.path.append() before import)
