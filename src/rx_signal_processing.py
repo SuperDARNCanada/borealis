@@ -23,6 +23,8 @@ import zmq
 
 try:
     import cupy as xp
+
+    xp.cuda.set_allocator(None)
 except ImportError:
     cupy_available = False
     import numpy as xp
