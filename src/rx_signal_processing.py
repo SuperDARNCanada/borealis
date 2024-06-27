@@ -154,7 +154,7 @@ def sequence_worker(options, ringbuffer):
         else:
             sender_iden = options.dsp_to_dw_identity + str(rx_params.sequence_num)
             recipient_iden = options.dw_to_dsp_identity
-        log.info(
+        log.debug(
             "socket identities:",
             sender=sender_iden,
             recip=recipient_iden,
@@ -456,7 +456,7 @@ def sequence_worker(options, ringbuffer):
                 time.perf_counter() - mark_timer
             ) * 1e3
 
-        log.info(
+        log.debug(
             "Sending processed data",
             recieve=recipient_iden,
             sender=processed_socket.get(zmq.IDENTITY),
