@@ -24,7 +24,7 @@ import zmq
 try:
     import cupy as xp
 
-    xp.cuda.set_allocator(None)
+    mempool = xp.get_default_memory_pool()
 except ImportError:
     cupy_available = False
     import numpy as xp
@@ -142,6 +142,7 @@ def sequence_worker(options, ringbuffer):
     while True:
         rx_params = inproc_socket.recv_pyobj()
         # Wait until kwargs received from main thread
+        mempool.free_all_blocks()  # Free all unused gpu memory allocations before processing
 
         seq_begin_iden = options.dspbegin_to_brian_identity + str(
             rx_params.sequence_num
@@ -221,6 +222,9 @@ def sequence_worker(options, ringbuffer):
             cfs_data, cfs_freq = cfs_processor.cfs_freq_analysis(
                 rx_params.slice_details[0]
             )
+
+            del cfs_processor
+
             log_dict["cfs_dsp_time"] = (time.perf_counter() - mark_timer) * 1e3
 
         else:
@@ -444,6 +448,10 @@ def sequence_worker(options, ringbuffer):
                 data_outputs,
                 rx_params.cfs_scan_flag,
             )
+
+            del main_processor
+            del intf_processor
+
             log_dict["add_bfiq_and_acfs_to_stage_time"] = (
                 time.perf_counter() - mark_timer
             ) * 1e3
