@@ -1424,7 +1424,9 @@ class DataWrite(object):
                 parameters.cfs_freqs = np.array(aveperiod_meta.cfs_freqs)
                 parameters.cfs_noise = np.array(aveperiod_meta.cfs_noise)
                 parameters.cfs_range = np.array(aveperiod_meta.cfs_range)
-                parameters.cfs_masks = np.array(aveperiod_meta.cfs_masks)
+                parameters.cfs_masks = np.array(
+                    aveperiod_meta.cfs_masks[np.uint32(rx_channel.slice_id)]
+                )
                 parameters.data_normalization_factor = (
                     aveperiod_meta.data_normalization_factor
                 )
