@@ -251,6 +251,7 @@ class AveperiodMetadataMessage:
     cfs_noise: list = field(default_factory=list)
     cfs_range: list = field(default_factory=list)
     cfs_masks: list = field(default_factory=list)
+    cfs_slice_ids: list = field(default_factory=list)
 
     def add_sequence(self, sequence: dict):
         """Add a sequence dict to the message."""

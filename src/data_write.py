@@ -1421,12 +1421,22 @@ class DataWrite(object):
                 ]
                 parameters.blanked_samples = np.array(sqn_meta.blanks, dtype=np.uint32)
                 parameters.borealis_git_hash = self.git_hash.decode("utf-8")
-                parameters.cfs_freqs = np.array(aveperiod_meta.cfs_freqs)
-                parameters.cfs_noise = np.array(aveperiod_meta.cfs_noise)
-                parameters.cfs_range = np.array(aveperiod_meta.cfs_range)
-                parameters.cfs_masks = np.array(
-                    aveperiod_meta.cfs_masks[np.uint32(rx_channel.slice_id)]
-                )
+
+                if np.uint32(rx_channel.slice_id) in aveperiod_meta.cfs_slice_ids:
+                    parameters.cfs_freqs = np.array(aveperiod_meta.cfs_freqs)
+                    parameters.cfs_noise = np.array(aveperiod_meta.cfs_noise)
+                    parameters.cfs_range = np.array(
+                        aveperiod_meta.cfs_range[np.uint32(rx_channel.slice_id)]
+                    )
+                    parameters.cfs_masks = np.array(
+                        aveperiod_meta.cfs_masks[np.uint32(rx_channel.slice_id)]
+                    )
+                else:
+                    parameters.cfs_freqs = np.array([])
+                    parameters.cfs_noise = np.array([])
+                    parameters.cfs_range = np.array([])
+                    parameters.cfs_masks = np.array([])
+
                 parameters.data_normalization_factor = (
                     aveperiod_meta.data_normalization_factor
                 )
