@@ -62,7 +62,7 @@ class RadctrlParameters:
     cfs_freq: list = field(default_factory=list)
     cfs_mags: list = field(default_factory=list)
     cfs_range: list = field(default_factory=list)
-    cfs_masks: list = field(default_factory=list)
+    cfs_masks: list = field(default_factory=dict)
     scan_flag: bool = False
     dsp_cfs_identity: str = ""
     router_address: str = ""

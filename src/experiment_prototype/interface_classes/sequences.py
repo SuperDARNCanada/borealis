@@ -294,7 +294,7 @@ class Sequence(InterfaceClassBase):
                 # tx_phases:        [num_beams, num_antennas]
                 # basic_samples:    [num_samples]
                 # phased_samps_for_beams: [num_beams, num_antennas, num_samples]
-                log.verbose(
+                log.debug(
                     "slice information",
                     slice_id=slice_id,
                     tx_main_phases=tx_phases,
@@ -481,7 +481,7 @@ class Sequence(InterfaceClassBase):
         for i, cpm in enumerate(combined_pulses_metadata):
             # message = f"Pulse {i}: start time(us) {cpm['start_time_us']}  start sample {cpm['pulse_sample_start']}"
             # message += f"          pulse length(us) {cpm['total_pulse_len']}  pulse num samples {cpm['total_num_samps']}"
-            log.verbose("pulse information", **cpm)
+            log.debug("pulse information", **cpm)
 
         self.combined_pulses_metadata = combined_pulses_metadata
 
