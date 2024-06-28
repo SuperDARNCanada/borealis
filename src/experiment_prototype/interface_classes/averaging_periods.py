@@ -293,8 +293,8 @@ class AveragingPeriod(InterfaceClassBase):
                 mask[
                     np.argwhere(
                         np.logical_and(
-                            shifted_cfs_khz >= ctr_freq - 50,
-                            shifted_cfs_khz <= ctr_freq + 50,
+                            shifted_cfs_khz >= np.floor(ctr_freq - 50),
+                            shifted_cfs_khz <= np.ceil(ctr_freq + 50),
                         )
                     )
                 ] = False

@@ -286,7 +286,9 @@ class DSP:
 
         # [num_slices, num_taps]
         # [num_antennas, num_output_samples, num_taps]
-        filtered = xp.einsum("ij,klj->ikl", bp_filters, input_samples)
+        filtered = xp.einsum(
+            "ij,klj->ikl", bp_filters, input_samples, optimize="greedy"
+        )
 
         # Apply the phase correction for the Frerking method.
         ph = xp.arange(filtered.shape[-1], dtype=np.float32)[xp.newaxis, :]
