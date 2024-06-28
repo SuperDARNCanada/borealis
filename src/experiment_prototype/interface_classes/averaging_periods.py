@@ -353,16 +353,19 @@ class AveragingPeriod(InterfaceClassBase):
         Builds an empty rx only pulse sequence to collect clear frequency search data
         """
         pulse_length = 100  # us
-        num_ranges = int(round((self.slice_dict[0].cfs_duration * 1000) / pulse_length))
+        slice_id = self.cfs_slice_ids[0]  # get first cfs slice id
+        num_ranges = int(
+            round((self.slice_dict[slice_id].cfs_duration * 1000) / pulse_length)
+        )
         # calculate number of ranges (cfs_duration is in ms)
 
         # Create a CFS slice for the pulse
         default_slice = {
-            "cpid": self.slice_dict[0].cpid,
+            "cpid": self.slice_dict[slice_id].cpid,
             "slice_id": 0,
-            "transition_bandwidth": self.slice_dict[0].transition_bandwidth,
-            "rx_bandwidth": self.slice_dict[0].rx_bandwidth,
-            "tx_bandwidth": self.slice_dict[0].tx_bandwidth,
+            "transition_bandwidth": self.slice_dict[slice_id].transition_bandwidth,
+            "rx_bandwidth": self.slice_dict[slice_id].rx_bandwidth,
+            "tx_bandwidth": self.slice_dict[slice_id].tx_bandwidth,
             "txctrfreq": self.txctrfreq,
             "rxctrfreq": self.rxctrfreq,
             "rxonly": True,
@@ -375,7 +378,7 @@ class AveragingPeriod(InterfaceClassBase):
             "beam_angle": [0.0],
             "rx_beam_order": [0],
             "freq": None,  # kHz
-            "decimation_scheme": self.slice_dict[0].cfs_scheme,
+            "decimation_scheme": self.slice_dict[slice_id].cfs_scheme,
         }
 
         cfs_slices = {}
