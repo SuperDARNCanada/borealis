@@ -61,7 +61,7 @@ class RadctrlParameters:
     cfs_scan_flag: bool = False
     cfs_freq: list = field(default_factory=list)
     cfs_mags: list = field(default_factory=list)
-    cfs_range: list = field(default_factory=list)
+    cfs_range: list = field(default_factory=dict)
     cfs_masks: list = field(default_factory=dict)
     scan_flag: bool = False
     dsp_cfs_identity: str = ""
@@ -470,6 +470,7 @@ def create_dw_message(radctrl_params):
     message.cfs_noise = radctrl_params.cfs_mags
     message.cfs_range = radctrl_params.cfs_range
     message.cfs_masks = radctrl_params.cfs_masks
+    message.cfs_slice_ids = radctrl_params.aveperiod.cfs_slice_ids
 
     for sequence_index, sequence in enumerate(radctrl_params.aveperiod.sequences):
         sequence_add = messages.Sequence()
@@ -1034,11 +1035,10 @@ def main():
                         ave_params.cfs_mags = [
                             mag.cfs_data for mag in freq_spectrum.output_datasets
                         ]
-                        ave_params.cfs_range = [
-                            obj.cfs_range
-                            for sqn in aveperiod.cfs_sequences
-                            for obj in sqn.slice_dict.values()
-                        ]
+                        for ind in range(len(aveperiod.cfs_slice_ids)):
+                            ave_params.cfs_range[aveperiod.cfs_slice_ids[ind]] = (
+                                aveperiod.cfs_range[ind]
+                            )
                     # End CFS block
 
                     for sequence_index, sequence in enumerate(aveperiod.sequences):
