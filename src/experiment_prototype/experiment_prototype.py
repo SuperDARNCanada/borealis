@@ -991,6 +991,21 @@ class ExperimentPrototype:
                     valid = False
         return valid, down_shift
 
+    def calculate_center_freq(self, chosen_freq):
+        """
+        Calculates the closest actual center frequency based on the USRP
+        device clock and the desired center frequency.
+
+        :param  chosen_freq: the center frequency desired
+        :type   chosen_freq: float
+
+        :return actual_center_freq: valid center frequency for USRP device
+        :rtype  actual_center_freq: float
+        """
+        clock_multiples = self.options.usrp_master_clock_rate / 2**32
+        clock_divider = np.ceil(chosen_freq * 1e3 / clock_multiples)
+        return (clock_divider * clock_multiples) / 1e3
+
     def set_center_frequencies(self):
         """
         Determines and sets a tx and rx center frequency for any slices the user did not set manually
@@ -1153,5 +1168,9 @@ class ExperimentPrototype:
 
         for slice_id in self.slice_ids:
             # set the center ferquencies
-            self.slice_dict[slice_id].txctrfreq = slice_ctr_freq[slice_id]
-            self.slice_dict[slice_id].rxctrfreq = slice_ctr_freq[slice_id]
+            self.slice_dict[slice_id].txctrfreq = self.calculate_center_freq(
+                slice_ctr_freq[slice_id]
+            )
+            self.slice_dict[slice_id].rxctrfreq = self.calculate_center_freq(
+                slice_ctr_freq[slice_id]
+            )
