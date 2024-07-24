@@ -749,85 +749,83 @@ class ExperimentSlice:
                     )
         return ppo
 
-    @validator("txctrfreq", always=True)
-    def check_txctrfreq(cls, txctrfreq, values):
-        if not txctrfreq:
-            txctrfreq = 12000.0  # Default value when not set
+    @validator("txctrfreq", always=True, pre=True)
+    def check_txctrfreq(cls, txctrfreq):
+        if isinstance(txctrfreq, (float, int)):
+            # Note - txctrfreq set here and modify the actual center frequency to a
+            # multiple of the clock divider that is possible by the USRP - this default value set
+            # here is not exact (center freq is never exactly 12 MHz).
 
-        # Note - txctrfreq set here and modify the actual center frequency to a
-        # multiple of the clock divider that is possible by the USRP - this default value set
-        # here is not exact (center freq is never exactly 12 MHz).
-
-        # convert from kHz to Hz to get correct clock divider. Return the result back in kHz.
-        clock_multiples = options.usrp_master_clock_rate / 2**32
-        clock_divider = math.ceil(txctrfreq * 1e3 / clock_multiples)
-        txctrfreq = (clock_divider * clock_multiples) / 1e3
+            # convert from kHz to Hz to get correct clock divider. Return the result back in kHz.
+            clock_multiples = options.usrp_master_clock_rate / 2**32
+            clock_divider = math.ceil(txctrfreq * 1e3 / clock_multiples)
+            txctrfreq = (clock_divider * clock_multiples) / 1e3
 
         return txctrfreq
 
-    @validator("tx_freq_bounds")
+    @validator("tx_freq_bounds", always=True, pre=True)
     def check_tx_freq_bounds(cls, tx_freq_bounds, values):
         # max frequency is defined as [center freq] + [bandwidth / 2] - [bandwidth * 0.15]
         # min frequency is defined as [center freq] - [bandwidth / 2] + [bandwidth * 0.15]
         # [bandwidth * 0.15] is the transition bandwidth. This was set a 750 kHz originally
         # but for smaller bandwidth this value is too large. For the typical operating
         # bandwidth of 5 MHz, the calculated transition bandwidth here will be 750 kHz
-        tx_center = 12000
-        if "txctrfreq" in values:
+        if "txctrfreq" in values and isinstance(values["txctrfreq"], (float, int)):
             tx_center = values["txctrfreq"]
-        tx_maxfreq = (
-            tx_center * 1000
-            + (values["tx_bandwidth"] / 2.0)
-            - (values["tx_bandwidth"] * 0.15)
-        )
-        tx_minfreq = (
-            tx_center * 1000
-            - (values["tx_bandwidth"] / 2.0)
-            + (values["tx_bandwidth"] * 0.15)
-        )
+            tx_maxfreq = (
+                tx_center * 1000
+                + (values["tx_bandwidth"] / 2.0)
+                - (values["tx_bandwidth"] * 0.15)
+            )
+            tx_minfreq = (
+                tx_center * 1000
+                - (values["tx_bandwidth"] / 2.0)
+                + (values["tx_bandwidth"] * 0.15)
+            )
 
-        tx_freq_bounds = (tx_minfreq / 1000, tx_maxfreq / 1000)
+            tx_freq_bounds = (tx_minfreq / 1000, tx_maxfreq / 1000)
+        else:
+            tx_freq_bounds = (8000, 20000)
 
         return tx_freq_bounds
 
-    @validator("rxctrfreq", always=True)
-    def check_rxctrfreq(cls, rxctrfreq, values):
-        if not rxctrfreq:
-            rxctrfreq = 12000.0  # Default value when not set
+    @validator("rxctrfreq", always=True, pre=True)
+    def check_rxctrfreq(cls, rxctrfreq):
+        if isinstance(rxctrfreq, (float, int)):
+            # Note - rxctrfreq set here and modify the actual center frequency to a
+            # multiple of the clock divider that is possible by the USRP - this default value set
+            # here is not exact (center freq is never exactly 12 MHz).
 
-        # Note - rxctrfreq set here and modify the actual center frequency to a
-        # multiple of the clock divider that is possible by the USRP - this default value set
-        # here is not exact (center freq is never exactly 12 MHz).
-
-        # convert from kHz to Hz to get correct clock divider. Return the result back in kHz.
-        clock_multiples = options.usrp_master_clock_rate / 2**32
-        clock_divider = math.ceil(rxctrfreq * 1e3 / clock_multiples)
-        rxctrfreq = (clock_divider * clock_multiples) / 1e3
+            # convert from kHz to Hz to get correct clock divider. Return the result back in kHz.
+            clock_multiples = options.usrp_master_clock_rate / 2**32
+            clock_divider = math.ceil(rxctrfreq * 1e3 / clock_multiples)
+            rxctrfreq = (clock_divider * clock_multiples) / 1e3
 
         return rxctrfreq
 
-    @validator("rx_freq_bounds")
+    @validator("rx_freq_bounds", always=True, pre=True)
     def check_rx_freq_bounds(cls, rx_freq_bounds, values):
         # max frequency is defined as [center freq] + [bandwidth / 2] - [bandwidth * 0.15]
         # min frequency is defined as [center freq] - [bandwidth / 2] + [bandwidth * 0.15]
         # [bandwidth * 0.15] is the transition bandwidth. This was set a 750 kHz originally
         # but for smaller bandwidth this value is too large. For the typical operating
         # bandwidth of 5 MHz, the calculated transition bandwidth here will be 750 kHz
-        rx_center = 12000
-        if "rxctrfreq" in values:
+        if "rxctrfreq" in values and isinstance(values["rxctrfreq"], (float, int)):
             rx_center = values["rxctrfreq"]
-        rx_maxfreq = (
-            rx_center * 1000
-            + (values["rx_bandwidth"] / 2.0)
-            - (values["rx_bandwidth"] * 0.15)
-        )
-        rx_minfreq = (
-            rx_center * 1000
-            - (values["rx_bandwidth"] / 2.0)
-            + (values["rx_bandwidth"] * 0.15)
-        )
+            rx_maxfreq = (
+                rx_center * 1000
+                + (values["rx_bandwidth"] / 2.0)
+                - (values["rx_bandwidth"] * 0.15)
+            )
+            rx_minfreq = (
+                rx_center * 1000
+                - (values["rx_bandwidth"] / 2.0)
+                + (values["rx_bandwidth"] * 0.15)
+            )
 
-        rx_freq_bounds = (rx_minfreq / 1000, rx_maxfreq / 1000)
+            rx_freq_bounds = (rx_minfreq / 1000, rx_maxfreq / 1000)
+        else:
+            rx_freq_bounds = (8000, 20000)
 
         return rx_freq_bounds
 
@@ -843,38 +841,38 @@ class ExperimentSlice:
                 )
 
         # TODO review issue #195 - Characterize transmit waveforms near edge of tx bandwidth
-        # Default center freqs to 12000 if not set in values
-        tx_center = values.get("txctrfreq", 12000)
-        rx_center = values.get("rxctrfreq", 12000)
-
         transmitting = True
         if "rxonly" in values and values["rxonly"]:
             transmitting = False
 
         if transmitting:
             # Frequency must be within bandwidth of rx and tx center frequency
-            if (freq > values["rx_freq_bounds"][1]) or (
-                freq < values["rx_freq_bounds"][0]
-            ):
-                raise ValueError(
-                    f"Slice frequency is outside bandwidth around rx center frequency {int(rx_center)}"
-                )
-            if (freq > values["tx_freq_bounds"][1]) or (
-                freq < values["tx_freq_bounds"][0]
-            ):
-                raise ValueError(
-                    f"Slice frequency is outside bandwidth around tx center frequency {int(tx_center)}"
-                )
+            if "rxctrfreq" in values and values["rxctrfreq"] is not None:
+                rx_center = values["rxctrfreq"]
+                if (freq > values["rx_freq_bounds"][1]) or (
+                    freq < values["rx_freq_bounds"][0]
+                ):
+                    raise ValueError(
+                        f"Slice frequency is outside bandwidth around rx center frequency {int(rx_center)}"
+                    )
+                # Frequency cannot be set to the rx or tx center frequency (100kHz bandwidth around center freqs)
+                if abs(freq - rx_center) < 50:
+                    raise ValueError(
+                        f"Slice frequency cannot be within 50kHz of rx center frequency {int(rx_center)}"
+                    )
 
-            # Frequency cannot be set to the rx or tx center frequency (100kHz bandwidth around center freqs)
-            if abs(freq - rx_center) < 50:
-                raise ValueError(
-                    f"Slice frequency cannot be within 50kHz of rx center frequency {int(rx_center)}"
-                )
-            if abs(freq - tx_center) < 50:
-                raise ValueError(
-                    f"Slice frequency cannot be within 50kHz of tx center frequency {int(tx_center)}"
-                )
+            if "txctrfreq" in values and values["txctrfreq"] is not None:
+                tx_center = values["txctrfreq"]
+                if (freq > values["tx_freq_bounds"][1]) or (
+                    freq < values["tx_freq_bounds"][0]
+                ):
+                    raise ValueError(
+                        f"Slice frequency is outside bandwidth around tx center frequency {int(tx_center)}"
+                    )
+                if abs(freq - tx_center) < 50:
+                    raise ValueError(
+                        f"Slice frequency cannot be within 50kHz of tx center frequency {int(tx_center)}"
+                    )
 
         return freq
 
@@ -920,7 +918,7 @@ class ExperimentSlice:
                         f"{values['slice_id']}"
                     )
 
-        if "txctrfreq" in values:
+        if values["txctrfreq"] is not None:
             tx_band = (values["txctrfreq"] - 50, values["txctrfreq"] + 50)
             if cfs_range[0] <= tx_band[1] and cfs_range[1] >= tx_band[0]:
                 log.warning(
@@ -930,7 +928,7 @@ class ExperimentSlice:
                     f"Frequencies within {tx_band} will not be used for transmission"
                 )
 
-        if "rxctrfreq" in values:
+        if values["rxctrfreq"] is not None:
             rx_band = (values["rxctrfreq"] - 50, values["rxctrfreq"] + 50)
             if cfs_range[0] <= rx_band[1] and cfs_range[1] >= rx_band[0]:
                 log.warning(
