@@ -102,11 +102,13 @@ class AveragingPeriod(InterfaceClassBase):
         self.cfs_flag = False
         self.cfs_sequence = None
         self.cfs_slice_ids = []
+        self.cfs_min_stable_time = 0
         # there may be multiple slices in this averaging period at different frequencies so
         # we may have to search multiple ranges.
         self.cfs_range = []
         for slice_id in self.slice_ids:
             if self.slice_dict[slice_id].cfs_flag:
+                self.cfs_min_stable_time = self.slice_dict[slice_id].cfs_min_stable_time
                 self.cfs_flag = True
                 self.cfs_slice_ids.append(slice_id)
                 self.cfs_range.append(self.slice_dict[slice_id].cfs_range)

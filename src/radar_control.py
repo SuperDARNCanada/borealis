@@ -63,6 +63,7 @@ class RadctrlParameters:
     cfs_mags: list = field(default_factory=list)
     cfs_range: list = field(default_factory=dict)
     cfs_masks: list = field(default_factory=dict)
+    last_cfs_set_time: int = 0
     scan_flag: bool = False
     dsp_cfs_identity: str = ""
     router_address: str = ""
@@ -1016,29 +1017,35 @@ def main():
                 while time_remains:
                     # CFS block
                     if ave_params.num_sequences == 0 and aveperiod.cfs_flag:
-                        ave_params.sequence = aveperiod.cfs_sequence
-                        ave_params.decimation_scheme = (
-                            aveperiod.cfs_sequence.decimation_scheme
-                        )
-                        freq_spectrum = run_cfs_scan(
-                            radctrl_inproc_socket,
-                            radctrl_brian_socket,
-                            ave_params,
-                            driver_comms_socket,
-                        )
-
-                        ave_params.cfs_masks = aveperiod.update_cfs_freqs(freq_spectrum)
-                        ave_params.aveperiod = aveperiod
-                        ave_params.num_sequences += 1
-                        ave_params.cfs_scan_flag = False
-                        ave_params.cfs_freq = freq_spectrum.cfs_freq
-                        ave_params.cfs_mags = [
-                            mag.cfs_data for mag in freq_spectrum.output_datasets
-                        ]
-                        for ind in range(len(aveperiod.cfs_slice_ids)):
-                            ave_params.cfs_range[aveperiod.cfs_slice_ids[ind]] = (
-                                aveperiod.cfs_range[ind]
+                        if (
+                            ave_params.last_cfs_set_time
+                            < time.time() - ave_params.aveperiod.cfs_min_stable_time
+                        ):
+                            ave_params.sequence = aveperiod.cfs_sequence
+                            ave_params.decimation_scheme = (
+                                aveperiod.cfs_sequence.decimation_scheme
                             )
+                            freq_spectrum = run_cfs_scan(
+                                radctrl_inproc_socket,
+                                radctrl_brian_socket,
+                                ave_params,
+                                driver_comms_socket,
+                            )
+
+                            ave_params.cfs_masks = aveperiod.update_cfs_freqs(
+                                freq_spectrum
+                            )
+                            ave_params.aveperiod = aveperiod
+                            ave_params.num_sequences += 1
+                            ave_params.cfs_scan_flag = False
+                            ave_params.cfs_freq = freq_spectrum.cfs_freq
+                            ave_params.cfs_mags = [
+                                mag.cfs_data for mag in freq_spectrum.output_datasets
+                            ]
+                            for ind in range(len(aveperiod.cfs_slice_ids)):
+                                ave_params.cfs_range[aveperiod.cfs_slice_ids[ind]] = (
+                                    aveperiod.cfs_range[ind]
+                                )
                     # End CFS block
 
                     for sequence_index, sequence in enumerate(aveperiod.sequences):
