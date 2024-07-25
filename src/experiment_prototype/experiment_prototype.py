@@ -1199,5 +1199,9 @@ class ExperimentPrototype:
 
         for slice_id in self.slice_ids:
             # set the center frequencies
-            self.slice_dict[slice_id].txctrfreq = self.calculate_center_freq(19000)
-            self.slice_dict[slice_id].rxctrfreq = self.calculate_center_freq(19000)
+            self.slice_dict[slice_id].txctrfreq = self.calculate_center_freq(
+                slice_ctr_freq[slice_id]
+            )
+            self.slice_dict[slice_id].rxctrfreq = self.calculate_center_freq(
+                slice_ctr_freq[slice_id]
+            )
