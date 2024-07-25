@@ -752,10 +752,6 @@ class ExperimentSlice:
     @validator("txctrfreq", always=True, pre=True)
     def check_txctrfreq(cls, txctrfreq):
         if isinstance(txctrfreq, (float, int)):
-            # Note - txctrfreq set here and modify the actual center frequency to a
-            # multiple of the clock divider that is possible by the USRP - this default value set
-            # here is not exact (center freq is never exactly 12 MHz).
-
             # convert from kHz to Hz to get correct clock divider. Return the result back in kHz.
             clock_multiples = options.usrp_master_clock_rate / 2**32
             clock_divider = math.ceil(txctrfreq * 1e3 / clock_multiples)
@@ -792,10 +788,6 @@ class ExperimentSlice:
     @validator("rxctrfreq", always=True, pre=True)
     def check_rxctrfreq(cls, rxctrfreq):
         if isinstance(rxctrfreq, (float, int)):
-            # Note - rxctrfreq set here and modify the actual center frequency to a
-            # multiple of the clock divider that is possible by the USRP - this default value set
-            # here is not exact (center freq is never exactly 12 MHz).
-
             # convert from kHz to Hz to get correct clock divider. Return the result back in kHz.
             clock_multiples = options.usrp_master_clock_rate / 2**32
             clock_divider = math.ceil(rxctrfreq * 1e3 / clock_multiples)
