@@ -36,6 +36,15 @@ TIME_PROFILE = False
 
 
 @dataclass
+class CFSParameters:
+    cfs_freq: list = field(default_factory=list)
+    cfs_mags: list = field(default_factory=list)
+    cfs_range: list = field(default_factory=dict)
+    cfs_masks: list = field(default_factory=dict)
+    last_cfs_set_time: int = 0
+
+
+@dataclass
 class RadctrlParameters:
     """
     Class holding parameters that are passed between processes during the radar
@@ -59,11 +68,7 @@ class RadctrlParameters:
     pulse_transmit_data_tracker: dict = field(default_factory=dict)
     slice_dict: dict = field(default_factory=dict, init=False)
     cfs_scan_flag: bool = False
-    cfs_freq: list = field(default_factory=list)
-    cfs_mags: list = field(default_factory=list)
-    cfs_range: list = field(default_factory=dict)
-    cfs_masks: list = field(default_factory=dict)
-    last_cfs_set_time: int = 0
+    cfs_params: dict = CFSParameters()
     scan_flag: bool = False
     dsp_cfs_identity: str = ""
     router_address: str = ""
@@ -467,10 +472,10 @@ def create_dw_message(radctrl_params):
         lambda x, y: x * y, radctrl_params.decimation_scheme.filter_scaling_factors
     )  # multiply all
     message.scheduling_mode = radctrl_params.experiment.scheduling_mode
-    message.cfs_freqs = radctrl_params.cfs_freq
-    message.cfs_noise = radctrl_params.cfs_mags
-    message.cfs_range = radctrl_params.cfs_range
-    message.cfs_masks = radctrl_params.cfs_masks
+    message.cfs_freqs = radctrl_params.cfs_params.cfs_freq
+    message.cfs_noise = radctrl_params.cfs_params.cfs_mags
+    message.cfs_range = radctrl_params.cfs_params.cfs_range
+    message.cfs_masks = radctrl_params.cfs_params.cfs_masks
     message.cfs_slice_ids = radctrl_params.aveperiod.cfs_slice_ids
 
     for sequence_index, sequence in enumerate(radctrl_params.aveperiod.sequences):
@@ -568,7 +573,7 @@ def create_dw_message(radctrl_params):
 
 def round_up_time(dt=None, round_to=60):
     """
-    Round a datetime object to any time lapse in seconds
+    Round a datetime object to any time-lapse in seconds
 
     :param dt: datetime.datetime object, default now.
     :param round_to: Closest number of seconds to round to, default 1 minute.
@@ -754,6 +759,7 @@ def main():
     first_aveperiod = True
     next_scan_start = None
 
+    cfs_params_dict = dict()
     while True:
         # This loops through all scans in an experiment, or restarts this loop if a new experiment occurs.
         # TODO : further documentation throughout in comments (high level) and in separate documentation.
@@ -861,6 +867,8 @@ def main():
             ):
                 # If there are multiple aveperiods in a scan they are alternated (AVEPERIOD interfaced)
                 aveperiod = scan.aveperiods[scan.aveperiod_iter]
+                if aveperiod not in cfs_params_dict.keys() and aveperiod.cfs_flag:
+                    cfs_params_dict[aveperiod] = CFSParameters(last_cfs_set_time=0)
                 if TIME_PROFILE:
                     time_start_of_aveperiod = datetime.utcnow()
 
@@ -1018,13 +1026,14 @@ def main():
                     # CFS block
                     if ave_params.num_sequences == 0 and aveperiod.cfs_flag:
                         if (
-                            ave_params.last_cfs_set_time
-                            < time.time() - ave_params.aveperiod.cfs_min_stable_time
+                            cfs_params_dict[aveperiod].last_cfs_set_time
+                            < time.time() - ave_params.aveperiod.cfs_stable_time
                         ):
                             ave_params.sequence = aveperiod.cfs_sequence
                             ave_params.decimation_scheme = (
                                 aveperiod.cfs_sequence.decimation_scheme
                             )
+
                             freq_spectrum = run_cfs_scan(
                                 radctrl_inproc_socket,
                                 radctrl_brian_socket,
@@ -1032,20 +1041,21 @@ def main():
                                 driver_comms_socket,
                             )
 
-                            ave_params.cfs_masks = aveperiod.update_cfs_freqs(
-                                freq_spectrum
-                            )
-                            ave_params.aveperiod = aveperiod
+                            cfs_params_dict[aveperiod].last_cfs_set_time = time.time()
+                            cfs_params_dict[
+                                aveperiod
+                            ].cfs_masks = aveperiod.update_cfs_freqs(freq_spectrum)
                             ave_params.num_sequences += 1
                             ave_params.cfs_scan_flag = False
-                            ave_params.cfs_freq = freq_spectrum.cfs_freq
-                            ave_params.cfs_mags = [
+                            cfs_params_dict[aveperiod].cfs_freq = freq_spectrum.cfs_freq
+                            cfs_params_dict[aveperiod].cfs_mags = [
                                 mag.cfs_data for mag in freq_spectrum.output_datasets
                             ]
                             for ind in range(len(aveperiod.cfs_slice_ids)):
-                                ave_params.cfs_range[aveperiod.cfs_slice_ids[ind]] = (
-                                    aveperiod.cfs_range[ind]
-                                )
+                                cfs_params_dict[aveperiod].cfs_range[
+                                    aveperiod.cfs_slice_ids[ind]
+                                ] = aveperiod.cfs_range[ind]
+                        ave_params.cfs_params = cfs_params_dict[aveperiod]
                     # End CFS block
 
                     for sequence_index, sequence in enumerate(aveperiod.sequences):
