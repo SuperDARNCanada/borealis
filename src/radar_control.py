@@ -37,6 +37,10 @@ TIME_PROFILE = False
 
 @dataclass
 class CFSParameters:
+    """
+    Parameters used to track clear frequency search
+    """
+
     cfs_freq: list = field(default_factory=list)
     cfs_mags: list = field(default_factory=list)
     cfs_range: list = field(default_factory=dict)
@@ -46,10 +50,21 @@ class CFSParameters:
     set_new_freq: bool = True
 
     def check_update_freq(self, cfs_spectrum, cfs_slices, threshold):
+        """
+        Checks if any scanned frequencies have power levels that
+        exceed the current power of each cfs slice based on a threshold
+
+        :params cfs_spectrum:   Results of the CFS analysis
+        :type   cfs_spectrum:   dataclass
+        :params cfs_slices:     Slice ids of each cfs slice to be checked
+        :type   cfs_slices:     list
+        :params threshold:      Power threshold (dB) used in check
+        :type   threshold:      float
+        """
         cfs_data = [dset.cfs_data for dset in cfs_spectrum.output_datasets]
         for i, slice_id in enumerate(cfs_slices):
             if any(
-                cfs_data[i][self.cfs_masks[slice_id]]
+                np.asarray(cfs_data[i][self.cfs_masks[slice_id]])
                 <= self.last_cfs_power[slice_id][1] - threshold
             ):
                 self.set_new_freq = True
