@@ -42,6 +42,33 @@ class CFSParameters:
     cfs_range: list = field(default_factory=dict)
     cfs_masks: list = field(default_factory=dict)
     last_cfs_set_time: int = 0
+    last_cfs_power: list = field(default_factory=dict)
+    set_new_freq: bool = True
+
+    def check_update_freq(self, cfs_spectrum, cfs_slices, threshold):
+        cfs_data = [dset.cfs_data for dset in cfs_spectrum.output_datasets]
+        log.info("Doing a check")
+        for i, slice_id in enumerate(cfs_slices):
+            if any(
+                cfs_data[i][self.cfs_masks[slice_id]]
+                <= self.last_cfs_power[slice_id][1] - threshold
+            ):
+                self.set_new_freq = True
+                log.info(
+                    "Found power lower then",
+                    threshold=self.last_cfs_power[slice_id][1] - threshold,
+                    checked_len=len(cfs_data[i][self.cfs_masks[slice_id]]),
+                    slice=slice_id,
+                )
+            idx = (np.abs(self.cfs_freq - self.last_cfs_power[slice_id][0])).argmin()
+            if cfs_data[i][idx] > self.last_cfs_power[slice_id][1] + threshold:
+                self.set_new_freq = True
+                log.info(
+                    "Found current freq is too high",
+                    lim=self.last_cfs_power[slice_id][1] + threshold,
+                    current=cfs_data[i][idx],
+                    slice=slice_id,
+                )
 
 
 @dataclass
@@ -1040,21 +1067,39 @@ def main():
                                 ave_params,
                                 driver_comms_socket,
                             )
-
-                            cfs_params_dict[aveperiod].last_cfs_set_time = time.time()
-                            cfs_params_dict[
-                                aveperiod
-                            ].cfs_masks = aveperiod.update_cfs_freqs(freq_spectrum)
                             ave_params.num_sequences += 1
                             ave_params.cfs_scan_flag = False
-                            cfs_params_dict[aveperiod].cfs_freq = freq_spectrum.cfs_freq
-                            cfs_params_dict[aveperiod].cfs_mags = [
-                                mag.cfs_data for mag in freq_spectrum.output_datasets
-                            ]
-                            for ind in range(len(aveperiod.cfs_slice_ids)):
-                                cfs_params_dict[aveperiod].cfs_range[
-                                    aveperiod.cfs_slice_ids[ind]
-                                ] = aveperiod.cfs_range[ind]
+
+                            if not cfs_params_dict[aveperiod].set_new_freq:
+                                cfs_params_dict[aveperiod].check_update_freq(
+                                    freq_spectrum,
+                                    aveperiod.cfs_slice_ids,
+                                    aveperiod.cfs_pwr_threshold,
+                                )
+
+                            if cfs_params_dict[aveperiod].set_new_freq:
+                                cfs_params_dict[aveperiod].set_new_freq = False
+                                cfs_params_dict[
+                                    aveperiod
+                                ].last_cfs_set_time = time.time()
+                                cfs_params_dict[aveperiod].cfs_masks, last_set_cfs = (
+                                    aveperiod.update_cfs_freqs(freq_spectrum)
+                                )
+                                cfs_params_dict[aveperiod].last_cfs_power = last_set_cfs
+                                cfs_params_dict[
+                                    aveperiod
+                                ].cfs_freq = freq_spectrum.cfs_freq
+                                cfs_params_dict[aveperiod].cfs_mags = [
+                                    mag.cfs_data
+                                    for mag in freq_spectrum.output_datasets
+                                ]
+                                log.info("Returned set freq of cfs", res=last_set_cfs)
+
+                                for ind in range(len(aveperiod.cfs_slice_ids)):
+                                    cfs_params_dict[aveperiod].cfs_range[
+                                        aveperiod.cfs_slice_ids[ind]
+                                    ] = aveperiod.cfs_range[ind]
+
                         ave_params.cfs_params = cfs_params_dict[aveperiod]
                     # End CFS block
 

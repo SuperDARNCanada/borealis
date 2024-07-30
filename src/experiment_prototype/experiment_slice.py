@@ -362,7 +362,9 @@ class ExperimentSlice:
     cfs_flag: StrictBool = Field(init=False)
     cfs_duration: Optional[conint(ge=0, strict=True)] = 90  # ms
     cfs_scheme: DecimationScheme = Field(default_factory=create_default_cfs_scheme)
-    cfs_stable_time: Optional[conint(ge=0, strict=True)] = 900  # seconds
+    cfs_stable_time: Optional[conint(ge=0, strict=True)] = 0  # seconds
+    cfs_pwr_threshold: Optional[confloat(ge=0, strict=True)] = 1.0  # dB
+    cfs_res_min: Optional[conint(ge=0, strict=True)] = 300  # kHz
     decimation_scheme: DecimationScheme = Field(default_factory=create_default_scheme)
 
     acf: Optional[StrictBool] = False

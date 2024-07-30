@@ -103,12 +103,16 @@ class AveragingPeriod(InterfaceClassBase):
         self.cfs_sequence = None
         self.cfs_slice_ids = []
         self.cfs_stable_time = 0
+        self.cfs_pwr_threshold = 0
+        self.cfs_res_min = 0
         # there may be multiple slices in this averaging period at different frequencies so
         # we may have to search multiple ranges.
         self.cfs_range = []
         for slice_id in self.slice_ids:
             if self.slice_dict[slice_id].cfs_flag:
                 self.cfs_stable_time = self.slice_dict[slice_id].cfs_stable_time
+                self.cfs_pwr_threshold = self.slice_dict[slice_id].cfs_pwr_threshold
+                self.cfs_res_min = self.slice_dict[slice_id].cfs_res_min
                 self.cfs_flag = True
                 self.cfs_slice_ids.append(slice_id)
                 self.cfs_range.append(self.slice_dict[slice_id].cfs_range)
@@ -158,6 +162,26 @@ class AveragingPeriod(InterfaceClassBase):
                     " interfaced and do not have the same rxctrfreq"
                 )
                 raise ExperimentException(errmsg)
+        for slice_id in self.cfs_slice_ids:
+            if self.slice_dict[slice_id].cfs_pwr_threshold != self.cfs_pwr_threshold:
+                errmsg = (
+                    f"Slices {self.slice_ids[0]} and {slice_id} are SEQUENCE or CONCURRENT"
+                    " interfaced and do not have the same cfs_power_threshold"
+                )
+                raise ExperimentException(errmsg)
+            if self.slice_dict[slice_id].cfs_res_min != self.cfs_res_min:
+                errmsg = (
+                    f"Slices {self.slice_ids[0]} and {slice_id} are SEQUENCE or CONCURRENT"
+                    " interfaced and do not have the same cfs_res_min"
+                )
+                raise ExperimentException(errmsg)
+            if self.slice_dict[slice_id].cfs_stable_time != self.cfs_stable_time:
+                errmsg = (
+                    f"Slices {self.slice_ids[0]} and {slice_id} are SEQUENCE or CONCURRENT"
+                    " interfaced and do not have the same cfs_stable_time"
+                )
+                raise ExperimentException(errmsg)
+
         self.num_beams_in_scan = len(self.slice_dict[self.slice_ids[0]].rx_beam_order)
 
         # NOTE: Do not need beam information inside the AveragingPeriod, this is in Scan.
@@ -229,7 +253,7 @@ class AveragingPeriod(InterfaceClassBase):
            * Masks around the N200 tuned center frequencies (rx and tx)
            * Masks frequencies outside requested CFS range
            * Sorts measured spectrum by power
-           * Sets slice frequency to least powerful frequency
+           * Sets slice frequency to the least powerful frequency
            * Updates already-used frequency list
            * Stores the frequency mask
         * Builds each CFS sequence
@@ -246,6 +270,7 @@ class AveragingPeriod(InterfaceClassBase):
         # {cfs_slice_id: list of used frequencies that the slice must avoid}
 
         cfs_slice_set = set(self.cfs_slice_ids)
+        cfs_set_freq = dict()
 
         for sequence in self.cfs_sequences:
             used_range = []
@@ -326,8 +351,12 @@ class AveragingPeriod(InterfaceClassBase):
 
             slice_masks[slice_id] = mask
             ind = np.argmin(cfs_data[i][mask])
-            selected_freq = int(np.round(shifted_cfs_khz[ind]))
-            slice_obj.freq = selected_freq
+            # Hold tuple of chosen frequency and corresponding power
+            cfs_set_freq[slice_id] = (
+                int(np.round(shifted_cfs_khz[ind])),
+                cfs_data[i][ind],
+            )
+            slice_obj.freq = cfs_set_freq[slice_id][0]
 
             for sqn in self.cfs_sequences:
                 if slice_id in sqn.slice_ids:
@@ -335,7 +364,10 @@ class AveragingPeriod(InterfaceClassBase):
                     other_ids.remove(slice_id)
                     for id in other_ids:
                         slice_used_freqs[id].append(
-                            [selected_freq - df, selected_freq + df]
+                            [
+                                cfs_set_freq[slice_id][0] - df,
+                                cfs_set_freq[slice_id][0] + df,
+                            ]
                         )
             # Set cfs slice frequency and add frequency to used_freqs for all other concurrent slices
 
@@ -348,7 +380,7 @@ class AveragingPeriod(InterfaceClassBase):
         for sequence in self.cfs_sequences:
             sequence.build_sequence_pulses()
 
-        return slice_masks
+        return slice_masks, cfs_set_freq
 
     def build_cfs_sequence(self):
         """
