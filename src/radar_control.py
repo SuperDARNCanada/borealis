@@ -47,28 +47,20 @@ class CFSParameters:
 
     def check_update_freq(self, cfs_spectrum, cfs_slices, threshold):
         cfs_data = [dset.cfs_data for dset in cfs_spectrum.output_datasets]
-        log.info("Doing a check")
         for i, slice_id in enumerate(cfs_slices):
             if any(
                 cfs_data[i][self.cfs_masks[slice_id]]
                 <= self.last_cfs_power[slice_id][1] - threshold
             ):
                 self.set_new_freq = True
-                log.info(
-                    "Found power lower then",
-                    threshold=self.last_cfs_power[slice_id][1] - threshold,
-                    checked_len=len(cfs_data[i][self.cfs_masks[slice_id]]),
-                    slice=slice_id,
-                )
-            idx = (np.abs(self.cfs_freq - self.last_cfs_power[slice_id][0])).argmin()
+            shifted_frequency = self.last_cfs_power[slice_id][0] - int(
+                sum(self.cfs_range[slice_id]) / 2
+            )
+            idx = (
+                np.abs(np.asarray(self.cfs_freq) - shifted_frequency * 1000)
+            ).argmin()
             if cfs_data[i][idx] > self.last_cfs_power[slice_id][1] + threshold:
                 self.set_new_freq = True
-                log.info(
-                    "Found current freq is too high",
-                    lim=self.last_cfs_power[slice_id][1] + threshold,
-                    current=cfs_data[i][idx],
-                    slice=slice_id,
-                )
 
 
 @dataclass
