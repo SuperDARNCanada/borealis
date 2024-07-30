@@ -1050,6 +1050,8 @@ def main():
                             cfs_params_dict[aveperiod].last_cfs_set_time
                             < time.time() - ave_params.aveperiod.cfs_stable_time
                         ):
+                            # Only let CFS run after the user set stable time has
+                            # passed to prevent CFS from switching freqs to quickly
                             ave_params.sequence = aveperiod.cfs_sequence
                             ave_params.decimation_scheme = (
                                 aveperiod.cfs_sequence.decimation_scheme
@@ -1064,14 +1066,24 @@ def main():
                             ave_params.num_sequences += 1
                             ave_params.cfs_scan_flag = False
 
-                            if not cfs_params_dict[aveperiod].set_new_freq:
+                            if (
+                                not cfs_params_dict[aveperiod].set_new_freq
+                                and aveperiod.cfs_pwr_threshold
+                            ):
+                                # If using a user set power threshold to trigger CFS freq setting, check
+                                # if any power related condition are triggered
                                 cfs_params_dict[aveperiod].check_update_freq(
                                     freq_spectrum,
                                     aveperiod.cfs_slice_ids,
                                     aveperiod.cfs_pwr_threshold,
                                 )
 
-                            if cfs_params_dict[aveperiod].set_new_freq:
+                            if (
+                                cfs_params_dict[aveperiod].set_new_freq
+                                or not aveperiod.cfs_pwr_threshold
+                            ):
+                                # If using a power threshold and one of the power conditions were
+                                # triggerd, or if not using a power threshold, set the CFS params
                                 cfs_params_dict[aveperiod].set_new_freq = False
                                 cfs_params_dict[
                                     aveperiod
