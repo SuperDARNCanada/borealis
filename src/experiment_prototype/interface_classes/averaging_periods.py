@@ -104,7 +104,7 @@ class AveragingPeriod(InterfaceClassBase):
         self.cfs_slice_ids = []
         self.cfs_stable_time = 0
         self.cfs_pwr_threshold = 0
-        self.cfs_res_min = 0
+        self.cfs_fft_n = 0
         # there may be multiple slices in this averaging period at different frequencies so
         # we may have to search multiple ranges.
         self.cfs_range = []
@@ -112,7 +112,7 @@ class AveragingPeriod(InterfaceClassBase):
             if self.slice_dict[slice_id].cfs_flag:
                 self.cfs_stable_time = self.slice_dict[slice_id].cfs_stable_time
                 self.cfs_pwr_threshold = self.slice_dict[slice_id].cfs_pwr_threshold
-                self.cfs_res_min = self.slice_dict[slice_id].cfs_res_min
+                self.cfs_fft_n = self.slice_dict[slice_id].cfs_fft_n
                 self.cfs_flag = True
                 self.cfs_slice_ids.append(slice_id)
                 self.cfs_range.append(self.slice_dict[slice_id].cfs_range)
@@ -169,10 +169,10 @@ class AveragingPeriod(InterfaceClassBase):
                     " interfaced and do not have the same cfs_power_threshold"
                 )
                 raise ExperimentException(errmsg)
-            if self.slice_dict[slice_id].cfs_res_min != self.cfs_res_min:
+            if self.slice_dict[slice_id].cfs_fft_n != self.cfs_fft_n:
                 errmsg = (
                     f"Slices {self.slice_ids[0]} and {slice_id} are SEQUENCE or CONCURRENT"
-                    " interfaced and do not have the same cfs_res_min"
+                    " interfaced and do not have the same cfs_fft_n"
                 )
                 raise ExperimentException(errmsg)
             if self.slice_dict[slice_id].cfs_stable_time != self.cfs_stable_time:

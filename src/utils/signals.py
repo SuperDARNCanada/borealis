@@ -154,13 +154,16 @@ class DSP:
             self.antennas_iq_samples, beam_phases
         )
 
-    def cfs_freq_analysis(self, metadata):
+    def cfs_freq_analysis(self, metadata, n):
         """
         Performs decimation and frequency analysis on clear frequency search data. Data will not be
         in shared memory.
 
         :param  metadata:   Clear frequency search sequence metadata
         :type   metadata:   dict
+        :param  n:          Number of points used in the FFT. Determines the frequency resolution
+                            of where df = (rx_rate / total decimation rate) / N
+        :type   n:          int
         """
         fs = self.rx_rate / np.prod(self.dm_rates)  # Sampling frequency in Hz
 
@@ -173,12 +176,6 @@ class DSP:
             end_sample = int(round(pulses_in_samples[1] - pulse_dur / 2))
         else:
             end_sample = self.antennas_iq_samples.shape[-1]
-
-        # If FFT resolution should be determined first, then N calculated based on the rate
-        # n = int(round(fs / output_freq_resolution))
-
-        # If an N should be chosen and FFT resolution calculated based on N
-        n = 512  # An ideal size of fft
 
         num_intervals = int((end_sample - start_sample) / n)
         end_sample = start_sample + num_intervals * n

@@ -298,6 +298,8 @@ def create_dsp_message(radctrl_params):
     message.output_sample_rate = radctrl_params.sequence.output_rx_rate
     message.rx_ctr_freq = radctrl_params.sequence.rxctrfreq * 1.0e3
     message.cfs_scan_flag = radctrl_params.cfs_scan_flag
+    if radctrl_params.cfs_scan_flag:
+        message.cfs_fft_n = radctrl_params.aveperiod.cfs_fft_n
 
     if radctrl_params.decimation_scheme is not None:
         for stage in radctrl_params.decimation_scheme.stages:
@@ -1085,7 +1087,6 @@ def main():
                                     mag.cfs_data
                                     for mag in freq_spectrum.output_datasets
                                 ]
-                                log.info("Returned set freq of cfs", res=last_set_cfs)
 
                                 for ind in range(len(aveperiod.cfs_slice_ids)):
                                     cfs_params_dict[aveperiod].cfs_range[

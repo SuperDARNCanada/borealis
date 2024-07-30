@@ -198,6 +198,20 @@ class ExperimentSlice:
     cfs_scheme *defaults*
         Decimation scheme to be used in analyzing data collected during a clear frequency search when
         determining transmit frequencies for CFS experiment slices
+    cfs_stable_time *defaults*
+        Amount of time in seconds clear frequency search will not change the slice frequencies for.
+        Ensures a minimum stable time, but does not force a change in frequency once the stable time
+        has elapsed.
+    cfs_pwr_threshold *defaults*
+         Difference in power (in dB) that clear frequency search must see in the measured frequencies
+         before it changes the cfs slice frequencies. This can be trigered either when another
+         frequency in the cfs range is found to have a lower power than the currently set frequency, or
+         when the currently set frequency has increased in power by the threshold value since it was
+         selected as an operating frequency.
+    cfs_fft_n *defaults*
+        Sets the number of elements used in the fft when processing clear frequency search results.
+        Determines the frequency resolution of the processing following the formula;
+        frequency resolution = (rx rate / total decimation rate) / cfs fft n value
     comment *defaults*
         a comment string that will be placed in the borealis files describing the slice. Defaults to
         empty string.
@@ -364,7 +378,7 @@ class ExperimentSlice:
     cfs_scheme: DecimationScheme = Field(default_factory=create_default_cfs_scheme)
     cfs_stable_time: Optional[conint(ge=0, strict=True)] = 0  # seconds
     cfs_pwr_threshold: Optional[confloat(strict=True)] = -20.0  # dB
-    cfs_res_min: Optional[conint(ge=0, strict=True)] = 300  # kHz
+    cfs_fft_n: Optional[conint(ge=0, strict=True)] = 512
     decimation_scheme: DecimationScheme = Field(default_factory=create_default_scheme)
 
     acf: Optional[StrictBool] = False

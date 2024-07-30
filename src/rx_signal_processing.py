@@ -69,6 +69,7 @@ class RxProcessingParameters:
     samples_needed: int
     rx_rate: float
     output_sample_rate: float
+    cfs_fft_n: int
 
 
 def fill_datawrite_message(processed_data, slice_details, data_outputs, cfs_scan_flag):
@@ -220,7 +221,7 @@ def sequence_worker(options, ringbuffer):
             cfs_processor.apply_filters(sequence_samples)
             cfs_processor.move_filter_results()
             cfs_data, cfs_freq = cfs_processor.cfs_freq_analysis(
-                rx_params.slice_details[0]
+                rx_params.slice_details[0], rx_params.cfs_fft_n
             )
 
             del cfs_processor
@@ -518,6 +519,7 @@ def main():
         first_rx_sample_off = sqn_meta_message.offset_to_first_rx_sample
         rx_center_freq = sqn_meta_message.rx_ctr_freq
         cfs_scan_flag = sqn_meta_message.cfs_scan_flag
+        cfs_fft_n = sqn_meta_message.cfs_fft_n
 
         processed_data = ProcessedSequenceMessage()
 
@@ -701,6 +703,7 @@ def main():
             samples_needed,
             rx_rate,
             output_sample_rate,
+            cfs_fft_n,
         )
 
         sequence_worker_socket.send_pyobj(rx_params)
