@@ -465,6 +465,11 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
     gps_to_system_time_diff =
         system_since_epoch.count() - clocks.usrp_time.get_real_secs();
 
+    if (gps_to_system_time_diff > 1000.0) {
+      throw std::runtime_error("GPS and system time differ by " +
+                               std::to_string(gps_to_system_time_diff) +
+                               " seconds");
+    }
     samples_metadata.set_gps_locked(usrp_d.gps_locked());
     samples_metadata.set_gps_to_system_time_diff(gps_to_system_time_diff);
 
