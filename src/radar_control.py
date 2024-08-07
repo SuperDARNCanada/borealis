@@ -43,10 +43,10 @@ class CFSParameters:
 
     cfs_freq: list = field(default_factory=list)
     cfs_mags: list = field(default_factory=list)
-    cfs_range: list = field(default_factory=dict)
-    cfs_masks: list = field(default_factory=dict)
+    cfs_range: dict = field(default_factory=dict)
+    cfs_masks: dict = field(default_factory=dict)
     last_cfs_set_time: int = 0
-    last_cfs_power: list = field(default_factory=dict)
+    last_cfs_power: dict = field(default_factory=dict)
     set_new_freq: bool = True
 
     def check_update_freq(self, cfs_spectrum, cfs_slices, threshold):
@@ -55,7 +55,7 @@ class CFSParameters:
         exceed the current power of each cfs slice based on a threshold
 
         :params cfs_spectrum:   Results of the CFS analysis
-        :type   cfs_spectrum:   dataclass
+        :type   cfs_spectrum:   OutputDataset dataclass from message_formats.py
         :params cfs_slices:     Slice ids of each cfs slice to be checked
         :type   cfs_slices:     list
         :params threshold:      Power threshold (dB) used in check
@@ -68,6 +68,9 @@ class CFSParameters:
                 <= self.last_cfs_power[slice_id][1] - threshold
             ):
                 self.set_new_freq = True
+            # Shift the current frequency down to baseband and then use the
+            # result to determine the index in the measured frequency
+            # spectrum that the current frequency is from
             shifted_frequency = self.last_cfs_power[slice_id][0] - int(
                 sum(self.cfs_range[slice_id]) / 2
             )
@@ -1083,7 +1086,7 @@ def main():
 
                             if (
                                 not cfs_params_dict[aveperiod].set_new_freq
-                                and aveperiod.cfs_pwr_threshold
+                                and aveperiod.cfs_pwr_threshold is not None
                             ):
                                 # If using a user set power threshold to trigger CFS freq setting, check
                                 # if any power related condition are triggered
@@ -1095,7 +1098,7 @@ def main():
 
                             if (
                                 cfs_params_dict[aveperiod].set_new_freq
-                                or not aveperiod.cfs_pwr_threshold
+                                or aveperiod.cfs_pwr_threshold is None
                             ):
                                 # If using a power threshold and one of the power conditions were
                                 # triggerd, or if not using a power threshold, set the CFS params

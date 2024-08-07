@@ -162,7 +162,7 @@ The following parameters can be set for a CFS slice:
      - Sets a minimum amount of time during which CFS will not change the frequency of a CFS slice
        after it has been set
    * - ``cfs_pwr_threshold``
-     - ``None``
+     - ``None`` (dB)
      - Sets a threshold power difference that a CFS scan must exceed before a frequency is switched.
        If another frequency is lower in power than the current frequency was when set by the
        threshold or if the current frequency power has increased by more than the threshold, then
