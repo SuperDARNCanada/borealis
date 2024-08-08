@@ -66,6 +66,14 @@ Interfacing Types Between Slices
 .. autodata:: src.experiment_prototype.experiment_prototype.interface_types
     :noindex:
 
+If the ``txctrfreq`` and ``rxctrfreq`` parameters are not set by the user, then borealis will attempt
+to calculate centre frequencies for each slice of the experiment. It will aim to have as many slices
+on the same centre frequency as possible, and will ensure that any SEQUENCE or CONCURRENT interfaced
+slices have the same centre frequencies. It is not guaranteed that borealis will pick the best
+centre frequencies for the experiment and users should set these parameters manually if the
+experiment does not perform as expected or if they have performance concerns due to the tuning time
+required to switch between slices with different centre frequencies.
+
 --------------------------
 Slice Interfacing Examples
 --------------------------
