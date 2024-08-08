@@ -212,6 +212,8 @@ class ExperimentSlice:
         Sets the number of elements used in the fft when processing clear frequency search results.
         Determines the frequency resolution of the processing following the formula;
         frequency resolution = (rx rate / total decimation rate) / cfs fft n value
+    cfs_always_run *defaults*
+        If true always run the cfs sequence, otherwise only run after cfs_stable_time has expired
     comment *defaults*
         a comment string that will be placed in the borealis files describing the slice. Defaults to
         empty string.
@@ -372,6 +374,8 @@ class ExperimentSlice:
     intt: Optional[confloat(ge=0)] = None
     scanbound: Optional[list[confloat(ge=0)]] = Field(default_factory=list)
     pulse_phase_offset: Optional[Callable] = default_callable
+    decimation_scheme: DecimationScheme = Field(default_factory=create_default_scheme)
+
     cfs_range: Optional[conlist(freq_int_khz, min_items=2, max_items=2)] = None
     cfs_flag: StrictBool = Field(init=False)
     cfs_duration: Optional[conint(ge=0, strict=True)] = 90  # ms
@@ -379,7 +383,7 @@ class ExperimentSlice:
     cfs_stable_time: Optional[conint(ge=0, strict=True)] = 0  # seconds
     cfs_pwr_threshold: Optional[confloat(ge=0)] = None  # dB
     cfs_fft_n: Optional[conint(ge=0, strict=True)] = 512
-    decimation_scheme: DecimationScheme = Field(default_factory=create_default_scheme)
+    cfs_always_run: Optional[StrictBool] = False
 
     acf: Optional[StrictBool] = False
     acfint: Optional[StrictBool] = False

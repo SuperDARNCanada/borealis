@@ -100,6 +100,7 @@ class AveragingPeriod(InterfaceClassBase):
 
         # Metadata for an AveragingPeriod: clear frequency search, integration time, number of averages goal
         self.cfs_flag = False
+        self.cfs_always_run = False
         self.cfs_sequence = None
         self.cfs_slice_ids = []
         self.cfs_stable_time = 0
@@ -116,6 +117,8 @@ class AveragingPeriod(InterfaceClassBase):
                 self.cfs_flag = True
                 self.cfs_slice_ids.append(slice_id)
                 self.cfs_range.append(self.slice_dict[slice_id].cfs_range)
+                if self.slice_dict[slice_id].cfs_always_run:
+                    self.cfs_always_run = True
 
         self.intt = self.slice_dict[self.slice_ids[0]].intt
         self.intn = self.slice_dict[self.slice_ids[0]].intn

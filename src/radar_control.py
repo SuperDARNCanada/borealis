@@ -683,9 +683,11 @@ def cfs_block(ave_params, cfs_params_dict, cfs_sockets):
     if (
         cfs_params_dict[aveperiod].last_cfs_set_time
         < time.time() - ave_params.aveperiod.cfs_stable_time
+        or aveperiod.cfs_always_run
     ):
         # Only let CFS run after the user set stable time has
         # passed to prevent CFS from switching freqs to quickly
+        log.info("Running CFS scan sequence")
         ave_params.sequence = aveperiod.cfs_sequence
         ave_params.decimation_scheme = aveperiod.cfs_sequence.decimation_scheme
 
@@ -697,34 +699,49 @@ def cfs_block(ave_params, cfs_params_dict, cfs_sockets):
         )
         ave_params.num_sequences += 1
         ave_params.cfs_scan_flag = False
-        cfs_params_dict[aveperiod].last_cfs_set_time = time.time()
 
-        if not cfs_params_dict[aveperiod].set_new_freq and aveperiod.cfs_pwr_threshold:
-            # If using a user set power threshold to trigger CFS freq setting, check
-            # if any power related condition are triggered
-            cfs_params_dict[aveperiod].check_update_freq(
-                freq_spectrum,
-                aveperiod.cfs_slice_ids,
-                aveperiod.cfs_pwr_threshold,
+        if (
+            cfs_params_dict[aveperiod].last_cfs_set_time
+            < time.time() - ave_params.aveperiod.cfs_stable_time
+        ):
+            cfs_params_dict[aveperiod].last_cfs_set_time = time.time()
+            log.info(
+                "New CFS record time:",
+                set_time=cfs_params_dict[aveperiod].last_cfs_set_time,
             )
 
-        if cfs_params_dict[aveperiod].set_new_freq or not aveperiod.cfs_pwr_threshold:
-            # If using a power threshold and one of the power conditions were
-            # triggerd, or if not using a power threshold, set the CFS params
-            cfs_params_dict[aveperiod].set_new_freq = False
-            cfs_params_dict[aveperiod].cfs_masks, last_set_cfs = (
-                aveperiod.update_cfs_freqs(freq_spectrum)
-            )
-            cfs_params_dict[aveperiod].last_cfs_power = last_set_cfs
-            cfs_params_dict[aveperiod].cfs_freq = freq_spectrum.cfs_freq
-            cfs_params_dict[aveperiod].cfs_mags = [
-                mag.cfs_data for mag in freq_spectrum.output_datasets
-            ]
-
-            for ind in range(len(aveperiod.cfs_slice_ids)):
-                cfs_params_dict[aveperiod].cfs_range[aveperiod.cfs_slice_ids[ind]] = (
-                    aveperiod.cfs_range[ind]
+            if (
+                not cfs_params_dict[aveperiod].set_new_freq
+                and aveperiod.cfs_pwr_threshold
+            ):
+                # If using a user set power threshold to trigger CFS freq setting, check
+                # if any power related condition are triggered
+                cfs_params_dict[aveperiod].check_update_freq(
+                    freq_spectrum,
+                    aveperiod.cfs_slice_ids,
+                    aveperiod.cfs_pwr_threshold,
                 )
+
+            if (
+                cfs_params_dict[aveperiod].set_new_freq
+                or not aveperiod.cfs_pwr_threshold
+            ):
+                # If using a power threshold and one of the power conditions were
+                # triggerd, or if not using a power threshold, set the CFS params
+                cfs_params_dict[aveperiod].set_new_freq = False
+                cfs_params_dict[aveperiod].cfs_masks, last_set_cfs = (
+                    aveperiod.update_cfs_freqs(freq_spectrum)
+                )
+                cfs_params_dict[aveperiod].last_cfs_power = last_set_cfs
+                cfs_params_dict[aveperiod].cfs_freq = freq_spectrum.cfs_freq
+                cfs_params_dict[aveperiod].cfs_mags = [
+                    mag.cfs_data for mag in freq_spectrum.output_datasets
+                ]
+
+                for ind in range(len(aveperiod.cfs_slice_ids)):
+                    cfs_params_dict[aveperiod].cfs_range[
+                        aveperiod.cfs_slice_ids[ind]
+                    ] = aveperiod.cfs_range[ind]
 
     ave_params.cfs_params = cfs_params_dict[aveperiod]
 
