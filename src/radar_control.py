@@ -318,6 +318,7 @@ def create_dsp_message(radctrl_params):
     message.cfs_scan_flag = radctrl_params.cfs_scan_flag
     if radctrl_params.cfs_scan_flag:
         message.cfs_fft_n = radctrl_params.aveperiod.cfs_fft_n
+        log.info("the N used", cfs_fft_n=radctrl_params.aveperiod.cfs_fft_n)
 
     if radctrl_params.decimation_scheme is not None:
         for stage in radctrl_params.decimation_scheme.stages:
@@ -702,6 +703,10 @@ def cfs_block(ave_params, cfs_params_dict, cfs_sockets):
         )
         ave_params.num_sequences += 1
         ave_params.cfs_scan_flag = False
+        cfs_params_dict[aveperiod].cfs_freq = freq_spectrum.cfs_freq
+        cfs_params_dict[aveperiod].cfs_mags = [
+            mag.cfs_data for mag in freq_spectrum.output_datasets
+        ]
 
         if (
             cfs_params_dict[aveperiod].last_cfs_set_time
@@ -715,7 +720,7 @@ def cfs_block(ave_params, cfs_params_dict, cfs_sockets):
 
             if (
                 not cfs_params_dict[aveperiod].set_new_freq
-                and aveperiod.cfs_pwr_threshold
+                and aveperiod.cfs_pwr_threshold is not None
             ):
                 # If using a user set power threshold to trigger CFS freq setting, check
                 # if any power related condition are triggered
@@ -727,7 +732,7 @@ def cfs_block(ave_params, cfs_params_dict, cfs_sockets):
 
             if (
                 cfs_params_dict[aveperiod].set_new_freq
-                or not aveperiod.cfs_pwr_threshold
+                or aveperiod.cfs_pwr_threshold is None
             ):
                 # If using a power threshold and one of the power conditions were
                 # triggerd, or if not using a power threshold, set the CFS params
@@ -736,10 +741,6 @@ def cfs_block(ave_params, cfs_params_dict, cfs_sockets):
                     aveperiod.update_cfs_freqs(freq_spectrum)
                 )
                 cfs_params_dict[aveperiod].last_cfs_power = last_set_cfs
-                cfs_params_dict[aveperiod].cfs_freq = freq_spectrum.cfs_freq
-                cfs_params_dict[aveperiod].cfs_mags = [
-                    mag.cfs_data for mag in freq_spectrum.output_datasets
-                ]
 
                 for ind in range(len(aveperiod.cfs_slice_ids)):
                     cfs_params_dict[aveperiod].cfs_range[
@@ -1131,6 +1132,7 @@ def main():
 
                 while time_remains:
                     if ave_params.num_sequences == 0 and aveperiod.cfs_flag:
+                        rec = time.time()
                         cfs_block(
                             ave_params,
                             cfs_params_dict,
@@ -1140,6 +1142,7 @@ def main():
                                 driver_comms_socket,
                             ],
                         )
+                        log.info("CFS block processing time", time=time.time() - rec)
 
                     for sequence_index, sequence in enumerate(aveperiod.sequences):
                         # Alternating sequences if there are multiple in the averaging_period

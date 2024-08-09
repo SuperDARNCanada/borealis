@@ -383,6 +383,7 @@ class ExperimentSlice:
     cfs_stable_time: Optional[conint(ge=0, strict=True)] = 0  # seconds
     cfs_pwr_threshold: Optional[confloat(ge=0)] = None  # dB
     cfs_fft_n: Optional[conint(ge=0, strict=True)] = 512
+    cfs_freq_res: Optional[confloat(ge=0)] = None  # Hz
     cfs_always_run: Optional[StrictBool] = False
 
     acf: Optional[StrictBool] = False
@@ -526,6 +527,19 @@ class ExperimentSlice:
                         )
 
         return cfs_scheme
+
+    @validator("cfs_freq_res")
+    def check_cfs_freq_res(cls, cfs_freq_res, values):
+        if cfs_freq_res is not None:
+            dm = 1
+            for stage in values["cfs_scheme"].stages:
+                dm = dm * stage.dm_rate
+            new_n = int((values["rx_bandwidth"] / dm) / cfs_freq_res)
+            log.info(
+                f"CFS frequency resolution of {cfs_freq_res} Hz was requested",
+                resloution_set=(values["rx_bandwidth"] / dm) / new_n,
+            )
+            values["cfs_fft_n"] = new_n
 
     @validator("tx_antennas")
     def check_tx_antennas(cls, tx_antennas):
