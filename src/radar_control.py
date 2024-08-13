@@ -42,7 +42,7 @@ class CFSParameters:
     """
 
     cfs_freq: list = field(default_factory=list)
-    cfs_mags: list = field(default_factory=list)
+    cfs_mags: dict = field(default_factory=dict)
     cfs_range: dict = field(default_factory=dict)
     cfs_masks: dict = field(default_factory=dict)
     last_cfs_set_time: int = 0
@@ -318,7 +318,6 @@ def create_dsp_message(radctrl_params):
     message.cfs_scan_flag = radctrl_params.cfs_scan_flag
     if radctrl_params.cfs_scan_flag:
         message.cfs_fft_n = radctrl_params.aveperiod.cfs_fft_n
-        log.info("the N used", cfs_fft_n=radctrl_params.aveperiod.cfs_fft_n)
 
     if radctrl_params.decimation_scheme is not None:
         for stage in radctrl_params.decimation_scheme.stages:
@@ -691,7 +690,6 @@ def cfs_block(ave_params, cfs_params_dict, cfs_sockets):
     ):
         # Only let CFS run after the user set stable time has
         # passed to prevent CFS from switching freqs to quickly
-        log.info("Running CFS scan sequence")
         ave_params.sequence = aveperiod.cfs_sequence
         ave_params.decimation_scheme = aveperiod.cfs_sequence.decimation_scheme
 
@@ -704,19 +702,17 @@ def cfs_block(ave_params, cfs_params_dict, cfs_sockets):
         ave_params.num_sequences += 1
         ave_params.cfs_scan_flag = False
         cfs_params_dict[aveperiod].cfs_freq = freq_spectrum.cfs_freq
-        cfs_params_dict[aveperiod].cfs_mags = [
-            mag.cfs_data for mag in freq_spectrum.output_datasets
-        ]
+
+        for ind, dset in enumerate(freq_spectrum.output_datasets):
+            cfs_params_dict[aveperiod].cfs_mags[aveperiod.cfs_slice_ids[ind]] = (
+                dset.cfs_data
+            )
 
         if (
             cfs_params_dict[aveperiod].last_cfs_set_time
             < time.time() - ave_params.aveperiod.cfs_stable_time
         ):
             cfs_params_dict[aveperiod].last_cfs_set_time = time.time()
-            log.info(
-                "New CFS record time:",
-                set_time=cfs_params_dict[aveperiod].last_cfs_set_time,
-            )
 
             if (
                 not cfs_params_dict[aveperiod].set_new_freq
@@ -1132,7 +1128,6 @@ def main():
 
                 while time_remains:
                     if ave_params.num_sequences == 0 and aveperiod.cfs_flag:
-                        rec = time.time()
                         cfs_block(
                             ave_params,
                             cfs_params_dict,
@@ -1142,7 +1137,6 @@ def main():
                                 driver_comms_socket,
                             ],
                         )
-                        log.info("CFS block processing time", time=time.time() - rec)
 
                     for sequence_index, sequence in enumerate(aveperiod.sequences):
                         # Alternating sequences if there are multiple in the averaging_period
