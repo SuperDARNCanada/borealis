@@ -63,11 +63,6 @@ class CFSParameters:
         """
         cfs_data = [dset.cfs_data for dset in cfs_spectrum.output_datasets]
         for i, slice_id in enumerate(cfs_slices):
-            if any(
-                np.asarray(cfs_data[i][self.cfs_masks[slice_id]])
-                <= self.last_cfs_power[slice_id][1] - threshold
-            ):
-                self.set_new_freq = True
             # Shift the current frequency down to baseband and then use the
             # result to determine the index in the measured frequency
             # spectrum that the current frequency is from
@@ -77,7 +72,20 @@ class CFSParameters:
             idx = (
                 np.abs(np.asarray(self.cfs_freq) - shifted_frequency * 1000)
             ).argmin()
-            if cfs_data[i][idx] > self.last_cfs_power[slice_id][1] + threshold:
+
+            # calculate the ratio of the current freq power over all other freqs
+            pwr_ratio = cfs_data[i][idx] - np.asarray(
+                cfs_data[i][self.cfs_masks[slice_id]]
+            )
+            log.info(
+                "current freq power",
+                pwr=cfs_data[i][idx],
+                last_pwr=self.last_cfs_power[slice_id][1],
+            )
+            log.info(pwr_ratio)
+            log.info(np.asarray(cfs_data[i][self.cfs_masks[slice_id]]))
+            if any(pwr_ratio > threshold):
+                log.info("Finding new freq")
                 self.set_new_freq = True
 
 
