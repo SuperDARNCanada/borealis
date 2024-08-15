@@ -58,6 +58,11 @@ typedef struct {
 
 static clocks_t borealis_clocks;
 
+// The maximum allowed drift between the system and GPS times held in the borealis_clocks
+// variable. If the drift is larger than this, the module will crash to avoid writing
+// corrupt metadata to file.
+#define MAX_CLOCK_DRIFT 1000.0 // seconds
+
 /**
  * @brief      Makes a set of vectors of the samples for each TX channel from
  * the driver packet.
@@ -465,6 +470,11 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
     gps_to_system_time_diff =
         system_since_epoch.count() - clocks.usrp_time.get_real_secs();
 
+    if (gps_to_system_time_diff > MAX_CLOCK_DRIFT) {
+      throw std::runtime_error("GPS and system time differ by " +
+                               std::to_string(gps_to_system_time_diff) +
+                               " seconds");
+    }
     samples_metadata.set_gps_locked(usrp_d.gps_locked());
     samples_metadata.set_gps_to_system_time_diff(gps_to_system_time_diff);
 
