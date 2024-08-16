@@ -786,13 +786,6 @@ def cfs_block(ave_params, cfs_params_dict, cfs_sockets):
                     ] = aveperiod.cfs_range[ind]
 
     ave_params.cfs_params = cfs_params_dict[aveperiod]
-    log.info(
-        "changed cfs params",
-        beam_iter=aveperiod.beam_iter,
-        set_time=cfs_params_dict[aveperiod].last_cfs_set_time,
-        freqs=cfs_params_dict[aveperiod].beam_frequency,
-        set_flag=cfs_params_dict[aveperiod].set_new_freq,
-    )
 
 
 def main():
