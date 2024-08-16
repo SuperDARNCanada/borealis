@@ -1180,6 +1180,7 @@ def main():
 
                 while time_remains:
                     if ave_params.num_sequences == 0 and aveperiod.cfs_flag:
+                        cfs_time = time.time()
                         cfs_block(
                             ave_params,
                             cfs_params_dict,
@@ -1189,6 +1190,7 @@ def main():
                                 driver_comms_socket,
                             ],
                         )
+                        log.verbose("CFS block run time", time=time.time() - cfs_time)
 
                     for sequence_index, sequence in enumerate(aveperiod.sequences):
                         # Alternating sequences if there are multiple in the averaging_period
