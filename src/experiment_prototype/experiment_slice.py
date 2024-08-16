@@ -212,6 +212,11 @@ class ExperimentSlice:
         Sets the number of elements used in the fft when processing clear frequency search results.
         Determines the frequency resolution of the processing following the formula;
         frequency resolution = (rx rate / total decimation rate) / cfs fft n value
+    cfs_freq_res *defaults*
+        Defines the desired frequency resolution of clear frequency search results. The frequency
+        resolution is used to calculate the number of elements used in the fft when processing and
+        sets that value to cfs_fft_n. Note the actual frequency resolution set will differ based on
+        the nearest integer value of n corresponding to the requested resolution.
     cfs_always_run *defaults*
         If true always run the cfs sequence, otherwise only run after cfs_stable_time has expired
     comment *defaults*

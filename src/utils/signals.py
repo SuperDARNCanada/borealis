@@ -179,7 +179,7 @@ class DSP:
 
         num_intervals = int((end_sample - start_sample) / n)
         end_sample = start_sample + num_intervals * n
-        data = self.antennas_iq_samples[:, :, start_sample:end_sample]
+        data = self.beamformed_samples[:, :, start_sample:end_sample]
         data_chunks = np.reshape(data, data.shape[:-1] + (num_intervals, n))
 
         fft_data = fft.fftshift(fft.fft(data_chunks, axis=-1), axes=-1)

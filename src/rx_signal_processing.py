@@ -220,6 +220,15 @@ def sequence_worker(options, ringbuffer):
             )
             cfs_processor.apply_filters(sequence_samples)
             cfs_processor.move_filter_results()
+            total_phases = np.empty(
+                (rx_params.main_beam_angles.shape[0], 1, 20), dtype=np.complex64
+            )
+            for slice_ind in range(rx_params.main_beam_angles.shape[0]):
+                total_phases[slice_ind, 0, :] = np.append(
+                    rx_params.main_beam_angles[slice_ind],
+                    rx_params.intf_beam_angles[slice_ind],
+                )
+            cfs_processor.beamform(total_phases)
             cfs_data, cfs_freq = cfs_processor.cfs_freq_analysis(
                 rx_params.slice_details[0], rx_params.cfs_fft_n
             )
