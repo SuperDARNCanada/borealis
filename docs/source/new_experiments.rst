@@ -182,7 +182,7 @@ The following parameters can be set for a CFS slice:
    * - ``cfs_freq_res``
      - ``None`` (Hz)
      - Cannot be set if ``cfs_fft_n`` is set. Defines the desired frequency resolution of CFS in Hz.
-       The ``cfs_fft_n`` parameter is then set to the nearset integer value of ``N`` calculated as
+       The ``cfs_fft_n`` parameter is then set to the nearest integer value of ``N`` calculated as
        ``N = (rx_rate / total decimation rate) / res``
 
 When a CFS slice is to be run during an averaging period, the first sequence of the averaging period

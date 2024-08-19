@@ -355,7 +355,6 @@ class AveragingPeriod(InterfaceClassBase):
 
             slice_masks[slice_id] = mask
             ind = np.argmin(cfs_data[i][mask])
-            # Hold tuple of chosen frequency and corresponding power
             cfs_set_freq[slice_id] = int(np.round(shifted_cfs_khz[ind]))
             slice_obj.freq = cfs_set_freq[slice_id]
 

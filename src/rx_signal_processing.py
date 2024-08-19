@@ -220,8 +220,12 @@ def sequence_worker(options, ringbuffer):
             )
             cfs_processor.apply_filters(sequence_samples)
             cfs_processor.move_filter_results()
+            total_antennas = int(
+                len(options.rx_main_antennas) + len(options.rx_intf_antennas)
+            )
             total_phases = np.empty(
-                (rx_params.main_beam_angles.shape[0], 1, 20), dtype=np.complex64
+                (rx_params.main_beam_angles.shape[0], 1, total_antennas),
+                dtype=np.complex64,
             )
             for slice_ind in range(rx_params.main_beam_angles.shape[0]):
                 total_phases[slice_ind, 0, :] = np.append(

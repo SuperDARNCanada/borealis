@@ -57,6 +57,8 @@ slice_key_set = frozenset(
         "averaging_method",
         "beam_angle",
         "cfs_range",
+        "cfs_fft_n",
+        "cfs_freq_res",
         "comment",
         "cpid",
         "first_range",
@@ -535,6 +537,7 @@ class ExperimentSlice:
 
     @validator("cfs_freq_res")
     def check_cfs_freq_res(cls, cfs_freq_res, values):
+        # TODO: Implement a check to default to cfs_fft_n if the parameter was set by the user
         if cfs_freq_res is not None:
             dm = 1
             for stage in values["cfs_scheme"].stages:
@@ -542,9 +545,10 @@ class ExperimentSlice:
             new_n = int((values["rx_bandwidth"] / dm) / cfs_freq_res)
             log.info(
                 f"CFS frequency resolution of {cfs_freq_res} Hz was requested",
-                resloution_set=(values["rx_bandwidth"] / dm) / new_n,
+                resolution_set=(values["rx_bandwidth"] / dm) / new_n,
             )
             values["cfs_fft_n"] = new_n
+            return cfs_freq_res
 
     @validator("tx_antennas")
     def check_tx_antennas(cls, tx_antennas):

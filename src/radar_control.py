@@ -671,11 +671,10 @@ def round_up_time(dt=None, round_to=60):
     return result
 
 
-def run_cfs_scan(
-    radctrl_process_socket, radctrl_brian_socket, radctrl_params, to_driver_inproc_sock
-):
-    # 2. Send DSP meta data
-    # 3. Retrieve DSP results
+def run_cfs_scan(radctrl_params, sockets):
+    radctrl_process_socket = sockets[0]
+    radctrl_brian_socket = sockets[1]
+    to_driver_inproc_sock = sockets[2]
 
     dsp_socket_iden = radctrl_params.dsp_cfs_identity
     router_addr = radctrl_params.router_address
@@ -720,70 +719,72 @@ def run_cfs_scan(
 
 def cfs_block(ave_params, cfs_params_dict, cfs_sockets):
     aveperiod = ave_params.aveperiod
-    if (
+    if not (
         cfs_params_dict[aveperiod].last_cfs_set_time[aveperiod.beam_iter]
         < time.time() - ave_params.aveperiod.cfs_stable_time
         or aveperiod.cfs_always_run
     ):
-        # Only let CFS run after the user set stable time has
-        # passed to prevent CFS from switching freqs to quickly
-        ave_params.sequence = aveperiod.cfs_sequence
-        ave_params.decimation_scheme = aveperiod.cfs_sequence.decimation_scheme
+        return
 
-        freq_spectrum = run_cfs_scan(
-            cfs_sockets[0],
-            cfs_sockets[1],
-            ave_params,
-            cfs_sockets[2],
+    # Only let CFS run after the user set stable time has
+    # passed to prevent CFS from switching freqs to quickly
+    ave_params.sequence = aveperiod.cfs_sequence
+    ave_params.decimation_scheme = aveperiod.cfs_sequence.decimation_scheme
+
+    freq_spectrum = run_cfs_scan(ave_params, cfs_sockets)
+    ave_params.num_sequences += 1
+    ave_params.cfs_scan_flag = False
+    cfs_params_dict[aveperiod].cfs_freq = freq_spectrum.cfs_freq
+
+    for ind, dset in enumerate(freq_spectrum.output_datasets):
+        cfs_params_dict[aveperiod].cfs_mags[aveperiod.cfs_slice_ids[ind]] = (
+            dset.cfs_data
         )
-        ave_params.num_sequences += 1
-        ave_params.cfs_scan_flag = False
-        cfs_params_dict[aveperiod].cfs_freq = freq_spectrum.cfs_freq
 
-        for ind, dset in enumerate(freq_spectrum.output_datasets):
-            cfs_params_dict[aveperiod].cfs_mags[aveperiod.cfs_slice_ids[ind]] = (
-                dset.cfs_data
-            )
+    if not (
+        cfs_params_dict[aveperiod].last_cfs_set_time[aveperiod.beam_iter]
+        < time.time() - ave_params.aveperiod.cfs_stable_time
+    ):
+        ave_params.cfs_params = cfs_params_dict[aveperiod]
+        return
 
-        if (
-            cfs_params_dict[aveperiod].last_cfs_set_time[aveperiod.beam_iter]
-            < time.time() - ave_params.aveperiod.cfs_stable_time
-        ):
-            cfs_params_dict[aveperiod].last_cfs_set_time[aveperiod.beam_iter] = (
-                time.time()
-            )
+    # Only attempt to update the cfs frequency of stable time has elapsed
+    cfs_params_dict[aveperiod].last_cfs_set_time[aveperiod.beam_iter] = time.time()
 
-            if (
-                not cfs_params_dict[aveperiod].set_new_freq[aveperiod.beam_iter]
-                and aveperiod.cfs_pwr_threshold is not None
-            ):
-                # If using a user set power threshold to trigger CFS freq setting, check
-                # if any power related condition are triggered
-                cfs_params_dict[aveperiod].check_update_freq(
-                    freq_spectrum,
-                    aveperiod.cfs_slice_ids,
-                    aveperiod.cfs_pwr_threshold,
-                    aveperiod.beam_iter,
-                )
+    if (
+        not cfs_params_dict[aveperiod].set_new_freq[aveperiod.beam_iter]
+        and aveperiod.cfs_pwr_threshold is not None
+    ):
+        # If using a user set power threshold to trigger CFS freq setting, check
+        # if any power related condition are triggered and set the corresponding
+        # flag
+        cfs_params_dict[aveperiod].check_update_freq(
+            freq_spectrum,
+            aveperiod.cfs_slice_ids,
+            aveperiod.cfs_pwr_threshold,
+            aveperiod.beam_iter,
+        )
 
-            if (
-                cfs_params_dict[aveperiod].set_new_freq[aveperiod.beam_iter]
-                or aveperiod.cfs_pwr_threshold is None
-            ):
-                # If using a power threshold and one of the power conditions were
-                # triggerd, or if not using a power threshold, set the CFS params
-                cfs_params_dict[aveperiod].set_new_freq[aveperiod.beam_iter] = False
-                cfs_params_dict[aveperiod].cfs_masks, last_set_cfs = (
-                    aveperiod.update_cfs_freqs(freq_spectrum)
-                )
-                cfs_params_dict[aveperiod].beam_frequency[aveperiod.beam_iter] = (
-                    last_set_cfs
-                )
+    if not (
+        cfs_params_dict[aveperiod].set_new_freq[aveperiod.beam_iter]
+        or aveperiod.cfs_pwr_threshold is None
+    ):
+        # Return if the frequency does not need to be changed.
+        ave_params.cfs_params = cfs_params_dict[aveperiod]
+        return
 
-                for ind in range(len(aveperiod.cfs_slice_ids)):
-                    cfs_params_dict[aveperiod].cfs_range[
-                        aveperiod.cfs_slice_ids[ind]
-                    ] = aveperiod.cfs_range[ind]
+    # If using a power threshold and one of the power conditions were
+    # triggerd, or if not using a power threshold, set the CFS params
+    cfs_params_dict[aveperiod].set_new_freq[aveperiod.beam_iter] = False
+    cfs_params_dict[aveperiod].cfs_masks, last_set_cfs = aveperiod.update_cfs_freqs(
+        freq_spectrum
+    )
+    cfs_params_dict[aveperiod].beam_frequency[aveperiod.beam_iter] = last_set_cfs
+
+    for ind in range(len(aveperiod.cfs_slice_ids)):
+        cfs_params_dict[aveperiod].cfs_range[aveperiod.cfs_slice_ids[ind]] = (
+            aveperiod.cfs_range[ind]
+        )
 
     ave_params.cfs_params = cfs_params_dict[aveperiod]
 
