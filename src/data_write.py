@@ -36,472 +36,7 @@ from scipy.constants import speed_of_light
 from utils import socket_operations as so
 from utils.message_formats import ProcessedSequenceMessage, AveperiodMetadataMessage
 from utils.options import Options
-
-
-@dataclass(init=False)
-class SliceData:
-    """
-    This class defines all fields that need to be written by any type of data file. The 'groups' metadata lists
-    the applicable file types for each field.
-    """
-
-    agc_status_word: int = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
-            "level": "record",
-            "description": "32 bits, a 1 in bit position corresponds to an AGC fault on that transmitter",
-        }
-    )
-    antenna_arrays_order: list[str] = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq"],
-            "level": "file",
-            "description": "Descriptors for the data layout",
-        }
-    )
-    averaging_method: str = field(
-        metadata={
-            "groups": ["rawacf"],
-            "level": "file",
-            "description": "Averaging method, e.g. mean, median",
-        }
-    )
-    beam_azms: list[float] = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf"],
-            "level": "file",
-            "description": "Beams azimuths for each beam in degrees CW of boresight",
-        }
-    )
-    beam_nums: list[int] = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf"],
-            "level": "file",
-            "description": "Beam numbers used in this slice",
-        }
-    )
-    blanked_samples: np.ndarray = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
-            "level": "file",
-            "description": "Samples blanked during transmission",
-        }
-    )
-    borealis_git_hash: str = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
-            "level": "file",
-            "description": "Version and commit hash of Borealis at runtime",
-        }
-    )
-    cfs_freqs: np.ndarray = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf"],
-            "level": "file",
-            "description": "Frequencies measured during clear frequency search",
-        }
-    )
-    cfs_masks: np.ndarray = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf"],
-            "level": "record",
-            "description": "Mask for cfs_freqs restricting freqs available for setting cfs slice freq",
-        }
-    )
-    cfs_noise: np.ndarray = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf"],
-            "level": "record",
-            "description": "Power measured during clear frequency search",
-        }
-    )
-    cfs_range: np.ndarray = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf"],
-            "level": "file",
-            "description": "Range of frequencies examined by clear frequency search",
-        }
-    )
-    data: np.ndarray = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawrf"],
-            "level": "record",
-            "description": "Contiguous set of samples at the given sample rate",
-        }
-    )
-    data_descriptors: list[str] = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
-            "level": "file",
-            "description": "Denotes what each data dimension represents",
-        }
-    )
-    data_dimensions: np.ndarray = (
-        field(  # todo: Remove this field? The data is no longer flattened
-            metadata={
-                "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
-                "level": "file",
-                "description": "Dimensions in which to reshape the data",
-            }
-        )
-    )
-    data_normalization_factor: float = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf"],
-            "level": "file",
-            "description": "Cumulative scale of all of the filters for a total scaling factor to normalize by",
-        }
-    )
-    decimated_tx_samples: list = field(
-        metadata={
-            "groups": ["txdata"],
-            "level": "record",
-            "description": "Samples decimated by dm_rate",
-        }
-    )
-    dm_rate: list[int] = field(
-        metadata={
-            "groups": ["txdata"],
-            "level": "file",
-            "description": "Total decimation rate of the filtering scheme",
-        }
-    )
-    experiment_comment: str = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
-            "level": "file",
-            "description": "Comment about the whole experiment",
-        }
-    )
-    experiment_id: int = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
-            "level": "file",
-            "description": "Number used to identify experiment",
-        }
-    )
-    experiment_name: str = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
-            "level": "file",
-            "description": "Name of the experiment class",
-        }
-    )
-    first_range: int = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf"],
-            "level": "file",
-            "description": "Distance to first range in km",
-        }
-    )
-    first_range_rtt: float = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf"],
-            "level": "file",
-            "description": "Round trip time of flight to first range in microseconds",
-        }
-    )
-    freq: float = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf"],
-            "level": "record",
-            "description": "Frequency used for this experiment slice in kHz",
-        }
-    )
-    gps_locked: bool = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
-            "level": "record",
-            "description": "True if the GPS was locked during the entire averaging period",
-        }
-    )
-    gps_to_system_time_diff: float = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
-            "level": "record",
-            "description": "Max time diff in seconds between GPS and system/NTP time during the averaging "
-            "period",
-        }
-    )
-    int_time: float = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
-            "level": "record",
-            "description": "Integration time in seconds",
-        }
-    )
-    intf_acfs: np.ndarray = field(
-        metadata={
-            "groups": ["rawacf"],
-            "level": "record",
-            "description": "Interferometer array autocorrelations",
-        }
-    )
-    intf_antenna_count: int = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
-            "level": "file",
-            "description": "Number of interferometer array antennas",
-        }
-    )
-    lags: np.ndarray = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf"],
-            "level": "file",
-            "description": "Time difference between pairs of pulses in pulse array, in units of tau_spacing",
-        }
-    )
-    lp_status_word: int = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
-            "level": "record",
-            "description": "32 bits, a 1 in bit position corresponds to a low power condition on that "
-            "transmitter",
-        }
-    )
-    main_acfs: np.ndarray = field(
-        metadata={
-            "groups": ["rawacf"],
-            "level": "record",
-            "description": "Main array autocorrelations",
-        }
-    )
-    main_antenna_count: int = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
-            "level": "file",
-            "description": "Number of main array antennas",
-        }
-    )
-    noise_at_freq: np.ndarray = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf"],
-            "level": "record",
-            "description": "Noise at the receive frequency",
-        }
-    )  # TODO: Implement and give units
-    num_ranges: int = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq"],
-            "level": "file",
-            "description": "Number of ranges to calculate correlations for",
-        }
-    )
-    num_samps: int = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawrf"],
-            "level": "file",
-            "description": "Number of samples in the sampling period",
-        }
-    )
-    num_sequences: int = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
-            "level": "record",
-            "description": "Number of sampling periods in the averaging period",
-        }
-    )
-    num_slices: int = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
-            "level": "file",
-            "description": "Number of slices in the experiment at this averaging period",
-        }
-    )
-    pulse_phase_offset: np.ndarray = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq"],
-            "level": "record",
-            "description": "Phase offset in degrees for each pulse in pulses",
-        }
-    )
-    pulse_sample_start: list[float] = field(
-        metadata={
-            "groups": ["txdata"],
-            "level": "file",
-            "description": "Beginning of pulses in sequence measured in samples",
-        }
-    )
-    pulse_timing_us: list[float] = field(
-        metadata={
-            "groups": ["txdata"],
-            "level": "file",
-            "description": "Beginning of pulses in sequence measured in microseconds",
-        }
-    )
-    pulses: np.ndarray = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf"],
-            "level": "file",
-            "description": "Pulse sequence in units of tau_spacing",
-        }
-    )
-    range_sep: int = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf"],
-            "level": "file",
-            "description": "Range gate separation (equivalent distance between samples) in km",
-        }
-    )
-    rx_center_freq: float = field(
-        metadata={
-            "groups": ["rawrf"],
-            "level": "file",
-            "description": "Center frequency of the data in kHz",
-        }
-    )
-    rx_sample_rate: float = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
-            "level": "file",
-            "description": "Sampling rate of the samples being written to file in Hz",
-        }
-    )
-    # TODO: Include these fields in a future release
-    # rx_main_phases: list[complex] = field(
-    #     metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf', 'txdata'],
-    #               "level": "record",
-    #               'description': 'Phases of main array receive antennas for each antenna. Magnitude between 0 (off) '
-    #                              'and 1 (full power)'})
-    # rx_intf_phases: list[complex] = field(
-    #     metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf', 'txdata'],
-    #               "level": "record",
-    #               'description': 'Phases of intf array receive antennas for each antenna. Magnitude between 0 (off) '
-    #                              'and 1 (full power)'})
-    samples_data_type: str = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
-            "level": "file",
-            "description": "C data type of the samples",
-        }
-    )
-    scan_start_marker: bool = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
-            "level": "record",
-            "description": "Designates if the record is the first in a scan",
-        }
-    )
-    scheduling_mode: str = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
-            "level": "file",
-            "description": "Type of scheduling time at the time of this dataset",
-        }
-    )
-    slice_comment: str = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf"],
-            "level": "record",
-            "description": "Comment that describes the slice",
-        }
-    )
-    slice_id: int = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf"],
-            "level": "file",
-            "description": "Slice ID of the file and dataset",
-        }
-    )
-    slice_interfacing: dict = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf"],
-            "level": "file",
-            "description": "Interfacing of this slice to other slices",
-        }
-    )
-    sqn_timestamps: list[float] = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
-            "level": "record",
-            "description": "GPS timestamps of start of first pulse for each sampling period in the averaging "
-            "period in seconds since epoch",
-        }
-    )
-    station: str = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
-            "level": "file",
-            "description": "Three letter radar identifier",
-        }
-    )
-    tau_spacing: float = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf"],
-            "level": "file",
-            "description": "Unit of spacing between pulses in microseconds",
-        }
-    )
-    tx_antenna_phases: list[complex] = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf", "txdata"],
-            "level": "record",
-            "description": "Phases of transmit signal for each antenna. Magnitude between 0 (off) and 1 "
-            "(full power)",
-        }
-    )
-    tx_center_freq: list[float] = field(
-        metadata={
-            "groups": ["txdata"],
-            "level": "file",
-            "description": "Center frequency of the transmitted data in kHz",
-        }
-    )
-    tx_pulse_len: float = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf"],
-            "level": "file",
-            "description": "Length of the pulse in microseconds",
-        }
-    )
-    tx_rate: list[float] = field(
-        metadata={
-            "groups": ["txdata"],
-            "level": "file",
-            "description": "Sampling rate of the samples being sent to the USRPs",
-        }
-    )
-    tx_samples: list = field(
-        metadata={
-            "groups": ["txdata"],
-            "level": "record",
-            "description": "Samples sent to USRPs for transmission",
-        }
-    )
-    xcfs: np.ndarray = field(
-        metadata={
-            "groups": ["rawacf"],
-            "level": "record",
-            "description": "Cross-correlations between main and interferometer arrays",
-        }
-    )
-
-    @classmethod
-    def type_fields(cls, file_type: str):
-        """
-        Returns a list of names for all fields which belong in 'file_type' files.
-        """
-        return [f.name for f in fields(cls) if file_type in f.metadata.get("groups")]
-
-    @classmethod
-    def file_level_fields(cls):
-        """
-        Returns a list of the names for all fields which are at the `file` level, and thus are constant
-        for a given file.
-        """
-        return [f.name for f in fields(cls) if f.metadata.get("level") == "file"]
-
-    @classmethod
-    def record_level_fields(cls):
-        """
-        Returns a list of the names for all fields which are at the `record` level, and thus vary
-        from averaging period to averaging period.
-        """
-        return [f.name for f in fields(cls) if f.metadata.get("level") == "record"]
-
-    def __repr__(self):
-        """Print all available fields"""
-        return f"{vars(self)}"
+from utils.file_formats import SliceData
 
 
 @dataclass
@@ -880,7 +415,9 @@ class DataWrite(object):
             f.write(json.dumps(data_dict))
 
     @staticmethod
-    def write_hdf5_file(filename, slice_data, dt_str, file_type):
+    def write_hdf5_file(
+        filename: str, slice_data: SliceData, dt_str: str, file_type: str
+    ):
         """
         Write out data to an HDF5 file. If the file already exists it will be overwritten.
 
@@ -897,18 +434,18 @@ class DataWrite(object):
         try:
             with h5py.File(filename, "a") as f:
                 group = f.create_group(dt_str)
+                metadata = f.get("metadata", f.create_group("metadata"))
 
-                for relevant_field in SliceData.type_fields(file_type):
-                    array_field = False
+                for relevant_field in slice_data.type_fields(file_type):
                     data = getattr(slice_data, relevant_field)
 
                     # Massage the data into the correct types
                     if isinstance(data, dict):
-                        data = np.bytes_(str(data))
+                        raw_data = np.bytes_(str(data))
                     elif isinstance(data, str):
-                        data = np.bytes_(data)
+                        raw_data = np.bytes_(data)
                     elif isinstance(data, bool):
-                        data = np.bool_(data)
+                        raw_data = np.bool_(data)
                     elif isinstance(data, list):
                         if len(data) == 0:
                             log.warning(
@@ -918,29 +455,33 @@ class DataWrite(object):
                                 file=filename,
                             )
                         if len(data) > 0 and isinstance(data[0], str):
-                            data = np.bytes_(data)
+                            raw_data = np.bytes_(data)
                         else:
-                            data = np.array(data)
-                        array_field = True
-                    elif isinstance(data, np.ndarray):
-                        array_field = True
+                            raw_data = np.array(data)
 
                     # Store in the file appropriately
-                    if relevant_field in SliceData.file_level_fields():
-                        if relevant_field in f.attrs:
-                            if f.attrs[relevant_field] != data:
+                    if relevant_field in slice_data.file_level_fields():
+                        if relevant_field in metadata.keys():
+                            if metadata[relevant_field][:] != raw_data:
                                 raise ValueError(
                                     f"{relevant_field} already exists in file with different value.\n"
-                                    f"\tExisting: {f.attrs[relevant_field]}\n"
-                                    f"\tNew: {data}"
+                                    f"\tExisting: {metadata[relevant_field][:]}\n"
+                                    f"\tNew: {raw_data}"
                                 )
                         else:
-                            f.attrs[relevant_field] = data
+                            # First time, write the metadata
+                            metadata[relevant_field] = raw_data
+                            metadata[relevant_field].attrs["description"] = (
+                                data.metadata.get("description")
+                            )
+
+                        # Creates a hard link so the data is only stored once, in the `metadata` group
+                        group[relevant_field] = metadata[relevant_field]
                     else:
-                        if array_field:
-                            group.create_dataset(relevant_field, data=data)
-                        else:
-                            group.attrs[relevant_field] = data
+                        group[relevant_field] = raw_data
+                        group[relevant_field].attrs["description"] = data.metadata.get(
+                            "description"
+                        )
 
         except Exception as e:
             if "No space left on device" in str(e):
