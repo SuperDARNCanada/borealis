@@ -57,6 +57,8 @@ slice_key_set = frozenset(
         "averaging_method",
         "beam_angle",
         "cfs_range",
+        "cfs_fft_n",
+        "cfs_freq_res",
         "comment",
         "cpid",
         "first_range",
@@ -212,6 +214,13 @@ class ExperimentSlice:
         Sets the number of elements used in the fft when processing clear frequency search results.
         Determines the frequency resolution of the processing following the formula;
         frequency resolution = (rx rate / total decimation rate) / cfs fft n value
+    cfs_freq_res *defaults*
+        Defines the desired frequency resolution of clear frequency search results. The frequency
+        resolution is used to calculate the number of elements used in the fft when processing and
+        sets that value to cfs_fft_n. Note the actual frequency resolution set will differ based on
+        the nearest integer value of n corresponding to the requested resolution.
+    cfs_always_run *defaults*
+        If true always run the cfs sequence, otherwise only run after cfs_stable_time has expired
     comment *defaults*
         a comment string that will be placed in the borealis files describing the slice. Defaults to
         empty string.
@@ -372,6 +381,8 @@ class ExperimentSlice:
     intt: Optional[confloat(ge=0)] = None
     scanbound: Optional[list[confloat(ge=0)]] = Field(default_factory=list)
     pulse_phase_offset: Optional[Callable] = default_callable
+    decimation_scheme: DecimationScheme = Field(default_factory=create_default_scheme)
+
     cfs_range: Optional[conlist(freq_int_khz, min_items=2, max_items=2)] = None
     cfs_flag: StrictBool = Field(init=False)
     cfs_duration: Optional[conint(ge=0, strict=True)] = 90  # ms
@@ -379,7 +390,8 @@ class ExperimentSlice:
     cfs_stable_time: Optional[conint(ge=0, strict=True)] = 0  # seconds
     cfs_pwr_threshold: Optional[confloat(ge=0)] = None  # dB
     cfs_fft_n: Optional[conint(ge=0, strict=True)] = 512
-    decimation_scheme: DecimationScheme = Field(default_factory=create_default_scheme)
+    cfs_freq_res: Optional[confloat(ge=0)] = None  # Hz
+    cfs_always_run: Optional[StrictBool] = False
 
     acf: Optional[StrictBool] = False
     acfint: Optional[StrictBool] = False
@@ -522,6 +534,21 @@ class ExperimentSlice:
                         )
 
         return cfs_scheme
+
+    @validator("cfs_freq_res")
+    def check_cfs_freq_res(cls, cfs_freq_res, values):
+        # TODO: Implement a check to default to cfs_fft_n if the parameter was set by the user
+        if cfs_freq_res is not None:
+            dm = 1
+            for stage in values["cfs_scheme"].stages:
+                dm = dm * stage.dm_rate
+            new_n = int((values["rx_bandwidth"] / dm) / cfs_freq_res)
+            log.info(
+                f"CFS frequency resolution of {cfs_freq_res} Hz was requested",
+                resolution_set=(values["rx_bandwidth"] / dm) / new_n,
+            )
+            values["cfs_fft_n"] = new_n
+            return cfs_freq_res
 
     @validator("tx_antennas")
     def check_tx_antennas(cls, tx_antennas):
