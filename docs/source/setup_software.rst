@@ -37,55 +37,8 @@ see the note when running ``install_radar_deps.py``.
 #. Use the BIOS to enable boot-on-power. The computer should come back online when power is restored
    after an outage. This setting is typically referred to as *Restore on AC/Power Loss*
 
-#. Use cpupower to ungovern the CPU and run at the max frequency. This should be added to a script
-   that occurs on reboot. ::
-
-    sudo cpupower frequency-set -g performance.
-
-#. To verify that the CPU is running at maximum frequency, ::
-
-    cpupower frequency-info
-
-#. Use ethtool to set the interface ring buffer size for both rx and tx. Make sure to use an
-   ethernet device which is connected to the 10 GB card of the computer (not necessarily eth0). This
-   should be added to a script that occurs on reboot for the interface used to connect to the USRPs.
-   This is done to help prevent packet loss when the network traffic exceeds the capacity of the
-   network adapter. ::
-
-    sudo ethtool -G <10G_network_device> tx 4096 rx 4096.
-
-#. To see that this works as intended, and that it persists across reboots, you can execute the
-   following, which will output the maximums and the current settings. ::
-
-    sudo ethtool -g <10G_network_device>
-
-#. Use the network manager or a line in the reboot script to change the MTU of the interface for the interface used to
-   connect to the USRPs. A larger MTU will reduce the amount of network overhead. An MTU larger than 1500 bytes allows
-   what is known as Jumbo frames, which can use up to 9000 bytes of payload. **NOTE this also needs
-   to be enabled on the network switch, and any other devices in the network chain. Setting this
-   to 1500 may be the best option, make sure you test.** ::
-
-    sudo ip link set <10G_network_device> mtu 9000
-
-#. To verify that the MTU was set correctly: ::
-
-    ip link show <10G_network_device>
-
-#. Use sysctl to adjust the kernel network buffer sizes. This should be added to a script that
-   occurs on reboot for the interface used to connect to the USRPs. That's 50 million for
-   ``rmem_max`` and 2.5 million for ``wmwem_max``. ::
-
-    sudo sysctl -w net.core.rmem_max=50000000
-    sudo sysctl -w net.core.wmem_max=2500000
-
-#. Verify that the kernel network buffer sizes are set: ::
-
-    cat /proc/sys/net/core/rmem_max
-    cat /proc/sys/net/core/wmem_max
-
-#. The previous commands should all be executed on boot, as they are not persistent. One way to do
-   this is via the root user's crontab. Here are some example entries for a computer with multiple
-   ethernet interfaces: ::
+#. Configure the following computer settings to run each time the computer reboots. This can be done via root
+   crontab, as these commands are not persistent. Example root crontab for multiple ethernet interfaces: ::
 
     @reboot /sbin/sysctl -w net.ipv6.conf.all.disable_ipv6=1
     @reboot /sbin/sysctl -w net.ipv6.conf.default.disable_ipv6=1
@@ -97,31 +50,79 @@ see the note when running ``install_radar_deps.py``.
     @reboot /sbin/sysctl -w net.core.rmem_max=50000000
     @reboot /sbin/sysctl -w net.core.wmem_max=2500000
 
-#. Install tuned. Use tuned-adm (as root) to set the system's performance to network-latency. ::
+   #. Use ``sysctl`` to disable IPv6. ::
+
+        sudo sysctl -w net.ipv6.conf.all.disable_ipv6=1
+        sudo sysctl -w net.ipv6.conf.default.disable_ipv6=1
+
+   #. Use ``ethtool`` to set the interface ring buffer size for both rx and tx. Make sure to use an
+      ethernet device which is connected to the 10 GB card of the computer (not necessarily eth0). 
+      This is done to help prevent packet loss when the network traffic exceeds the capacity of the
+      network adapter. ::
+
+        sudo ethtool -G <10G_network_device> tx 4096 rx 4096.
+
+      To see that this works as intended, and that it persists across reboots, you can execute the
+      following, which will output the maximums and the current settings. ::
+
+        sudo ethtool -g <10G_network_device>
+
+   #. Use ``ip`` to change the MTU for the interface used to connect to the USRPs. A larger MTU will 
+      reduce the amount of network overhead. An MTU larger than 1500 bytes allows
+      what is known as Jumbo frames, which can use up to 9000 bytes of payload. **NOTE this also needs
+      to be enabled on the network switch, and any other devices in the network chain. Setting this
+      to 1500 may be the best option, make sure you test.** ::
+
+        sudo ip link set <10G_network_device> mtu 9000
+
+      To verify that the MTU was set correctly: ::
+
+        ip link show <10G_network_device>
+
+   #. Use ``cpupower`` to ungovern the CPU and run at the max frequency. This should be added to a script
+      that occurs on reboot. ::
+
+        sudo cpupower frequency-set -g performance.
+
+      To verify that the CPU is running at maximum frequency, ::
+
+        cpupower frequency-info
+
+   #. Use ``sysctl`` to adjust the kernel network buffer sizes. This should be added to a script that
+      occurs on reboot for the interface used to connect to the USRPs. That's 50,000,000 for
+      ``rmem_max`` and 2,500,000 for ``wmwem_max``. ::
+
+        sudo sysctl -w net.core.rmem_max=50000000
+        sudo sysctl -w net.core.wmem_max=2500000
+
+      Verify that the kernel network buffer sizes are set: ::
+
+        cat /proc/sys/net/core/rmem_max
+        cat /proc/sys/net/core/wmem_max
+
+#. Install ``tuned``. Use ``tuned-adm`` to set the system's performance to network-latency. ::
 
     sudo zypper in tuned
-    su
-    systemctl enable tuned
-    systemctl start tuned
-    tuned-adm profile network-latency
-    exit
+    sudo systemctl enable tuned
+    sudo systemctl start tuned
+    sudo tuned-adm profile network-latency
 
-#. To verify the system's new profile: ::
+   To verify the system's new profile: ::
 
     sudo tuned-adm profile_info
 
-#. Add an environment variable called BOREALISPATH that points to the cloned git repository in
-   .bashrc or .profile and re-source the file. For example: **(NOTE the extra '/')** ::
+#. Add an environment variable in ``.profile`` called ``BOREALISPATH`` that points to the cloned 
+   Borealis git repository. For example **(NOTE the extra '/')**: ::
 
     export BOREALISPATH=/home/radar/borealis/
     source .profile
 
-#. Verify the BOREALISPATH environment variable exists: ::
+   Verify the ``BOREALISPATH`` environment variable exists: ::
 
     env | grep BOREALISPATH
 
 #. Clone the Borealis software to a directory **The following ensures that Borealis will be in the
-   same directory that the ``BOREALISPATH`` env variable points to**. ::
+   same directory that the ``BOREALISPATH`` environment variable points to**. ::
 
     sudo zypper in git
     git clone https://github.com/SuperDARNCanada/borealis.git $BOREALISPATH
@@ -131,34 +132,44 @@ see the note when running ``install_radar_deps.py``.
    manager of a different distribution if it doesn't exist yet. This script makes an attempt to
    correctly install Boost and create symbolic links to the Boost libraries the UHD (USRP Hardware
    Driver) understands. If UHD does not configure correctly, an improper Boost installation or library
-   naming convention is the likely reason. Note that you need python3 installed before you can run this
+   naming convention is the likely reason. Note that you need ``python3`` installed before you can run this
    script. The radar abbreviation should be the 3 letter radar code such as 'sas', 'rkn' or 'inv'.
    **NOTE:** If you do not have CUDA installed, pass the ``--no-cuda`` flag as an option. ::
 
     cd $BOREALISPATH
-    sudo -E python3 scripts/install_radar_deps.py [radar abbreviation] $BOREALISPATH --python-version=3.9 2>&1 | tee install_log.txt
+    sudo -E python3 scripts/install_radar_deps.py [radar code] $BOREALISPATH --python-version=3.11 2>&1 
 
-#. If you're building Borealis for a non University of Saskatchewan radar, use a USASK
-   ```config.ini``` file (located in ``borealis/config/``) as a template, or follow the config file
-   :ref:`documentation <config-options>` to create your own file in the Borealis directory. Your config file should
-   be placed in borealis/config/[site_id]/[site_id]_config.ini
+#. If you're building Borealis for a non U of S radar, use one of the U of S
+   ``[radar code]_config.ini`` files (located in ``borealis/config/[radar code]``) as a template, or follow the 
+   :ref:`config file documentation<config-options>` to create your own config file. Your config file should
+   be placed in ``borealis/config/[radar code]/[radar code]_config.ini``
 
-#. In ``config.ini``, there is an entry called "realtime_address". This defines the protocol,
+#. In ``[radar code]_config.ini``, there is an entry called "realtime_address". This defines the protocol,
    interface, and port that the realtime module uses for socket communication. This should be set to
    ``"realtime_address" : "tcp://<interface>:9696"``, where <interface> is a configured interface on
-   your computer such as "eth0" or "wlan0". Running ``ip addr``, you should choose a device which is
-   UP.
+   your computer such as "127.0.0.1", "eth0", or "wlan0". This interface is selected from ``ip addr``, 
+   from which you should choose a device which is "UP".
 
-#. Install the necessary software to transfer, convert, and test data: ::
+   Verify that the realtime module is able to communicate with other modules. This can be done by
+   running the following command in a new terminal while borealis is running. If all is well, the
+   command should output that there is a device listening on the channel specified. ::
 
-    cd $HOME
-    git clone https://github.com/SuperDARNCanada/borealis-data-utils.git
-    git clone https://github.com/SuperDARNCanada/data_flow.git
-    mkdir $HOME/pydarnio-env
-    virtualenv $HOME/pydarnio-env
-    source $HOME/pydarnio-env/bin/activate
-    pip install pydarn    # Installs pydarnio as well, as it is a dependency.
-    deactivate
+    ss --all | grep 9696
+
+#. Edit ``/etc/security/limits.conf`` (as root) to add the following line that allows UHD to set
+   thread priority. UHD automatically tries to boost its thread scheduling priority, so it will fail
+   if the user executing UHD doesn't have permission. ::
+
+    @users - rtprio 99
+
+#. Once all dependencies are resolved, use ``scons`` to build the system. Use the script called
+   ``mode`` to change the build environment to debug or release depending on what version of the
+   system should be run. ``SCONSFLAGS`` variable can be added to ``.profile`` to hold any flags such
+   as ``-j`` for parallel builds. ::
+
+    cd $BOREALISPATH
+    scons -c          # If first time building, run to reset project state.
+    scons release     # Can also run `scons debug`
 
 #. Set up NTP. The ``install_radar_deps.py`` script already downloads and configures a version of
    ``ntpd`` that works with incoming PPS signals on the serial port DCD line. An example
@@ -198,28 +209,6 @@ see the note when running ``install_radar_deps.py``.
         trustedkey 1
         requestkey 1
         controlkey 1
-
-#. Edit ``/etc/security/limits.conf`` (as root) to add the following line that allows UHD to set
-   thread priority. UHD automatically tries to boost its thread scheduling priority, so it will fail
-   if the user executing UHD doesn't have permission. ::
-
-    @users - rtprio 99
-
-#. Assuming all dependencies are resolved, use ``scons`` to build the system. Use the script called
-   ``mode`` to change the build environment to debug or release depending on what version of the
-   system should be run. ``SCONSFLAGS`` variable can be added to ``.profile`` to hold any flags such
-   as ``-j`` for parallel builds. For example, run the following:
-
-    - ``cd $BOREALISPATH``
-    - If first time building, run ``scons -c`` to reset project state.
-    - ``scons [release|debug]``
-
-#. Add the Python scheduling script, ``start_radar.sh``, to the system boot scripts to allow the
-   radar to follow the schedule. As an example on OpenSUSE for the ``radar`` user:
-
-    - Open the crontab for editing with ``crontab -e`` as radar
-    - Add the line ``@reboot /home/radar/borealis/start_radar.sh >> /home/radar/start_radar.log
-      2>&1``
 
 #. Find out which tty device is physically connected to your PPS signal. It may not be ttyS0,
    especially if you have a PCIe expansion card. It may be ttyS1, ttyS2, ttyS3 or higher. To do
@@ -281,14 +270,28 @@ see the note when running ``install_radar_deps.py``.
    `PPS Clock Discipline <http://www.fifi.org/doc/ntp-doc/html/driver22.htm>`_ for information about
    the PPS ntp clock discipline.
 
-#. Verify that the realtime module is able to communicate with other modules. This can be done by
-   running the following command in a new terminal while borealis is running. If all is well, the
-   command should output that there is a device listening on the channel specified. ::
-
-    ss --all | grep 9696
 
 #. For further reading on networking and tuning with the USRP devices, see
    `Transport Notes <https://files.ettus.com/manual/page_transport.html>`_ and
    `USRP Host Performance Tuning Tips and Tricks <https://kb.ettus.com/USRP_Host_Performance_Tuning_Tips_and_Tricks>`_.
    Also check out the man pages for ``tuned``, ``cpupower``, ``ethtool``, ``ip``, ``sysctl``,
    ``modprobe``, and ``ldattach``
+
+#. Add the Python scheduling script, ``start_radar.sh``, to the system boot scripts to allow the
+   radar to follow the schedule. As an example on OpenSUSE for the ``radar`` user:
+
+    - Open the crontab for editing with ``crontab -e`` as radar
+    - Add the line ``@reboot /home/radar/borealis/start_radar.sh >> /home/radar/start_radar.log
+      2>&1``
+
+#. Install necessary software to transfer, convert, and test data: ::
+
+    cd $HOME
+    git clone https://github.com/SuperDARNCanada/borealis-data-utils.git
+    git clone https://github.com/SuperDARNCanada/data_flow.git
+    python3.11 -m venv $HOME/pydarnio-env
+    source $HOME/pydarnio-env/bin/activate
+    pip install pydarn    # Installs pydarnio as well, as it is a dependency.
+
+   Follow the `data_flow documentation<https://github.com/SuperDARNCanada/data_flow>` to properly setup and
+   configure the data flow
