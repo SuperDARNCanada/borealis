@@ -17,7 +17,6 @@ import datetime
 from dataclasses import dataclass, field, fields
 import errno
 import faulthandler
-import json
 from multiprocessing import shared_memory
 import os
 import pickle
@@ -358,7 +357,115 @@ class ParseData(object):
         self.parse_antenna_iq()
 
 
-class DataWrite(object):
+# todo: Implement DMAPWriter and write Rawacf files straight to DMAP format.
+#  The HDF5 versions are kept around somewhat uselessly, and are basically immediately converted
+#  to DMAP anyways. This could be done quickly with pyDARNio and darn-dmap, potentially saving a
+#  sizable amount of storage on the site computers. Typically, DMAP rawacfs are ~15% smaller than
+#  their HDF5 counterparts.
+
+class HDF5Writer:
+    """
+    Class for writing to HDF5 files.
+    """
+
+    @staticmethod
+    def massage_data(field_data):
+        """
+        Converts the data to supported types for a Borealis HDF5 file.
+        """
+        if isinstance(field_data, dict):
+            return np.bytes_(str(field_data))
+        elif isinstance(field_data, str):
+            return np.bytes_(field_data)
+        elif isinstance(field_data, bool):
+            return np.bool_(field_data)
+        elif isinstance(field_data, list):
+            if len(field_data) > 0 and isinstance(field_data[0], str):
+                return np.bytes_(field_data)
+            else:
+                return np.array(field_data)
+        else:
+            return field_data
+
+    @staticmethod
+    def write_field(name: str, data, group: h5py.Group, ftype: str):
+        """Write `raw_data` to `group` along with the associated metadata in `data`"""
+        group[name] = HDF5Writer.massage_data(data)
+        if group[name].size == 0:
+            log.warning(
+                "empty array",
+                field=field,
+                file_type=ftype,
+            )
+        group[name].attrs["description"] = (
+            data.metadata.get("description")
+        )
+        dim_labels = data.metadata.get("dim_labels", None)
+        if dim_labels is not None:
+            if len(dim_labels) == 0:
+                dim_labels = SliceData.generate_data_dim_labels(ftype)
+            if len(dim_labels) != len(group[name].shape):
+                raise ValueError(
+                    f"{name} shape {group[name].shape} does not match dimension labels {dim_labels}"
+                )
+            for i, dim in enumerate(dim_labels):
+                group[name].dims[i].label = dim
+
+    @staticmethod
+    def write_record(
+        filename: str, slice_data: SliceData, dt_str: str, file_type: str
+    ):
+        """
+        Write out data to an HDF5 file. If the file already exists it will be overwritten.
+
+        :param  filename:   Name of the file to write to
+        :type   filename:   str
+        :param  slice_data: Data to write out to the HDF5 file.
+        :type   slice_data: SliceData
+        :param  dt_str:     A datetime timestamp of the first transmission time in the record
+        :type   dt_str:     str
+        :param  file_type:  Type of file to write.
+        :type   file_type:  str
+        """
+        try:
+            with h5py.File(filename, "a") as f:
+                group = f.create_group(dt_str)
+                metadata = f.get("metadata", f.create_group("metadata"))
+
+                for relevant_field in slice_data.type_fields(file_type):
+                    data = getattr(slice_data, relevant_field)
+
+                    if relevant_field in slice_data.file_level_fields():
+                        # file-level metadata (unchanging between records)
+                        if relevant_field in metadata.keys():
+                            # verify it hasn't changed
+                            if metadata[relevant_field][:] != HDF5Writer.massage_data(data):
+                                raise ValueError(
+                                    f"{relevant_field} already exists in file with different value.\n"
+                                    f"\tExisting: {metadata[relevant_field][:]}\n"
+                                    f"\tNew: {HDF5Writer.massage_data(data)}"
+                                )
+                        else:
+                            # First time, write the metadata
+                            HDF5Writer.write_field(relevant_field, data, metadata, file_type)
+
+                        # Creates a hard link so the data is only stored once, in the top-level `metadata` group
+                        group[relevant_field] = metadata[relevant_field]
+                    else:
+                        HDF5Writer.write_field(relevant_field, data, group, file_type)
+
+        except Exception as e:
+            if "No space left on device" in str(e):
+                log.critical("no space left on device", error=e)
+                log.exception("no space left on device", exception=e)
+                sys.exit(-1)
+            else:
+                log.critical("error when saving to file", error=e)
+                log.exception("error when saving to file", exception=e)
+                sys.exit(-1)
+
+
+class DataWrite:
     """
     This class contains the functions used to write out processed data to files.
 
@@ -366,9 +473,7 @@ class DataWrite(object):
     :type   data_write_options: Options
     """
 
-    def __init__(self, data_write_options):
-        super(DataWrite, self).__init__()
-
+    def __init__(self, data_write_options: Options):
         # Used for getting info from config.
         self.options = data_write_options
 
@@ -395,118 +500,79 @@ class DataWrite(object):
         # Default this to true so we know if we are running for the first time.
         self.first_time = True
 
-    @staticmethod
-    def write_json_file(filename, slice_data, file_type):
-        """
-        Write out data to a json file. If the file already exists it will be overwritten.
+        # Timestamp of the first sequence in a file, in milliseconds past epoch
+        # todo: Make this formatted so the record keys are human-readable?
+        self.epoch_milliseconds = None
 
-        :param  filename:   The path to the file to write out
-        :type   filename:   str
-        :param  slice_data: Data to write out to the JSON file.
-        :type   slice_data: SliceData
-        :param  file_type:  The type of file to write.
-        :type   file_type:  str
-        """
-        data_dict = {}
-        for relevant_field in SliceData.type_fields(file_type):
-            data_dict[relevant_field] = getattr(slice_data, relevant_field)
+        # Directory where output files are written
+        self.dataset_directory = None
 
-        with open(filename, "w+") as f:
-            f.write(json.dumps(data_dict))
+        # Socket for sending rawacf data to realtime
+        self.realtime_socket = so.create_sockets(self.options.router_address, self.options.dw_to_rt_identity)
 
     @staticmethod
-    def write_hdf5_file(
-        filename: str, slice_data: SliceData, dt_str: str, file_type: str
-    ):
+    def two_hr_ceiling(dt):
         """
-        Write out data to an HDF5 file. If the file already exists it will be overwritten.
+        Finds the next 2hr boundary starting from midnight
 
-        :param  filename:   The path to the file to write out
-        :type   filename:   str
-        :param  slice_data: Data to write out to the HDF5 file.
-        :type   slice_data: SliceData
-        :param  dt_str:     A datetime timestamp of the first transmission time in the record
-        :type   dt_str:     str
-        :param  file_type:  Type of file to write.
-        :type   file_type:  str
+        :param  dt: A datetime to find the next 2hr boundary.
+        :type   dt: DateTime
+
+        :returns:   2hr aligned datetime
+        :rtype:     DateTime
+        """
+
+        midnight_today = dt.replace(hour=0, minute=0, second=0, microsecond=0)
+        boundary_time = midnight_today + datetime.timedelta(hours=2)
+        while dt > boundary_time:
+            boundary_time += datetime.timedelta(hours=2)
+
+        return boundary_time
+
+    def write_file(self, aveperiod_data, two_hr_file_with_type, data_type):
+        """
+        Writes the final data out to the location based on the type of file extension required
+
+        :param  aveperiod_data:         Collection of data from sequences
+        :type   aveperiod_data:         SliceData
+        :param  two_hr_file_with_type:  Name of the two hour file with data type added
+        :type   two_hr_file_with_type:  str
+        :param  data_type:              Data type, e.g. 'antennas_iq', 'bfiq', etc.
+        :type   data_type:              str
         """
 
         try:
-            with h5py.File(filename, "a") as f:
-                group = f.create_group(dt_str)
-                metadata = f.get("metadata", f.create_group("metadata"))
-
-                for relevant_field in slice_data.type_fields(file_type):
-                    data = getattr(slice_data, relevant_field)
-
-                    # Massage the data into the correct types
-                    if isinstance(data, dict):
-                        raw_data = np.bytes_(str(data))
-                    elif isinstance(data, str):
-                        raw_data = np.bytes_(data)
-                    elif isinstance(data, bool):
-                        raw_data = np.bool_(data)
-                    elif isinstance(data, list):
-                        if len(data) == 0:
-                            log.warning(
-                                "empty array",
-                                field=relevant_field,
-                                data=data,
-                                file=filename,
-                            )
-                        if len(data) > 0 and isinstance(data[0], str):
-                            raw_data = np.bytes_(data)
-                        else:
-                            raw_data = np.array(data)
-
-                    # Store in the file appropriately
-                    if relevant_field in slice_data.file_level_fields():
-                        if relevant_field in metadata.keys():
-                            if metadata[relevant_field][:] != raw_data:
-                                raise ValueError(
-                                    f"{relevant_field} already exists in file with different value.\n"
-                                    f"\tExisting: {metadata[relevant_field][:]}\n"
-                                    f"\tNew: {raw_data}"
-                                )
-                        else:
-                            # First time, write the metadata
-                            metadata[relevant_field] = raw_data
-                            metadata[relevant_field].attrs["description"] = (
-                                data.metadata.get("description")
-                            )
-
-                        # Creates a hard link so the data is only stored once, in the `metadata` group
-                        group[relevant_field] = metadata[relevant_field]
-                    else:
-                        group[relevant_field] = raw_data
-                        group[relevant_field].attrs["description"] = data.metadata.get(
-                            "description"
-                        )
-
-        except Exception as e:
-            if "No space left on device" in str(e):
-                log.critical("no space left on device", error=e)
-                log.exception("no space left on device", exception=e)
+            os.makedirs(self.dataset_directory, exist_ok=True)
+        except OSError as err:
+            if err.args[0] == errno.ENOSPC:
+                log.critical("no space left on device", error=err)
+                log.exception("no space left on device", exception=err)
                 sys.exit(-1)
             else:
-                log.critical("unknown error when saving to file", error=e)
-                log.exception("unknown error when saving to file", exception=e)
+                log.critical("unknown error when making dirs", error=err)
+                log.exception("unknown error when making dirs", exception=err)
                 sys.exit(-1)
 
-    @staticmethod
-    def write_dmap_file(filename, slice_data):
-        """
-        Write out data to a dmap file. If the file already exists it will be overwritten.
+        full_two_hr_file = (
+            f"{self.dataset_directory}/{two_hr_file_with_type}.hdf5.site"
+        )
 
-        :param  filename:   The path to the file to write out
-        :type   filename:   str
-        :param  slice_data: Data to write out to the dmap file.
-        :type   slice_data: SliceData
-        """
+        try:
+            fd = os.open(full_two_hr_file, os.O_CREAT)
+            os.close(fd)
+        except OSError as err:
+            if err.args[0] == errno.ENOSPC:
+                log.critical("no space left on device", error=err)
+                log.exception("no space left on device", exception=err)
+                sys.exit(-1)
+            else:
+                log.critical("unknown error when opening file", error=err)
+                log.exception("unknown error when opening file", exception=err)
+                sys.exit(-1)
 
-        # TODO: Complete this by parsing through the dictionary and write out to proper dmap format
-
-        raise NotImplementedError
+        HDF5Writer.write_record(
+            full_two_hr_file, aveperiod_data, self.epoch_milliseconds, data_type
+        )
 
     def output_data(
         self,
@@ -514,10 +580,8 @@ class DataWrite(object):
         write_antenna_iq,
         write_raw_rf,
         write_tx,
-        file_ext,
         aveperiod_meta,
         data_parsing,
-        dw_rt,
         write_rawacf=True,
     ):
         """
@@ -533,60 +597,23 @@ class DataWrite(object):
         :type   write_raw_rf:       bool
         :param  write_tx:           Should the generated tx samples and metadata be written to file?
         :type   write_tx:           bool
-        :param  file_ext:           Type of file extension to use
-        :type   file_ext:           str
         :param  aveperiod_meta:     Metadata from radar control about averaging period
         :type   aveperiod_meta:     AveperiodMetadataMessage
         :param  data_parsing:       All parsed and concatenated data from averaging period
         :type   data_parsing:       ParseData
-        :param  dw_rt:              Pair of socket and iden for RT purposes.
-        :type   dw_rt:              dict
         :param  write_rawacf:       Should rawacfs be written to file? Defaults to True.
         :type   write_rawacf:       bool, optional
         """
 
         start = time.perf_counter()
-        try:
-            assert file_ext in ["hdf5", "json", "dmap"]
-        except Exception as e:
-            log.error(
-                f"wrong file format {file_ext} not in [hdf5, json, dmap]", error=e
-            )
-            log.exception(
-                f"wrong file format {file_ext} not in [hdf5, json, dmap]", exception=e
-            )
-            sys.exit(1)
 
         # Format the name and location for the dataset
         time_now = datetime.datetime.utcfromtimestamp(data_parsing.timestamps[0])
-
         today_string = time_now.strftime("%Y%m%d")
         datetime_string = time_now.strftime("%Y%m%d.%H%M.%S.%f")
         epoch = datetime.datetime.utcfromtimestamp(0)
-        epoch_milliseconds = str(int((time_now - epoch).total_seconds() * 1000))
-        dataset_directory = f"{self.options.data_directory}/{today_string}"
-        dataset_name = f"{datetime_string}.{self.options.site_id}.{{sliceid}}.{{dformat}}.{file_ext}"
-        dataset_location = f"{dataset_directory}/{{name}}"
-
-        def two_hr_ceiling(dt):
-            """
-            Finds the next 2hr boundary starting from midnight
-
-            :param  dt: A datetime to find the next 2hr boundary.
-            :type   dt: DateTime
-
-            :returns:   2hr aligned datetime
-            :rtype:     DateTime
-            """
-
-            midnight_today = dt.replace(hour=0, minute=0, second=0, microsecond=0)
-
-            boundary_time = midnight_today + datetime.timedelta(hours=2)
-
-            while time_now > boundary_time:
-                boundary_time += datetime.timedelta(hours=2)
-
-            return boundary_time
+        self.epoch_milliseconds = str(int((time_now - epoch).total_seconds() * 1000))
+        self.dataset_directory = f"{self.options.data_directory}/{today_string}"
 
         if self.first_time:
             self.raw_rf_two_hr_name = self.raw_rf_two_hr_format.format(
@@ -595,7 +622,7 @@ class DataWrite(object):
             self.tx_data_two_hr_name = self.tx_data_two_hr_format.format(
                 dt=time_now.strftime("%Y%m%d.%H%M.%S"), site=self.options.site_id
             )
-            self.next_boundary = two_hr_ceiling(time_now)
+            self.next_boundary = self.two_hr_ceiling(time_now)
             self.first_time = False
 
         for slice_id in data_parsing.slice_ids:
@@ -622,79 +649,9 @@ class DataWrite(object):
                 )
                 self.slice_filenames[slice_id] = two_hr_str
 
-            self.next_boundary = two_hr_ceiling(time_now)
+            self.next_boundary = self.two_hr_ceiling(time_now)
 
-        def write_file(tmp_file, aveperiod_data, two_hr_file_with_type, file_type):
-            """
-            Writes the final data out to the location based on the type of file extension required
-
-            :param  tmp_file:               File path and name to write single record
-            :type   tmp_file:               str
-            :param  aveperiod_data:         Collection of data from sequences
-            :type   aveperiod_data:         SliceData
-            :param  two_hr_file_with_type:  Name of the two hour file with data type added
-            :type   two_hr_file_with_type:  str
-            :param  file_type:              Data type, e.g. 'antennas_iq', 'bfiq', etc.
-            :type   file_type:              str
-            """
-
-            try:
-                os.makedirs(dataset_directory, exist_ok=True)
-            except OSError as err:
-                if err.args[0] == errno.ENOSPC:
-                    log.critical("no space left on device", error=err)
-                    log.exception("no space left on device", exception=err)
-                    sys.exit(-1)
-                else:
-                    log.critical("unknown error when making dirs", error=err)
-                    log.exception("unknown error when making dirs", exception=err)
-                    sys.exit(-1)
-
-            if file_ext == "hdf5":
-                full_two_hr_file = (
-                    f"{dataset_directory}/{two_hr_file_with_type}.hdf5.site"
-                )
-
-                try:
-                    fd = os.open(full_two_hr_file, os.O_CREAT)
-                    os.close(fd)
-                except OSError as err:
-                    if err.args[0] == errno.ENOSPC:
-                        log.critical("no space left on device", error=err)
-                        log.exception("no space left on device", exception=err)
-                        sys.exit(-1)
-                    else:
-                        log.critical("unknown error when opening file", error=err)
-                        log.exception("unknown error when opening file", exception=err)
-                        sys.exit(-1)
-
-                self.write_hdf5_file(
-                    full_two_hr_file, aveperiod_data, epoch_milliseconds, file_type
-                )
-
-                # Send rawacf data to realtime (if there is any)
-                if file_type == "rawacf":
-                    group = {}
-                    for relevant_field in SliceData.type_fields(file_type):
-                        data = getattr(aveperiod_data, relevant_field)
-
-                        # Massage the data into the correct types
-                        if isinstance(data, dict):
-                            data = str(data)
-                        elif isinstance(data, list):
-                            if isinstance(data[0], str):
-                                data = np.bytes_(data)
-                            else:
-                                data = np.array(data)
-                        group[relevant_field] = data
-                    full_dict = {epoch_milliseconds: group}
-                    so.send_pyobj(dw_rt["socket"], dw_rt["iden"], full_dict)
-
-            elif file_ext == "json":
-                self.write_json_file(tmp_file, aveperiod_data, file_type)
-            elif file_ext == "dmap":
-                self.write_dmap_file(tmp_file, aveperiod_data)
-
+        # todo: Move these internal functions to methods of DataWrite class
         def write_correlations(aveperiod_data):
             """
             Parses out any possible correlation data from message and writes to file. Some variables
@@ -801,13 +758,27 @@ class DataWrite(object):
                     dtype=np.uint32,
                 )
 
-                name = dataset_name.format(sliceid=slice_num, dformat="rawacf")
-                output_file = dataset_location.format(name=name)
                 two_hr_file_with_type = self.slice_filenames[slice_num].format(
                     ext="rawacf"
                 )
+                self.write_file(slice_data, two_hr_file_with_type, "rawacf")
 
-                write_file(output_file, slice_data, two_hr_file_with_type, "rawacf")
+                # Send rawacf data to realtime (if there is any)
+                group = {}
+                for relevant_field in SliceData.type_fields("rawacf"):
+                    data = getattr(aveperiod_data, relevant_field)
+
+                    # Massage the data into the correct types
+                    if isinstance(data, dict):
+                        data = str(data)
+                    elif isinstance(data, list):
+                        if isinstance(data[0], str):
+                            data = np.bytes_(data)
+                        else:
+                            data = np.array(data)
+                    group[relevant_field] = data
+                full_dict = {self.epoch_milliseconds: group}
+                so.send_pyobj(self.realtime_socket, self.options.rt_to_dw_identity, full_dict)
 
         def write_bfiq_params(aveperiod_data):
             """
@@ -849,13 +820,10 @@ class DataWrite(object):
                 )
 
             for slice_num, slice_data in aveperiod_data.items():
-                name = dataset_name.format(sliceid=slice_num, dformat="bfiq")
-                output_file = dataset_location.format(name=name)
                 two_hr_file_with_type = self.slice_filenames[slice_num].format(
                     ext="bfiq"
                 )
-
-                write_file(output_file, slice_data, two_hr_file_with_type, "bfiq")
+                self.write_file(slice_data, two_hr_file_with_type, "bfiq")
 
         def write_antenna_iq_params(aveperiod_data):
             """
@@ -927,17 +895,11 @@ class DataWrite(object):
 
             for slice_num, slice_ in final_data_params.items():
                 for stage, params in slice_.items():
-                    name = dataset_name.format(sliceid=slice_num, dformat=f"{stage}_iq")
-                    output_file = dataset_location.format(name=name)
-
                     ext = f"{stage}_iq"
                     two_hr_file_with_type = self.slice_filenames[slice_num].format(
                         ext=ext
                     )
-
-                    write_file(
-                        output_file, params, two_hr_file_with_type, "antennas_iq"
-                    )
+                    self.write_file(params, two_hr_file_with_type, "antennas_iq")
 
         def write_raw_rf_params(slice_data):
             """
@@ -955,10 +917,6 @@ class DataWrite(object):
 
             raw_rf = data_parsing.rawrf_locations
             num_rawrf_samps = data_parsing.rawrf_num_samps
-
-            # Don't need slice id here
-            name = dataset_name.replace("{sliceid}.", "").format(dformat="rawrf")
-            output_file = dataset_location.format(name=name)
 
             samples_list = []
             shared_memory_locations = []
@@ -989,7 +947,7 @@ class DataWrite(object):
             slice_data.main_antenna_count = np.uint32(self.options.main_antenna_count)
             slice_data.intf_antenna_count = np.uint32(self.options.intf_antenna_count)
 
-            write_file(output_file, slice_data, self.raw_rf_two_hr_name, "rawrf")
+            self.write_file(slice_data, self.raw_rf_two_hr_name, "rawrf")
 
             # Can only close mapped memory after it's been written to disk.
             for shared_mem in shared_memory_locations:
@@ -1021,12 +979,7 @@ class DataWrite(object):
                             meta_data.decimated_tx_samples
                         )
 
-                    name = dataset_name.replace("{sliceid}.", "").format(
-                        dformat="txdata"
-                    )
-                    output_file = dataset_location.format(name=name)
-
-                    write_file(output_file, tx_data, self.tx_data_two_hr_name, "txdata")
+                    self.write_file(tx_data, self.tx_data_two_hr_name, "txdata")
 
         all_slice_data = {}
         for sqn_meta in aveperiod_meta.sequences:
@@ -1105,9 +1058,8 @@ class DataWrite(object):
                 parameters.range_sep = np.float32(rx_channel.range_sep)
                 parameters.rx_center_freq = aveperiod_meta.rx_ctr_freq
                 parameters.rx_sample_rate = sqn_meta.output_sample_rate
-                # TODO: Include these in a future release
-                # parameters.rx_main_phases = rx_channel.rx_main_phases
-                # parameters.rx_intf_phases = rx_channel.rx_intf_phases
+                parameters.rx_main_phases = rx_channel.rx_main_phases
+                parameters.rx_intf_phases = rx_channel.rx_intf_phases
                 parameters.samples_data_type = "complex float"
                 parameters.scan_start_marker = aveperiod_meta.scan_flag
                 parameters.scheduling_mode = aveperiod_meta.scheduling_mode
@@ -1156,9 +1108,6 @@ class DataWrite(object):
 def dw_parser():
     parser = ap.ArgumentParser(description="Write processed SuperDARN data to file")
     parser.add_argument(
-        "--file-type", help="Type of output file: hdf5, json, or dmap", default="hdf5"
-    )
-    parser.add_argument(
         "--enable-raw-acfs", help="Enable raw acf writing", action="store_true"
     )
     parser.add_argument(
@@ -1191,14 +1140,12 @@ def main():
         options.router_address,
         options.dw_to_dsp_identity,
         options.dw_to_radctrl_identity,
-        options.dw_to_rt_identity,
         options.dw_cfs_identity,
     )
 
     dsp_to_data_write = sockets[0]
     radctrl_to_data_write = sockets[1]
-    data_write_to_realtime = sockets[2]
-    cfs_sequence_socket = sockets[3]
+    cfs_sequence_socket = sockets[2]
 
     poller = zmq.Poller()
     poller.register(dsp_to_data_write, zmq.POLLIN)
@@ -1276,7 +1223,8 @@ def main():
                     break
             if break_now:
                 try:
-                    assert len(sorted_q) <= 20
+                    if len(sorted_q) <= 20:
+                        raise AssertionError(f"len(sorted_q) ({len(sorted_q)}) is not <= 20")
                 except Exception as e:
                     log.error("lost sequences", sequence_num=expected_sqn_num, error=e)
                     log.exception("lost sequences", exception=e)
@@ -1302,13 +1250,8 @@ def main():
                             write_antenna_iq=args.enable_antenna_iq,
                             write_raw_rf=args.enable_raw_rf,
                             write_tx=args.enable_tx,
-                            file_ext=args.file_type,
                             aveperiod_meta=aveperiod_metadata,
                             data_parsing=data_parsing,
-                            dw_rt={
-                                "socket": data_write_to_realtime,
-                                "iden": options.rt_to_dw_identity,
-                            },
                             write_rawacf=args.enable_raw_acfs,
                         )
                         thread = threading.Thread(

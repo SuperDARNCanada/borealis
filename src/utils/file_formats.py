@@ -33,6 +33,7 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "record",
             "description": "32 bits, a 1 in bit position corresponds to an AGC fault on that transmitter",
+            "dim_labels": ["sequence"]
         }
     )
     antenna_arrays_order: list[str] = field(
@@ -40,6 +41,7 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq"],
             "level": "file",
             "description": "Descriptors for the data layout",
+            "dim_labels": ["antenna"]
         }
     )
     averaging_method: str = field(
@@ -54,6 +56,7 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq", "rawacf"],
             "level": "file",
             "description": "Beams azimuths for each beam in degrees CW of boresight",
+            "dim_labels": ["beam"]
         }
     )
     beam_nums: list[int] = field(
@@ -61,6 +64,7 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq", "rawacf"],
             "level": "record",
             "description": "Beam numbers used in this slice",
+            "dim_labels": ["beam"]
         }
     )
     blanked_samples: np.ndarray = field(
@@ -68,6 +72,7 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "file",
             "description": "Samples blanked during transmission",
+            "dim_labels": ["time"]
         }
     )
     borealis_git_hash: str = field(
@@ -82,6 +87,7 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq", "rawacf"],
             "level": "file",
             "description": "Frequencies measured during clear frequency search",
+            "dim_labels": ["freq"]
         }
     )
     cfs_masks: np.ndarray = field(
@@ -89,6 +95,7 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq", "rawacf"],
             "level": "record",
             "description": "Mask for cfs_freqs restricting freqs available for setting cfs slice freq",
+            "dim_labels": ["freq"]
         }
     )
     cfs_noise: np.ndarray = field(
@@ -96,6 +103,7 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq", "rawacf"],
             "level": "record",
             "description": "Power measured during clear frequency search",
+            "dim_labels": ["freq"]
         }
     )
     cfs_range: np.ndarray = field(
@@ -103,6 +111,7 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq", "rawacf"],
             "level": "file",
             "description": "Range of frequencies examined by clear frequency search",
+            "dim_labels": ["freq"]
         }
     )
     data: np.ndarray = field(
@@ -110,9 +119,10 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq", "rawrf"],
             "level": "record",
             "description": "Contiguous set of samples at the given sample rate",
+            "dim_labels": []
         }
     )
-    data_descriptors: list[str] = field(
+    data_descriptors: list[str] = field(  # todo: moot, with dim_labels?
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "file",
@@ -126,14 +136,14 @@ class SliceData:
             "description": "Cumulative scale of all of the filters for a total scaling factor to normalize by",
         }
     )
-    decimated_tx_samples: list = field(
+    decimated_tx_samples: list = field(  # todo: Is this after each stage, or just the final samples?
         metadata={
             "groups": ["txdata"],
             "level": "record",
             "description": "Samples decimated by dm_rate",
         }
     )
-    dm_rate: list[int] = field(
+    dm_rate: list[int] = field(  # todo: Is this supposed to be a list of ALL dm_rates, or just the total?
         metadata={
             "groups": ["txdata"],
             "level": "file",
@@ -187,6 +197,7 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "record",
             "description": "True if the GPS was locked during the entire averaging period",
+            "dim_labels": ["sequence"]
         }
     )
     gps_to_system_time_diff: float = field(
@@ -195,6 +206,7 @@ class SliceData:
             "level": "record",
             "description": "Max time diff in seconds between GPS and system/NTP time during the averaging "
             "period",
+            "dim_labels": ["sequence"]
         }
     )
     int_time: float = field(
@@ -209,6 +221,7 @@ class SliceData:
             "groups": ["rawacf"],
             "level": "record",
             "description": "Interferometer array autocorrelations",
+            "dim_labels": ["beam", "range", "lag"]
         }
     )
     intf_antenna_count: int = field(
@@ -222,7 +235,8 @@ class SliceData:
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf"],
             "level": "file",
-            "description": "Time difference between pairs of pulses in pulse array, in units of tau_spacing",
+            "description": "Unique pairs of pulses in pulse array, in units of tau_spacing",
+            "dim_labels": ["lag"]
         }
     )
     lp_status_word: int = field(
@@ -231,6 +245,7 @@ class SliceData:
             "level": "record",
             "description": "32 bits, a 1 in bit position corresponds to a low power condition on that "
             "transmitter",
+            "dim_labels": ["sequence", "antenna"]
         }
     )
     main_acfs: np.ndarray = field(
@@ -238,6 +253,7 @@ class SliceData:
             "groups": ["rawacf"],
             "level": "record",
             "description": "Main array autocorrelations",
+            "dim_labels": ["beam", "range", "lag"]
         }
     )
     main_antenna_count: int = field(
@@ -247,13 +263,14 @@ class SliceData:
             "description": "Number of main array antennas",
         }
     )
-    noise_at_freq: np.ndarray = field(
+    noise_at_freq: np.ndarray = field(  # TODO: Implement and give units
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf"],
             "level": "record",
             "description": "Noise at the receive frequency",
+            "dim_labels": ["sequence"]
         }
-    )  # TODO: Implement and give units
+    )
     num_ranges: int = field(
         metadata={
             "groups": ["antennas_iq", "bfiq"],
@@ -287,6 +304,7 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq"],
             "level": "record",
             "description": "Phase offset in degrees for each pulse in pulses",
+            "dim_labels": ["sequence", "pulse"]
         }
     )
     pulse_sample_start: list[float] = field(
@@ -294,6 +312,7 @@ class SliceData:
             "groups": ["txdata"],
             "level": "file",
             "description": "Beginning of pulses in sequence measured in samples",
+            "dim_labels": ["pulse"]
         }
     )
     pulse_timing_us: list[float] = field(
@@ -301,6 +320,7 @@ class SliceData:
             "groups": ["txdata"],
             "level": "file",
             "description": "Beginning of pulses in sequence measured in microseconds",
+            "dim_labels": ["pulse"]
         }
     )
     pulses: np.ndarray = field(
@@ -308,6 +328,7 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq", "rawacf"],
             "level": "file",
             "description": "Pulse sequence in units of tau_spacing",
+            "dim_labels": ["pulse"]
         }
     )
     range_sep: int = field(
@@ -331,17 +352,24 @@ class SliceData:
             "description": "Sampling rate of the samples being written to file in Hz",
         }
     )
-    # TODO: Include these fields in a future release
-    # rx_main_phases: list[complex] = field(
-    #     metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf', 'txdata'],
-    #               "level": "record",
-    #               'description': 'Phases of main array receive antennas for each antenna. Magnitude between 0 (off) '
-    #                              'and 1 (full power)'})
-    # rx_intf_phases: list[complex] = field(
-    #     metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf', 'txdata'],
-    #               "level": "record",
-    #               'description': 'Phases of intf array receive antennas for each antenna. Magnitude between 0 (off) '
-    #                              'and 1 (full power)'})
+    rx_main_phases: list[complex] = field(
+        metadata={
+            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf", "txdata"],
+            "level": "record",
+            "description": "Phases of main array receive antennas for each antenna. Magnitude between 0 (off) "
+                           "and 1 (full power)",
+            "dim_labels": ["beam", "antenna"]
+        }
+    )
+    rx_intf_phases: list[complex] = field(
+        metadata={
+            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf", "txdata"],
+            "level": "record",
+            "description": "Phases of intf array receive antennas for each antenna. Magnitude between 0 (off) "
+                           "and 1 (full power)",
+            "dim_labels": ["beam", "antenna"],
+        }
+    )
     samples_data_type: str = field(
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
@@ -390,6 +418,7 @@ class SliceData:
             "level": "record",
             "description": "GPS timestamps of start of first pulse for each sampling period in the averaging "
             "period in seconds since epoch",
+            "dim_labels": ["sequence"]
         }
     )
     station: str = field(
@@ -412,9 +441,10 @@ class SliceData:
             "level": "record",
             "description": "Phases of transmit signal for each antenna. Magnitude between 0 (off) and 1 "
             "(full power)",
+            "dim_labels": ["antenna"]
         }
     )
-    tx_center_freq: list[float] = field(
+    tx_center_freq: list[float] = field(  # todo: Why is this a list?
         metadata={
             "groups": ["txdata"],
             "level": "file",
@@ -428,7 +458,7 @@ class SliceData:
             "description": "Length of the pulse in microseconds",
         }
     )
-    tx_rate: list[float] = field(
+    tx_rate: list[float] = field(  # todo: Why is this a list? Shouldn't it be a single number?
         metadata={
             "groups": ["txdata"],
             "level": "file",
@@ -440,6 +470,7 @@ class SliceData:
             "groups": ["txdata"],
             "level": "record",
             "description": "Samples sent to USRPs for transmission",
+            "dim_labels": ["antenna", "time"]  # todo: verify
         }
     )
     xcfs: np.ndarray = field(
@@ -447,6 +478,7 @@ class SliceData:
             "groups": ["rawacf"],
             "level": "record",
             "description": "Cross-correlations between main and interferometer arrays",
+            "dim_labels": ["beam", "range", "lag"]
         }
     )
 
@@ -472,6 +504,20 @@ class SliceData:
         from averaging period to averaging period.
         """
         return [f.name for f in fields(cls) if f.metadata.get("level") == "record"]
+
+    @classmethod
+    def generate_data_dim_labels(cls, file_type: str):
+        """
+        Returns the dimension labels for the ``data`` field for ``file_type``.
+        """
+        dim_labels = {
+            "rawrf": ["sequence", "antenna", "time"],  # todo: verify these dimensions
+            "antennas_iq": ["antenna", "sequence", "time"],
+            "bfiq": ["array", "sequence", "beam", "time"],
+            "txdata": [""]  # todo: Get the dimensionality for this type
+        }
+        if file_type in dim_labels.keys():
+            return dim_labels[file_type]
 
     def __repr__(self):
         """Print all available fields"""
