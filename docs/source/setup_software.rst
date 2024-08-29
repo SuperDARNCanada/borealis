@@ -172,7 +172,7 @@ see the note when running ``install_radar_deps.py``.
     scons release     # Can also run `scons debug`
 
 #. Configure PPS signal input. A PPS signal is used to discipline NTP and improve timing to within 
-   microseconds - see :ref:`NTP Discipline with PPS<setup-hardware#ntp-discipline-with-pps>`_ for more info. 
+   microseconds - see :ref:`NTP Discipline with PPS<#ntp-discipline-with-pps>`_ for more info. 
 
    #. Find out which tty device is physically connected to your PPS signal. It may not be ttyS0,
       especially if you have a PCIe expansion card. It may be ttyS1, ttyS2, ttyS3 or higher. To do
@@ -300,7 +300,7 @@ see the note when running ``install_radar_deps.py``.
    borealis_schedules directory.
 
 #. Configure and install the automatic Borealis restart daemon, ``restart_borealis.service``. Follow the 
-   steps outlined :ref:`here <starting-the-radar#automated-restarts>`_ to install and start the system service. This 
+   steps outlined :ref:`here <#automated-restarts>`_ to install and start the system service. This 
    daemon will automatically start the radar after five minutes, following the radar schedule. To 
    verify that the daemon is working:
 
