@@ -12,10 +12,10 @@ installation has been tested on is OpenSUSE Leap 15.5.
 them, or explicitly say 'as root', all others should be executed as the normal user (recommended
 name: radar) that will run Borealis.
 
-**NOTE:** It is possible to run Borealis on the CPU, that is, without using your graphics card
-for parallel computations. This will severely slow down the system, but may be useful in some cases.
-If this is desired, you can skip the first step of installing NVIDIA drivers on your machine, and
-see the note when running ``install_radar_deps.py``.
+**NOTE:** It is possible to run Borealis on the CPU, that is, without using your graphics card for
+parallel computations. This will severely slow down the system, but may be useful in some cases. If
+this is desired, you can skip the first step of installing NVIDIA drivers on your machine, and see
+the note when running ``install_radar_deps.py``.
 
 #. Install the latest version of the NVIDIA drivers (see
    https://en.opensuse.org/SDB:NVIDIA_drivers). The driver must be able to support running the GPU
@@ -26,19 +26,21 @@ see the note when running ``install_radar_deps.py``.
 #. Install the latest NVIDIA CUDA drivers (see
    https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html). The radar software uses
    CUDA for accelerated data processing and is required for the best performance. Make sure the
-   version of CUDA installed is appropriate for your GPU and works with your installed NVIDIA drivers.
+   version of CUDA installed is appropriate for your GPU and works with your installed NVIDIA
+   drivers.
 
-#.  **NOTE: Overclocking is no longer suggested, as reliability is more important than
-    performance now**. Use the BIOS to find a stable over-clock for the CPU. Usually the recommended
-    turbo frequency is a good place to start. This step is optional, but will help system performance
-    when it comes to streaming high rates from the USRP. Do not adjust higher over-clock settings
-    without doing research.
+#.  **NOTE: Overclocking is no longer suggested, as reliability is more important than performance
+    now**. Use the BIOS to find a stable over-clock for the CPU. Usually the recommended turbo
+    frequency is a good place to start. This step is optional, but will help system performance when
+    it comes to streaming high rates from the USRP. Do not adjust higher over-clock settings without
+    doing research.
 
 #. Use the BIOS to enable boot-on-power. The computer should come back online when power is restored
    after an outage. This setting is typically referred to as *Restore on AC/Power Loss*
 
-#. Configure the following computer settings to run each time the computer reboots. This can be done via root
-   crontab, as these commands are not persistent. Example root crontab for multiple ethernet interfaces: ::
+#. Configure the following computer settings to run each time the computer reboots. This can be done
+   via root crontab, as these commands are not persistent. Example root crontab for multiple
+   ethernet interfaces: ::
 
     @reboot /sbin/sysctl -w net.ipv6.conf.all.disable_ipv6=1
     @reboot /sbin/sysctl -w net.ipv6.conf.default.disable_ipv6=1
@@ -56,7 +58,7 @@ see the note when running ``install_radar_deps.py``.
         sudo sysctl -w net.ipv6.conf.default.disable_ipv6=1
 
    #. Use ``ethtool`` to set the interface ring buffer size for both rx and tx. Make sure to use an
-      ethernet device which is connected to the 10 GB card of the computer (not necessarily eth0). 
+      ethernet device which is connected to the 10 GB card of the computer (not necessarily eth0).
       This is done to help prevent packet loss when the network traffic exceeds the capacity of the
       network adapter. ::
 
@@ -67,11 +69,11 @@ see the note when running ``install_radar_deps.py``.
 
         sudo ethtool -g <10G_network_device>
 
-   #. Use ``ip`` to change the MTU for the interface used to connect to the USRPs. A larger MTU will 
-      reduce the amount of network overhead. An MTU larger than 1500 bytes allows
-      what is known as Jumbo frames, which can use up to 9000 bytes of payload. **NOTE this also needs
-      to be enabled on the network switch, and any other devices in the network chain. Setting this
-      to 1500 may be the best option, make sure you test.** ::
+   #. Use ``ip`` to change the MTU for the interface used to connect to the USRPs. A larger MTU will
+      reduce the amount of network overhead. An MTU larger than 1500 bytes allows what is known as
+      Jumbo frames, which can use up to 9000 bytes of payload. **NOTE this also needs to be enabled
+      on the network switch, and any other devices in the network chain. Setting this to 1500 may be
+      the best option, make sure you test.** ::
 
         sudo ip link set <10G_network_device> mtu 9000
 
@@ -79,8 +81,8 @@ see the note when running ``install_radar_deps.py``.
 
         ip link show <10G_network_device>
 
-   #. Use ``cpupower`` to ungovern the CPU and run at the max frequency. This should be added to a script
-      that occurs on reboot. ::
+   #. Use ``cpupower`` to ungovern the CPU and run at the max frequency. This should be added to a
+      script that occurs on reboot. ::
 
         sudo cpupower frequency-set -g performance.
 
@@ -88,8 +90,8 @@ see the note when running ``install_radar_deps.py``.
 
         cpupower frequency-info
 
-   #. Use ``sysctl`` to adjust the kernel network buffer sizes. This should be added to a script that
-      occurs on reboot for the interface used to connect to the USRPs. That's 50,000,000 for
+   #. Use ``sysctl`` to adjust the kernel network buffer sizes. This should be added to a script
+      that occurs on reboot for the interface used to connect to the USRPs. That's 50,000,000 for
       ``rmem_max`` and 2,500,000 for ``wmwem_max``. ::
 
         sudo sysctl -w net.core.rmem_max=50000000
@@ -111,7 +113,7 @@ see the note when running ``install_radar_deps.py``.
 
     sudo tuned-adm profile_info
 
-#. Add an environment variable in ``.profile`` called ``BOREALISPATH`` that points to the cloned 
+#. Add an environment variable in ``.profile`` called ``BOREALISPATH`` that points to the cloned
    Borealis git repository. For example **(NOTE the extra '/')**: ::
 
     export BOREALISPATH=/home/radar/borealis/
@@ -131,24 +133,25 @@ see the note when running ``install_radar_deps.py``.
    This script has to be run with root privileges. This script can be modified to add the package
    manager of a different distribution if it doesn't exist yet. This script makes an attempt to
    correctly install Boost and create symbolic links to the Boost libraries the UHD (USRP Hardware
-   Driver) understands. If UHD does not configure correctly, an improper Boost installation or library
-   naming convention is the likely reason. Note that you need ``python3`` installed before you can run this
-   script. The radar abbreviation should be the 3 letter radar code such as 'sas', 'rkn' or 'inv'.
-   **NOTE:** If you do not have CUDA installed, pass the ``--no-cuda`` flag as an option. ::
+   Driver) understands. If UHD does not configure correctly, an improper Boost installation or
+   library naming convention is the likely reason. Note that you need ``python3`` installed before
+   you can run this script. The radar abbreviation should be the 3 letter radar code such as 'sas',
+   'rkn' or 'inv'. **NOTE:** If you do not have CUDA installed, pass the ``--no-cuda`` flag as an
+   option. ::
 
     cd $BOREALISPATH
-    sudo -E python3 scripts/install_radar_deps.py [radar code] $BOREALISPATH --python-version=3.11 2>&1 
+    sudo -E python3 scripts/install_radar_deps.py [radar code] $BOREALISPATH --python-version=3.11 2>&1
 
-#. If you're building Borealis for a non U of S radar, use one of the U of S
-   ``[radar code]_config.ini`` files (located in ``borealis/config/[radar code]``) as a template, or follow the 
-   :ref:`config file documentation<config-options>` to create your own config file. Your config file should
-   be placed in ``borealis/config/[radar code]/[radar code]_config.ini``
+#. If you're building Borealis for a non U of S radar, use one of the U of S ``[radar
+   code]_config.ini`` files (located in ``borealis/config/[radar code]``) as a template, or follow
+   the :ref:`config file documentation<config-options>` to create your own config file. Your config
+   file should be placed in ``borealis/config/[radar code]/[radar code]_config.ini``
 
-#. In ``[radar code]_config.ini``, there is an entry called "realtime_address". This defines the protocol,
-   interface, and port that the realtime module uses for socket communication. This should be set to
-   ``"realtime_address" : "tcp://<interface>:9696"``, where <interface> is a configured interface on
-   your computer such as "127.0.0.1", "eth0", or "wlan0". This interface is selected from ``ip addr``, 
-   from which you should choose a device which is "UP".
+#. In ``[radar code]_config.ini``, there is an entry called "realtime_address". This defines the
+   protocol, interface, and port that the realtime module uses for socket communication. This should
+   be set to ``"realtime_address" : "tcp://<interface>:9696"``, where <interface> is a configured
+   interface on your computer such as "127.0.0.1", "eth0", or "wlan0". This interface is selected
+   from ``ip addr``, from which you should choose a device which is "UP".
 
    Verify that the realtime module is able to communicate with other modules. This can be done by
    running the following command in a new terminal while borealis is running. If all is well, the
@@ -171,15 +174,15 @@ see the note when running ``install_radar_deps.py``.
     scons -c          # If first time building, run to reset project state.
     scons release     # Can also run `scons debug`
 
-#. Configure PPS signal input. A PPS signal is used to discipline NTP and improve timing to within 
-   microseconds - see :ref:`NTP Discipline with PPS<#ntp-discipline-with-pps>`_ for more info. 
+#. Configure PPS signal input. A PPS signal is used to discipline NTP and improve timing to within
+   microseconds - see :ref:`NTP Discipline with PPS<ntp-hardware>`_ for more info.
 
    #. Find out which tty device is physically connected to your PPS signal. It may not be ttyS0,
       especially if you have a PCIe expansion card. It may be ttyS1, ttyS2, ttyS3 or higher. To do
-      this, search the system log for 'tty' (either ``dmesg`` or the ``syslog``). An example output with a PCIe
-      expansion card is below. The output shows the first two (ttyS0 and ttyS1) built-in to the
-      motherboard chipset are not accessible on this x299 PRO from MSI. The next two (ttyS4 and ttyS5)
-      are located on the XR17V35X chip which is located on the Rosewill card:
+      this, search the system log for 'tty' (either ``dmesg`` or the ``syslog``). An example output
+      with a PCIe expansion card is below. The output shows the first two (ttyS0 and ttyS1) built-in
+      to the motherboard chipset are not accessible on this x299 PRO from MSI. The next two (ttyS4
+      and ttyS5) are located on the XR17V35X chip which is located on the Rosewill card:
 
         .. code-block:: text
 
@@ -192,11 +195,11 @@ see the note when running ``install_radar_deps.py``.
 
         /usr/sbin/ldattach PPS /dev/ttyS[0,1,2,3,etc]
 
-   #. Verify that the PPS signal incoming on the DCD line of ttyS0 (or ttySx where x can be any digit
-      0,1,2,3...) is properly routed and being received. You'll get two lines every second
-      corresponding to an 'assert' and a 'clear' on the PPS line along with the time in seconds since
-      the epoch. If it's the incorrect one, you'll only see a timeout, and try a attaching to a different
-      ttySx input.
+   #. Verify that the PPS signal incoming on the DCD line of ttyS0 (or ttySx where x can be any
+      digit 0,1,2,3...) is properly routed and being received. You'll get two lines every second
+      corresponding to an 'assert' and a 'clear' on the PPS line along with the time in seconds
+      since the epoch. If it's the incorrect one, you'll only see a timeout, and try a attaching to
+      a different ttySx input.
 
         .. code-block:: text
 
@@ -208,9 +211,10 @@ see the note when running ``install_radar_deps.py``.
             source 0 - assert 1585755247.999730143, sequence: 200 - clear  1585755247.199734241, sequence: 249187
             source 0 - assert 1585755247.999730143, sequence: 200 - clear  1585755248.199734605, sequence: 249188
 
-   #. If you're having trouble finding out which ``/dev/ppsx`` device to use, try ``grep``ing the output of
-      ``dmesg`` for pps to find out. Here's an example that shows how pps0 and pps1 are connected to ptp1 and ptp2, pps2
-      is connected to ``/dev/ttyS0`` and pps3 is connected to ``/dev/ttyS5``.:
+   #. If you're having trouble finding out which ``/dev/ppsx`` device to use, try ``grep`` -ing the
+      output of ``dmesg`` for pps to find out. Here's an example that shows how pps0 and pps1 are
+      connected to ptp1 and ptp2, pps2 is connected to ``/dev/ttyS0`` and pps3 is connected to
+      ``/dev/ttyS5``.:
 
         .. code-block:: text
 
@@ -224,13 +228,14 @@ see the note when running ``install_radar_deps.py``.
             [ 227.629896] pps pps3: new PPS source serial5
             [ 227.629899] pps pps3: source "/dev/ttyS5" added
 
-#. Configure and start up NTP. The ``install_radar_deps.py`` script downloads and configures a version of
-   ``ntpd`` that works with incoming PPS signals on the serial port DCD line. 
-   
-   #. An example configuration of ntp is shown below for ``/etc/ntp.conf``. These settings use ``tick.usask.ca``
-      as a time server, with ``tock.usask.ca`` as a backup server, as well as PPS via the ``127.127.22.X`` 
-      lines. **NOTE:** Replace the 'X' with the pps number that is connected to the incoming PPS signal determined 
-      in the previous step (i.e. for pps0, PPS input is 127.127.22.1).
+#. Configure and start up NTP. The ``install_radar_deps.py`` script downloads and configures a
+   version of ``ntpd`` that works with incoming PPS signals on the serial port DCD line.
+
+   #. An example configuration of ntp is shown below for ``/etc/ntp.conf``. These settings use
+      ``tick.usask.ca`` as a time server, with ``tock.usask.ca`` as a backup server, as well as PPS
+      via the ``127.127.22.X`` lines. **NOTE:** Replace the 'X' with the pps number that is
+      connected to the incoming PPS signal determined in the previous step (i.e. for pps0, PPS input
+      is 127.127.22.1).
 
         .. code-block:: text
 
@@ -279,29 +284,30 @@ see the note when running ``install_radar_deps.py``.
         *tick.usask.ca   .GPS.            1 u   55   64  377   56.055   +0.545   2.186
 
       ``tick.usask.ca`` should have ``*`` in front of it, indicating that NTP is syncing
-      to that server. ``PPS(X)`` should have ``o`` in front of it, indicating PPS is 
-      being read successfully by NTP. 
+      to that server. ``PPS(X)`` should have ``o`` in front of it, indicating PPS is
+      being read successfully by NTP.
 
-      If PPS is not working correctly, follow the `NTP debug documentation <https://www.ntp.org/documentation/4.2.8-series/debug/>`_, and see
-      `PPS Clock Discipline <http://www.fifi.org/doc/ntp-doc/html/driver22.htm>`_ for information about PPS.
+      If PPS is not working correctly, follow the `NTP debug documentation
+      <https://www.ntp.org/documentation/4.2.8-series/debug/>`_, and see `PPS Clock Discipline
+      <http://www.fifi.org/doc/ntp-doc/html/driver22.htm>`_ for information about PPS.
 
-#. Now add the GPS disciplined NTP lines to the root ``crontab`` on reboot using the tty you have your PPS
-   connected to. This will start ``ntpd`` and attach the PPS signal on reboot. ::
+#. Now add the GPS disciplined NTP lines to the root ``crontab`` on reboot using the tty you have
+   your PPS connected to. This will start ``ntpd`` and attach the PPS signal on reboot. ::
 
     @reboot /sbin/modprobe pps_ldisc && /usr/sbin/ldattach PPS /dev/ttyS[X] && /usr/local/bin/ntpd
 
-   For further reading on networking and tuning with the USRP devices, see
-   `Transport Notes <https://files.ettus.com/manual/page_transport.html>`_ and
-   `USRP Host Performance Tuning Tips and Tricks <https://kb.ettus.com/USRP_Host_Performance_Tuning_Tips_and_Tricks>`_.
-   Also check out the man pages for ``tuned``, ``cpupower``, ``ethtool``, ``ip``, ``sysctl``,
-   ``modprobe``, and ``ldattach``
+   For further reading on networking and tuning with the USRP devices, see `Transport Notes
+   <https://files.ettus.com/manual/page_transport.html>`_ and `USRP Host Performance Tuning Tips and
+   Tricks <https://kb.ettus.com/USRP_Host_Performance_Tuning_Tips_and_Tricks>`_. Also check out the
+   man pages for ``tuned``, ``cpupower``, ``ethtool``, ``ip``, ``sysctl``, ``modprobe``, and
+   ``ldattach``
 
-#. Verify that the scheduler is working, and that the ``[radar code]].scd`` schedule file exists in the
-   borealis_schedules directory.
+#. Verify that the scheduler is working, and that the ``[radar code]].scd`` schedule file exists in
+   the borealis_schedules directory.
 
-#. Configure and install the automatic Borealis restart daemon, ``restart_borealis.service``. Follow the 
-   steps outlined :ref:`here <#automated-restarts>`_ to install and start the system service. This 
-   daemon will automatically start the radar after five minutes, following the radar schedule. To 
+#. Configure and install the automatic Borealis restart daemon, ``restart_borealis.service``. Follow
+   the steps outlined :ref:`here <automated-restarts>` to install and start the system service. This
+   daemon will automatically start the radar after five minutes, following the radar schedule. To
    verify that the daemon is working:
 
    - Check ``systemctl status restart_borealis.service`` that the system service is running
@@ -316,5 +322,5 @@ see the note when running ``install_radar_deps.py``.
     source $HOME/pydarnio-env/bin/activate
     pip install pydarn    # Installs pydarnio as well, as it is a dependency.
 
-   Follow the `data flow documentation <https://github.com/SuperDARNCanada/data_flow>`_ to properly setup and
-   configure the data flow
+   Follow the `data flow documentation <https://github.com/SuperDARNCanada/data_flow>`_ to properly
+   setup and configure the data flow
