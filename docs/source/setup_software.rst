@@ -296,11 +296,16 @@ see the note when running ``install_radar_deps.py``.
    Also check out the man pages for ``tuned``, ``cpupower``, ``ethtool``, ``ip``, ``sysctl``,
    ``modprobe``, and ``ldattach``
 
-#. Add the Python scheduling script, ``start_radar.sh``, to the system boot scripts to allow the
-   radar to follow the schedule. As an example on OpenSUSE for the ``radar`` user:
+#. Verify that the scheduler is working, and that the ``[radar code]].scd`` schedule file exists in the
+   borealis_schedules directory.
 
-   - Open the crontab for editing with ``crontab -e`` as radar
-   - Add the line ``@reboot /home/radar/borealis/start_radar.sh >> /home/radar/start_radar.log 2>&1``
+#. Configure and install the automatic Borealis restart daemon, ``restart_borealis.service``. Follow the 
+   steps outlined :ref:`here <automated-restarts>` to install and start the system service. This 
+   daemon will automatically start the radar after five minutes, following the radar schedule. To 
+   verify that the daemon is working:
+
+   - Check ``systemctl status restart_borealis.service`` that the system service is running
+   - Check the logs at ``$HOME/logs/restart_borealis.log``
 
 #. Install necessary software to transfer, convert, and test data: ::
 
