@@ -171,107 +171,126 @@ see the note when running ``install_radar_deps.py``.
     scons -c          # If first time building, run to reset project state.
     scons release     # Can also run `scons debug`
 
-#. Set up NTP. The ``install_radar_deps.py`` script already downloads and configures a version of
-   ``ntpd`` that works with incoming PPS signals on the serial port DCD line. An example
-   configuration of ntp is shown below for ``/etc/ntp.conf``. These settings use ``tick.usask.ca``
-   as a time server, and PPS (via the ``127.127.22.0`` lines). It also sets up logging daily for all
-   stats types.
+#. Configure PPS signal input. A PPS signal is used to discipline NTP and improve timing to within 
+   microseconds - see :ref:`NTP Discipline with PPS<ntp-discipline-with-pps>` for more info. 
 
-    .. code-block:: text
+   #. Find out which tty device is physically connected to your PPS signal. It may not be ttyS0,
+      especially if you have a PCIe expansion card. It may be ttyS1, ttyS2, ttyS3 or higher. To do
+      this, search the system log for 'tty' (either ``dmesg`` or the ``syslog``). An example output with a PCIe
+      expansion card is below. The output shows the first two (ttyS0 and ttyS1) built-in to the
+      motherboard chipset are not accessible on this x299 PRO from MSI. The next two (ttyS4 and ttyS5)
+      are located on the XR17V35X chip which is located on the Rosewill card:
 
-        driftfile /var/log/ntp/ntp.drift
+        .. code-block:: text
 
-        statsdir /var/log/ntp/ntpstats/
-        logfile /var/log/ntp/ntp_log
-        logconfig =all
-        statistics loopstats peerstats clockstats cryptostats protostats rawstats sysstats
-        filegen loopstats file loopstats type day enable
-        filegen peerstats file peerstats type day enable
-        filegen clockstats file clockstats type day enable
-        filegen cryptostats file cryptostats type day enable
-        filegen protostats file protostats type day enable
-        filegen rawstats file rawstats type day enable
-        filegen sysstats file sysstats type day enable
+            [ 1.624103] serial8250: ttyS0 at I/O 0x3f8 (irq = 4, base_baud = 115200) is a 16550A
+            [ 1.644875] serial8250: ttyS1 at I/O 0x2f8 (irq = 3, base_baud = 115200) is a 16550A
+            [ 1.645850] 0000:b4:00.0: ttyS4 at MMIO 0xfbd00000 (irq = 37, base_baud = 7812500) is a XR17V35X
+            [ 1.645964] 0000:b4:00.0: ttyS5 at MMIO 0xfbd00400 (irq = 37, base_baud = 7812500) is a XR17V35X
 
-        restrict -4 default kod notrap nomodify nopeer noquery limited
-        restrict -6 default kod notrap nomodify nopeer noquery limited
+   #. Try attaching the ttySx line to a PPS line discipline using ``ldattach``: ::
 
-        restrict 127.0.0.1
-        restrict ::1
+        /usr/sbin/ldattach PPS /dev/ttyS[0,1,2,3,etc]
 
-        restrict source notrap nomodify noquery
+   #. Verify that the PPS signal incoming on the DCD line of ttyS0 (or ttySx where x can be any digit
+      0,1,2,3...) is properly routed and being received. You'll get two lines every second
+      corresponding to an 'assert' and a 'clear' on the PPS line along with the time in seconds since
+      the epoch. If it's the incorrect one, you'll only see a timeout, and try a attaching to a different
+      ttySx input.
 
-        server tick.usask.ca prefer
-        server 127.127.22.0 minpoll 4 maxpoll 4
-        fudge 127.127.22.0 time1 0.2 flag2 1 flag3 0 flag4 1
+        .. code-block:: text
 
-        keys /etc/ntp.keys
-        trustedkey 1
-        requestkey 1
-        controlkey 1
+            sudo ppstest /dev/pps0
+            [sudo] password for root:
+            trying PPS source "/dev/pps0"
+            found PPS source "/dev/pps0"
+            ok, found 1 source(s), now start fetching data...
+            source 0 - assert 1585755247.999730143, sequence: 200 - clear  1585755247.199734241, sequence: 249187
+            source 0 - assert 1585755247.999730143, sequence: 200 - clear  1585755248.199734605, sequence: 249188
 
-#. Find out which tty device is physically connected to your PPS signal. It may not be ttyS0,
-   especially if you have a PCIe expansion card. It may be ttyS1, ttyS2, ttyS3 or higher. To do
-   this, search the system log for 'tty' (either dmesg or the syslog). An example output with a PCIe
-   expansion card is below. The output shows the first two ttyS0 and S1 are builtin to the
-   motherboard chipset and are not accessible on this x299 PRO from MSI. The next two ttyS4 and S5
-   are located on the XR17V35X chip which is located on the rosewill card:
+   #. If you're having trouble finding out which ``/dev/ppsx`` device to use, try ``grep``ing the output of
+      ``dmesg`` for pps to find out. Here's an example that shows how pps0 and pps1 are connected to ptp1 and ptp2, pps2
+      is connected to ``/dev/ttyS0`` and pps3 is connected to ``/dev/ttyS5``.:
 
-    .. code-block:: text
+        .. code-block:: text
 
-        [ 1.624103] serial8250: ttyS0 at I/O 0x3f8 (irq = 4, base_baud = 115200) is a 16550A
-        [ 1.644875] serial8250: ttyS1 at I/O 0x2f8 (irq = 3, base_baud = 115200) is a 16550A
-        [ 1.645850] 0000:b4:00.0: ttyS4 at MMIO 0xfbd00000 (irq = 37, base_baud = 7812500) is a XR17V35X
-        [ 1.645964] 0000:b4:00.0: ttyS5 at MMIO 0xfbd00400 (irq = 37, base_baud = 7812500) is a XR17V35X
+            [ 0.573439] pps_core: LinuxPPS API ver. 1 registered
+            [ 0.573439] pps_core: Software ver. 5.3.6 - Copyright 2005-2007 Rodolfo Giometti <giometti@linux.it>
+            [ 8.792473] pps pps0: new PPS source ptp1
+            [ 9.040732] pps pps1: new PPS source ptp2
+            [ 10.044514] pps_ldisc: PPS line discipline registered
+            [ 10.045957] pps pps2: new PPS source serial0
+            [ 10.045960] pps pps2: source "/dev/ttyS0" added
+            [ 227.629896] pps pps3: new PPS source serial5
+            [ 227.629899] pps pps3: source "/dev/ttyS5" added
 
-#. Try attaching the ttySx line to a PPS line discipline using ldattach: ::
+#. Configure and start up NTP. The ``install_radar_deps.py`` script downloads and configures a version of
+   ``ntpd`` that works with incoming PPS signals on the serial port DCD line. 
+   
+   #. An example configuration of ntp is shown below for ``/etc/ntp.conf``. These settings use ``tick.usask.ca``
+      as a time server, with ``tock.usask.ca`` as a backup server, as well as PPS via the ``127.127.22.X`` 
+      lines. **NOTE:** Replace the 'X' with the pps number that is connected to the incoming PPS signal determined 
+      in the previous step (i.e. for pps0, PPS input is 127.127.22.1).
 
-    /usr/sbin/ldattach PPS /dev/ttyS[0,1,2,3,etc]
+        .. code-block:: text
 
-#. Verify that the PPS signal incoming on the DCD line of ttyS0 (or ttySx where x can be any digit
-   0,1,2,3...) is properly routed and being received. You'll get two lines every second
-   corresponding to an 'assert' and a 'clear' on the PPS line along with the time in seconds since
-   the epoch. If it's the incorrect one, you'll only see a timeout.
+            driftfile /var/log/ntp/ntp.drift
 
-    .. code-block:: text
+            statsdir /var/log/ntp/ntpstats/
+            logfile /var/log/ntp/ntp_log
+            logconfig =all
+            statistics loopstats peerstats clockstats cryptostats protostats rawstats sysstats
+            filegen loopstats file loopstats type day enable
+            filegen peerstats file peerstats type day enable
+            filegen clockstats file clockstats type day enable
+            filegen cryptostats file cryptostats type day enable
+            filegen protostats file protostats type day enable
+            filegen rawstats file rawstats type day enable
+            filegen sysstats file sysstats type day enable
 
-        sudo ppstest /dev/pps0
-        [sudo] password for root:
-        trying PPS source "/dev/pps0"
-        found PPS source "/dev/pps0"
-        ok, found 1 source(s), now start fetching data...
-        source 0 - assert 1585755247.999730143, sequence: 200 - clear  1585755247.199734241, sequence: 249187
-        source 0 - assert 1585755247.999730143, sequence: 200 - clear  1585755248.199734605, sequence: 249188
+            restrict -4 default kod notrap nomodify nopeer noquery limited
+            restrict -6 default kod notrap nomodify nopeer noquery limited
 
-#. If you're having trouble finding out which /dev/ppsx device to use, try grepping the output of
-   dmesg to find out. Here's an example that shows how pps0 and 1 are connected to ptp1 and 2, pps2
-   is connected to /dev/ttyS0 and pps3 is connected to /dev/ttyS5.:
+            restrict 127.0.0.1
+            restrict ::1
 
-    .. code-block:: text
+            restrict source notrap nomodify noquery
 
-        [ 0.573439] pps_core: LinuxPPS API ver. 1 registered
-        [ 0.573439] pps_core: Software ver. 5.3.6 - Copyright 2005-2007 Rodolfo Giometti <giometti@linux.it>
-        [ 8.792473] pps pps0: new PPS source ptp1
-        [ 9.040732] pps pps1: new PPS source ptp2
-        [ 10.044514] pps_ldisc: PPS line discipline registered
-        [ 10.045957] pps pps2: new PPS source serial0
-        [ 10.045960] pps pps2: source "/dev/ttyS0" added
-        [ 227.629896] pps pps3: new PPS source serial5
-        [ 227.629899] pps pps3: source "/dev/ttyS5" added
+            server tick.usask.ca prefer
+            server tock.usask.ca
+            server 127.127.22.X minpoll 4 maxpoll 4
+            fudge 127.127.22.X time1 0.2 flag2 1 flag3 0 flag4 1
 
-#. Now add the GPS disciplined NTP lines to the root startup script using the tty you have your PPS
-   connected to. ::
+            keys /etc/ntp.keys
+            trustedkey 1
+            requestkey 1
+            controlkey 1
 
-    /sbin/modprobe pps_ldisc && /usr/sbin/ldattach PPS /dev/[PPS tty] && /usr/local/bin/ntpd
+   #. Start ``ntpd``: ::
 
-#. To verify that ntpd is working correctly, follow the steps outlined in the ntp
-   `documentation <https://www.ntp.org/documentation/4.2.8-series/debug/>`_. Check
-   ``/var/log/messages`` for the output messages from ``ntpd``. Also see
-   `PPS Clock Discipline <http://www.fifi.org/doc/ntp-doc/html/driver22.htm>`_ for information about
-   the PPS ntp clock discipline.
+        sudo /usr/local/bin/ntpd
 
+   #. To verify that ``ntpd`` is working correctly, run ``ntpq -p``: ::
 
-#. For further reading on networking and tuning with the USRP devices, see
+        radar@rknmain207:~> ntpq --peers
+             remote           refid      st t when poll reach   delay   offset  jitter
+        ==============================================================================
+        oPPS(1)          .PPS.            0 l    4   16  377    0.000   +2.662   1.317
+        *tick.usask.ca   .GPS.            1 u   55   64  377   56.055   +0.545   2.186
+
+      ``tick.usask.ca`` should have ``*`` in front of it, indicating that NTP is syncing
+      to that server. ``PPS(X)`` should have ``o`` in front of it, indicating PPS is 
+      being read successfully by NTP. 
+
+      If PPS is not working correctly, follow the `NTP debug documentation <https://www.ntp.org/documentation/4.2.8-series/debug/>`_, and see
+      `PPS Clock Discipline <http://www.fifi.org/doc/ntp-doc/html/driver22.htm>`_ for information about PPS.
+
+#. Now add the GPS disciplined NTP lines to the root ``crontab`` on reboot using the tty you have your PPS
+   connected to. This will start ``ntpd`` and attach the PPS signal on reboot. ::
+
+    @reboot /sbin/modprobe pps_ldisc && /usr/sbin/ldattach PPS /dev/ttyS[X] && /usr/local/bin/ntpd
+
+   For further reading on networking and tuning with the USRP devices, see
    `Transport Notes <https://files.ettus.com/manual/page_transport.html>`_ and
    `USRP Host Performance Tuning Tips and Tricks <https://kb.ettus.com/USRP_Host_Performance_Tuning_Tips_and_Tricks>`_.
    Also check out the man pages for ``tuned``, ``cpupower``, ``ethtool``, ``ip``, ``sysctl``,
@@ -280,9 +299,8 @@ see the note when running ``install_radar_deps.py``.
 #. Add the Python scheduling script, ``start_radar.sh``, to the system boot scripts to allow the
    radar to follow the schedule. As an example on OpenSUSE for the ``radar`` user:
 
-    - Open the crontab for editing with ``crontab -e`` as radar
-    - Add the line ``@reboot /home/radar/borealis/start_radar.sh >> /home/radar/start_radar.log
-      2>&1``
+   - Open the crontab for editing with ``crontab -e`` as radar
+   - Add the line ``@reboot /home/radar/borealis/start_radar.sh >> /home/radar/start_radar.log 2>&1``
 
 #. Install necessary software to transfer, convert, and test data: ::
 
@@ -293,5 +311,5 @@ see the note when running ``install_radar_deps.py``.
     source $HOME/pydarnio-env/bin/activate
     pip install pydarn    # Installs pydarnio as well, as it is a dependency.
 
-   Follow the `data_flow documentation<https://github.com/SuperDARNCanada/data_flow>` to properly setup and
+   Follow the `data flow documentation <https://github.com/SuperDARNCanada/data_flow>`_ to properly setup and
    configure the data flow
