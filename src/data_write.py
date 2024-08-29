@@ -15,7 +15,6 @@ import collections
 import copy
 import datetime
 from dataclasses import dataclass, field, fields
-import errno
 import faulthandler
 from multiprocessing import shared_memory
 import os
@@ -26,8 +25,10 @@ import threading
 import time
 
 # third-party
+import dmap
 import h5py
 import numpy as np
+import pydarnio
 import zmq
 from scipy.constants import speed_of_light
 
@@ -39,7 +40,7 @@ from utils.file_formats import SliceData
 
 
 @dataclass
-class ParseData(object):
+class ParseData:
     """
     This class is for aggregating data during an averaging period.
     """
@@ -357,11 +358,50 @@ class ParseData(object):
         self.parse_antenna_iq()
 
 
-# todo: Implement DMAPWriter and write Rawacf files straight to DMAP format.
-#  The HDF5 versions are kept around somewhat uselessly, and are basically immediately converted
-#  to DMAP anyways. This could be done quickly with pyDARNio and darn-dmap, potentially saving a
-#  sizable amount of storage on the site computers. Typically, DMAP rawacfs are ~15% smaller than
-#  their HDF5 counterparts.
+class DMAPWriter:
+    """
+    Class for writing to DMAP files.
+    """
+
+    @staticmethod
+    def write_record(filename: str, slice_data: SliceData, dt_str: str, file_type: str):
+        """
+        Write out data to a DMAP file. If the file already exists it will be overwritten.
+
+        :param  filename:   Name of the file to write to
+        :type   filename:   str
+        :param  slice_data: Data to write out to the file.
+        :type   slice_data: SliceData
+        :param  dt_str:     A datetime timestamp of the first transmission time in the record
+        :type   dt_str:     str
+        :param  file_type:  Type of file to write.
+        :type   file_type:  str
+        """
+
+        if file_type != "rawacf":
+            raise NotImplementedError
+
+        # Send rawacf data to realtime (if there is any)
+        group = {}
+        for relevant_field in SliceData.type_fields("rawacf"):
+            data = getattr(slice_data, relevant_field)
+
+            # Massage the data into the correct types
+            if isinstance(data, dict):
+                data = str(data)
+            elif isinstance(data, list):
+                if isinstance(data[0], str):
+                    data = np.bytes_(data)
+                else:
+                    data = np.array(data)
+            group[relevant_field] = data
+
+        dmap_record = pydarnio.BorealisConvert._BorealisConvert__convert_rawacf_record(
+            0, (dt_str, group), ""
+        )
+
+        # todo: ensure that dmap.write_rawacf() will append to file
+        dmap.write_rawacf(dmap_record, filename, )
 
 
 class HDF5Writer:
@@ -372,7 +412,7 @@ class HDF5Writer:
     @staticmethod
     def massage_data(field_data):
         """
-        Converts the data to supported types for a Borealis HDF5 file.
+        Converts ``field_data`` to supported types for a Borealis HDF5 file.
         """
         if isinstance(field_data, dict):
             return np.bytes_(str(field_data))
@@ -390,8 +430,8 @@ class HDF5Writer:
 
     @staticmethod
     def write_field(name: str, data, group: h5py.Group, ftype: str):
-        """Write `raw_data` to `group` along with the associated metadata in `data`"""
-        group[name] = HDF5Writer.massage_data(data)
+        """Write `data` to `group` along with the associated metadata in `data`"""
+        group.create_dataset(name, data=HDF5Writer.massage_data(data), compression="gzip", compression_opts=9)
         if group[name].size == 0:
             log.warning(
                 "empty array",
@@ -413,7 +453,7 @@ class HDF5Writer:
     @staticmethod
     def write_record(filename: str, slice_data: SliceData, dt_str: str, file_type: str):
         """
-        Write out data to an HDF5 file. If the file already exists it will be overwritten.
+        Write out data to an HDF5 file.
 
         :param  filename:   Name of the file to write to
         :type   filename:   str
@@ -424,46 +464,35 @@ class HDF5Writer:
         :param  file_type:  Type of file to write.
         :type   file_type:  str
         """
-        try:
-            with h5py.File(filename, "a") as f:
-                group = f.create_group(dt_str)
-                metadata = f.get("metadata", f.create_group("metadata"))
+        with h5py.File(filename, "a") as f:
+            group = f.create_group(dt_str)
+            metadata = f.get("metadata", f.create_group("metadata"))
 
-                for relevant_field in slice_data.type_fields(file_type):
-                    data = getattr(slice_data, relevant_field)
+            for relevant_field in slice_data.type_fields(file_type):
+                data = getattr(slice_data, relevant_field)
 
-                    if relevant_field in slice_data.file_level_fields():
-                        # file-level metadata (unchanging between records)
-                        if relevant_field in metadata.keys():
-                            # verify it hasn't changed
-                            if metadata[relevant_field][:] != HDF5Writer.massage_data(
-                                data
-                            ):
-                                raise ValueError(
-                                    f"{relevant_field} already exists in file with different value.\n"
-                                    f"\tExisting: {metadata[relevant_field][:]}\n"
-                                    f"\tNew: {HDF5Writer.massage_data(data)}"
-                                )
-                        else:
-                            # First time, write the metadata
-                            HDF5Writer.write_field(
-                                relevant_field, data, metadata, file_type
+                if relevant_field in slice_data.file_level_fields():
+                    # file-level metadata (unchanging between records)
+                    if relevant_field in metadata.keys():
+                        # verify it hasn't changed
+                        if metadata[relevant_field][:] != HDF5Writer.massage_data(
+                            data
+                        ):
+                            raise ValueError(
+                                f"{relevant_field} already exists in file with different value.\n"
+                                f"\tExisting: {metadata[relevant_field][:]}\n"
+                                f"\tNew: {HDF5Writer.massage_data(data)}"
                             )
-
-                        # Creates a hard link so the data is only stored once, in the top-level `metadata` group
-                        group[relevant_field] = metadata[relevant_field]
                     else:
-                        HDF5Writer.write_field(relevant_field, data, group, file_type)
+                        # First time, write the metadata
+                        HDF5Writer.write_field(
+                            relevant_field, data, metadata, file_type
+                        )
 
-        except Exception as e:
-            if "No space left on device" in str(e):
-                log.critical("no space left on device", error=e)
-                log.exception("no space left on device", exception=e)
-                sys.exit(-1)
-            else:
-                log.critical("error when saving to file", error=e)
-                log.exception("error when saving to file", exception=e)
-                sys.exit(-1)
+                    # Creates a hard link so the data is only stored once, in the top-level `metadata` group
+                    group[relevant_field] = metadata[relevant_field]
+                else:
+                    HDF5Writer.write_field(relevant_field, data, group, file_type)
 
 
 class DataWrite:
@@ -501,9 +530,8 @@ class DataWrite:
         # Default this to true so we know if we are running for the first time.
         self.first_time = True
 
-        # Timestamp of the first sequence in a file, in milliseconds past epoch
-        # todo: Make this formatted so the record keys are human-readable?
-        self.epoch_milliseconds = None
+        # Timestamp of the first sequence in a file
+        self.timestamp = None
 
         # Directory where output files are written
         self.dataset_directory = None
@@ -538,42 +566,28 @@ class DataWrite:
 
         :param  aveperiod_data:         Collection of data from sequences
         :type   aveperiod_data:         SliceData
-        :param  two_hr_file_with_type:  Name of the two hour file with data type added
+        :param  two_hr_file_with_type:  Name of the two-hour file with data type added
         :type   two_hr_file_with_type:  str
         :param  data_type:              Data type, e.g. 'antennas_iq', 'bfiq', etc.
         :type   data_type:              str
         """
 
-        try:
-            os.makedirs(self.dataset_directory, exist_ok=True)
-        except OSError as err:
-            if err.args[0] == errno.ENOSPC:
-                log.critical("no space left on device", error=err)
-                log.exception("no space left on device", exception=err)
-                sys.exit(-1)
-            else:
-                log.critical("unknown error when making dirs", error=err)
-                log.exception("unknown error when making dirs", exception=err)
-                sys.exit(-1)
-
+        os.makedirs(self.dataset_directory, exist_ok=True)
         full_two_hr_file = f"{self.dataset_directory}/{two_hr_file_with_type}.hdf5.site"
 
         try:
-            fd = os.open(full_two_hr_file, os.O_CREAT)
-            os.close(fd)
-        except OSError as err:
-            if err.args[0] == errno.ENOSPC:
-                log.critical("no space left on device", error=err)
-                log.exception("no space left on device", exception=err)
+            HDF5Writer.write_record(
+                full_two_hr_file, aveperiod_data, self.timestamp, data_type
+            )
+        except Exception as e:
+            if "No space left on device" in str(e):
+                log.critical("no space left on device", error=e)
+                log.exception("no space left on device", exception=e)
                 sys.exit(-1)
             else:
-                log.critical("unknown error when opening file", error=err)
-                log.exception("unknown error when opening file", exception=err)
+                log.critical("error when saving to file", error=e)
+                log.exception("error when saving to file", exception=e)
                 sys.exit(-1)
-
-        HDF5Writer.write_record(
-            full_two_hr_file, aveperiod_data, self.epoch_milliseconds, data_type
-        )
 
     def output_data(
         self,
@@ -611,9 +625,7 @@ class DataWrite:
         # Format the name and location for the dataset
         time_now = datetime.datetime.utcfromtimestamp(data_parsing.timestamps[0])
         today_string = time_now.strftime("%Y%m%d")
-        datetime_string = time_now.strftime("%Y%m%d.%H%M.%S.%f")
-        epoch = datetime.datetime.utcfromtimestamp(0)
-        self.epoch_milliseconds = str(int((time_now - epoch).total_seconds() * 1000))
+        self.timestamp = time_now.strftime("%Y%m%d.%H%M.%S.%f")
         self.dataset_directory = f"{self.options.data_directory}/{today_string}"
 
         if self.first_time:
@@ -778,7 +790,7 @@ class DataWrite:
                         else:
                             data = np.array(data)
                     group[relevant_field] = data
-                full_dict = {self.epoch_milliseconds: group}
+                full_dict = {self.timestamp: group}
                 so.send_pyobj(
                     self.realtime_socket, self.options.rt_to_dw_identity, full_dict
                 )
@@ -1104,7 +1116,7 @@ class DataWrite:
             "wrote record",
             write_time=write_time * 1e3,
             time_units="ms",
-            dataset_name=datetime_string,
+            dataset_name=self.timestamp,
         )
 
 
@@ -1112,7 +1124,7 @@ def dw_parser():
     parser = ap.ArgumentParser(description="Write processed SuperDARN data to file")
     parser.add_argument(
         "--enable-raw-acfs", help="Enable raw acf writing", action="store_true"
-    )
+    )  # todo: Make this a value variable, defaults to None, options "hdf5" or "dmap"
     parser.add_argument(
         "--enable-bfiq", help="Enable beamformed iq writing", action="store_true"
     )
