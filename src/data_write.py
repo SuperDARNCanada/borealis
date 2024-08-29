@@ -363,6 +363,7 @@ class ParseData(object):
 #  sizable amount of storage on the site computers. Typically, DMAP rawacfs are ~15% smaller than
 #  their HDF5 counterparts.
 
+
 class HDF5Writer:
     """
     Class for writing to HDF5 files.
@@ -397,9 +398,7 @@ class HDF5Writer:
                 field=field,
                 file_type=ftype,
             )
-        group[name].attrs["description"] = (
-            data.metadata.get("description")
-        )
+        group[name].attrs["description"] = data.metadata.get("description")
         dim_labels = data.metadata.get("dim_labels", None)
         if dim_labels is not None:
             if len(dim_labels) == 0:
@@ -412,9 +411,7 @@ class HDF5Writer:
                 group[name].dims[i].label = dim
 
     @staticmethod
-    def write_record(
-        filename: str, slice_data: SliceData, dt_str: str, file_type: str
-    ):
+    def write_record(filename: str, slice_data: SliceData, dt_str: str, file_type: str):
         """
         Write out data to an HDF5 file. If the file already exists it will be overwritten.
 
@@ -439,7 +436,9 @@ class HDF5Writer:
                         # file-level metadata (unchanging between records)
                         if relevant_field in metadata.keys():
                             # verify it hasn't changed
-                            if metadata[relevant_field][:] != HDF5Writer.massage_data(data):
+                            if metadata[relevant_field][:] != HDF5Writer.massage_data(
+                                data
+                            ):
                                 raise ValueError(
                                     f"{relevant_field} already exists in file with different value.\n"
                                     f"\tExisting: {metadata[relevant_field][:]}\n"
@@ -447,7 +446,9 @@ class HDF5Writer:
                                 )
                         else:
                             # First time, write the metadata
-                            HDF5Writer.write_field(relevant_field, data, metadata, file_type)
+                            HDF5Writer.write_field(
+                                relevant_field, data, metadata, file_type
+                            )
 
                         # Creates a hard link so the data is only stored once, in the top-level `metadata` group
                         group[relevant_field] = metadata[relevant_field]
@@ -508,7 +509,9 @@ class DataWrite:
         self.dataset_directory = None
 
         # Socket for sending rawacf data to realtime
-        self.realtime_socket = so.create_sockets(self.options.router_address, self.options.dw_to_rt_identity)
+        self.realtime_socket = so.create_sockets(
+            self.options.router_address, self.options.dw_to_rt_identity
+        )
 
     @staticmethod
     def two_hr_ceiling(dt):
@@ -553,9 +556,7 @@ class DataWrite:
                 log.exception("unknown error when making dirs", exception=err)
                 sys.exit(-1)
 
-        full_two_hr_file = (
-            f"{self.dataset_directory}/{two_hr_file_with_type}.hdf5.site"
-        )
+        full_two_hr_file = f"{self.dataset_directory}/{two_hr_file_with_type}.hdf5.site"
 
         try:
             fd = os.open(full_two_hr_file, os.O_CREAT)
@@ -778,7 +779,9 @@ class DataWrite:
                             data = np.array(data)
                     group[relevant_field] = data
                 full_dict = {self.epoch_milliseconds: group}
-                so.send_pyobj(self.realtime_socket, self.options.rt_to_dw_identity, full_dict)
+                so.send_pyobj(
+                    self.realtime_socket, self.options.rt_to_dw_identity, full_dict
+                )
 
         def write_bfiq_params(aveperiod_data):
             """
@@ -1224,7 +1227,9 @@ def main():
             if break_now:
                 try:
                     if len(sorted_q) <= 20:
-                        raise AssertionError(f"len(sorted_q) ({len(sorted_q)}) is not <= 20")
+                        raise AssertionError(
+                            f"len(sorted_q) ({len(sorted_q)}) is not <= 20"
+                        )
                 except Exception as e:
                     log.error("lost sequences", sequence_num=expected_sqn_num, error=e)
                     log.exception("lost sequences", exception=e)
