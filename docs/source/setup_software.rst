@@ -175,7 +175,7 @@ the note when running ``install_radar_deps.py``.
     scons release     # Can also run `scons debug`
 
 #. Configure PPS signal input. A PPS signal is used to discipline NTP and improve timing to within
-   microseconds - see :ref:`NTP Discipline with PPS<ntp-hardware>`_ for more info.
+   microseconds - see :ref:`NTP Discipline with PPS<ntp-hardware>` for more info.
 
    #. Find out which tty device is physically connected to your PPS signal. It may not be ttyS0,
       especially if you have a PCIe expansion card. It may be ttyS1, ttyS2, ttyS3 or higher. To do

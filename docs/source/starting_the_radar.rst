@@ -60,6 +60,7 @@ This script should be added to the control computer boot-up scripts so that it g
 of scheduled commands.
 
 .. _automated-restarts:
+
 ------------------
 Automated Restarts
 ------------------

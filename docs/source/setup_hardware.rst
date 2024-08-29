@@ -472,6 +472,7 @@ drives can all be selected. Assemble the computer following the instructions tha
 motherboard.
 
 .. _ntp-hardware:
+
 -----------------------
 NTP discipline with PPS
 -----------------------
