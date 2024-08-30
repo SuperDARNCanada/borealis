@@ -47,9 +47,7 @@ class SCDUtils:
     scd_dt_fmt = "%Y%m%d %H:%M"
 
     """String format for scd line"""
-    line_fmt = (
-        "{datetime} {duration} {prio} {experiment} {scheduling_mode} {embargo} {kwargs}"
-    )
+    line_fmt = "{datetime} {duration} {prio} {experiment} {scheduling_mode} {embargo} {rawacf_format} {kwargs}"
 
     def __init__(self, scd_filename, site_id):
         """
@@ -76,6 +74,7 @@ class SCDUtils:
         duration,
         kwargs="",
         embargo=False,
+        rawacf_format="",
     ):
         """
         Creates a line dictionary from inputs, turning the date and time into a timestamp since epoch.
@@ -96,6 +95,8 @@ class SCDUtils:
         :type   kwargs:             str
         :param  embargo:            flag for embargoing files. (Default value = False)
         :type   embargo:            bool
+        :param  rawacf_format:      The file format to save rawacf files in.
+        :type   rawacf_format:      str
 
         :returns:   Dict of line params.
         :rtype:     dict
@@ -114,6 +115,7 @@ class SCDUtils:
             "scheduling_mode": scheduling_mode,
             "kwargs": kwargs,
             "embargo": embargo,
+            "rawacf_format": rawacf_format,
         }
 
     def test_line(self, line_dict):
@@ -189,10 +191,19 @@ class SCDUtils:
         scd_lines = []
 
         for num, line in enumerate(raw_scd):
+            rawacf_format = ""
             kwarg_entries = line[6:]
             embargo_flag = "--embargo" in kwarg_entries
             if embargo_flag:
                 kwarg_entries.remove("--embargo")
+            rawacf_flag = ["--rawacf-format" in x for x in kwarg_entries]
+            if any(rawacf_flag):
+                idx = rawacf_flag.index(True)
+                if "=" in kwarg_entries[idx]:
+                    rawacf_format = kwarg_entries.pop(idx).split("=")[-1]
+                else:
+                    rawacf_format = kwarg_entries.pop(idx + 1)
+                    kwarg_entries.pop(idx)  # remove the "--rawacf-format" as well
             kwargs = " ".join(kwarg_entries)
 
             # date time experiment mode priority duration [kwargs]
@@ -206,6 +217,7 @@ class SCDUtils:
                     line[2],
                     kwargs,
                     embargo=embargo_flag,
+                    rawacf_format=rawacf_format,
                 )
             )
 
@@ -234,6 +246,7 @@ class SCDUtils:
             scheduling_mode=line_dict["scheduling_mode"],
             duration=line_dict["duration"],
             embargo="--embargo" if line_dict["embargo"] else "",
+            rawacf_format=line_dict["rawacf_format"],
             kwargs=line_dict["kwargs"],
         )
         return line_str
@@ -269,6 +282,7 @@ class SCDUtils:
         duration="-",
         kwargs="",
         embargo=False,
+        rawacf_format="",
     ):
         """
         Adds a new line to the schedule.
@@ -289,6 +303,8 @@ class SCDUtils:
         :type   kwargs:      str
         :param  embargo:            flag for embargoing files. (Default value = False)
         :type   embargo:            bool
+        :param  rawacf_format:      File format to use when writing rawacf files.
+        :type   rawacf_format:      str
 
         :raises ValueError: If line parameters are invalid or if line is a duplicate.
         """
@@ -301,6 +317,7 @@ class SCDUtils:
             duration,
             kwargs,
             embargo=embargo,
+            rawacf_format=rawacf_format,
         )
 
         scd_lines = self.read_scd()
@@ -343,6 +360,7 @@ class SCDUtils:
         duration="-",
         kwargs="",
         embargo=False,
+        rawacf_format="",
     ):
         """
         Removes a line from the schedule
@@ -363,6 +381,8 @@ class SCDUtils:
         :type   kwargs:      str
         :param  embargo:            flag for embargoing files. (Default value = False)
         :type   embargo:            bool
+        :param  rawacf_format:      File format to use when writing rawacf files.
+        :type   rawacf_format:      str
 
         :raises ValueError: If line parameters are invalid or if line does not exist.
         """
@@ -376,6 +396,7 @@ class SCDUtils:
             duration,
             kwargs,
             embargo=embargo,
+            rawacf_format=rawacf_format,
         )
 
         scd_lines = self.read_scd()
@@ -450,4 +471,4 @@ class SCDUtils:
 if __name__ == "__main__":
     filename = sys.argv[1]
 
-    scd_util = SCDUtils(filename)
+    scd_util = SCDUtils(filename, "lab")

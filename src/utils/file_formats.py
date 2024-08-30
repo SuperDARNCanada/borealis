@@ -12,7 +12,10 @@ for that averaging period.
 """
 
 from dataclasses import dataclass, field, fields
+
+import h5py
 import numpy as np
+import pydarnio
 
 
 @dataclass(init=False)
@@ -22,10 +25,21 @@ class SliceData:
     the applicable file types for each field.
 
     Each field contains metadata that determines how the field is written to file:
-    * `groups`: the types of data file that need this field to be written.
-    * `level`: the level within the file that the data will be stored at. Either `file` or `record`, indicating
+    * ``groups``: the types of data file that need this field to be written.
+    * ``level``: the level within the file that the data will be stored at. Either `file` or `record`, indicating
        that the field is either written once per file, or once per record.
-    * `description`: A short description of the field.
+    * ``nickname``: A nickname for the field, used for making Dimension Scale names.
+    * ``description``: A description of the field.
+    * ``units``: Units for the data.
+    * ``dim_labels``: If applicable, a brief descriptor for each dimension of the dataset. This could
+       be different for different ``group`` values. If so, this metadata will be a dict, with the keys
+       being the ``group`` name and the values the associated list of dimension labels.
+    * ``dim_scales``: If applicable, dimension scales will be associated to the field. These are datasets that match
+       one of the dimensions of the data, such as timestamps to go along with an array of collected data. This could
+       depend on the value of ``group``; if so, this will be a dictionary keyed by ``group``, with values that are
+       lists of field names to associate each dimension with. Note that some dimensions may be associated with multiple
+       fields. If a dimension has no associated dataset, the list will have a ``None`` entry.
+
     """
 
     agc_status_word: int = field(
@@ -33,15 +47,6 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "record",
             "description": "32 bits, a 1 in bit position corresponds to an AGC fault on that transmitter",
-            "dim_labels": ["sequence"],
-        }
-    )
-    antenna_arrays_order: list[str] = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq"],
-            "level": "file",
-            "description": "Descriptors for the data layout",
-            "dim_labels": ["antenna"],
         }
     )
     averaging_method: str = field(
@@ -55,7 +60,9 @@ class SliceData:
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf"],
             "level": "file",
+            "nickname": "beam direction",
             "description": "Beams azimuths for each beam in degrees CW of boresight",
+            "units": "degrees",
             "dim_labels": ["beam"],
         }
     )
@@ -63,6 +70,7 @@ class SliceData:
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf"],
             "level": "record",
+            "nickname": "beam number",
             "description": "Beam numbers used in this slice",
             "dim_labels": ["beam"],
         }
@@ -71,7 +79,7 @@ class SliceData:
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "file",
-            "description": "Samples blanked during transmission",
+            "description": "Samples blanked during transmission of a pulse",
             "dim_labels": ["time"],
         }
     )
@@ -86,7 +94,9 @@ class SliceData:
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf"],
             "level": "file",
+            "nickname": "freq",
             "description": "Frequencies measured during clear frequency search",
+            "units": "Hz",  # todo: verify
             "dim_labels": ["freq"],
         }
     )
@@ -96,6 +106,7 @@ class SliceData:
             "level": "record",
             "description": "Mask for cfs_freqs restricting freqs available for setting cfs slice freq",
             "dim_labels": ["freq"],
+            "dim_scales": ["cfs_freqs"],
         }
     )
     cfs_noise: np.ndarray = field(
@@ -103,7 +114,9 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq", "rawacf"],
             "level": "record",
             "description": "Power measured during clear frequency search",
+            "units": "a.u. ~ dBW",
             "dim_labels": ["freq"],
+            "dim_scales": ["cfs_freqs"],
         }
     )
     cfs_range: np.ndarray = field(
@@ -111,7 +124,17 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq", "rawacf"],
             "level": "file",
             "description": "Range of frequencies examined by clear frequency search",
-            "dim_labels": ["freq"],
+            "units": "Hz",
+            "dim_labels": ["freq"],  # todo: Verify. This may just be a 2-item array
+            "dim_scales": ["cfs_freqs"],
+        }
+    )
+    channels: list[str] = field(
+        metadata={
+            "groups": ["antennas_iq", "bfiq"],
+            "level": "file",
+            "nickname": "channel",
+            "description": "Descriptors for the data layout",
         }
     )
     data: np.ndarray = field(
@@ -119,14 +142,26 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq", "rawrf"],
             "level": "record",
             "description": "Contiguous set of samples at the given sample rate",
-            "dim_labels": [],
-        }
-    )
-    data_descriptors: list[str] = field(  # todo: moot, with dim_labels?
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
-            "level": "file",
-            "description": "Denotes what each data dimension represents",
+            "units": "a.u. ~ V",
+            "dim_labels": {
+                "rawrf": [
+                    "channel",
+                    "sequence",
+                    "time",
+                ],  # todo: verify these dimensions
+                "antennas_iq": ["channel", "sequence", "time"],
+                "bfiq": ["channel", "sequence", "beam", "time"],
+            },
+            "dim_scales": {
+                "rawrf": ["channels", "sqn_timestamps", None],
+                "antennas_iq": ["channels", "sqn_timestamps", None],
+                "bfiq": [
+                    "channels",
+                    "sqn_timestamps",
+                    ["beam_nums", "beam_azms"],
+                    None,
+                ],
+            },
         }
     )
     data_normalization_factor: float = field(
@@ -140,6 +175,7 @@ class SliceData:
         metadata={
             "groups": ["txdata"],
             "level": "record",
+            "units": "a.u. ~ V",
             "description": "Samples decimated by dm_rate",
         }
     )  # todo: Is this after each stage, or just the final samples?
@@ -175,6 +211,7 @@ class SliceData:
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf"],
             "level": "file",
+            "units": "km",
             "description": "Distance to first range in km",
         }
     )
@@ -182,6 +219,7 @@ class SliceData:
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf"],
             "level": "file",
+            "units": "μs",
             "description": "Round trip time of flight to first range in microseconds",
         }
     )
@@ -189,7 +227,8 @@ class SliceData:
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf"],
             "level": "record",
-            "description": "Frequency used for this experiment slice in kHz",
+            "units": "kHz",
+            "description": "Frequency used for this experiment slice, in kHz",
         }
     )
     gps_locked: bool = field(
@@ -197,22 +236,22 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "record",
             "description": "True if the GPS was locked during the entire averaging period",
-            "dim_labels": ["sequence"],
         }
     )
     gps_to_system_time_diff: float = field(
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "record",
+            "units": "s",
             "description": "Max time diff in seconds between GPS and system/NTP time during the averaging "
             "period",
-            "dim_labels": ["sequence"],
         }
     )
     int_time: float = field(
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "record",
+            "units": "s",
             "description": "Integration time in seconds",
         }
     )
@@ -221,7 +260,9 @@ class SliceData:
             "groups": ["rawacf"],
             "level": "record",
             "description": "Interferometer array autocorrelations",
+            "units": "a.u. ~ W",
             "dim_labels": ["beam", "range", "lag"],
+            "dim_scales": [["beam_azms", "beam_nums"], None, "lags"],
         }
     )
     intf_antenna_count: int = field(
@@ -231,29 +272,40 @@ class SliceData:
             "description": "Number of interferometer array antennas",
         }
     )
+    lag_numbers: np.ndarray = field(
+        metadata={
+            "groups": ["antennas_iq", "bfiq", "rawacf"],
+            "level": "file",
+            "nickname": "lag",
+            "units": "tau_spacing",
+            "description": "Difference in units of tau_spacing of unique pairs of pulse in the pulse array",
+        }
+    )
     lags: np.ndarray = field(
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf"],
             "level": "file",
+            "units": "tau_spacing",
             "description": "Unique pairs of pulses in pulse array, in units of tau_spacing",
-            "dim_labels": ["lag"],
+            "dim_labels": ["lag", ""],
+            "dim_scales": ["lag_numbers"],
         }
     )
     lp_status_word: int = field(
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "record",
-            "description": "32 bits, a 1 in bit position corresponds to a low power condition on that "
-            "transmitter",
-            "dim_labels": ["sequence", "antenna"],
+            "description": "32 bits, a 1 in bit position corresponds to a low power condition on that transmitter",
         }
     )
     main_acfs: np.ndarray = field(
         metadata={
             "groups": ["rawacf"],
             "level": "record",
+            "units": "a.u. ~ W",
             "description": "Main array autocorrelations",
             "dim_labels": ["beam", "range", "lag"],
+            "dim_scales": [["beam_azms", "beam_nums"], None, "lags"],
         }
     )
     main_antenna_count: int = field(
@@ -261,14 +313,6 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "file",
             "description": "Number of main array antennas",
-        }
-    )
-    noise_at_freq: np.ndarray = field(  # TODO: Implement and give units
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf"],
-            "level": "record",
-            "description": "Noise at the receive frequency",
-            "dim_labels": ["sequence"],
         }
     )
     num_ranges: int = field(
@@ -296,15 +340,17 @@ class SliceData:
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "file",
-            "description": "Number of slices in the experiment at this averaging period",
+            "description": "Number of slices in the experiment for this averaging period",
         }
     )
     pulse_phase_offset: np.ndarray = field(
         metadata={
             "groups": ["antennas_iq", "bfiq"],
             "level": "record",
+            "units": "degrees",
             "description": "Phase offset in degrees for each pulse in pulses",
             "dim_labels": ["sequence", "pulse"],
+            "dim_scales": ["sqn_timestamps", "pulses"],
         }
     )
     pulse_sample_start: list[float] = field(
@@ -315,10 +361,11 @@ class SliceData:
             "dim_labels": ["pulse"],
         }
     )
-    pulse_timing_us: list[float] = field(
+    pulse_timing: list[float] = field(
         metadata={
             "groups": ["txdata"],
             "level": "file",
+            "units": "μs",
             "description": "Beginning of pulses in sequence measured in microseconds",
             "dim_labels": ["pulse"],
         }
@@ -327,6 +374,7 @@ class SliceData:
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf"],
             "level": "file",
+            "nickname": "pulse",
             "description": "Pulse sequence in units of tau_spacing",
             "dim_labels": ["pulse"],
         }
@@ -335,6 +383,7 @@ class SliceData:
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf"],
             "level": "file",
+            "units": "km",
             "description": "Range gate separation (equivalent distance between samples) in km",
         }
     )
@@ -342,6 +391,7 @@ class SliceData:
         metadata={
             "groups": ["rawrf"],
             "level": "file",
+            "units": "kHz",
             "description": "Center frequency of the data in kHz",
         }
     )
@@ -349,25 +399,28 @@ class SliceData:
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "file",
+            "units": "Hz",
             "description": "Sampling rate of the samples being written to file in Hz",
         }
     )
     rx_main_phases: list[complex] = field(
         metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf", "txdata"],
+            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "record",
             "description": "Phases of main array receive antennas for each antenna. Magnitude between 0 (off) "
             "and 1 (full power)",
             "dim_labels": ["beam", "antenna"],
+            "dim_scales": [["beam_azms", "beam_nums"], "channels"],
         }
     )
     rx_intf_phases: list[complex] = field(
         metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf", "txdata"],
+            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "record",
             "description": "Phases of intf array receive antennas for each antenna. Magnitude between 0 (off) "
             "and 1 (full power)",
-            "dim_labels": ["beam", "antenna"],
+            "dim_labels": ["beam", "channel"],
+            "dim_scales": [["beam_azms", "beam_nums"], "channels"],
         }
     )
     samples_data_type: str = field(
@@ -416,8 +469,10 @@ class SliceData:
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "record",
-            "description": "GPS timestamps of start of first pulse for each sampling period in the averaging "
-            "period in seconds since epoch",
+            "nickname": "timestamp",
+            "units": "s",
+            "description": "GPS timestamps of start of first pulse for each sampling period in the averaging period,"
+            " in seconds since epoch",
             "dim_labels": ["sequence"],
         }
     )
@@ -432,6 +487,7 @@ class SliceData:
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf"],
             "level": "file",
+            "units": "μs",
             "description": "Unit of spacing between pulses in microseconds",
         }
     )
@@ -439,15 +495,19 @@ class SliceData:
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf", "txdata"],
             "level": "record",
-            "description": "Phases of transmit signal for each antenna. Magnitude between 0 (off) and 1 "
-            "(full power)",
-            "dim_labels": ["antenna"],
+            "units": "a.u.",
+            "description": "Phases of transmit signal for each antenna. Magnitude between 0 (off) and 1 (full power)",
+            "dim_labels": ["channel"],
+            "dim_scales": [
+                "channels"
+            ],  # todo: What if number of tx and rx antennas is different?
         }
     )
     tx_center_freq: list[float] = field(  # todo: Why is this a list?
         metadata={
             "groups": ["txdata"],
             "level": "file",
+            "units": "kHz",
             "description": "Center frequency of the transmitted data in kHz",
         }
     )
@@ -455,6 +515,7 @@ class SliceData:
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf"],
             "level": "file",
+            "units": "μs",
             "description": "Length of the pulse in microseconds",
         }
     )
@@ -462,6 +523,7 @@ class SliceData:
         metadata={
             "groups": ["txdata"],
             "level": "file",
+            "units": "Hz",
             "description": "Sampling rate of the samples being sent to the USRPs",
         }
     )  # todo: Why is this a list? Shouldn't it be a single number?
@@ -469,16 +531,20 @@ class SliceData:
         metadata={
             "groups": ["txdata"],
             "level": "record",
+            "units": "a.u. ~ V",
             "description": "Samples sent to USRPs for transmission",
             "dim_labels": ["antenna", "time"],  # todo: verify
+            "dim_scales": ["channels", None],
         }
     )
     xcfs: np.ndarray = field(
         metadata={
             "groups": ["rawacf"],
             "level": "record",
+            "units": "a.u. ~ W",
             "description": "Cross-correlations between main and interferometer arrays",
             "dim_labels": ["beam", "range", "lag"],
+            "dim_scales": [["beam_azms", "beam_nums"], None, "lag_number"],
         }
     )
 
@@ -490,7 +556,7 @@ class SliceData:
         return [f.name for f in fields(cls) if file_type in f.metadata.get("groups")]
 
     @classmethod
-    def file_level_fields(cls):
+    def _file_level_fields(cls):
         """
         Returns a list of the names for all fields which are at the `file` level, and thus are constant
         for a given file.
@@ -498,7 +564,7 @@ class SliceData:
         return [f.name for f in fields(cls) if f.metadata.get("level") == "file"]
 
     @classmethod
-    def record_level_fields(cls):
+    def _record_level_fields(cls):
         """
         Returns a list of the names for all fields which are at the `record` level, and thus vary
         from averaging period to averaging period.
@@ -506,18 +572,210 @@ class SliceData:
         return [f.name for f in fields(cls) if f.metadata.get("level") == "record"]
 
     @classmethod
-    def generate_data_dim_labels(cls, file_type: str):
+    def _dim_scale_fields(cls, file_type: str):
         """
-        Returns the dimension labels for the ``data`` field for ``file_type``.
+        Returns a list of all fields that are [Dimension Scales](https://docs.h5py.org/en/stable/high/dims.html)
+        for another field.
+
+        The ``dim_scales`` metadata contains a list of field names which should be associated as dimension scales
+        for a field. If the list depends on the file type, then the ``dim_scales`` metadata will be a dictionary
+        keyed by file type. Some dimensions may have multiple associated scales, represented by a list of names
+        for that dimension. Some dimensions may not have associated scales, indicated by a ``None`` value for that
+        dimension.
+
+        E.g. ``main_acfs`` field:
+        ``dim_labels = ["beam", "range", "lag"]``
+        ``dim_scales = [["beam_azms", "beam_nums"], None, "lags"]``
+        The first dimension is associated with two other fields: ``beam_azms`` and ``beam_nums``.
+        The second dimensions is not associated with any field.
+        The third dimension is associated with the field ``lags``.
         """
-        dim_labels = {
-            "rawrf": ["sequence", "antenna", "time"],  # todo: verify these dimensions
-            "antennas_iq": ["antenna", "sequence", "time"],
-            "bfiq": ["array", "sequence", "beam", "time"],
-            "txdata": [""],  # todo: Get the dimensionality for this type
-        }
-        if file_type in dim_labels.keys():
-            return dim_labels[file_type]
+        dim_scale_fields = set()
+        for f in fields(cls):
+            if file_type not in f.metadata.get("groups"):
+                continue
+            dim_scales = f.metadata.get("dim_scales", None)
+            if dim_scales is None:
+                continue
+            if isinstance(dim_scales, dict):  # depends on the file type
+                dim_scales = dim_scales[file_type]
+            for dim in dim_scales:
+                if dim is None:  # no scale for a particular dimension
+                    continue
+                elif isinstance(dim, list):  # multiple scales
+                    dim_scale_fields.union(set(dim))
+                else:
+                    dim_scale_fields.add(dim)
+        return list(dim_scale_fields)
+
+    @classmethod
+    def _associate_dim_scales(cls, name: str, group: h5py.Group, dim_scales: list):
+        """
+        Associates fields as a [Dimension Scale](https://docs.h5py.org/en/stable/high/dims.html)
+        of another field's dimension.
+        """
+        if len(group[name].shape) != len(dim_scales):
+            raise ValueError(
+                f"{name} has incompatible dimensionality {group[name].shape} with scales {dim_scales}"
+            )
+        for i, dim in enumerate(dim_scales):
+            if dim is None:
+                continue
+            elif isinstance(dim, list):
+                for d in dim:
+                    group[name].dims[i].attach_scale(group[d])
+            else:
+                group[name].dims[i].attach_scale(group[dim])
+
+    @staticmethod
+    def _format_for_hdf5(field_data):
+        """
+        Converts ``field_data`` to supported types for a Borealis HDF5 file.
+        """
+        if isinstance(field_data, dict):
+            return np.bytes_(str(field_data))
+        elif isinstance(field_data, str):
+            return np.bytes_(field_data)
+        elif isinstance(field_data, bool):
+            return np.bool_(field_data)
+        elif isinstance(field_data, list):
+            if len(field_data) > 0 and isinstance(field_data[0], str):
+                return np.bytes_(field_data)
+            else:
+                return np.array(field_data)
+        else:
+            return field_data
+
+    @staticmethod
+    def _write_hdf5_field(
+        name: str, data, metadata: dict, group: h5py.Group, ftype: str
+    ):
+        """
+        Write ``data`` to ``group`` along with the associated ``metadata``
+        """
+        group.create_dataset(name, data=data, compression="gzip", compression_opts=9)
+        group[name].attrs["description"] = metadata.get("description")
+
+        units = metadata.get("units", None)
+        if units is not None:
+            group[name].attrs["units"] = units
+
+        dim_labels = metadata.get("dim_labels", None)
+        if dim_labels is not None:
+            if isinstance(dim_labels, dict):
+                dim_labels = dim_labels[ftype]
+            if len(dim_labels) != len(data.shape):
+                raise ValueError(
+                    f"{name} shape {data.shape} does not match dimension labels {dim_labels}"
+                )
+            for i, dim in enumerate(dim_labels):
+                group[name].dims[i].label = dim
+
+        dim_scales = metadata.get("dim_scales", None)
+        if dim_scales is not None:
+            if isinstance(dim_scales, dict):
+                dim_scales = dim_scales[ftype]
+            SliceData._associate_dim_scales(name, group, dim_scales)
+
+    @staticmethod
+    def _write_metadata_field(
+        name: str, data, metadata: dict, group: h5py.Group, ftype: str
+    ):
+        """
+        Checks if a field is already in the ``group``. If so, verifies the data is identical.
+        If not, writes the field to ``group``.
+        """
+        if name in group.keys():
+            # verify it hasn't changed
+            if not np.allclose(group[name][:], data):
+                raise ValueError(
+                    f"{name} already exists in file with different value.\n"
+                    f"\tExisting: {group[name][:]}\n"
+                    f"\tNew: {data}"
+                )
+        else:
+            # First time, write the metadata
+            SliceData._write_hdf5_field(name, data, metadata, group, ftype)
+
+    def to_hdf5(self, group: h5py.Group, metadata_group: h5py.Group, data_type: str):
+        """
+        Converts data from ``self`` of relevance for the data type into a ``group`` and ``metadata_group``
+
+        :param group:          HDF5 group that the data will be placed into
+        :type  group:          h5py.Group
+        :param metadata_group: HDF5 group which file-level metadata should exist in
+        :type  metadata_group: h5py.Group
+        :param data_type:      Type of data that is being written.
+        :type  data_type:      str
+        """
+        # First, writes all fields that are Dimension Scales for other fields
+        for scale_field in self._dim_scale_fields(data_type):
+            data = getattr(self, scale_field)
+            formatted_data = self._format_for_hdf5(data)
+
+            if scale_field in self._file_level_fields():
+                # Field is file-level metadata, so should be written to the metadata group
+                self._write_metadata_field(
+                    scale_field,
+                    formatted_data,
+                    data.metadata,
+                    metadata_group,
+                    data_type,
+                )
+                group[scale_field] = metadata_group[scale_field]  # create a hard link
+            else:
+                # Field is record-level, so write it to the group
+                self._write_hdf5_field(
+                    scale_field, formatted_data, data.metadata, group, data_type
+                )
+            group[scale_field].make_scale(data.metadata.get("nickname", scale_field))
+
+        # Then, write the remaining fields, and associate the Dimension Scale fields with them
+        remaining_fields = list(
+            set(self.type_fields(data_type)) - set(self._dim_scale_fields(data_type))
+        )
+        for relevant_field in remaining_fields:
+            data = getattr(self, relevant_field)
+            formatted_data = self._format_for_hdf5(data)
+
+            if relevant_field in self._file_level_fields():
+                self._write_metadata_field(
+                    relevant_field,
+                    formatted_data,
+                    data.metadata,
+                    metadata_group,
+                    data_type,
+                )
+                # Creates a hard link so the data is only stored once, in ``metadata_group``
+                group[relevant_field] = metadata_group[relevant_field]
+            else:
+                self._write_hdf5_field(
+                    relevant_field, formatted_data, data.metadata, group, data_type
+                )
+
+    def to_dmap(self, record_name: str):
+        """
+        Converts data from ``self`` into a valid DMAP record.
+        """
+        group = {}
+        for relevant_field in SliceData.type_fields("rawacf"):
+            data = getattr(self, relevant_field)
+
+            # Massage the data into the correct types
+            if isinstance(data, dict):
+                data = str(data)
+            elif isinstance(data, list):
+                if isinstance(data[0], str):
+                    data = np.bytes_(data)
+                else:
+                    data = np.array(data)
+            group[relevant_field] = data
+
+        dmap_record = pydarnio.BorealisConvert._BorealisConvert__convert_rawacf_record(
+            0, (record_name, group), ""
+        )
+
+        return dmap_record
 
     def __repr__(self):
         """Print all available fields"""

@@ -61,6 +61,7 @@ class Options:
     n200_addrs: list[str] = field(init=False)
     n200_count: int = field(init=False)
     pulse_ramp_time: float = field(init=False)
+    rawacf_format: str = field(init=False)
     realtime_address: str = field(init=False)
     ringbuffer_name: str = field(init=False)
     router_address: str = field(init=False)
@@ -247,6 +248,7 @@ class Options:
         self.ringbuffer_name = raw_config["ringbuffer_name"]
 
         self.data_directory = raw_config["data_directory"]
+        self.rawacf_format = raw_config["rawacf_format"]
         self.log_directory = raw_config["log_handlers"]["logfile"]["directory"]
         self.hdw_path = raw_config["hdw_path"]
 
@@ -448,6 +450,7 @@ class Options:
                        \n    max_range_gates = {self.max_range_gates} \
                        \n    max_beams = {self.max_beams} \
                        \n    default_freq = {self.default_freq} kHz \
-                       \n    restricted_ranges = {self.restricted_ranges} kHz
+                       \n    restricted_ranges = {self.restricted_ranges} kHz \
+                       \n    rawacf_format = {self.rawacf_format}
                        \n"""
         return return_str

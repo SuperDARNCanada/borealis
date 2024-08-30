@@ -135,6 +135,11 @@ def steamed_hams_parser():
         help="Embargo the file (makes the CPID negative)",
     )
     parser.add_argument(
+        "--rawacf-format",
+        choices=["hdf5", "dmap"],
+        help="Format to use when writing rawacf files. Defaults to config file specification.",
+    )
+    parser.add_argument(
         "--kwargs",
         nargs="+",
         default="",
@@ -143,7 +148,7 @@ def steamed_hams_parser():
     parser.add_argument(
         "--realtime-off",
         action="store_true",
-        help="Disable the realtime FITACF3 and data server module",
+        help="Disable the realtime FITACF3 data server module",
     )
 
     return parser
@@ -153,42 +158,46 @@ parser = steamed_hams_parser()
 args = parser.parse_args()
 kwargs = " ".join(args.kwargs)
 
+rawacf_format = ""
+if args.rawacf_format is not None:
+    rawacf_format = f"--rawacf-format={args.rawacf_format}"
+
 if args.run_mode == "release":
     # python optimized, no debug for regular operations
     python_opts = "-O -u"
     c_debug_opts = ""
     mode = "release"
-    data_write_args = "--file-type=hdf5 --enable-raw-acfs --enable-antenna-iq"
+    data_write_args = f"--enable-raw-acfs --enable-antenna-iq {rawacf_format}"
 elif args.run_mode == "debug":
     # run all modules in debug with regular operations data outputs, for testing modules
     python_opts = "-u"
     c_debug_opts = "/usr/local/cuda/bin/cuda-gdb -ex start"
     mode = "debug"
-    data_write_args = "--file-type=hdf5 --enable-raw-acfs --enable-antenna-iq"
+    data_write_args = f"--enable-raw-acfs --enable-antenna-iq {rawacf_format}"
 elif args.run_mode == "pythonprofiling":
     # run all modules in debug with python profiling, for optimizing python modules
     python_opts = "-O -u -m cProfile -o testing/python_testing/{module}.cprof"
     c_debug_opts = "/usr/local/cuda/bin/cuda-gdb -ex start"
     mode = "debug"
-    data_write_args = "--file-type=hdf5 --enable-raw-acfs --enable-antenna-iq"
+    data_write_args = f"--enable-raw-acfs --enable-antenna-iq {rawacf_format}"
 elif args.run_mode == "testdata":
     # run in scons release with python debug for tx data and print raw rf, for verifying data
     python_opts = "-u"
     c_debug_opts = ""
     mode = "release"
-    data_write_args = "--file-type=hdf5 --enable-tx --enable-raw-rf"
+    data_write_args = "--enable-tx --enable-raw-rf"
 elif args.run_mode == "engineeringdebug":
     # run all modules in debug with tx and rawrf data - this mode is very slow
     python_opts = "-u"
     c_debug_opts = "/usr/local/cuda/bin/cuda-gdb -ex start"
     mode = "debug"
-    data_write_args = "--file-type=hdf5 --enable-bfiq --enable-antenna-iq --enable-raw-rf --enable-tx;"
+    data_write_args = "--enable-bfiq --enable-antenna-iq --enable-raw-rf --enable-tx;"
 elif args.run_mode == "filterdata":
     # run all modules in debug with rawrf, antennas_iq, and filter stage data.
     python_opts = "-u"
     c_debug_opts = "/usr/local/cuda/bin/cuda-gdb -ex start"
     mode = "debug"
-    data_write_args = "--file-type=hdf5 --enable-raw-rf --enable-antenna-iq"
+    data_write_args = "--enable-raw-rf --enable-antenna-iq"
 else:
     print(f"Mode {args.run_mode} is unknown. Exiting without running Borealis")
     sys.exit(-1)
