@@ -123,7 +123,7 @@ def install_packages(distro: str, dev: bool = True):
     ]
 
     variant_packages = [
-        "libusb-1_0-{}",  # Needed for UHD
+        "libusb-1_0-{}",  # Needed for 
         "libX11-{}",
         "pps-tools-{}",
         "net-snmp-{}",
@@ -145,6 +145,8 @@ def install_packages(distro: str, dev: bool = True):
         "kernel-devel",
         "libboost_*_66_0",
         "uhd-devel",
+        "uhd-utils",
+        "uhd-firmware",
     ]
 
     dev_packages = [
