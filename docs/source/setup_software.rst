@@ -38,14 +38,26 @@ the note when running ``install_radar_deps.py``.
    version of CUDA installed is appropriate for your GPU and works with your installed NVIDIA
    drivers.
 
-#.  **NOTE: Overclocking is no longer suggested, as reliability is more important than performance
-    now**. Use the BIOS to find a stable over-clock for the CPU. Usually the recommended turbo
-    frequency is a good place to start. This step is optional, but will help system performance when
-    it comes to streaming high rates from the USRP. Do not adjust higher over-clock settings without
-    doing research.
+   The following commands work to install CUDA on OpenSUSE 15: ::
+
+    sudo zypper install -y kernel-<variant>-devel=<version>
+    sudo usermod -a -G video <username>
+    sudo zypper addrepo https://developer.download.nvidia.com/compute/cuda/repos/opensuse15/x86_64/cuda-opensuse15.repo
+    sudo zypper install cuda-toolkit nvidia-open
+
+   <variant> and <version> are retrieved from ``uname -r`` : ::
+
+    $ uname -r
+    <version>-<variant>
+
+#. *Optional:* Use the BIOS to find a stable over-clock for the CPU. Usually the recommended turbo
+   frequency is a good place to start. This step is optional, but will help system performance when
+   it comes to streaming high rates from the USRP. Do not adjust higher over-clock settings without
+   doing research. **NOTE: Overclocking is no longer suggested, as the increase performace comes
+   at the cost of reliability**
 
 #. Use the BIOS to enable boot-on-power. The computer should come back online when power is restored
-   after an outage. This setting is typically referred to as *Restore on AC/Power Loss*
+   after an outage. This setting is typically referred to as *Restore on AC/Power Loss*.
 
 #. Configure the following computer settings to run each time the computer reboots. This can be done
    via root crontab, as these commands are not persistent. Example root crontab for multiple
@@ -151,23 +163,6 @@ the note when running ``install_radar_deps.py``.
     cd $BOREALISPATH
     sudo -E python3 scripts/install_radar_deps.py [radar code] $BOREALISPATH --python-version=3.11 2>&1
 
-#. If you're building Borealis for a non U of S radar, use one of the U of S ``[radar
-   code]_config.ini`` files (located in ``borealis/config/[radar code]``) as a template, or follow
-   the :ref:`config file documentation<config-options>` to create your own config file. Your config
-   file should be placed in ``borealis/config/[radar code]/[radar code]_config.ini``
-
-#. In ``[radar code]_config.ini``, there is an entry called "realtime_address". This defines the
-   protocol, interface, and port that the realtime module uses for socket communication. This should
-   be set to ``"realtime_address" : "tcp://<interface>:9696"``, where <interface> is a configured
-   interface on your computer such as "127.0.0.1", "eth0", or "wlan0". This interface is selected
-   from ``ip addr``, from which you should choose a device which is "UP".
-
-   Verify that the realtime module is able to communicate with other modules. This can be done by
-   running the following command in a new terminal while borealis is running. If all is well, the
-   command should output that there is a device listening on the channel specified. ::
-
-    ss --all | grep 9696
-
 #. Edit ``/etc/security/limits.conf`` (as root) to add the following line that allows UHD to set
    thread priority. UHD automatically tries to boost its thread scheduling priority, so it will fail
    if the user executing UHD doesn't have permission. ::
@@ -243,7 +238,7 @@ the note when running ``install_radar_deps.py``.
    #. An example configuration of ntp is shown below for ``/etc/ntp.conf``. These settings use
       ``tick.usask.ca`` as a time server, with ``tock.usask.ca`` as a backup server, as well as PPS
       via the ``127.127.22.X`` lines. **NOTE:** Replace the 'X' with the pps number that is
-      connected to the incoming PPS signal determined in the previous step (i.e. for pps0, PPS input
+      connected to the incoming PPS signal determined in the previous step (i.e. for pps1, PPS input
       is 127.127.22.1).
 
         .. code-block:: text
@@ -311,8 +306,31 @@ the note when running ``install_radar_deps.py``.
    man pages for ``tuned``, ``cpupower``, ``ethtool``, ``ip``, ``sysctl``, ``modprobe``, and
    ``ldattach``
 
-#. Verify that the scheduler is working, and that the ``[radar code]].scd`` schedule file exists in
-   the borealis_schedules directory.
+#. If you're building Borealis for a non U of S radar, use one of the U of S ``[radar
+   code]_config.ini`` files (located in ``borealis/config/[radar code]``) as a template, or follow
+   the :ref:`config file documentation<config-options>` to create your own config file. Your config
+   file should be placed in ``borealis/config/[radar code]/[radar code]_config.ini``
+
+#. In ``[radar code]_config.ini``, there is an entry called "realtime_address". This defines the
+   protocol, interface, and port that the realtime module uses for socket communication. This should
+   be set to ``"realtime_address" : "tcp://<interface>:9696"``, where <interface> is a configured
+   interface on your computer such as "127.0.0.1", "eth0", or "wlan0". This interface is selected
+   from ``ip addr``, from which you should choose a device which is "UP".
+
+   To verify that the realtime module is able to communicate with other modules, run the
+   following command in a new terminal while Borealis is running. If all is well, the
+   command should output that there is a device listening on the channel specified. ::
+
+    ss --all | grep 9696
+
+#. Configure the scheduler. See :ref:`scheduling<scheduling>` for more information.
+   #. Enable and start the ``atd`` system service. ``at`` is used to run the radar in specific modes
+      following the radar schedule. ::
+        sudo systemctl enable atd.service
+        sudo systemctl start atd.service
+   #. Ensure the site specific schedule files exists in the ``borealis_schedules`` directory (ex. 
+      ``sas.scd`` for Saskatoon). 
+   #. TODO
 
 #. Configure and install the automatic Borealis restart daemon, ``restart_borealis.service``. Follow
    the steps outlined :ref:`here <automated-restarts>` to install and start the system service. This
