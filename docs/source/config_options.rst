@@ -16,12 +16,6 @@ Config Parameters
 +--------------------------------+-------------------------------+---------------------------------------+
 | device_options                 | recv_frame_size=4000          | UHD USRP device arguments.            |
 +--------------------------------+-------------------------------+---------------------------------------+
-| main_antenna_count             | 16                            | Number of physical main array         |
-|                                |                               | antennas, regardless of N200 status.  |
-+--------------------------------+-------------------------------+---------------------------------------+
-| intf_antenna_count             | 4                             | Number of physical interferometer     |
-|                                |                               | antennas, regardless of N200 status.  |
-+--------------------------------+-------------------------------+---------------------------------------+
 | n200s                          | | {                           | List of all N200s, both active and    |
 |                                | | "addr" : "192.168.10.100",  | not. The value for each channel maps  |
 |                                | | "rx_channel_0" : "m0",      | to a physical antenna of the radar,   |
@@ -60,9 +54,42 @@ Config Parameters
 |                                |                               | set. Set to "" if the channel is      |
 |                                |                               | disconnected.                         |
 +--------------------------------+-------------------------------+---------------------------------------+
-| main_antenna_spacing           | 15.24                         | Distance between antennas (m).        |
+| antennas                       |                               | Dictionary of antenna specification   |
+|                                |                               | fields.                               |
 +--------------------------------+-------------------------------+---------------------------------------+
-| intf_antenna_spacing           | 15.24                         | Distance between antennas (m).        |
+| main_locations (antennas)      | | {                           | [x, y, z] coordinates for each        |
+|                                | |  "0" : [-114.3, 0.0, 0.0],  | antenna in the main array.            |
+|                                | |  "1" : [-99.06, 0.0, 0.0],  |                                       |
+|                                | |  ... }                      |                                       |
++--------------------------------+-------------------------------+---------------------------------------+
+| intf_locations (antennas)      | | {                           | [x, y, z] coordinates for each        |
+|                                | |  "0" : [-22.86, 0.0, 0.0],  | antenna in the interferometer array.  |
+|                                | |  "1" : [-7.62, 0.0, 0.0],   |                                       |
+|                                | |  ... }                      |                                       |
++--------------------------------+-------------------------------+---------------------------------------+
+| intf_antenna_count (antennas)  | 4                             | Number of physical interferometer     |
+|                                |                               | antennas, regardless of N200 status.  |
++--------------------------------+-------------------------------+---------------------------------------+
+| main_antenna_count (antennas)  | 16                            | Number of physical main array         |
+|                                |                               | antennas, regardless of N200 status.  |
++--------------------------------+-------------------------------+---------------------------------------+
+| intf_antenna_count (antennas)  | 4                             | Number of physical interferometer     |
+|                                |                               | antennas, regardless of N200 status.  |
++--------------------------------+-------------------------------+---------------------------------------+
+| standard_positions (antennas)  | true                          | Flag indicating standard linear,      |
+|                                |                               | equally-spaced antennas in the        |
+|                                |                               | arrays. If so, the ``main_locations`` |
+|                                |                               | and ``intf_locations`` will be        |
+|                                |                               | verified to be linear on a line       |
+|                                |                               | parallel to the x-axis and spaced     |
+|                                |                               | exactly by                            |
+|                                |                               | ``[main|intf]_antenna_spacing``       |
++--------------------------------+-------------------------------+---------------------------------------+
+| main_antenna_spacing           | 15.24                         | Distance between main-array antennas  |
+| (antennas)                     |                               | (m).                                  |
++--------------------------------+-------------------------------+---------------------------------------+
+| intf_antenna_spacing           | 15.24                         | Distance between interferometer-      |
+| (antennas)                     |                               | array antennas (m).                   |
 +--------------------------------+-------------------------------+---------------------------------------+
 | min_freq                       | 8.00E+06                      | Minimum frequency we can run (Hz).    |
 +--------------------------------+-------------------------------+---------------------------------------+
