@@ -169,11 +169,12 @@ class Sequence(InterfaceClassBase):
             dm_rate *= stage.dm_rate
 
         txrate = self.transmit_metadata["txrate"]
+        main_antenna_locations = self.transmit_metadata["main_antenna_locations"]
+        intf_antenna_locations = self.transmit_metadata["intf_antenna_locations"]
         main_antenna_count = self.transmit_metadata["main_antenna_count"]
         main_antenna_spacing = self.transmit_metadata["main_antenna_spacing"]
         intf_antenna_count = self.transmit_metadata["intf_antenna_count"]
         intf_antenna_spacing = self.transmit_metadata["intf_antenna_spacing"]
-
         pulse_ramp_time = self.transmit_metadata["pulse_ramp_time"]
         max_usrp_dac_amplitude = self.transmit_metadata["max_usrp_dac_amplitude"]
         tr_window_time = self.transmit_metadata["tr_window_time"]
@@ -209,14 +210,12 @@ class Sequence(InterfaceClassBase):
                 rx_main_phase_shift = get_phase_shift(
                     exp_slice.beam_angle,
                     freq_khz,
-                    main_antenna_count,
-                    main_antenna_spacing,
+                    main_antenna_locations[self.rx_main_antennas],
                 )
                 rx_intf_phase_shift = get_phase_shift(
                     exp_slice.beam_angle,
                     freq_khz,
-                    intf_antenna_count,
-                    intf_antenna_spacing,
+                    intf_antenna_locations[self.rx_intf_antennas],
                     intf_offset[0],
                 )
 
@@ -271,8 +270,7 @@ class Sequence(InterfaceClassBase):
                     tx_main_phase_shift = get_phase_shift(
                         exp_slice.beam_angle,
                         freq_khz,
-                        main_antenna_count,
-                        main_antenna_spacing,
+                        main_antenna_locations[self.tx_main_antennas],
                     )
 
                 # The antennas used for transmitting this slice

@@ -218,14 +218,14 @@ class Aggregator:
                 # Loops over antenna data within stage
                 for ant_num in range(antennas_data.shape[0]):
                     # Convert index in the data array to antenna number from the config file
-                    ant_str = f"antenna_{antenna_indices[ant_num]}"
+                    ant_name = antenna_indices[ant_num]
 
-                    if ant_str not in antenna_iq_stage:
-                        antenna_iq_stage[ant_str] = {}
+                    if ant_name not in antenna_iq_stage:
+                        antenna_iq_stage[ant_name] = {}
 
-                    if "data" not in antenna_iq_stage[ant_str]:
-                        antenna_iq_stage[ant_str]["data"] = []
-                    antenna_iq_stage[ant_str]["data"].append(antennas_data[ant_num, :])
+                    if "data" not in antenna_iq_stage[ant_name]:
+                        antenna_iq_stage[ant_name]["data"] = []
+                    antenna_iq_stage[ant_name]["data"].append(antennas_data[ant_num, :])
 
     def finalize(self):
         """

@@ -11,7 +11,6 @@ data, rawacf data, etc. and write that data to HDF5 or DMAP files.
 
 # built-in
 import argparse as ap
-import copy
 import datetime
 import faulthandler
 from multiprocessing import shared_memory
@@ -233,6 +232,13 @@ class DataWrite:
 
                 parameters = SliceData()
                 parameters.agc_status_word = np.uint32(data_parsing.agc_status_word)
+                parameters.antenna_locations = np.concatenate(
+                    [
+                        self.options.main_antenna_locations,
+                        self.options.intf_antenna_locations,
+                    ],
+                    axis=0,
+                )
                 parameters.averaging_method = rx_channel.averaging_method
                 parameters.beam_azms = [beam.beam_azimuth for beam in rx_channel.beams]
                 parameters.beam_nums = [
@@ -250,11 +256,6 @@ class DataWrite:
                     parameters.cfs_masks = np.array(
                         aveperiod_meta.cfs_masks[np.uint32(rx_channel.slice_id)]
                     )
-                else:
-                    parameters.cfs_freqs = np.array([])
-                    parameters.cfs_noise = np.array([])
-                    parameters.cfs_range = np.array([])
-                    parameters.cfs_masks = np.array([])
 
                 parameters.data_normalization_factor = (
                     aveperiod_meta.data_normalization_factor
@@ -270,27 +271,35 @@ class DataWrite:
                     data_parsing.gps_to_system_time_diff
                 )
                 parameters.int_time = np.float32(aveperiod_meta.aveperiod_time)
-                parameters.intf_antenna_count = np.uint32(
-                    len(rx_channel.rx_intf_antennas)
-                )
-                parameters.lags = np.array(lags, dtype=np.uint32)
-                parameters.lag_numbers = parameters.lags[:, 1] - parameters.lags[:, 0]
+                if len(lags) > 0:
+                    parameters.lag_pulses = np.array(lags, dtype=np.uint32)
+                    parameters.lag_numbers = (
+                        parameters.lag_pulses[:, 1] - parameters.lag_pulses[:, 0]
+                    )
                 parameters.lp_status_word = np.uint32(data_parsing.lp_status_word)
-                parameters.main_antenna_count = np.uint32(
-                    len(rx_channel.rx_main_antennas)
-                )
-                parameters.num_ranges = np.uint32(rx_channel.num_ranges)
                 parameters.num_sequences = aveperiod_meta.num_sequences
                 parameters.num_slices = len(aveperiod_meta.sequences) * len(
                     sqn_meta.rx_channels
                 )
-                parameters.pulse_phase_offset = encodings
+                if encodings.size > 0:
+                    parameters.pulse_phase_offset = encodings
                 parameters.pulses = np.array(rx_channel.ptab, dtype=np.uint32)
+                parameters.range_gates = np.arange(
+                    rx_channel.num_ranges, dtype=np.uint32
+                )
                 parameters.range_sep = np.float32(rx_channel.range_sep)
                 parameters.rx_center_freq = aveperiod_meta.rx_ctr_freq
                 parameters.rx_sample_rate = sqn_meta.output_sample_rate
                 parameters.rx_main_phases = rx_channel.rx_main_phases
                 parameters.rx_intf_phases = rx_channel.rx_intf_phases
+                parameters.rx_main_antennas = np.array(rx_channel.rx_main_antennas)
+                parameters.rx_intf_antennas = (
+                    np.array(rx_channel.rx_intf_antennas)
+                    + self.options.main_antenna_count
+                )
+                parameters.rx_antennas = np.concatenate(
+                    [parameters.rx_main_antennas, parameters.rx_intf_antennas], axis=0
+                )
                 parameters.samples_data_type = "complex float"
                 parameters.scan_start_marker = aveperiod_meta.scan_flag
                 parameters.scheduling_mode = aveperiod_meta.scheduling_mode
@@ -299,10 +308,19 @@ class DataWrite:
                 parameters.slice_interfacing = rx_channel.interfacing
                 parameters.sqn_timestamps = data_parsing.timestamps
                 parameters.station = self.options.site_id
+                parameters.station_location = np.array(
+                    [
+                        self.options.geo_lat,
+                        self.options.geo_long,
+                        self.options.altitude,
+                    ],
+                    dtype=np.float32,
+                )
                 parameters.tau_spacing = np.uint32(rx_channel.tau_spacing)
                 parameters.tx_antenna_phases = np.complex64(
                     rx_channel.tx_antenna_phases
                 )
+                parameters.tx_antennas = np.array(rx_channel.tx_antennas)
                 parameters.tx_pulse_len = np.uint32(rx_channel.pulse_len)
 
                 all_slice_data[rx_channel.slice_id] = parameters
@@ -312,9 +330,7 @@ class DataWrite:
         if write_bfiq and data_parsing.bfiq_available:
             self._write_bfiq_params(all_slice_data, data_parsing)
         if write_antenna_iq and data_parsing.antenna_iq_available:
-            self._write_antenna_iq_params(
-                all_slice_data, data_parsing, aveperiod_meta.sequences
-            )
+            self._write_antenna_iq_params(all_slice_data, data_parsing)
         if data_parsing.rawrf_available:
             if write_raw_rf:
                 # Just need first available slice parameters.
@@ -339,13 +355,15 @@ class DataWrite:
             dataset_name=self.timestamp,
         )
 
-    def _write_correlations(self, aveperiod_data: dict, parsed_data: Aggregator):
+    def _write_correlations(
+        self, aveperiod_data: dict[int, SliceData], parsed_data: Aggregator
+    ):
         """
         Gathers the per-sequence data from parsed_data, conducts averaging over the sequence
         dimension, and then writes the records for each slice to their respective files.
 
         :param  aveperiod_data:  Dict containing SliceData for each slice.
-        :type   aveperiod_data:  dict
+        :type   aveperiod_data:  dict[int, SliceData]
         :param  parsed_data:     Object containing the data accumulators and flags
         :type   parsed_data:     Aggregator
         """
@@ -364,14 +382,8 @@ class DataWrite:
             # so we get median of all sequences.
             averaging_method = slice_data.averaging_method
             array_2d = np.array(x, dtype=np.complex64)
-            num_beams, num_ranges, num_lags = np.array(
-                [
-                    len(slice_data.beam_nums),
-                    slice_data.num_ranges,
-                    slice_data.lags.shape[0],
-                ],
-                dtype=np.uint32,
-            )
+            num_beams = len(slice_data.beam_nums)
+            num_lags = slice_data.lag_numbers.shape[0]
 
             # First range offset in samples
             sample_off = slice_data.first_range_rtt * 1e-6 * slice_data.rx_sample_rate
@@ -394,11 +406,9 @@ class DataWrite:
                 log.error("wrong averaging method [mean, median]")
                 raise
 
-            # Reshape array to be 3d so we can replace lag0 far ranges that are cluttered with those
+            # Reshape array to be 3d, so we can replace lag0 far ranges that are cluttered with those
             # from alternate lag0 which have no clutter.
-            array_3d = array_expectation_value.reshape(
-                (num_beams, num_ranges, num_lags)
-            )
+            array_3d = array_expectation_value.reshape((num_beams, -1, num_lags))
             array_3d[:, second_pulse_sample_num:, 0] = array_3d[
                 :, second_pulse_sample_num:, -1
             ]
@@ -413,8 +423,6 @@ class DataWrite:
             slice_data = aveperiod_data[slice_num]
             if parsed_data.xcfs_available:
                 slice_data.xcfs = find_expectation_value(xcfs[slice_num]["data"])
-            else:
-                slice_data.xcfs = np.array([], np.complex64)
 
         for slice_num in intf_acfs:
             slice_data = aveperiod_data[slice_num]
@@ -422,8 +430,6 @@ class DataWrite:
                 slice_data.intf_acfs = find_expectation_value(
                     intf_acfs[slice_num]["data"]
                 )
-            else:
-                slice_data.intf_acfs = np.array([], np.complex64)
 
         for slice_num, slice_data in aveperiod_data.items():
             two_hr_file_with_type = self.slice_filenames[slice_num].format(ext="rawacf")
@@ -435,7 +441,9 @@ class DataWrite:
                 self.realtime_socket, self.options.rt_to_dw_identity, full_dict
             )
 
-    def _write_bfiq_params(self, aveperiod_data: dict, parsed_data: Aggregator):
+    def _write_bfiq_params(
+        self, aveperiod_data: dict[int, SliceData], parsed_data: Aggregator
+    ):
         """
         Write out any possible beamformed IQ data that has been parsed. Adds additional slice
         info to each parameter dict.
@@ -455,22 +463,23 @@ class DataWrite:
 
             all_data = []
             num_antenna_arrays = 1
-            slice_data.channels.append("main")
+            slice_data.antenna_arrays.append("main")
             all_data.append(bfiq[slice_num]["main_data"])
             if "intf" in bfiq[slice_num]:
                 num_antenna_arrays += 1
-                slice_data.channels.append("intf")
+                slice_data.antenna_arrays.append("intf")
                 all_data.append(bfiq[slice_num]["intf_data"])
 
-            slice_data.data = np.stack(all_data, axis=0)
-            slice_data.num_samps = np.uint32(slice_data.data.shape[-1])
+            slice_data.bfiq_data = np.stack(all_data, axis=0)
 
         for slice_num, slice_data in aveperiod_data.items():
             two_hr_file_with_type = self.slice_filenames[slice_num].format(ext="bfiq")
             self._write_file(slice_data, two_hr_file_with_type, "bfiq")
 
     def _write_antenna_iq_params(
-        self, aveperiod_data: dict, parsed_data: Aggregator, sequences: list
+        self,
+        aveperiod_data: dict[int, SliceData],
+        parsed_data: Aggregator,
     ):
         """
         Writes out any pre-beamformed IQ that has been parsed. Adds additional slice info
@@ -478,60 +487,27 @@ class DataWrite:
         ``channels`` will list the antennas' order.
 
         :param  aveperiod_data:  Dict that holds SliceData for each slice.
-        :type   aveperiod_data:  dict
+        :type   aveperiod_data:  dict[int, SliceData]
         :param  parsed_data:     Object containing the data accumulators and flags
         :type   parsed_data:     Aggregator
-        :param  sequences:       List of ProcessedSequenceMetadata messages
-        :type   sequences:       ProcessedSequenceMessage
         """
 
         antenna_iq = parsed_data.antenna_iq_accumulator
         slice_id_list = [x for x in antenna_iq.keys() if isinstance(x, int)]
-
-        # Parse the antennas from message
-        rx_main_antennas = {}
-        rx_intf_antennas = {}
-
-        for sqn in sequences:
-            for rx_channel in sqn.rx_channels:
-                rx_main_antennas[rx_channel.slice_id] = list(
-                    rx_channel.rx_main_antennas
-                )
-                rx_intf_antennas[rx_channel.slice_id] = list(
-                    rx_channel.rx_intf_antennas
-                )
-
-        # Build strings from antennas used in the message. This will be used to know
-        # what antennas were recorded on since we sample all available USRP channels
-        # and some channels may not be transmitted on, or connected.
-        for slice_num in rx_main_antennas:
-            rx_main_antennas[slice_num] = [
-                f"antenna_{x}" for x in rx_main_antennas[slice_num]
-            ]
-            rx_intf_antennas[slice_num] = [
-                f"antenna_{x + self.options.main_antenna_count}"
-                for x in rx_intf_antennas[slice_num]
-            ]
 
         final_data_params = {}
         for slice_num in slice_id_list:
             final_data_params[slice_num] = {}
 
             for stage in antenna_iq[slice_num]:
-                stage_data = copy.deepcopy(aveperiod_data[slice_num])
-                stage_data.num_samps = np.uint32(
-                    antenna_iq[slice_num][stage].get("num_samps", None)
-                )
-                stage_data.channels = (
-                    rx_main_antennas[slice_num] + rx_intf_antennas[slice_num]
-                )
+                stage_data = aveperiod_data[slice_num]
 
                 data = []
                 for k, data_dict in antenna_iq[slice_num][stage].items():
-                    if k in stage_data.channels:
+                    if k in stage_data.rx_antennas:
                         data.append(data_dict["data"])
 
-                stage_data.data = np.stack(data, axis=0)
+                stage_data.antennas_iq_data = np.stack(data, axis=0)
                 final_data_params[slice_num][stage] = stage_data
 
         for slice_num, slice_ in final_data_params.items():
@@ -542,7 +518,7 @@ class DataWrite:
                 self._write_file(params, two_hr_file_with_type, "antennas_iq")
 
     def _write_raw_rf_params(
-        self, slice_data, parsed_data: Aggregator, sample_rate: float
+        self, slice_data: SliceData, parsed_data: Aggregator, sample_rate: float
     ):
         """
         Opens the shared memory location in the message and writes the samples out to file.
@@ -567,9 +543,7 @@ class DataWrite:
 
         samples_list = []
         shared_memory_locations = []
-        total_ants = len(self.options.rx_main_antennas) + len(
-            self.options.rx_intf_antennas
-        )
+        total_ants = len(slice_data.rx_antennas)
 
         for raw in raw_rf:
             shared_mem = shared_memory.SharedMemory(name=raw)
@@ -581,11 +555,8 @@ class DataWrite:
             samples_list.append(rawrf_array)
             shared_memory_locations.append(shared_mem)
 
-        slice_data.data = np.stack(samples_list, axis=0)
+        slice_data.rawrf_data = np.stack(samples_list, axis=0)
         slice_data.rx_sample_rate = np.float32(sample_rate)
-        slice_data.num_samps = np.uint32(len(samples_list[0]) / total_ants)
-        slice_data.main_antenna_count = np.uint32(self.options.main_antenna_count)
-        slice_data.intf_antenna_count = np.uint32(self.options.intf_antenna_count)
 
         self._write_file(slice_data, self.raw_rf_two_hr_name, "rawrf")
 
@@ -603,7 +574,7 @@ class DataWrite:
         :type   sequences: ProcessedSequenceMessage
         """
         tx_data = SliceData()
-        for f in SliceData.type_fields("txdata"):
+        for f in SliceData.all_fields("txdata"):
             setattr(tx_data, f, [])  # initialize to a list for all fields
 
         has_tx_data = [sqn.tx_data is not None for sqn in sequences]

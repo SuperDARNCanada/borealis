@@ -565,6 +565,7 @@ def create_dw_message(radctrl_params):
 
             rxchannel.rx_main_antennas = sqn_slice.rx_main_antennas
             rxchannel.rx_intf_antennas = sqn_slice.rx_intf_antennas
+            rxchannel.tx_antennas = sqn_slice.tx_main_antennas
             rxchannel.tx_antenna_phases = sequence.tx_main_phase_shifts[slice_id][
                 radctrl_params.aveperiod.beam_iter
             ]

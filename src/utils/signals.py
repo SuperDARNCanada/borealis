@@ -427,57 +427,49 @@ class DSP:
         return values
 
 
-def get_phase_shift(beam_angle, freq, num_antennas, antenna_spacing, centre_offset=0.0):
+def get_phase_shift(
+    beam_angle: list[float],
+    freq_khz: float,
+    antenna_locations: np.ndarray,
+    centre_offset=(0.0, 0.0, 0.0),
+):
     """
-    Find the phase shift for a given antenna and beam direction.
-
-    Form the beam given the beam direction (degrees off boresite), the tx frequency, the antenna
-    number, a specified extra phase shift if there is any, the number of antennas in the array, and
-    the spacing between antennas.
+    Find the complex excitation for all antennas to make beams in all given directions.
 
     :param  beam_angle:         list of azimuthal direction of the beam off boresight, in degrees,
                                 positive beamdir being to the right of the boresight (looking along
-                                boresight from ground). This is for this antenna.
+                                boresight from ground).
     :type   beam_angle:         list
-    :param  freq:               transmit frequency in kHz
-    :type   freq:               float
-    :param  num_antennas:       number of antennas in this array
-    :type   num_antennas:       int
-    :param  antenna_spacing:    distance between antennas in this array, in meters
-    :type   antenna_spacing:    float
-    :param  centre_offset:      the phase reference for the midpoint of the array. Default = 0.0, in
+    :param  freq_khz:           transmit frequency in kHz
+    :type   freq_khz:           float
+    :param  antenna_locations:  [x, y, z] coordinates of each antenna in the array, in meters. Shape [antennas, 3]
+    :type   antenna_locations:  np.ndarray
+    :param  centre_offset:      the phase reference for the midpoint of the array. Default = (0.0, 0.0, 0.0), in
                                 metres. Important if there is a shift in centre point between arrays
                                 in the direction along the array. Positive is shifted to the right
                                 when looking along boresight (from the ground).
-    :type   centre_offset:      float
+    :type   centre_offset:      list[float]
 
-    :returns:   phase_shift     a 2D array of beam_phases x antennas in radians.
+    :returns:   phase_shift     a 2D array of shape [beams, antennas] giving the complex excitation for each
+                                antenna required to form each beam.
     :rtype:     phase_shift     ndarray
     """
 
-    freq_hz = freq * 1000.0  # convert to Hz.
+    freq_hz = freq_khz * 1000.0  # convert to Hz.
+    k = 2 * np.pi * freq_hz / speed_of_light  # 2pi / wavelength
+    beam_rads = np.deg2rad(np.array(beam_angle, dtype=np.float32))
 
-    # convert the beam angles to rads
-    beam_rads = (np.pi / 180) * np.array(beam_angle, dtype=np.float32)
+    # Get the x-position of each antenna relative to the array midpoint
+    x = antenna_locations[:, 0] - centre_offset[0]
 
-    antennas = np.arange(num_antennas)
-    x = ((num_antennas - 1) / 2.0 - antennas) * antenna_spacing + centre_offset
-    x *= 2 * np.pi * freq_hz
+    # phase shift = 0 at array midpoint (by convention), so this is the displacement in x of each beam from the array
+    # midpoint after the wave traverses one wavelength. Essentially, the component along x of the beam, normalized by
+    # the wavelength.
+    beam_displacements = -1 * np.sin(beam_rads) * k
 
-    y = np.cos(np.pi / 2.0 - beam_rads) / speed_of_light
-    # split up the calculations for beams and antennas. Outer multiply of the two
-    # vectors will yield all antenna phases needed for each beam.
-    # If there are N antennas and M beams
-    # Eventual matrix is now:
-    # [antenna0beam0 .. antenna1beam0 .... ... antennaN-1beam0
-    # antenna0beam1 ... antenna1beam1 .... ... antennaN-1beam1
-    # ...
-    # ...
-    # antenna0beamM-1 ... antenna1beamM-1... ... anteannaN-1beamM-1]
-    phase_shift = np.fmod(np.outer(y, x), 2.0 * np.pi)  # beams by antenna
+    phase_shift = np.einsum("i,j->ij", beam_displacements, x)
     phase_shift = np.exp(1j * phase_shift)
 
-    # Pointing to right of boresight, use point in middle (hypothetically antenna 7.5) as phshift=0
     return phase_shift
 
 
