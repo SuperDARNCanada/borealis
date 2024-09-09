@@ -6,7 +6,7 @@ methods for writing to different file formats.
 import dmap
 import h5py
 
-from file_formats import SliceData
+from utils.file_formats import SliceData
 
 
 class DMAPWriter:

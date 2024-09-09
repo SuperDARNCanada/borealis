@@ -10,8 +10,8 @@ from multiprocessing import shared_memory
 
 import numpy as np
 
-from options import Options
-from message_formats import ProcessedSequenceMessage
+from utils.options import Options
+from utils.message_formats import ProcessedSequenceMessage
 
 
 @dataclass
