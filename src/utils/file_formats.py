@@ -772,35 +772,35 @@ class SliceData:
 
     def _dispatch_to_write_method(
         self,
-        field: str,
+        name: str,
         fields_map: dict,
         group: h5py.Group,
         metadata_group: h5py.Group,
         data_type: str,
     ):
         try:
-            data = getattr(self, field)
+            data = getattr(self, name)
         except AttributeError as e:
-            if field in self.required_fields(data_type):
+            if name in self.required_fields(data_type):
                 raise e
             else:
                 return
         formatted_data = self._format_for_hdf5(data)
-        metadata = fields_map[field].metadata
+        metadata = fields_map[name].metadata
 
-        if field in self._file_level_fields():
+        if name in self._file_level_fields():
             # Field is file-level metadata, so should be written to the metadata group
             self._write_metadata_field(
-                field,
+                name,
                 formatted_data,
                 metadata,
                 metadata_group,
                 data_type,
             )
-            group[field] = metadata_group[field]  # create a hard link
+            group[name] = metadata_group[name]  # create a hard link
         else:
             # Field is record-level, so write it to the group
-            self._write_hdf5_field(field, formatted_data, metadata, group, data_type)
+            self._write_hdf5_field(name, formatted_data, metadata, group, data_type)
 
     @staticmethod
     def _write_hdf5_field(
@@ -865,23 +865,22 @@ class SliceData:
         :type  data_type:      str
         """
         dataclass_fields = {f.name: f for f in fields(self)}
+        dim_scale_fields = [
+            f for f in self._dim_scale_fields(data_type) if f in dataclass_fields.keys()
+        ]
 
         # First, writes all fields that are Dimension Scales for other fields
-        for scale_field in self._dim_scale_fields(data_type):
+        for f in dim_scale_fields:
             self._dispatch_to_write_method(
-                scale_field, dataclass_fields, group, metadata_group, data_type
+                f, dataclass_fields, group, metadata_group, data_type
             )
-            group[scale_field].make_scale(
-                dataclass_fields[scale_field].metadata.get("nickname", scale_field)
-            )
+            group[f].make_scale(dataclass_fields[f].metadata.get("nickname", f))
 
         # Then, write the remaining fields, and associate the Dimension Scale fields with them
-        remaining_fields = list(
-            set(self.all_fields(data_type)) - set(self._dim_scale_fields(data_type))
-        )
-        for relevant_field in remaining_fields:
+        remaining_fields = list(set(self.all_fields(data_type)) - set(dim_scale_fields))
+        for f in remaining_fields:
             self._dispatch_to_write_method(
-                relevant_field, dataclass_fields, group, metadata_group, data_type
+                f, dataclass_fields, group, metadata_group, data_type
             )
 
     def to_dmap(self, record_name: str):
