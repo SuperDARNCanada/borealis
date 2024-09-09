@@ -64,5 +64,8 @@ class HDF5Writer:
         """
         with h5py.File(filename, "a") as f:
             group = f.create_group(dt_str)
-            metadata = f.get("metadata", f.create_group("metadata"))
+            if "metadata" in f.keys():
+                metadata = f.get("metadata")
+            else:
+                metadata = f.create_group("metadata")
             slice_data.to_hdf5(group, metadata, file_type)

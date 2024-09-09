@@ -204,7 +204,7 @@ class Sequence(InterfaceClassBase):
                     freq_khz,
                     intf_antenna_count,
                     intf_antenna_spacing,
-                    intf_offset[0],
+                    intf_offset,
                 )
             else:
                 rx_main_phase_shift = get_phase_shift(
@@ -216,7 +216,7 @@ class Sequence(InterfaceClassBase):
                     exp_slice.beam_angle,
                     freq_khz,
                     intf_antenna_locations[self.rx_intf_antennas],
-                    intf_offset[0],
+                    intf_offset,
                 )
 
             # The antenna indices for receiving by this slice

@@ -770,6 +770,38 @@ class SliceData:
         else:
             return field_data
 
+    def _dispatch_to_write_method(
+        self,
+        field: str,
+        fields_map: dict,
+        group: h5py.Group,
+        metadata_group: h5py.Group,
+        data_type: str,
+    ):
+        try:
+            data = getattr(self, field)
+        except AttributeError as e:
+            if field in self.required_fields(data_type):
+                raise e
+            else:
+                return
+        formatted_data = self._format_for_hdf5(data)
+        metadata = fields_map[field].metadata
+
+        if field in self._file_level_fields():
+            # Field is file-level metadata, so should be written to the metadata group
+            self._write_metadata_field(
+                field,
+                formatted_data,
+                metadata,
+                metadata_group,
+                data_type,
+            )
+            group[field] = metadata_group[field]  # create a hard link
+        else:
+            # Field is record-level, so write it to the group
+            self._write_hdf5_field(field, formatted_data, metadata, group, data_type)
+
     @staticmethod
     def _write_hdf5_field(
         name: str, data, metadata: dict, group: h5py.Group, ftype: str
@@ -832,64 +864,25 @@ class SliceData:
         :param data_type:      Type of data that is being written.
         :type  data_type:      str
         """
-        required_fields = self.required_fields(data_type)
+        dataclass_fields = {f.name: f for f in fields(self)}
 
         # First, writes all fields that are Dimension Scales for other fields
         for scale_field in self._dim_scale_fields(data_type):
-            try:
-                data = getattr(self, scale_field)
-            except AttributeError as e:
-                if scale_field in required_fields:
-                    raise e
-                else:
-                    continue
-            formatted_data = self._format_for_hdf5(data)
-
-            if scale_field in self._file_level_fields():
-                # Field is file-level metadata, so should be written to the metadata group
-                self._write_metadata_field(
-                    scale_field,
-                    formatted_data,
-                    data.metadata,
-                    metadata_group,
-                    data_type,
-                )
-                group[scale_field] = metadata_group[scale_field]  # create a hard link
-            else:
-                # Field is record-level, so write it to the group
-                self._write_hdf5_field(
-                    scale_field, formatted_data, data.metadata, group, data_type
-                )
-            group[scale_field].make_scale(data.metadata.get("nickname", scale_field))
+            self._dispatch_to_write_method(
+                scale_field, dataclass_fields, group, metadata_group, data_type
+            )
+            group[scale_field].make_scale(
+                dataclass_fields[scale_field].metadata.get("nickname", scale_field)
+            )
 
         # Then, write the remaining fields, and associate the Dimension Scale fields with them
         remaining_fields = list(
             set(self.all_fields(data_type)) - set(self._dim_scale_fields(data_type))
         )
         for relevant_field in remaining_fields:
-            try:
-                data = getattr(self, relevant_field)
-            except AttributeError as e:
-                if relevant_field in required_fields:
-                    raise e
-                else:
-                    continue
-            formatted_data = self._format_for_hdf5(data)
-
-            if relevant_field in self._file_level_fields():
-                self._write_metadata_field(
-                    relevant_field,
-                    formatted_data,
-                    data.metadata,
-                    metadata_group,
-                    data_type,
-                )
-                # Creates a hard link so the data is only stored once, in ``metadata_group``
-                group[relevant_field] = metadata_group[relevant_field]
-            else:
-                self._write_hdf5_field(
-                    relevant_field, formatted_data, data.metadata, group, data_type
-                )
+            self._dispatch_to_write_method(
+                relevant_field, dataclass_fields, group, metadata_group, data_type
+            )
 
     def to_dmap(self, record_name: str):
         """
