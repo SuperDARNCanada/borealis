@@ -784,7 +784,7 @@ class SliceData:
             if name in self.required_fields(data_type):
                 raise e
             else:
-                return
+                return False
         formatted_data = self._format_for_hdf5(data)
         metadata = fields_map[name].metadata
 
@@ -801,6 +801,8 @@ class SliceData:
         else:
             # Field is record-level, so write it to the group
             self._write_hdf5_field(name, formatted_data, metadata, group, data_type)
+
+        return True
 
     @staticmethod
     def _write_hdf5_field(
@@ -871,10 +873,11 @@ class SliceData:
 
         # First, writes all fields that are Dimension Scales for other fields
         for f in dim_scale_fields:
-            self._dispatch_to_write_method(
+            written = self._dispatch_to_write_method(
                 f, dataclass_fields, group, metadata_group, data_type
             )
-            group[f].make_scale(dataclass_fields[f].metadata.get("nickname", f))
+            if written:
+                group[f].make_scale(dataclass_fields[f].metadata.get("nickname", f))
 
         # Then, write the remaining fields, and associate the Dimension Scale fields with them
         remaining_fields = list(set(self.all_fields(data_type)) - set(dim_scale_fields))
