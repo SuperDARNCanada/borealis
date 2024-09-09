@@ -146,7 +146,7 @@ class SliceData:
             "level": "file",
             "nickname": "freq",
             "description": "Frequencies measured during clear frequency search",
-            "units": "Hz",  # todo: verify
+            "units": "kHz",
             "dim_labels": ["freq"],
             "required": False,
         }
@@ -176,10 +176,8 @@ class SliceData:
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf"],
             "level": "file",
-            "description": "Range of frequencies examined by clear frequency search",
-            "units": "Hz",
-            "dim_labels": ["freq"],  # todo: Verify. This may just be a 2-item array
-            "dim_scales": ["cfs_freqs"],
+            "description": "Lower and upper bound of frequencies examined by clear frequency search",
+            "units": "kHz",
             "required": False,
         }
     )
