@@ -844,15 +844,16 @@ class SliceData:
         If not, writes the field to ``group``.
         """
         if name in group.keys():
+            file_data = group[name][()]
             # verify it hasn't changed
-            if np.issubdtype(data.dtype, bytes):
-                equal = group[name][()] == data
+            if np.issubdtype(file_data.dtype, bytes):
+                equal = file_data == data
             else:
-                equal = np.allclose(group[name][()], data)
+                equal = np.allclose(file_data, data)
             if not equal:
                 raise ValueError(
                     f"{name} already exists in file with different value.\n"
-                    f"\tExisting: {group[name][()]}\n"
+                    f"\tExisting: {file_data}\n"
                     f"\tNew: {data}"
                 )
         else:
