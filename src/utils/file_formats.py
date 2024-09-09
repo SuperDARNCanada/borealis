@@ -35,10 +35,9 @@ class SliceData:
        be different for different ``group`` values. If so, this metadata will be a dict, with the keys
        being the ``group`` name and the values the associated list of dimension labels.
     * ``dim_scales``: If applicable, dimension scales will be associated to the field. These are datasets that match
-       one of the dimensions of the data, such as timestamps to go along with an array of collected data. This could
-       depend on the value of ``group``; if so, this will be a dictionary keyed by ``group``, with values that are
-       lists of field names to associate each dimension with. Note that some dimensions may be associated with multiple
-       fields. If a dimension has no associated dataset, the list will have a ``None`` entry.
+       one of the dimensions of the data, such as timestamps to go along with an array of collected data. Note that
+       some dimensions may be associated with multiple fields. If a dimension has no associated dataset, the list
+       will have a ``None`` entry.
 
     """
 
@@ -90,7 +89,7 @@ class SliceData:
     beam_azms: list[float] = field(
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf"],
-            "level": "file",
+            "level": "record",
             "nickname": "beam direction",
             "description": "Beams azimuths for each beam in degrees CW of boresight",
             "units": "degrees",
@@ -314,7 +313,7 @@ class SliceData:
             "units": "tau_spacing",
             "description": "Unique pairs of pulses in pulse array, in units of tau_spacing",
             "dim_labels": ["lag", ""],
-            "dim_scales": ["lag_numbers"],
+            "dim_scales": ["lag_numbers", None],
             "required": True,
         }
     )
@@ -721,13 +720,11 @@ class SliceData:
             dim_scales = f.metadata.get("dim_scales", None)
             if dim_scales is None:
                 continue
-            if isinstance(dim_scales, dict):  # depends on the file type
-                dim_scales = dim_scales[file_type]
             for dim in dim_scales:
                 if dim is None:  # no scale for a particular dimension
                     continue
                 elif isinstance(dim, list):  # multiple scales
-                    dim_scale_fields.union(set(dim))
+                    dim_scale_fields = dim_scale_fields.union(set(dim))
                 else:
                     dim_scale_fields.add(dim)
         return list(dim_scale_fields)
@@ -848,10 +845,14 @@ class SliceData:
         """
         if name in group.keys():
             # verify it hasn't changed
-            if not np.allclose(group[name][:], data):
+            if np.issubdtype(data.dtype, bytes):
+                equal = group[name][()] == data
+            else:
+                equal = np.allclose(group[name][()], data)
+            if not equal:
                 raise ValueError(
                     f"{name} already exists in file with different value.\n"
-                    f"\tExisting: {group[name][:]}\n"
+                    f"\tExisting: {group[name][()]}\n"
                     f"\tNew: {data}"
                 )
         else:
