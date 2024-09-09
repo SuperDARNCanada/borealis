@@ -115,7 +115,7 @@ class SliceData:
             "description": "Beamformed I&Q complex voltage samples for each antenna array",
             "dim_labels": ["array", "sequence", "beam", "time"],
             "dim_scales": [
-                "arrays",
+                "antenna_arrays",
                 "sqn_timestamps",
                 ["beam_nums", "beam_azms"],
                 None,

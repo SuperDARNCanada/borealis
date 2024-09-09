@@ -463,7 +463,7 @@ class DataWrite:
 
             all_data = []
             num_antenna_arrays = 1
-            slice_data.antenna_arrays.append("main")
+            slice_data.antenna_arrays = ["main"]
             all_data.append(bfiq[slice_num]["main_data"])
             if "intf" in bfiq[slice_num]:
                 num_antenna_arrays += 1
