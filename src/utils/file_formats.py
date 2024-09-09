@@ -811,7 +811,10 @@ class SliceData:
         """
         Write ``data`` to ``group`` along with the associated ``metadata``
         """
-        group.create_dataset(name, data=data, compression="gzip", compression_opts=9)
+        kw = dict()
+        if not np.isscalar(data):
+            kw = {"compression": "gzip", "compression_opts": 9}
+        group.create_dataset(name, data=data, **kw)
         group[name].attrs["description"] = metadata.get("description")
 
         units = metadata.get("units", None)
