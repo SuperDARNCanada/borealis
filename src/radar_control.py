@@ -689,7 +689,7 @@ def run_cfs_scan(radctrl_params, sockets):
 
     brian_socket_iden = radctrl_params.brian_to_radctrl_identity
     so.recv_string(radctrl_brian_socket, brian_socket_iden, log)
-    # The above call is blocking; will wait until something is received
+    # The above call is blocking; will wait until brian says to start
 
     for pulse_transmit_data in sqn:
         driver_message = create_driver_message(radctrl_params, pulse_transmit_data)
@@ -1241,6 +1241,10 @@ def main():
                             )
                             driver_comms_socket.send_pyobj(driver_message)
 
+                        so.recv_string(
+                            radctrl_brian_socket, options.brian_to_radctrl_identity, log
+                        )
+                        # The above call is blocking; will wait until brian says to start
                         dsp_message = create_dsp_message(ave_params)
                         radctrl_inproc_socket.send_pyobj(dsp_message)
                         # Send metadata to dsp_comms_thread, so it can pass it to rx_signal_processing
