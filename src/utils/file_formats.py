@@ -294,7 +294,7 @@ class SliceData:
             "description": "Interferometer array autocorrelations",
             "units": "a.u. ~ W",
             "dim_labels": ["beam", "range", "lag"],
-            "dim_scales": [["beam_azms", "beam_nums"], None, "lags"],
+            "dim_scales": [["beam_azms", "beam_nums"], None, "lag_numbers"],
         }
     )
     lag_numbers: np.ndarray = field(
@@ -709,10 +709,10 @@ class SliceData:
 
         E.g. ``main_acfs`` field:
         ``dim_labels = ["beam", "range", "lag"]``
-        ``dim_scales = [["beam_azms", "beam_nums"], None, "lags"]``
+        ``dim_scales = [["beam_azms", "beam_nums"], None, "lag_numbers"]``
         The first dimension is associated with two other fields: ``beam_azms`` and ``beam_nums``.
         The second dimensions is not associated with any field.
-        The third dimension is associated with the field ``lags``.
+        The third dimension is associated with the field ``lag_numbers``.
         """
         dim_scale_fields = set()
         for f in fields(self):
