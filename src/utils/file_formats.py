@@ -24,21 +24,34 @@ class SliceData:
     This class defines all fields that need to be written by any type of data file. The 'groups' metadata lists
     the applicable file types for each field.
 
-    Each field contains metadata that determines how the field is written to file:
-    * ``groups``: the types of data file that need this field to be written.
-    * ``level``: the level within the file that the data will be stored at. Either `file` or `record`, indicating
-       that the field is either written once per file, or once per record.
-    * ``nickname``: A nickname for the field, used for making Dimension Scale names.
-    * ``description``: A description of the field.
-    * ``units``: Units for the data.
-    * ``dim_labels``: If applicable, a brief descriptor for each dimension of the dataset. This could
+    Each field contains metadata that determines how the field is written to file.
+
+    ``description``
+       A description of the field.
+
+    ``dim_labels``
+       If applicable, a brief descriptor for each dimension of the dataset. This could
        be different for different ``group`` values. If so, this metadata will be a dict, with the keys
        being the ``group`` name and the values the associated list of dimension labels.
-    * ``dim_scales``: If applicable, dimension scales will be associated to the field. These are datasets that match
+
+    ``dim_scales``
+       If applicable, dimension scales will be associated to the field. These are datasets that match
        one of the dimensions of the data, such as timestamps to go along with an array of collected data. Note that
        some dimensions may be associated with multiple fields. If a dimension has no associated dataset, the list
        will have a ``None`` entry.
 
+    ``groups``
+       The types of data file that need this field to be written.
+
+    ``level``
+       The level within the file that the data will be stored at. Either ``file`` or ``record``, indicating
+       that the field is either written once per file, or once per record.
+
+    ``nickname``
+       A nickname for the field, used for making Dimension Scale names.
+
+    ``units``
+       Units for the data.
     """
 
     agc_status_word: int = field(
@@ -394,8 +407,8 @@ class SliceData:
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf"],
             "level": "file",
-            "description": "Range gates of interest for the experiment, beginning at `first_range` and spaced by "
-            "`range_sep`",
+            "description": "Range gates of interest for the experiment, beginning at ``first_range`` and spaced by "
+            "``range_sep``",
             "nickname": "range gate",
             "required": True,
         }
@@ -429,7 +442,7 @@ class SliceData:
             "groups": ["antennas_iq", "rawrf"],
             "level": "file",
             "nickname": "rx antenna",
-            "description": "Indices into `antenna_locations` of the antennas with recorded data",
+            "description": "Indices into ``antenna_locations`` of the antennas with recorded data",
             "required": True,
         }
     )
@@ -437,7 +450,7 @@ class SliceData:
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "file",
-            "description": "Indices into `antenna_locations` of the interferometer array antennas used in this experiment",
+            "description": "Indices into ``antenna_locations`` of the interferometer array antennas used in this experiment",
             "required": False,
         }
     )
@@ -445,7 +458,7 @@ class SliceData:
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "file",
-            "description": "Indices into `antenna_locations` of the main array antennas used in this experiment",
+            "description": "Indices into ``antenna_locations`` of the main array antennas used in this experiment",
             "required": True,
         }
     )
@@ -540,9 +553,8 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "record",
             "nickname": "timestamp",
-            "units": "s",
-            "description": "GPS timestamps of start of first pulse for each sampling period in the averaging period,"
-            " in seconds since epoch",
+            "units": "seconds since 1970-01-01",
+            "description": "GPS timestamps of start of first pulse for each sampling period in the averaging period",
             "dim_labels": ["sequence"],
             "required": True,
         }
@@ -576,7 +588,7 @@ class SliceData:
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf", "txdata"],
             "level": "file",
-            "description": "Indices into `antenna_locations` of the antennas used for transmitting in this experiment",
+            "description": "Indices into ``antenna_locations`` of the antennas used for transmitting in this experiment",
             "nickname": "tx antenna",
             "required": True,
         }
@@ -680,7 +692,7 @@ class SliceData:
     @classmethod
     def _file_level_fields(cls):
         """
-        Returns a list of the names for all fields which are at the `file` level, and thus are constant
+        Returns a list of the names for all fields which are at the ``file`` level, and thus are constant
         for a given file.
         """
         return [f.name for f in fields(cls) if f.metadata.get("level") == "file"]
@@ -688,7 +700,7 @@ class SliceData:
     @classmethod
     def _record_level_fields(cls):
         """
-        Returns a list of the names for all fields which are at the `record` level, and thus vary
+        Returns a list of the names for all fields which are at the ``record`` level, and thus vary
         from averaging period to averaging period.
         """
         return [f.name for f in fields(cls) if f.metadata.get("level") == "record"]

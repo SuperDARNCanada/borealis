@@ -118,13 +118,18 @@ class DataWrite:
         """
 
         os.makedirs(self.dataset_directory, exist_ok=True)
-        full_two_hr_file = f"{self.dataset_directory}/{two_hr_file_with_type}.hdf5.site"
 
         try:
             if data_type == "rawacf" and self.rawacf_format == "dmap":
                 writer = writers.DMAPWriter
+                path_fields = two_hr_file_with_type.split(".")
+                path_fields[-2] = chr(int(path_fields[-2]))
+                full_two_hr_file = f"{self.dataset_directory}/{'.'.join(path_fields)}"
             else:
                 writer = writers.HDF5Writer
+                full_two_hr_file = (
+                    f"{self.dataset_directory}/{two_hr_file_with_type}.h5"
+                )
             writer.write_record(
                 full_two_hr_file, aveperiod_data, self.timestamp, data_type
             )

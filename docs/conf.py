@@ -59,6 +59,9 @@ run(
 # Update the experiment subrepo so experiment files can be read into documentation
 run(["git", "submodule", "update", "--init"])
 
+# Generate documentation on the Borealis file types
+run(["python3", "file_docs_builder.py"])
+
 on_rtd = os.environ.get("READTHEDOCS", None) == "True"
 if on_rtd:  # Only run following changes on ReadTheDocs
     RADAR_ID = "sas"
