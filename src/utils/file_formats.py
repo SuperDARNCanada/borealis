@@ -304,7 +304,7 @@ class SliceData:
             "description": "Interferometer array autocorrelations",
             "units": "a.u. ~ W",
             "dim_labels": ["beam", "range", "lag"],
-            "dim_scales": [["beam_azms", "beam_nums"], None, "lag_numbers"],
+            "dim_scales": [["beam_azms", "beam_nums"], "range_gates", "lag_numbers"],
         }
     )
     lag_numbers: np.ndarray = field(
@@ -323,7 +323,7 @@ class SliceData:
             "level": "file",
             "units": "tau_spacing",
             "description": "Unique pairs of pulses in pulse array, in units of tau_spacing",
-            "dim_labels": ["lag", ""],
+            "dim_labels": ["lag", "pulse"],
             "dim_scales": ["lag_numbers", None],
             "required": True,
         }
