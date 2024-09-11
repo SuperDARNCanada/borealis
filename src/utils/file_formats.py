@@ -87,7 +87,7 @@ class SliceData:
             "units": "a.u. ~ V",
             "description": "Filtered and downsampled I&Q complex voltage samples for each antenna",
             "dim_labels": ["antenna", "sequence", "time"],
-            "dim_scales": ["rx_antennas", "sqn_timestamps", None],
+            "dim_scales": ["rx_antennas", "sqn_timestamps", "sample_time"],
             "required": True,
         }
     )
@@ -131,7 +131,7 @@ class SliceData:
                 "antenna_arrays",
                 "sqn_timestamps",
                 ["beam_nums", "beam_azms"],
-                None,
+                "sample_time",
             ],
             "required": True,
         }
@@ -388,7 +388,7 @@ class SliceData:
             "groups": ["txdata"],
             "level": "file",
             "units": "μs",
-            "description": "Beginning of pulses in sequence measured in microseconds",
+            "description": "Relative timing of pulse start for all pulses in the sequence",
             "dim_labels": ["pulse"],
             "required": True,
         }
@@ -433,7 +433,7 @@ class SliceData:
                 "sequence",
                 "time",
             ],  # todo: verify these dimensions
-            "dim_scales": ["channels", "sqn_timestamps", None],
+            "dim_scales": ["channels", "sqn_timestamps", "sample_time"],
             "required": True,
         }
     )
@@ -506,6 +506,16 @@ class SliceData:
             "level": "file",
             "description": "C data type of the samples",
             "required": True,
+        }
+    )
+    sample_time: np.ndarray = field(
+        metadata={
+            "groups": ["antennas_iq", "bfiq", "rawrf"],
+            "level": "file",
+            "description": "Time of measurement relative to the first pulse in the sequence",
+            "dim_labels": ["time"],
+            "required": True,
+            "units": "μs"
         }
     )
     scan_start_marker: bool = field(
@@ -638,7 +648,7 @@ class SliceData:
             "units": "a.u. ~ V",
             "description": "Samples sent to USRPs for transmission",
             "dim_labels": ["antenna", "time"],  # todo: verify
-            "dim_scales": ["tx_antennas", None],
+            "dim_scales": ["tx_antennas", "sample_time"],
             "required": True,
         }
     )
