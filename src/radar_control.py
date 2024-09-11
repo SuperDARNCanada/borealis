@@ -185,7 +185,7 @@ def create_driver_message(radctrl_params, pulse_transmit_data):
         * ``startofburst`` - start of burst boolean, true for first pulse in sequence
         * ``endofburst`` - end of burst boolean, true for last pulse in sequence
         * ``timing`` - in us, the time past timezero to send this pulse. Timezero is the start of the sequence
-        * ``sarepeat`` - a boolean indicating whether the pulse is the exact same as the last pulse
+        * ``isarepeat`` - a boolean indicating whether the pulse is the exact same as the last pulse
           in the sequence, in which case we will save the time and not send the samples list and other
           params that will be the same
     :return: The compiled ``DriverPacket`` message to send to the usrp driver

@@ -143,7 +143,8 @@ def sequence_worker(options, ringbuffer):
     while True:
         rx_params = inproc_socket.recv_pyobj()
         # Wait until kwargs received from main thread
-        mempool.free_all_blocks()  # Free all unused gpu memory allocations before processing
+        if cupy_available:
+            mempool.free_all_blocks()  # Free all unused gpu memory allocations before processing
 
         seq_begin_iden = options.dspbegin_to_brian_identity + str(
             rx_params.sequence_num
