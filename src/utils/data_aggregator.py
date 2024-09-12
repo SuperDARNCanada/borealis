@@ -201,9 +201,7 @@ class Aggregator:
                     )
 
                 antenna_iq_stage = self.antenna_iq_accumulator[slice_id][stage_name]
-
                 antennas_data = debug_stage["data"][i]
-                antenna_iq_stage["num_samps"] = antennas_data.shape[-1]
 
                 # All possible antenna numbers, given the config file
                 antenna_indices = copy.deepcopy(self.options.rx_main_antennas)
@@ -237,17 +235,13 @@ class Aggregator:
         for slice_id, slice_data in self.antenna_iq_accumulator.items():
             for param_data in slice_data.values():
                 for array_name, array_data in param_data.items():
-                    if array_name != "num_samps":
-                        array_data["data"] = np.array(
-                            array_data["data"], dtype=np.complex64
-                        )
+                    array_data["data"] = np.array(
+                        array_data["data"], dtype=np.complex64
+                    )
 
         for slice_id, slice_data in self.bfiq_accumulator.items():
             for param_name, param_data in slice_data.items():
-                if param_name == "num_samps":
-                    slice_data[param_name] = param_data
-                else:
-                    slice_data[param_name] = np.array(param_data, dtype=np.complex64)
+                slice_data[param_name] = np.array(param_data, dtype=np.complex64)
 
         for slice_data in self.mainacfs_accumulator.values():
             slice_data["data"] = np.array(slice_data.get("data", []), np.complex64)

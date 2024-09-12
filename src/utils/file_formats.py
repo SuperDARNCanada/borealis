@@ -323,8 +323,7 @@ class SliceData:
             "level": "file",
             "units": "tau_spacing",
             "description": "Unique pairs of pulses in pulse array, in units of tau_spacing",
-            "dim_labels": ["lag", "pulse"],
-            "dim_scales": ["lag_numbers", None],
+            "dim_labels": ["lag", ""],
             "required": True,
         }
     )
@@ -515,7 +514,7 @@ class SliceData:
             "description": "Time of measurement relative to the first pulse in the sequence",
             "dim_labels": ["time"],
             "required": True,
-            "units": "μs"
+            "units": "μs",
         }
     )
     scan_start_marker: bool = field(
@@ -603,7 +602,7 @@ class SliceData:
             "required": True,
         }
     )
-    tx_antenna_phases: list[complex] = field(
+    tx_antenna_phases: np.ndarray = field(
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf", "txdata"],
             "level": "record",
@@ -911,13 +910,21 @@ class SliceData:
                 f, dataclass_fields, group, metadata_group, data_type
             )
 
-    def to_dmap(self, record_name: str):
+    def to_dmap(self):
         """
         Converts data from ``self`` into a valid DMAP record.
         """
         group = {}
-        for relevant_field in SliceData.required_fields("rawacf"):
-            data = getattr(self, relevant_field)
+        for f in fields(self):
+            if "rawacf" not in f.metadata["groups"]:
+                continue
+            try:
+                data = getattr(self, f.name)
+            except AttributeError as e:
+                if f.metadata["required"]:
+                    raise e
+                else:
+                    continue
 
             # Massage the data into the correct types
             if isinstance(data, dict):
@@ -927,15 +934,12 @@ class SliceData:
                     data = np.bytes_(data)
                 else:
                     data = np.array(data)
-            group[relevant_field] = data
+            group[f.name] = data
 
-        SLICE_ID = 0  # todo: Use the actual ID of the slice
         FILENAME = ""  # todo: Use the name of the rawacf file? Or just the timestamp of the start of the file?
-        dmap_record = pydarnio.BorealisConvert._BorealisConvert__convert_rawacf_record(
-            SLICE_ID, (record_name, group), FILENAME
-        )
+        dmap_records = pydarnio.BorealisV1Convert.convert_rawacf_record(group, FILENAME)
 
-        return dmap_record
+        return dmap_records
 
     def __repr__(self):
         """Print all available fields"""

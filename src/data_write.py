@@ -123,7 +123,9 @@ class DataWrite:
             if data_type == "rawacf" and self.rawacf_format == "dmap":
                 writer = writers.DMAPWriter
                 path_fields = two_hr_file_with_type.split(".")
-                path_fields[-2] = chr(int(path_fields[-2]))
+                path_fields[-2] = chr(
+                    int(path_fields[-2]) + 97
+                )  # 0 -> 'a', 1 -> 'b', etc.
                 full_two_hr_file = f"{self.dataset_directory}/{'.'.join(path_fields)}"
             else:
                 writer = writers.HDF5Writer
@@ -179,7 +181,7 @@ class DataWrite:
         # Format the name and location for the dataset
         time_now = datetime.datetime.utcfromtimestamp(data_parsing.timestamps[0])
         today_string = time_now.strftime("%Y%m%d")
-        self.timestamp = time_now.strftime("%Y%m%d.%H%M.%S.%f")
+        self.timestamp = time_now.strftime("%Y%m%d-%H%M-%S.%f")
         self.dataset_directory = f"{self.options.data_directory}/{today_string}"
 
         if self.first_time:
@@ -436,15 +438,16 @@ class DataWrite:
                     intf_acfs[slice_num]["data"]
                 )
 
+        all_slice_data = {}
         for slice_num, slice_data in aveperiod_data.items():
             two_hr_file_with_type = self.slice_filenames[slice_num].format(ext="rawacf")
             self._write_file(slice_data, two_hr_file_with_type, "rawacf")
 
             # Send rawacf data to realtime (if there is any)
-            full_dict = {self.timestamp: slice_data.to_dmap(self.timestamp)}
-            so.send_pyobj(
-                self.realtime_socket, self.options.rt_to_dw_identity, full_dict
-            )
+            all_slice_data[slice_num] = (self.timestamp, slice_data.to_dmap())
+        so.send_pyobj(
+            self.realtime_socket, self.options.rt_to_dw_identity, all_slice_data
+        )
 
     def _write_bfiq_params(
         self, aveperiod_data: dict[int, SliceData], parsed_data: Aggregator
@@ -470,13 +473,16 @@ class DataWrite:
             num_antenna_arrays = 1
             slice_data.antenna_arrays = ["main"]
             all_data.append(bfiq[slice_num]["main_data"])
-            if "intf" in bfiq[slice_num]:
+            if "intf_data" in bfiq[slice_num]:
                 num_antenna_arrays += 1
                 slice_data.antenna_arrays.append("intf")
                 all_data.append(bfiq[slice_num]["intf_data"])
 
             slice_data.bfiq_data = np.stack(all_data, axis=0)
-            sample_timing_s = np.arange(slice_data.rawrf_data.shape[-1], dtype=np.float32) / slice_data.rx_sample_rate
+            sample_timing_s = (
+                np.arange(slice_data.bfiq_data.shape[-1], dtype=np.float32)
+                / slice_data.rx_sample_rate
+            )
             slice_data.sample_time = np.round(sample_timing_s * 1e6).astype(np.int32)
 
         for slice_num, slice_data in aveperiod_data.items():
@@ -511,13 +517,17 @@ class DataWrite:
 
                 data = []
                 for k, data_dict in antenna_iq[slice_num][stage].items():
-                    if k in stage_data.rx_antennas:
+                    if np.any(stage_data.rx_antennas == k):
                         data.append(data_dict["data"])
 
                 stage_data.antennas_iq_data = np.stack(data, axis=0)
-                sample_timing_s = np.arange(stage_data.rawrf_data.shape[-1],
-                                            dtype=np.float32) / stage_data.rx_sample_rate
-                stage_data.sample_time = np.round(sample_timing_s * 1e6).astype(np.int32)
+                sample_timing_s = (
+                    np.arange(stage_data.antennas_iq_data.shape[-1], dtype=np.float32)
+                    / stage_data.rx_sample_rate
+                )
+                stage_data.sample_time = np.round(sample_timing_s * 1e6).astype(
+                    np.int32
+                )
                 final_data_params[slice_num][stage] = stage_data
 
         for slice_num, slice_ in final_data_params.items():
@@ -567,7 +577,10 @@ class DataWrite:
 
         slice_data.rawrf_data = np.stack(samples_list, axis=0)
         slice_data.rx_sample_rate = np.float32(sample_rate)
-        sample_timing_s = np.arange(slice_data.rawrf_data.shape[-1], dtype=np.float32) / slice_data.rx_sample_rate
+        sample_timing_s = (
+            np.arange(slice_data.rawrf_data.shape[-1], dtype=np.float32)
+            / slice_data.rx_sample_rate
+        )
         slice_data.sample_time = np.round(sample_timing_s * 1e6).astype(np.int32)
 
         self._write_file(slice_data, self.raw_rf_two_hr_name, "rawrf")
