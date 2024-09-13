@@ -246,6 +246,9 @@ class DataWrite:
                     ],
                     axis=0,
                 )
+                parameters.antennas = np.arange(
+                    parameters.antenna_locations.shape[0], dtype=np.uint32
+                )
                 parameters.averaging_method = rx_channel.averaging_method
                 parameters.beam_azms = [beam.beam_azimuth for beam in rx_channel.beams]
                 parameters.beam_nums = [
@@ -264,6 +267,7 @@ class DataWrite:
                         aveperiod_meta.cfs_masks[np.uint32(rx_channel.slice_id)]
                     )
 
+                parameters.coordinates = ["lat", "lon", "alt"]
                 parameters.data_normalization_factor = (
                     aveperiod_meta.data_normalization_factor
                 )
@@ -283,6 +287,8 @@ class DataWrite:
                     parameters.lag_numbers = (
                         parameters.lag_pulses[:, 1] - parameters.lag_pulses[:, 0]
                     )
+                    parameters.lags = np.arange(len(lags), dtype=np.uint32)
+                parameters.lag_pulse_descriptors = ["first pulse", "second pulse"]
                 parameters.lp_status_word = np.uint32(data_parsing.lp_status_word)
                 parameters.num_sequences = aveperiod_meta.num_sequences
                 parameters.num_slices = len(aveperiod_meta.sequences) * len(

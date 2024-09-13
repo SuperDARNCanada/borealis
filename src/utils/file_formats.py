@@ -77,6 +77,16 @@ class SliceData:
             "level": "file",
             "units": "m",
             "description": "Relative antenna locations",
+            "dim_labels": ["antenna", "coordinate"],
+            "required": True,
+        }
+    )
+    antennas: np.ndarray = field(
+        metadata={
+            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf", "txdata"],
+            "level": "file",
+            "description": "Labels for each antenna of the radar",
+            "dim_labels": ["antenna"],
             "required": True,
         }
     )
@@ -159,7 +169,7 @@ class SliceData:
             "level": "file",
             "nickname": "freq",
             "description": "Frequencies measured during clear frequency search",
-            "units": "kHz",
+            "units": "Hz",
             "dim_labels": ["freq"],
             "required": False,
         }
@@ -190,8 +200,17 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq", "rawacf"],
             "level": "file",
             "description": "Lower and upper bound of frequencies examined by clear frequency search",
-            "units": "kHz",
+            "units": "Hz",
             "required": False,
+        }
+    )
+    coordinates: list[str] = field(
+        metadata={
+            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf", "txdata"],
+            "level": "file",
+            "description": "Descriptors for location coordinate dimensions",
+            "nickname": "coordinate",
+            "required": True,
         }
     )
     data_normalization_factor: float = field(
@@ -307,6 +326,15 @@ class SliceData:
             "dim_scales": [["beam_azms", "beam_nums"], "range_gates", "lag_numbers"],
         }
     )
+    lags: np.ndarray = field(
+        metadata={
+            "groups": ["antennas_iq", "bfiq", "rawacf"],
+            "level": "file",
+            "nickname": "lag",
+            "description": "Lag indices",
+            "required": True,
+        }
+    )
     lag_numbers: np.ndarray = field(
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf"],
@@ -323,7 +351,16 @@ class SliceData:
             "level": "file",
             "units": "tau_spacing",
             "description": "Unique pairs of pulses in pulse array, in units of tau_spacing",
-            "dim_labels": ["lag", ""],
+            "dim_labels": ["lag", "pulse"],
+            "dim_scales": ["lags", "lag_pulse_descriptors"],
+            "required": True,
+        }
+    )
+    lag_pulse_descriptors: list[str] = field(
+        metadata={
+            "groups": ["antennas_iq", "bfiq", "rawacf"],
+            "level": "file",
+            "description": "Descriptor of the pulse pairs used in a lag",
             "required": True,
         }
     )
@@ -428,11 +465,11 @@ class SliceData:
             "description": "I&Q complex voltage samples for each antenna",
             "units": "a.u. ~ V",
             "dim_labels": [
-                "channel",
+                "antenna",
                 "sequence",
                 "time",
             ],  # todo: verify these dimensions
-            "dim_scales": ["channels", "sqn_timestamps", "sample_time"],
+            "dim_scales": ["rx_antennas", "sqn_timestamps", "sample_time"],
             "required": True,
         }
     )
@@ -536,7 +573,7 @@ class SliceData:
     slice_comment: str = field(
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf"],
-            "level": "record",
+            "level": "file",
             "description": "Comment that describes the slice",
             "required": True,
         }
@@ -580,7 +617,8 @@ class SliceData:
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "file",
-            "description": "Latitude, longitude, altitude of the radar",
+            "description": "Location of the radar",
+            "dim_labels": ["coordinate"],
             "required": True,
         }
     )
@@ -866,7 +904,7 @@ class SliceData:
             file_data = group[name][()]
             # verify it hasn't changed
             if np.issubdtype(file_data.dtype, bytes):
-                equal = file_data == data
+                equal = np.all(file_data == data)
             else:
                 equal = np.allclose(file_data, data)
             if not equal:
