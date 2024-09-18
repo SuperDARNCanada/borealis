@@ -689,7 +689,7 @@ def run_cfs_scan(radctrl_params, sockets):
 
     brian_socket_iden = radctrl_params.brian_to_radctrl_identity
     so.recv_string(radctrl_brian_socket, brian_socket_iden, log)
-    # The above call is blocking; will wait until something is received
+    # The above call is blocking; will wait until brian says to start
 
     for pulse_transmit_data in sqn:
         driver_message = create_driver_message(radctrl_params, pulse_transmit_data)
@@ -719,12 +719,13 @@ def run_cfs_scan(radctrl_params, sockets):
 
 def cfs_block(ave_params, cfs_params_dict, cfs_sockets):
     aveperiod = ave_params.aveperiod
+    cfs_params = cfs_params_dict[aveperiod]
+    beam = aveperiod.beam_iter
     if not (
-        cfs_params_dict[aveperiod].last_cfs_set_time[aveperiod.beam_iter]
-        < time.time() - ave_params.aveperiod.cfs_stable_time
+        cfs_params.last_cfs_set_time[beam] < time.time() - aveperiod.cfs_stable_time
         or aveperiod.cfs_always_run
     ):
-        return
+        return False
 
     # Only let CFS run after the user set stable time has
     # passed to prevent CFS from switching freqs to quickly
@@ -734,59 +735,47 @@ def cfs_block(ave_params, cfs_params_dict, cfs_sockets):
     freq_spectrum = run_cfs_scan(ave_params, cfs_sockets)
     ave_params.num_sequences += 1
     ave_params.cfs_scan_flag = False
-    cfs_params_dict[aveperiod].cfs_freq = freq_spectrum.cfs_freq
+    cfs_params.cfs_freq = freq_spectrum.cfs_freq
 
     for ind, dset in enumerate(freq_spectrum.output_datasets):
-        cfs_params_dict[aveperiod].cfs_mags[aveperiod.cfs_slice_ids[ind]] = (
-            dset.cfs_data
-        )
+        cfs_params.cfs_mags[aveperiod.cfs_slice_ids[ind]] = dset.cfs_data
 
     if not (
-        cfs_params_dict[aveperiod].last_cfs_set_time[aveperiod.beam_iter]
-        < time.time() - ave_params.aveperiod.cfs_stable_time
+        cfs_params.last_cfs_set_time[beam] < time.time() - aveperiod.cfs_stable_time
     ):
-        ave_params.cfs_params = cfs_params_dict[aveperiod]
-        return
+        ave_params.cfs_params = cfs_params
+        return False
 
     # Only attempt to update the cfs frequency of stable time has elapsed
-    cfs_params_dict[aveperiod].last_cfs_set_time[aveperiod.beam_iter] = time.time()
+    cfs_params.last_cfs_set_time[beam] = time.time()
 
-    if (
-        not cfs_params_dict[aveperiod].set_new_freq[aveperiod.beam_iter]
-        and aveperiod.cfs_pwr_threshold is not None
-    ):
+    if not cfs_params.set_new_freq[beam] and aveperiod.cfs_pwr_threshold is not None:
         # If using a user set power threshold to trigger CFS freq setting, check
         # if any power related condition are triggered and set the corresponding
         # flag
-        cfs_params_dict[aveperiod].check_update_freq(
+        cfs_params.check_update_freq(
             freq_spectrum,
             aveperiod.cfs_slice_ids,
             aveperiod.cfs_pwr_threshold,
-            aveperiod.beam_iter,
+            beam,
         )
 
-    if not (
-        cfs_params_dict[aveperiod].set_new_freq[aveperiod.beam_iter]
-        or aveperiod.cfs_pwr_threshold is None
-    ):
+    if not (cfs_params.set_new_freq[beam] or aveperiod.cfs_pwr_threshold is None):
         # Return if the frequency does not need to be changed.
-        ave_params.cfs_params = cfs_params_dict[aveperiod]
-        return
+        ave_params.cfs_params = cfs_params
+        return False
 
     # If using a power threshold and one of the power conditions were
     # triggerd, or if not using a power threshold, set the CFS params
-    cfs_params_dict[aveperiod].set_new_freq[aveperiod.beam_iter] = False
-    cfs_params_dict[aveperiod].cfs_masks, last_set_cfs = aveperiod.update_cfs_freqs(
-        freq_spectrum
-    )
-    cfs_params_dict[aveperiod].beam_frequency[aveperiod.beam_iter] = last_set_cfs
+    cfs_params.set_new_freq[beam] = False
+    cfs_params.cfs_masks, last_set_cfs = aveperiod.select_cfs_freqs(freq_spectrum)
+    cfs_params.beam_frequency[beam] = last_set_cfs
 
     for ind in range(len(aveperiod.cfs_slice_ids)):
-        cfs_params_dict[aveperiod].cfs_range[aveperiod.cfs_slice_ids[ind]] = (
-            aveperiod.cfs_range[ind]
-        )
+        cfs_params.cfs_range[aveperiod.cfs_slice_ids[ind]] = aveperiod.cfs_range[ind]
 
-    ave_params.cfs_params = cfs_params_dict[aveperiod]
+    ave_params.cfs_params = cfs_params
+    return True
 
 
 def main():
@@ -1175,7 +1164,7 @@ def main():
                 while time_remains:
                     if ave_params.num_sequences == 0 and aveperiod.cfs_flag:
                         cfs_time = time.time()
-                        cfs_block(
+                        updated = cfs_block(
                             ave_params,
                             cfs_params_dict,
                             [
@@ -1184,6 +1173,18 @@ def main():
                                 driver_comms_socket,
                             ],
                         )
+                        if not updated:
+                            # Need to update current beam frequency to pre-determined value
+                            beam = aveperiod.beam_iter
+                            cfs_set_freqs = dict()
+                            for slice_id in cfs_params_dict[aveperiod].beam_frequency[
+                                beam
+                            ]:
+                                cfs_set_freqs[slice_id] = cfs_params_dict[
+                                    aveperiod
+                                ].beam_frequency[beam][slice_id]
+                            aveperiod.update_cfs_freqs(cfs_set_freqs)
+
                         log.verbose("CFS block run time", time=time.time() - cfs_time)
 
                     for sequence_index, sequence in enumerate(aveperiod.sequences):
@@ -1240,6 +1241,10 @@ def main():
                             )
                             driver_comms_socket.send_pyobj(driver_message)
 
+                        so.recv_string(
+                            radctrl_brian_socket, options.brian_to_radctrl_identity, log
+                        )
+                        # The above call is blocking; will wait until brian says to start
                         dsp_message = create_dsp_message(ave_params)
                         radctrl_inproc_socket.send_pyobj(dsp_message)
                         # Send metadata to dsp_comms_thread, so it can pass it to rx_signal_processing
