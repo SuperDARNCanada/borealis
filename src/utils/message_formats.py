@@ -250,9 +250,9 @@ class AveperiodMetadataMessage:
     scheduling_mode: str = None
     sequences: list = field(default_factory=list)
     cfs_freqs: list = field(default_factory=list)
-    cfs_noise: list = field(default_factory=list)
-    cfs_range: list = field(default_factory=list)
-    cfs_masks: list = field(default_factory=list)
+    cfs_noise: dict = field(default_factory=dict)
+    cfs_range: dict = field(default_factory=dict)
+    cfs_masks: dict = field(default_factory=dict)
     cfs_slice_ids: list = field(default_factory=list)
 
     def add_sequence(self, sequence: dict):

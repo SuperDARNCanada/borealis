@@ -256,7 +256,9 @@ class DataWrite:
 
                 if np.uint32(rx_channel.slice_id) in aveperiod_meta.cfs_slice_ids:
                     parameters.cfs_freqs = np.array(aveperiod_meta.cfs_freqs)
-                    parameters.cfs_noise = np.array(aveperiod_meta.cfs_noise)
+                    parameters.cfs_noise = np.array(
+                        aveperiod_meta.cfs_noise[np.uint32(rx_channel.slice_id)]
+                    )
                     parameters.cfs_range = np.array(
                         aveperiod_meta.cfs_range[np.uint32(rx_channel.slice_id)]
                     )
