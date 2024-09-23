@@ -832,6 +832,11 @@ class SliceData:
         metadata_group: h5py.Group,
         data_type: str,
     ):
+        """
+        Determines whether a field is file-level or record-level, and writes to file accordingly.
+        File-level fields are written once, in the top-level ``metadata`` group, and linked in each
+        record.
+        """
         try:
             data = getattr(self, name)
         except AttributeError as e:
