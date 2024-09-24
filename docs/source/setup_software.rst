@@ -236,10 +236,10 @@ the note when running ``install_radar_deps.py``.
    version of ``ntpd`` that works with incoming PPS signals on the serial port DCD line.
 
    #. An example configuration of ntp is shown below for ``/etc/ntp.conf``. These settings use
-      ``tick.usask.ca`` as a time server, with ``tock.usask.ca`` as a backup server, as well as PPS
-      via the ``127.127.22.X`` lines. **NOTE:** Replace the 'X' with the pps number that is
-      connected to the incoming PPS signal determined in the previous step (i.e. for pps1, PPS input
-      is 127.127.22.1).
+      ``time.usask.ca`` as an NTP server, which load balances between the ``tick.usask.ca`` and 
+      ``tock.usask.ca`` USask NTP servers, as well as PPS via the ``127.127.22.X`` lines. 
+      **NOTE:** Replace the 'X' with the pps number that is connected to the incoming PPS signal 
+      determined in the previous step (i.e. for pps1, PPS input is 127.127.22.1).
 
         .. code-block:: text
 
@@ -265,8 +265,7 @@ the note when running ``install_radar_deps.py``.
 
             restrict source notrap nomodify noquery
 
-            server tick.usask.ca prefer
-            server tock.usask.ca
+            server time.usask.ca prefer
             server 127.127.22.X minpoll 4 maxpoll 4
             fudge 127.127.22.X time1 0.2 flag2 1 flag3 0 flag4 1
 
@@ -326,8 +325,10 @@ the note when running ``install_radar_deps.py``.
 #. Configure the scheduler. See :ref:`scheduling<scheduling>` for more information.
    #. Enable and start the ``atd`` system service. ``at`` is used to run the radar in specific modes
       following the radar schedule. ::
+
         sudo systemctl enable atd.service
         sudo systemctl start atd.service
+
    #. Ensure the site specific schedule files exists in the ``borealis_schedules`` directory (ex. 
       ``sas.scd`` for Saskatoon). 
    #. TODO
