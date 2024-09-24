@@ -9,7 +9,7 @@ NVIDIA drivers for the graphics card will work. The latest version of OpenSUSE t
 installation has been tested on is OpenSUSE Leap 15.5.
 
 **NOTE:** Commands that require root privileges will have a ``sudo`` or ``su`` command ahead of
-them, or explicitly say 'as root', all others should be executed as the normal user that will run 
+them, or explicitly say 'as root', all others should be executed as the normal user that will run
 Borealis  (recommended name: radar).
 
 **NOTE:** It is possible to run Borealis on the CPU, that is, without using your graphics card for
@@ -17,7 +17,7 @@ parallel computations. This will severely slow down the system, but may be usefu
 this is desired, you can skip the step of installing NVIDIA drivers on your machine, and see
 the note when running ``install_radar_deps.py``.
 
-#. Install the latest version of the NVIDIA drivers (see https://en.opensuse.org/SDB:NVIDIA_drivers). 
+#. Install the latest version of the NVIDIA drivers (see https://en.opensuse.org/SDB:NVIDIA_drivers).
    The driver must be able to support running the GPU
    selected and must also be compatible with the version of CUDA that supports the compute
    capability version of the GPU. Getting the OS to run stable with NVIDIA is the most important
@@ -29,7 +29,7 @@ the note when running ``install_radar_deps.py``.
     sudo zypper addrepo --refresh 'https://download.nvidia.com/opensuse/leap/$releasever' NVIDIA
     sudo zypper in nvidia-video-G06 nvidia-gl-G06 nvidia-compute-utils-G06
 
-   then reboot the computer. To verify that the drivers have been installed correctly, run 
+   then reboot the computer. To verify that the drivers have been installed correctly, run
    ``sudo nvidia-smi`` - the output of this command should show the GPU installed on the computer.
 
 #. Install the latest NVIDIA CUDA drivers (see
@@ -236,9 +236,9 @@ the note when running ``install_radar_deps.py``.
    version of ``ntpd`` that works with incoming PPS signals on the serial port DCD line.
 
    #. An example configuration of ntp is shown below for ``/etc/ntp.conf``. These settings use
-      ``time.usask.ca`` as an NTP server, which load balances between the ``tick.usask.ca`` and 
-      ``tock.usask.ca`` USask NTP servers, as well as PPS via the ``127.127.22.X`` lines. 
-      **NOTE:** Replace the 'X' with the pps number that is connected to the incoming PPS signal 
+      ``time.usask.ca`` as an NTP server, which load balances between the ``tick.usask.ca`` and
+      ``tock.usask.ca`` USask NTP servers, as well as PPS via the ``127.127.22.X`` lines.
+      **NOTE:** Replace the 'X' with the pps number that is connected to the incoming PPS signal
       determined in the previous step (i.e. for pps1, PPS input is 127.127.22.1).
 
         .. code-block:: text
@@ -322,16 +322,31 @@ the note when running ``install_radar_deps.py``.
 
     ss --all | grep 9696
 
-#. Configure the scheduler. See :ref:`scheduling<scheduling>` for more information.
+#. Configure the scheduler, and ensure Borealis runs. See :ref:`scheduling<scheduling>` for more
+   information.
+
    #. Enable and start the ``atd`` system service. ``at`` is used to run the radar in specific modes
       following the radar schedule. ::
 
         sudo systemctl enable atd.service
         sudo systemctl start atd.service
 
-   #. Ensure the site specific schedule files exists in the ``borealis_schedules`` directory (ex. 
-      ``sas.scd`` for Saskatoon). 
-   #. TODO
+   #. Ensure the site specific schedule files exists in the ``borealis_schedules`` directory (ex.
+      ``sas.scd`` for Saskatoon).
+
+   #. Run ``scripts/start_radar.sh`` to start the local radar scheduling server and attempt to start
+      the radar. If the scheduler is working properly, the output of ``atq`` should show scheduled
+      commands: ::
+
+        radar@sasbore206:~> atq
+        14748	Wed Sep 25 00:00:00 2024 a radar
+        14749	Tue Oct  1 00:00:00 2024 a radar
+        14750	Tue Oct  8 00:00:00 2024 a radar
+        14751	Fri Oct 11 00:00:00 2024 a radar
+
+   #. To check that the radar is operating, run ``screen -r borealis`` to view the live output of
+      all Borealis processes
+
 
 #. Configure and install the automatic Borealis restart daemon, ``restart_borealis.service``. Follow
    the steps outlined :ref:`here <automated-restarts>` to install and start the system service. This
