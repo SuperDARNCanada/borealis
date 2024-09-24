@@ -123,7 +123,7 @@ def install_packages(distro: str, dev: bool = True):
     ]
 
     variant_packages = [
-        "libusb-1_0-{}",  # Needed for 
+        "libusb-1_0-{}",  # Needed for UHD
         "libX11-{}",
         "pps-tools-{}",
         "net-snmp-{}",
