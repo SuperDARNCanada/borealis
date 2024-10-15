@@ -123,7 +123,7 @@ class DataWrite:
             if data_type == "rawacf" and self.rawacf_format == "dmap":
                 writer = writers.DMAPWriter
                 path_fields = two_hr_file_with_type.split(".")
-                path_fields[-2] = chr(int(path_fields[-2]))
+                path_fields[-2] = chr(int(path_fields[-2]) + 97)  # 97 is 'a', 98 is 'b', etc.
                 full_two_hr_file = f"{self.dataset_directory}/{'.'.join(path_fields)}"
             else:
                 writer = writers.HDF5Writer
@@ -199,6 +199,7 @@ class DataWrite:
                     sliceid=slice_id,
                     site=self.options.site_id,
                 )
+                log.info("Filename", slice_id=slice_id, filename=two_hr_str)
                 self.slice_filenames[slice_id] = two_hr_str
 
         if time_now > self.next_boundary:
@@ -515,7 +516,7 @@ class DataWrite:
                         data.append(data_dict["data"])
 
                 stage_data.antennas_iq_data = np.stack(data, axis=0)
-                sample_timing_s = np.arange(stage_data.rawrf_data.shape[-1],
+                sample_timing_s = np.arange(stage_data.antennas_iq_data.shape[-1],
                                             dtype=np.float32) / stage_data.rx_sample_rate
                 stage_data.sample_time = np.round(sample_timing_s * 1e6).astype(np.int32)
                 final_data_params[slice_num][stage] = stage_data

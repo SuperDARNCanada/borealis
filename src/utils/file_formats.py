@@ -915,25 +915,35 @@ class SliceData:
         """
         Converts data from ``self`` into a valid DMAP record.
         """
-        group = {}
-        for relevant_field in SliceData.required_fields("rawacf"):
-            data = getattr(self, relevant_field)
+        group = dict()
+        metadata = dict()
+        for relevant_field in SliceData.all_fields("rawacf"):
+            try:
+                data = getattr(self, relevant_field)
+            except AttributeError as err:
+                if relevant_field in self.required_fields("rawacf"):
+                    raise err
+                else:
+                    continue
 
             # Massage the data into the correct types
             if isinstance(data, dict):
                 data = str(data)
+            elif isinstance(data, str):
+                data = data.encode('utf-8')
             elif isinstance(data, list):
                 if isinstance(data[0], str):
                     data = np.bytes_(data)
                 else:
                     data = np.array(data)
-            group[relevant_field] = data
 
-        SLICE_ID = 0  # todo: Use the actual ID of the slice
+            if relevant_field in self._file_level_fields():
+                metadata[relevant_field] = data
+            else:
+                group[relevant_field] = data
+
         FILENAME = ""  # todo: Use the name of the rawacf file? Or just the timestamp of the start of the file?
-        dmap_record = pydarnio.BorealisConvert._BorealisConvert__convert_rawacf_record(
-            SLICE_ID, (record_name, group), FILENAME
-        )
+        dmap_record = pydarnio.BorealisV1Convert.convert_rawacf_record(group, metadata, FILENAME)
 
         return dmap_record
 

@@ -35,12 +35,7 @@ class DMAPWriter:
             raise NotImplementedError
 
         dmap_record = slice_data.to_dmap(dt_str)
-
-        # todo: ensure that dmap.write_rawacf() will append to file
-        dmap.write_rawacf(
-            dmap_record,
-            filename,
-        )
+        dmap.write_rawacf(dmap_record, filename)
 
 
 class HDF5Writer:
