@@ -120,15 +120,15 @@ Clear Frequency Search (Experimental)
 
 An experimental implementation of clear frequency searching is now supported in borealis to determine
 a transmit frequency within a specified band. In an experiment slice, the ``freq`` parameter should be
-unset, and the ``cfs_range`` parameter set to a two element list containing the upper and lower
+unset, and the ``cfs_range`` parameter set to a two element list containing the lower and upper
 frequency limits of the CFS band::
 
     slice['cfs_range'] = [11000, 11300]  # Lower and upper freq limit in kHz
 
-Multiple experiment slices within an averaging period can be configured to receive a transmit frequency
-from the CFS as long as the each slice has ``cfs_range`` set. Each slice can choose any band within the
+Multiple experiment slices within an averaging period can be configured to set a transmit frequency
+from the CFS as long as each slice has the ``cfs_range`` set. Each slice can choose any band within the
 transmit and receive bandwidth of the system. Be aware when choosing a ``cfs_range`` that if the range
-has any part within +/- 50kHz around the ``txctrfreq`` and ``rxctrfreq`` a warning will be raised as
+has any part within +/- 50kHz around the ``txctrfreq`` or ``rxctrfreq`` a warning will be raised as
 no tx frequency can be chosen that is within 50kHz of the center frequencies. The user should be aware
 of any restricted bands within the desired range, as CFS will exclude restricted bands when selecting
 transmit frequencies.
@@ -136,7 +136,8 @@ transmit frequencies.
 Additionally, if a ``cfs_range`` with a band greater than 300kHz is desired, the user will need to
 design a custom decimation scheme for the CFS analysis, as the default is designed only for bands of
 300kHz or smaller. All CFS slices with **CONCURRENT** or **SEQUENCE** interfacing must have the same
-decimation scheme.
+decimation scheme, power threshold, stable time, duration, and frequency resolution (parameters
+defined below).
 
 The following parameters can be set for a CFS slice:
 
@@ -148,7 +149,7 @@ The following parameters can be set for a CFS slice:
      - Default Value
      - Description
    * - ``cfs_range``
-     - None
+     - ``None``
      - Sets the band to search. Must be set to perform CFS
    * - ``cfs_duration``
      - 90 ms
@@ -160,7 +161,13 @@ The following parameters can be set for a CFS slice:
    * - ``cfs_stable_time``
      - 0 s
      - Sets a minimum amount of time during which CFS will not change the frequency of a CFS slice
-       after it has been set
+       after it has been set. By default the CFS measurements will only be made once the stable
+       time has elapsed.
+   * - ``cfs_always_run``
+     - False
+     - When true, CFS measurements will be taken every averaging period even if the ``cfs_stable_time``
+       has not elapsed. Measurements taken before the stable time has elapsed will not be used to set
+       new transmit frequencies but the measurements will still be written to file.
    * - ``cfs_pwr_threshold``
      - ``None`` (dB)
      - Sets a threshold power difference that a CFS scan must exceed before a frequency is switched.
@@ -172,9 +179,16 @@ The following parameters can be set for a CFS slice:
      - 512
      - Sets the number of samples used in the FFT during CFS processing. Determines the frequency
        resolution of the CFS, where the resolution is ``res = (rx_rate / total decimation rate) / N``
+   * - ``cfs_freq_res``
+     - ``None`` (Hz)
+     - Cannot be set if ``cfs_fft_n`` is set. Defines the desired frequency resolution of CFS in Hz.
+       The ``cfs_fft_n`` parameter is then set to the nearest integer value of ``N`` calculated as
+       ``N = (rx_rate / total decimation rate) / res``
 
 When a CFS slice is to be run during an averaging period, the first sequence of the averaging period
 is used to listen for the length of time specified by ``cfs_duration``. The data from this measurement
-is analyzed to evaluate the frequency spectrum of the collected data to select the least noisy frequencies
-for transmission. The analysis results are also recorded to any generated rawacf, antennas_iq, and/or
-bfiq files.
+is beamformed based on the beam transmit direction and the center frequency of the ``cfs_range``.The
+beamformed results are processed to evaluate the frequency spectrum of the collected data and select
+the least noisy frequencies for transmission in that beam direction. The analysis results are also
+recorded to any generated rawacf, antennas_iq, and/or bfiq files. The frequency of each beam is set
+and tracked by the CFS independently.

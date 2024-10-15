@@ -100,8 +100,10 @@ class AveragingPeriod(InterfaceClassBase):
 
         # Metadata for an AveragingPeriod: clear frequency search, integration time, number of averages goal
         self.cfs_flag = False
+        self.cfs_always_run = False
         self.cfs_sequence = None
         self.cfs_slice_ids = []
+        self.cfs_scan_order = []
         self.cfs_stable_time = 0
         self.cfs_pwr_threshold = 0
         self.cfs_fft_n = 0
@@ -116,6 +118,8 @@ class AveragingPeriod(InterfaceClassBase):
                 self.cfs_flag = True
                 self.cfs_slice_ids.append(slice_id)
                 self.cfs_range.append(self.slice_dict[slice_id].cfs_range)
+                if self.slice_dict[slice_id].cfs_always_run:
+                    self.cfs_always_run = True
 
         self.intt = self.slice_dict[self.slice_ids[0]].intt
         self.intn = self.slice_dict[self.slice_ids[0]].intn
@@ -238,7 +242,7 @@ class AveragingPeriod(InterfaceClassBase):
 
         return slice_to_beamdir_dict
 
-    def update_cfs_freqs(self, cfs_spectrum):
+    def select_cfs_freqs(self, cfs_spectrum):
         """
         Accepts the analysis results of the clear frequency search and uses the passed frequencies and powers
         to determine what frequencies to set each clear frequency search slice to.
@@ -351,36 +355,36 @@ class AveragingPeriod(InterfaceClassBase):
 
             slice_masks[slice_id] = mask
             ind = np.argmin(cfs_data[i][mask])
-            # Hold tuple of chosen frequency and corresponding power
-            cfs_set_freq[slice_id] = (
-                int(np.round(shifted_cfs_khz[ind])),
-                cfs_data[i][ind],
-            )
-            slice_obj.freq = cfs_set_freq[slice_id][0]
+            cfs_set_freq[slice_id] = int(np.round(shifted_cfs_khz[ind]))
 
             for sqn in self.cfs_sequences:
                 if slice_id in sqn.slice_ids:
                     other_ids = set(sqn.slice_ids).intersection(self.cfs_slice_ids)
                     other_ids.remove(slice_id)
-                    for id in other_ids:
-                        slice_used_freqs[id].append(
+                    for other_id in other_ids:
+                        slice_used_freqs[other_id].append(
                             [
-                                cfs_set_freq[slice_id][0] - df,
-                                cfs_set_freq[slice_id][0] + df,
+                                cfs_set_freq[slice_id] - df,
+                                cfs_set_freq[slice_id] + df,
                             ]
                         )
             # Set cfs slice frequency and add frequency to used_freqs for all other concurrent slices
 
+        self.update_cfs_freqs(cfs_set_freq)
+
+        return slice_masks, cfs_set_freq
+
+    def update_cfs_freqs(self, cfs_set_freq):
+        for i, slice_id in enumerate(self.cfs_slice_ids):
+            slice_obj = self.slice_dict[slice_id]
+            slice_obj.freq = cfs_set_freq[slice_id]
             log.verbose(
-                "setting cfs slice freq",
+                "selecting cfs slice freq",
                 slice_id=slice_obj.slice_id,
                 set_freq=slice_obj.freq,
             )
-
         for sequence in self.cfs_sequences:
             sequence.build_sequence_pulses()
-
-        return slice_masks, cfs_set_freq
 
     def build_cfs_sequence(self):
         """
@@ -418,11 +422,13 @@ class AveragingPeriod(InterfaceClassBase):
         cfs_slices = {}
         seq_keys = []
         slice_counter = 0
+        self.cfs_scan_order = []
         for cfs_id in self.cfs_slice_ids:
             listening_slice = copy.deepcopy(default_slice)
             slice_range = self.slice_dict[cfs_id].cfs_range
             listening_slice["freq"] = int((slice_range[0] + slice_range[1]) / 2)
             listening_slice["slice_id"] = slice_counter
+            self.cfs_scan_order.append(cfs_id)
 
             cfs_slices[slice_counter] = ExperimentSlice(**listening_slice)
             seq_keys.append(slice_counter)

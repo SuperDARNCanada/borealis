@@ -1,6 +1,7 @@
 """
 Simulator to mock the usrp_driver module and create arbitrary data.
 """
+
 import datetime as dt
 import math
 import mmap
@@ -23,12 +24,11 @@ from src.utils.options import Options
 
 
 def driver_thread():
-
     options = Options()
     identities = (
         options.driver_to_radctrl_identity,
         options.driver_to_dsp_identity,
-        options.driver_to_brian_identity
+        options.driver_to_brian_identity,
     )
     radctrl_socket, dsp_socket, brian_socket = so.create_sockets(
         options.router_address,
@@ -42,16 +42,20 @@ def driver_thread():
     num_antennas = len(options.rx_main_antennas) + len(options.rx_intf_antennas)
     buffer_size_per_antenna_samps = int(round(200.0e6 / 8))
     ringbuffer_size = num_antennas * buffer_size_per_antenna_samps
-    shm = ipc.SharedMemory(options.ringbuffer_name, flags=ipc.O_CREX, size=ringbuffer_size)
-    mapped_mem = mmap.mmap(shm.fd, shm.size)
-    ringbuffer = np.frombuffer(mapped_mem, dtype=np.complex64).reshape(
-        num_antennas, -1
+    shm = ipc.SharedMemory(
+        options.ringbuffer_name, flags=ipc.O_CREX, size=ringbuffer_size
     )
+    mapped_mem = mmap.mmap(shm.fd, shm.size)
+    ringbuffer = np.frombuffer(mapped_mem, dtype=np.complex64).reshape(num_antennas, -1)
 
     # initialize ringbuffer as "noise"
     rng = np.random.default_rng(0)
-    noise_pwr = -50.0 + 3.0 * rng.standard_normal(size=ringbuffer.shape, dtype=np.float32)  # -50.0 +/- 3.0 dB
-    noise_phase = 2 * np.pi * rng.random(size=ringbuffer.shape, dtype=np.float32)  # [0, 2pi)
+    noise_pwr = -50.0 + 3.0 * rng.standard_normal(
+        size=ringbuffer.shape, dtype=np.float32
+    )  # -50.0 +/- 3.0 dB
+    noise_phase = (
+        2 * np.pi * rng.random(size=ringbuffer.shape, dtype=np.float32)
+    )  # [0, 2pi)
     ringbuffer[:] = np.power(10, noise_pwr / 10.0) * np.exp(1j * noise_phase)
 
     initialization_time = dt.datetime.utcnow()
@@ -61,9 +65,9 @@ def driver_thread():
     driver_packet = DriverPacket()
     driver_packet.ParseFromString(radctrl_msg)
     rx_rate = driver_packet.rxrate
-    tx_rate = driver_packet.txrate
-    tx_ctr_freq = driver_packet.txcenterfreq
-    rx_ctr_freq = driver_packet.rxcenterfreq
+    # tx_rate = driver_packet.txrate
+    # tx_ctr_freq = driver_packet.txcenterfreq
+    # rx_ctr_freq = driver_packet.rxcenterfreq
 
     # let radar_control know that driver is good to start
     so.send_string(radctrl_socket, options.radctrl_to_driver_identity, "DRIVER_READY")
@@ -79,16 +83,20 @@ def driver_thread():
         num_rx_samps = 0
 
         while more_pulses:
-            radctrl_msg = so.recv_bytes(radctrl_socket, options.radctrl_to_driver_identity, log)
+            radctrl_msg = so.recv_bytes(
+                radctrl_socket, options.radctrl_to_driver_identity, log
+            )
             driver_packet = DriverPacket()
             driver_packet.ParseFromString(radctrl_msg)
             sqn_num = driver_packet.sequence_num
             if sqn_num != expected_sqn_num:
-                raise ValueError(f"Sequence number received {sqn_num} did not match expected {expected_sqn_num}")
+                raise ValueError(
+                    f"Sequence number received {sqn_num} did not match expected {expected_sqn_num}"
+                )
             rx_rate = driver_packet.rxrate
-            tx_rate = driver_packet.txrate
-            tx_ctr_freq = driver_packet.txcenterfreq
-            rx_ctr_freq = driver_packet.txcenterfreq
+            # tx_rate = driver_packet.txrate
+            # tx_ctr_freq = driver_packet.txcenterfreq
+            # rx_ctr_freq = driver_packet.txcenterfreq
             pulse_durations.append(driver_packet.seqtime)
             pulse_starts.append(driver_packet.timetosendsamples)
             burst_start = driver_packet.SOB
@@ -97,7 +105,10 @@ def driver_thread():
             if burst_start:
                 num_rx_samps = driver_packet.numberofreceivesamples
                 for chan in driver_packet.channel_samples:
-                    tx_samples.append(np.array(chan.real, dtype=float) + 1j * np.array(chan.imag, dtype=float))
+                    tx_samples.append(
+                        np.array(chan.real, dtype=float)
+                        + 1j * np.array(chan.imag, dtype=float)
+                    )
                 tx_samples = np.array(tx_samples, dtype=np.complex64)
                 # mock_samples[:, ]
             pulse_samples.append(tx_samples)
@@ -108,7 +119,9 @@ def driver_thread():
         # Generate some mock data, of the correct shape and size based on the parameters
         # generate background noise
         shape = (num_antennas, num_rx_samps)
-        noise_pwr = -50.0 + 3.0 * rng.standard_normal(size=shape, dtype=np.float32)  # -50.0 +/- 3.0 dB
+        noise_pwr = -50.0 + 3.0 * rng.standard_normal(
+            size=shape, dtype=np.float32
+        )  # -50.0 +/- 3.0 dB
         noise_phase = 2 * np.pi * rng.random(size=shape, dtype=np.float32)  # [0, 2pi)
         mock_samples = np.power(10, noise_pwr / 10.0) * np.exp(1j * noise_phase)
 
@@ -127,8 +140,12 @@ def driver_thread():
         start_idx = int(math.fmod(time_since_start * rx_rate, ringbuffer.shape[1]))
         end_idx = start_idx + num_rx_samps
         if end_idx >= ringbuffer.shape[1]:
-            ringbuffer[:, start_idx:] = mock_samples[:, :ringbuffer.shape[1]-start_idx]
-            ringbuffer[:, :end_idx-ringbuffer.shape[1]] = mock_samples[:, ringbuffer.shape[1]-start_idx:]
+            ringbuffer[:, start_idx:] = mock_samples[
+                :, : ringbuffer.shape[1] - start_idx
+            ]
+            ringbuffer[:, : end_idx - ringbuffer.shape[1]] = mock_samples[
+                :, ringbuffer.shape[1] - start_idx :
+            ]
         else:
             ringbuffer[:, start_idx:end_idx] = mock_samples
 
@@ -140,7 +157,9 @@ def driver_thread():
         rx_metadata.ringbuffer_size = buffer_size_per_antenna_samps
         rx_metadata.numberofreceivesamples = num_rx_samps
         rx_metadata.sequence_num = sqn_num
-        rx_metadata.sequence_time = (dt.datetime.utcnow() - starting_pulses).total_seconds()
+        rx_metadata.sequence_time = (
+            dt.datetime.utcnow() - starting_pulses
+        ).total_seconds()
         rx_metadata.agc_status_bank_h = np.int16(0)
         rx_metadata.agc_status_bank_l = np.int16(0)
         rx_metadata.lp_status_bank_h = np.int16(0)
@@ -163,7 +182,8 @@ def driver_thread():
 
         expected_sqn_num += 1
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     from src.utils import log_config
 
     log = log_config.log()
