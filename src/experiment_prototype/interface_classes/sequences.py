@@ -523,7 +523,7 @@ class Sequence(InterfaceClassBase):
 
     def build_tx_phases(self, slice_id, exp_slice, freq_khz):
         txrate = self.transmit_metadata["txrate"]
-        main_antenna_locations = self.transmit_metadatap["main_antenna_locations"]
+        main_antenna_locations = self.transmit_metadata["main_antenna_locations"]
         main_antenna_spacing = self.transmit_metadata["main_antenna_spacing"]
 
         pulse_ramp_time = self.transmit_metadata["pulse_ramp_time"]

@@ -34,7 +34,7 @@ class DMAPWriter:
         if file_type != "rawacf":
             raise NotImplementedError
 
-        dmap_record = slice_data.to_dmap(dt_str)
+        dmap_record = slice_data.to_dmap()
         dmap.write_rawacf(dmap_record, filename)
 
 
