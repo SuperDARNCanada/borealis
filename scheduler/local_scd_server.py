@@ -247,7 +247,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Automatically schedules new events from the SWG"
     )
-    parser.add_argument("--scd-dir", required=True, help="The scd working directory")
+    parser.add_argument("--scd-dir", required=False, help="The scd working directory")
     parser.add_argument(
         "--force",
         action="store_true",
@@ -263,7 +263,7 @@ def main():
 
     args = parser.parse_args()
 
-    scd_dir = args.scd_dir
+    scd_dir = os.environ.get("LOCAL_SCHEDULE_DIR", args.scd_dir)
     scd_logs = scd_dir + "/logs"
 
     if not os.path.exists(scd_dir):
@@ -349,7 +349,7 @@ def main():
 
                     new_lines = site_scd.get_relevant_lines(yyyymmdd, hhmm)
 
-                    text_lines = [site_scd.fmt_line(x) for x in new_lines]
+                    text_lines = [str(x) for x in new_lines]
 
                     success_msg += f"\t{site}\n"
                     for line in text_lines:

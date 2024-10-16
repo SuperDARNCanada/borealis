@@ -9,7 +9,7 @@ myst_parser
 numpy
 posix_ipc
 protobuf
-pydantic<=1.10.13
+pydantic>2
 pyzmq
 scipy
 sphinx==5.3.0
