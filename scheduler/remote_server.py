@@ -407,11 +407,13 @@ def _main():
         log_file = f"{log_dir}/{site_id}_remote_server.{log_time_str}.log"
 
         log_msg_header = f"Updated at {time_of_interest}\n"
+
+        yyyymmdd = time_of_interest.strftime("%Y%m%d")
+        hhmm = time_of_interest.strftime("%H:%M")
+        relevant_lines = scd_util.get_relevant_lines(yyyymmdd, hhmm)
         try:
-            yyyymmdd = time_of_interest.strftime("%Y%m%d")
-            hhmm = time_of_interest.strftime("%H:%M")
-            relevant_lines = scd_util.get_relevant_lines(yyyymmdd, hhmm)
-            for line in relevant_lines:
+            i = 0
+            for i, line in enumerate(relevant_lines):
                 line.test()
         except (IndexError, ValueError) as e:
             logtime = time_of_interest.strftime("%c")
@@ -419,6 +421,11 @@ def _main():
             with open(log_file, "w") as f:
                 f.write(log_msg_header)
                 f.write(error_msg)
+            message = f"remote_server @ {site_id}: Failed to schedule experiment {relevant_lines[i]}"
+            sp.call(
+                f"""curl --silent --header "Content-type: application/json" --data "{{'text':{message}}}" "${{!SLACK_WEBHOOK}}" """.split(),
+                shell=True,
+            )
 
         else:
             timeline, warnings = convert_scd_to_timeline(
