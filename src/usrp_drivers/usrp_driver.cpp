@@ -332,14 +332,13 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
       }
     } else {
       // round up to next millisecond
-      double milliseconds =
-          std::ceil(sequence_start_time.get_frac_secs() * 1000.0);
-      if (milliseconds > 999.0) {
+      double next_ms = std::ceil(sequence_start_time.get_frac_secs() * 1000.0);
+      if (next_ms > 999.0) {
         sequence_start_time =
             uhd::time_spec_t(sequence_start_time.get_full_secs() + 1, 0.0);
       } else {
         sequence_start_time = uhd::time_spec_t(
-            sequence_start_time.get_full_secs(), fractional_second / 1000.0);
+            sequence_start_time.get_full_secs(), next_ms / 1000.0);
       }
     }
 
