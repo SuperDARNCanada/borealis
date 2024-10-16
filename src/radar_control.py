@@ -725,6 +725,7 @@ def cfs_block(ave_params, cfs_params_dict, cfs_sockets):
         cfs_params.last_cfs_set_time[beam] < time.time() - aveperiod.cfs_stable_time
         or aveperiod.cfs_always_run
     ):
+        ave_params.cfs_params = cfs_params
         return False
 
     # Only let CFS run after the user set stable time has
