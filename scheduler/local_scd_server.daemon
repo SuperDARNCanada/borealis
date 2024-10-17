@@ -12,7 +12,7 @@
 #   - file ${HOME}/.scheduler with read permissions defining the following variables:
 #       - LOCAL_SCHEDULE_DIR (example: /home/radman/borealis_schedules)
 #       - SCHEDULING_ENV (example: /home/radman/scheduling-env)
-#   - variables ${BOREALISPATH} and ${PYTHON_VERSION} defined in either ${HOME}/.profile or ${HOME}/.bashrc
+#   - variable ${BOREALISPATH} defined in either ${HOME}/.profile or ${HOME}/.bashrc
 #
 # This script should be run via a systemd service in the following location:
 # `/usr/lib/systemd/system/local_scd_server.service`
