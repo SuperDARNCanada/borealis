@@ -19,13 +19,15 @@ in borealis_schedules/logs/ and are emailed to verify if any issues occur.
 
 import inotify.adapters
 import os
-import datetime
+import datetime as dt
 import argparse
 import copy
 import subprocess as sp
 import sys
+from typing_extensions import Union
 
 import scd_utils
+from scd_utils import ScheduleLine
 
 sys.path.append(f'{os.environ["BOREALISPATH"]}/src')
 from utils.options import Options
@@ -77,10 +79,9 @@ def convert_scd_to_timeline(scd_lines, time_of_interest):
     same line format.
 
     Line dict keys are:
-        - timestamp(ms since epoch)
-        - time(datetime)
-        - duration(minutes)
-        - prio(priority)
+        - timestamp
+        - duration (rounded down to minutes)
+        - priority
         - experiment
         - scheduling_mode
 
@@ -111,22 +112,22 @@ def convert_scd_to_timeline(scd_lines, time_of_interest):
 
     """
 
-    inf_dur_line = None
-    queued_lines = []
+    inf_dur_line: Union[ScheduleLine, None] = None
+    queued_lines: list[ScheduleLine] = []
 
     # Add the ordering of the lines to each line. This is so we can group entries that get split
     # up as the same originally scheduled experiment line in the plot.
     for i, line in enumerate(scd_lines):
-        line["order"] = i
+        line.order = i
 
-    def calculate_new_last_line_params():
+    def calculate_new_last_line_params(queue: list[ScheduleLine]):
         """
         when the last line is of set duration, find its finish time so that
         the infinite duration line can be set to run again at that point.
         """
-        last_queued = queued_lines[-1]
-        queued_dur_td = datetime.timedelta(minutes=int(last_queued["duration"]))
-        queued_finish_time = last_queued["time"] + queued_dur_td
+        last_queued = queue[-1]
+        queued_dur_td = dt.timedelta(minutes=int(last_queued.duration))
+        queued_finish_time = last_queued.timestamp + queued_dur_td
         return last_queued, queued_finish_time
 
     warnings = []
@@ -134,42 +135,36 @@ def convert_scd_to_timeline(scd_lines, time_of_interest):
     for idx, scd_line in enumerate(scd_lines):
         # if we have lines queued up, grab the last one to compare to.
         if queued_lines:
-            last_queued_line, queued_finish = calculate_new_last_line_params()
+            last_queued_line, queued_finish = calculate_new_last_line_params(
+                queued_lines
+            )
         # handling infinite duration lines
-        if scd_line["duration"] == "-":
+        if scd_line.duration == "-":
             # if no line set, just assign it
-            if not inf_dur_line:
+            if inf_dur_line is None:
                 inf_dur_line = scd_line
             else:
-                # case for switching infinite duration lines.
-                if int(scd_line["prio"]) >= int(inf_dur_line["prio"]):
-                    # if no queued lines yet, just take the time up to the new line and add it,
-                    # else check against the last line to see if it comes before or after.
-                    if not queued_lines:
-                        time_diff = scd_line["time"] - inf_dur_line["time"]
-                        inf_dur_line["duration"] = time_diff.total_seconds() // 60
-                        queued_lines.append(inf_dur_line)
-                    else:
-                        duration = int(last_queued_line["duration"])
-                        new_time = last_queued_line["time"] + datetime.timedelta(
-                            minutes=duration
-                        )
-                        if scd_line["time"] > new_time:
-                            inf_dur_line["time"] = new_time
-                            time_diff = scd_line["time"] - new_time
-                            inf_dur_line["duration"] = time_diff.total_seconds() // 60
-                            queued_lines.append(copy.deepcopy(inf_dur_line))
-                    inf_dur_line = scd_line
+                # if no queued lines yet, just take the time up to the new line and add it,
+                # else check against the last line to see if it comes before or after.
+                if not queued_lines:
+                    time_diff = scd_line.timestamp - inf_dur_line.timestamp
+                    inf_dur_line.duration = time_diff.total_seconds() // 60
+                    queued_lines.append(inf_dur_line)
                 else:
-                    warning_msg = (
-                        f"Unable to schedule {scd_line['experiment']} at {scd_line['time']}."
-                        " An infinite duration line with higher priority exists"
+                    duration = int(last_queued_line.duration)
+                    new_time = last_queued_line.timestamp + dt.timedelta(
+                        minutes=duration
                     )
-                    warnings.append(warning_msg)
+                    if scd_line.timestamp > new_time:
+                        inf_dur_line.timestamp = new_time
+                        time_diff = scd_line.timestamp - new_time
+                        inf_dur_line.duration = time_diff.total_seconds() // 60
+                        queued_lines.append(copy.deepcopy(inf_dur_line))
+                inf_dur_line = scd_line
 
         else:  # line has a set duration
-            duration_td = datetime.timedelta(minutes=int(scd_line["duration"]))
-            finish_time = scd_line["time"] + duration_td
+            duration_td = dt.timedelta(minutes=int(scd_line.duration))
+            finish_time = scd_line.timestamp + duration_td
 
             if finish_time < time_of_interest:
                 continue
@@ -180,23 +175,24 @@ def convert_scd_to_timeline(scd_lines, time_of_interest):
                 if not inf_dur_line:
                     queued_lines.append(scd_line)
                 else:
-                    if int(scd_line["prio"]) > int(inf_dur_line["prio"]):
-                        if scd_line["time"] > time_of_interest:
-                            time_diff = scd_line["time"] - inf_dur_line["time"]
-                            new_line = copy.deepcopy(inf_dur_line)
-                            new_line["duration"] = time_diff.total_seconds() // 60
-                            queued_lines.append(new_line)
-                        queued_lines.append(scd_line)
+                    if scd_line.timestamp > time_of_interest:
+                        time_diff = scd_line.timestamp - inf_dur_line.timestamp
+                        new_line = copy.deepcopy(inf_dur_line)
+                        new_line.duration = time_diff.total_seconds() // 60
+                        queued_lines.append(new_line)
+                    queued_lines.append(scd_line)
 
-                        finish_time = scd_line["time"] + duration_td
-                        inf_dur_line["time"] = finish_time
-            else:
+                    finish_time = scd_line.timestamp + duration_td
+                    inf_dur_line.timestamp = finish_time
+            else:  # some lines are already queued
                 # loop to find where to insert this line. Hold all following lines.
                 holder = []
-                while scd_line["time"] < queued_lines[-1]["time"]:
+                while scd_line.timestamp < queued_lines[-1].timestamp:
                     holder.append(queued_lines.pop())
 
-                last_queued_line, queued_finish = calculate_new_last_line_params()
+                last_queued_line, queued_finish = calculate_new_last_line_params(
+                    queued_lines
+                )
                 holder.append(scd_line)
 
                 # Durations and priorities change when lines can run and sometimes lines get
@@ -204,36 +200,41 @@ def convert_scd_to_timeline(scd_lines, time_of_interest):
                 # priorities and durations of new lines added.
                 while holder:  # or first_time:
                     item_to_add = holder.pop()
-                    duration_td = datetime.timedelta(
-                        minutes=int(item_to_add["duration"])
-                    )
-                    finish_time = item_to_add["time"] + duration_td
+                    if item_to_add.duration != "-":
+                        finish_time = item_to_add.timestamp + dt.timedelta(
+                            minutes=item_to_add.duration.total_seconds() // 60
+                        )
+                    else:
+                        pass  # todo: handle infinite lines here
 
-                    while item_to_add["time"] < queued_lines[-1]["time"]:
+                    while item_to_add.timestamp < queued_lines[-1].timestamp:
                         holder.append(queued_lines.pop())
 
-                    last_queued_line, queued_finish = calculate_new_last_line_params()
+                    last_queued_line, queued_finish = calculate_new_last_line_params(
+                        queued_lines
+                    )
 
                     # if the line comes directly after the last line, we can add it.
-                    if item_to_add["time"] == queued_finish:
+                    if item_to_add.timestamp == queued_finish:
                         queued_lines.append(item_to_add)
                     # if the time of the line starts before the last line ends, we need to may need
                     # to make adjustments.
-                    elif item_to_add["time"] < queued_finish:
+                    elif item_to_add.timestamp < queued_finish:
                         # if the line finishes before the last line and is a higher priority,
                         # we split the last line and insert the new line.
                         if finish_time < queued_finish:
-                            if int(item_to_add["prio"]) > int(last_queued_line["prio"]):
+                            if item_to_add.priority > last_queued_line.priority:
                                 queued_copy = copy.deepcopy(last_queued_line)
 
                                 # if time is >, then we can split the first part and insert
                                 # the line is. Otherwise, we can directly overwrite the first
                                 # part.
-                                if item_to_add["time"] > last_queued_line["time"]:
+                                if item_to_add.timestamp > last_queued_line.timestamp:
                                     first_dur = (
-                                        item_to_add["time"] - last_queued_line["time"]
+                                        item_to_add.timestamp
+                                        - last_queued_line.timestamp
                                     )
-                                    last_queued_line["duration"] = (
+                                    last_queued_line.duration = (
                                         first_dur.total_seconds() // 60
                                     )
                                     queued_lines.append(item_to_add)
@@ -242,48 +243,51 @@ def convert_scd_to_timeline(scd_lines, time_of_interest):
 
                                 remaining_duration = queued_finish - finish_time
 
-                                queued_copy["time"] = finish_time
-                                queued_copy["duration"] = (
+                                queued_copy.timestamp = finish_time
+                                queued_copy.duration = (
                                     remaining_duration.total_seconds() // 60
                                 )
                                 queued_lines.append(queued_copy)
 
                         else:
-                            # if the finish time is > than the last line and the prio is higher,
+                            # if the finish time is > than the last line and the priority is higher,
                             # we can overwrite the last piece, otherwise we directly overwrite the
                             # whole line.
-                            if int(item_to_add["prio"]) > int(last_queued_line["prio"]):
-                                if item_to_add["time"] > last_queued_line["time"]:
+                            if item_to_add.priority > last_queued_line.priority:
+                                if item_to_add.timestamp > last_queued_line.timestamp:
                                     new_duration = (
-                                        item_to_add["time"] - last_queued_line["time"]
+                                        item_to_add.timestamp
+                                        - last_queued_line.timestamp
                                     )
-                                    last_queued_line["duration"] = (
+                                    last_queued_line.duration = (
                                         new_duration.total_seconds() // 60
                                     )
                                     queued_lines.append(item_to_add)
                                 else:
                                     queued_lines.append(item_to_add)
                             else:
-                                # if the prio is lower, then we only the schedule the piece that
+                                # if the priority is lower, then we only the schedule the piece that
                                 # doesn't overlap.
-                                item_to_add["time"] = queued_finish
+                                item_to_add.timestamp = queued_finish
                                 new_duration = finish_time - queued_finish
-                                item_to_add["duration"] = (
+                                item_to_add.duration = (
                                     new_duration.total_seconds() // 60
                                 )
                                 queued_lines.append(item_to_add)
                     else:
-                        time_diff = item_to_add["time"] - queued_finish
+                        time_diff = item_to_add.timestamp - queued_finish
                         new_line = copy.deepcopy(inf_dur_line)
-                        new_line["duration"] = time_diff.total_seconds() // 60
-                        new_line["time"] = queued_finish
+                        new_line.duration = time_diff.total_seconds() // 60
+                        new_line.timestamp = queued_finish
                         queued_lines.append(new_line)
                         queued_lines.append(item_to_add)
 
         if idx == len(scd_lines) - 1:
             if queued_lines:  # infinite duration line starts after the last queued line
-                last_queued_line, queued_finish = calculate_new_last_line_params()
-                inf_dur_line["time"] = queued_finish
+                last_queued_line, queued_finish = calculate_new_last_line_params(
+                    queued_lines
+                )
+                inf_dur_line.timestamp = queued_finish
             queued_lines.append(inf_dur_line)
 
     return queued_lines, warnings
@@ -342,24 +346,24 @@ def timeline_to_atq(timeline, scd_dir, time_of_interest, site_id):
         if first_event:
             atq.append(
                 format_to_atq(
-                    event["time"],
-                    event["experiment"],
-                    event["scheduling_mode"],
+                    event.timestamp,
+                    event.experiment,
+                    event.scheduling_mode,
                     True,
-                    event["kwargs"],
-                    event["embargo"],
+                    event.kwargs,
+                    event.embargo,
                 )
             )
             first_event = False
         else:
             atq.append(
                 format_to_atq(
-                    event["time"],
-                    event["experiment"],
-                    event["scheduling_mode"],
+                    event.timestamp,
+                    event.experiment,
+                    event.scheduling_mode,
                     False,
-                    event["kwargs"],
-                    event["embargo"],
+                    event.kwargs,
+                    event.embargo,
                 )
             )
     for cmd in atq:
@@ -397,24 +401,29 @@ def _main():
     def make_schedule():
         print("Making schedule...")
 
-        time_of_interest = datetime.datetime.utcnow()
+        time_of_interest = dt.datetime.utcnow()
 
         log_time_str = time_of_interest.strftime("%Y.%m.%d.%H.%M")
         log_file = f"{log_dir}/{site_id}_remote_server.{log_time_str}.log"
 
         log_msg_header = f"Updated at {time_of_interest}\n"
+
+        yyyymmdd = time_of_interest.strftime("%Y%m%d")
+        hhmm = time_of_interest.strftime("%H:%M")
+        relevant_lines = scd_util.get_relevant_lines(yyyymmdd, hhmm)
         try:
-            yyyymmdd = time_of_interest.strftime("%Y%m%d")
-            hhmm = time_of_interest.strftime("%H:%M")
-            relevant_lines = scd_util.get_relevant_lines(yyyymmdd, hhmm)
-            for line in relevant_lines:
-                scd_util.test_line(line)
+            i = 0
+            for i, line in enumerate(relevant_lines):
+                line.test()
         except (IndexError, ValueError) as e:
             logtime = time_of_interest.strftime("%c")
             error_msg = f"{logtime}: Unable to make schedule\n\t Exception thrown:\n\t\t {str(e)}\n"
             with open(log_file, "w") as f:
                 f.write(log_msg_header)
                 f.write(error_msg)
+            message = f"remote_server @ {site_id}: Failed to schedule {str(relevant_lines[i])}"
+            command = f"""curl --silent --header "Content-type: application/json" --data "{{'text':{message}}}" "${{!SLACK_WEBHOOK_{site_id.upper()}}}" """
+            sp.call(command.split(), shell=True)
 
         else:
             timeline, warnings = convert_scd_to_timeline(
@@ -430,9 +439,7 @@ def _main():
                 for warning in warnings:
                     f.write(f"\n{warning}".encode())
 
-    start_time = datetime.datetime.now(datetime.timezone.utc).strftime(
-        "%Y-%m-%d %H:%M:%S"
-    )
+    start_time = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     print(f"\n{start_time} - Scheduler booted")
     print(f"Inotify monitoring schedule file {scd_file}")
 

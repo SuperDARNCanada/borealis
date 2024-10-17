@@ -19,8 +19,8 @@ from pathlib import Path
 
 # third-party
 import numpy as np
-from pydantic.dataclasses import dataclass, Field
-from pydantic import (
+from pydantic.v1.dataclasses import dataclass, Field
+from pydantic.v1 import (
     validator,
     root_validator,
     conlist,
