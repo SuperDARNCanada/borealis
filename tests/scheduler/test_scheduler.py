@@ -16,6 +16,8 @@ import datetime
 import subprocess as sp
 import re
 
+from pydantic import ValidationError
+
 if "BOREALISPATH" not in os.environ:
     BOREALISPATH = (
         f"{Path(__file__).resolve().parents[2]}"  # Two directories up from this file
@@ -53,11 +55,11 @@ class TestSchedulerUtils(unittest.TestCase):
         self.yyyymmdd = "20221014"
         self.hhmm = "12:34"
         self.dt = "20221011 00:00"
-        self.dur = 120
+        self.dur = datetime.timedelta(minutes=120)
         self.prio = 10
         self.exp = "normalscan"
         self.mode = "common"
-        self.kwargs = ""
+        self.kwargs = list()
         self.no_perms = tempfile.NamedTemporaryFile(mode="w+t", delete=False)
         self.no_perms_file = self.no_perms.name
         os.chmod(self.no_perms_file, 0o000)
@@ -65,26 +67,26 @@ class TestSchedulerUtils(unittest.TestCase):
         time_of_interest = datetime.datetime(2000, 1, 1, 6, 30)
         time_of_interest2 = datetime.datetime(2022, 4, 5, 16, 56)
         self.linedict = {
-            "time": time_of_interest,
-            "prio": 0,
+            "timestamp": time_of_interest,
+            "priority": 0,
             "experiment": "normalscan",
             "scheduling_mode": "common",
-            "duration": 60,
-            "kwargs": "-",
+            "duration": datetime.timedelta(minutes=60),
+            "kwargs": list(),
             "embargo": False,
         }
-        self.linestr = "20000101 06:30 60 0 normalscan common  -\n"
+        self.linestr = "20000101 06:30 60 0 normalscan common\n"
         self.linedict2 = {
-            "time": time_of_interest2,
-            "prio": 15,
+            "timestamp": time_of_interest2,
+            "priority": 15,
             "experiment": "twofsound",
             "scheduling_mode": "discretionary",
-            "duration": 360,
-            "kwargs": "freq1=10500 freq2=13100",
+            "duration": datetime.timedelta(minutes=360),
+            "kwargs": ["freq1=10500", "freq2=13100"],
             "embargo": False,
         }
         self.linestr2 = (
-            "20220405 16:56 360 15 twofsound discretionary  freq1=10500 freq2=13100\n"
+            "20220405 16:56 360 15 twofsound discretionary freq1=10500 freq2=13100\n"
         )
         self.maxDiff = None
 
@@ -252,9 +254,9 @@ class TestSchedulerUtils(unittest.TestCase):
                 self.dur,
                 self.kwargs,
             )
-            scdu.test_line(line)
+            line.test(self.site_id)
         exp = None
-        with self.assertRaises(TypeError):
+        with self.assertRaises(ValidationError):
             line = scdu.create_line(
                 self.yyyymmdd,
                 self.hhmm,
@@ -264,9 +266,9 @@ class TestSchedulerUtils(unittest.TestCase):
                 self.dur,
                 self.kwargs,
             )
-            scdu.test_line(line)
+            line.test(self.site_id)
         exp = 5
-        with self.assertRaises(TypeError):
+        with self.assertRaises(ValidationError):
             line = scdu.create_line(
                 self.yyyymmdd,
                 self.hhmm,
@@ -417,7 +419,7 @@ class TestSchedulerUtils(unittest.TestCase):
             scdu.test_line(line)
         dur = 53.09
         with self.assertRaises(ValueError):
-            line = scdu.create_line(
+            scdu.create_line(
                 self.yyyymmdd,
                 self.hhmm,
                 self.exp,
@@ -426,10 +428,9 @@ class TestSchedulerUtils(unittest.TestCase):
                 dur,
                 self.kwargs,
             )
-            scdu.test_line(line)
         dur = ""
         with self.assertRaises(ValueError):
-            line = scdu.create_line(
+            scdu.create_line(
                 self.yyyymmdd,
                 self.hhmm,
                 self.exp,
@@ -438,10 +439,9 @@ class TestSchedulerUtils(unittest.TestCase):
                 dur,
                 self.kwargs,
             )
-            scdu.test_line(line)
         dur = None
         with self.assertRaises(ValueError):
-            line = scdu.create_line(
+            scdu.create_line(
                 self.yyyymmdd,
                 self.hhmm,
                 self.exp,
@@ -450,7 +450,6 @@ class TestSchedulerUtils(unittest.TestCase):
                 dur,
                 self.kwargs,
             )
-            scdu.test_line(line)
 
     def test_invalid_kwargs_string(self):
         """
@@ -516,7 +515,7 @@ class TestSchedulerUtils(unittest.TestCase):
                 self.dur,
                 kwargs_str,
             )
-            scdu.test_line(line)
+            line.test(self.site_id)
 
     # read_scd tests
     def test_invalid_num_args(self):
@@ -546,17 +545,24 @@ class TestSchedulerUtils(unittest.TestCase):
         scdfile.close()
         self.assertEqual(
             scdu.read_scd(),
-            [scdu.create_line("20000101", "00:00", "normalscan", "common", "0", "-")],
+            [
+                scdu.create_line(
+                    "20000101", "00:00", "normalscan", "common", 0, "-", list()
+                )
+            ],
         )
 
     # fmt_line tests
-    def test_fmt_line(self):
+    def test_str(self):
         """
         Test that the result from fmt_line agrees with what it should
         """
-        scdu = scd_utils.SCDUtils(self.good_scd_file, self.site_id)
-        self.assertEqual(scdu.fmt_line(self.linedict), self.linestr.strip())
-        self.assertEqual(scdu.fmt_line(self.linedict2), self.linestr2.strip())
+        self.assertEqual(
+            str(scd_utils.ScheduleLine(**self.linedict)), self.linestr.strip()
+        )
+        self.assertEqual(
+            str(scd_utils.ScheduleLine(**self.linedict2)), self.linestr2.strip()
+        )
 
     # write_scd tests
     def test_no_perms(self):
@@ -593,7 +599,10 @@ class TestSchedulerUtils(unittest.TestCase):
         scd_file = tempfile.NamedTemporaryFile(mode="w+t", delete=False)
         scd_file.close()
         scdu = scd_utils.SCDUtils(scd_file.name, self.site_id)
-        lines = [self.linedict, self.linedict2]
+        lines = [
+            str(scd_utils.ScheduleLine(**self.linedict)),
+            str(scd_utils.ScheduleLine(**self.linedict2)),
+        ]
         scdu.write_scd(lines)
 
         # Verify there's a .bak file parallel with the temp file with nothing in it
@@ -603,6 +612,7 @@ class TestSchedulerUtils(unittest.TestCase):
         with open(bak_file, "r") as f, open(scd_file.name, "r") as s:
             bak_lines = f.readlines()
             scd_lines = s.readlines()
+            print(scd_lines)
             self.assertEqual([self.linestr, self.linestr2], scd_lines)
             self.assertEqual(bak_lines, [])
 
@@ -659,7 +669,7 @@ class TestSchedulerUtils(unittest.TestCase):
                 "twofsound",
                 "special",
                 self.prio,
-                "1440",
+                datetime.timedelta(minutes=1440),
                 self.kwargs,
             )
 
@@ -688,7 +698,7 @@ class TestSchedulerUtils(unittest.TestCase):
         line = lines[1].split()  # Get the second line, which is the one we added
         self.assertEqual(line[0], self.yyyymmdd)
         self.assertEqual(line[1], self.hhmm)
-        self.assertEqual(line[2], str(self.dur))
+        self.assertEqual(line[2], str(int(self.dur.total_seconds() // 60)))
         self.assertEqual(line[3], str(self.prio))
         self.assertEqual(line[4], self.exp)
         self.assertEqual(line[5], self.mode)
@@ -765,10 +775,10 @@ class TestSchedulerUtils(unittest.TestCase):
         scd_file = tempfile.NamedTemporaryFile(mode="w+t", delete=False)
         scdu = scd_utils.SCDUtils(scd_file.name, self.site_id)
         scd_lines = [
-            "20200917 00:00 - 0 normalscan common  \n",
-            "20200921 00:00 - 0 normalscan discretionary  \n",
-            "20200924 00:00 - 0 normalscan common  freq1=10500\n",
-            "20200926 00:00 - 0 normalscan common  \n",
+            "20200917 00:00 - 0 normalscan common\n",
+            "20200921 00:00 - 0 normalscan discretionary\n",
+            "20200924 00:00 - 0 normalscan common freq1=10500\n",
+            "20200926 00:00 - 0 normalscan common\n",
         ]
         l0 = scd_lines[0].split()
         l1 = scd_lines[1].split()
@@ -776,7 +786,7 @@ class TestSchedulerUtils(unittest.TestCase):
         l3 = scd_lines[3].split()
 
         for line in scd_lines:
-            scd_file.write(line)
+            scd_file.write(str(line))
         scd_file.close()
 
         # Remove 0th line and test
@@ -818,7 +828,7 @@ class TestSchedulerUtils(unittest.TestCase):
         prio = l2[3]
         exp = l2[4]
         mode = l2[5]
-        kwarg = l2[6]
+        kwarg = l2[6].split(" ")
         scdu.remove_line(yyyymmdd, hhmm, exp, mode, prio, dur, kwarg)
 
         with open(scd_file.name, "r") as f:
@@ -833,7 +843,8 @@ class TestSchedulerUtils(unittest.TestCase):
         prio = l3[3]
         exp = l3[4]
         mode = l3[5]
-        scdu.remove_line(yyyymmdd, hhmm, exp, mode, prio, dur)
+        kwarg = list()
+        scdu.remove_line(yyyymmdd, hhmm, exp, mode, prio, dur, kwarg)
 
         with open(scd_file.name, "r") as f:
             file_lines = f.readlines()
@@ -905,7 +916,11 @@ class TestSchedulerUtils(unittest.TestCase):
         scdu = scd_utils.SCDUtils(scd_file.name, self.site_id)
         self.assertEqual(
             scdu.get_relevant_lines("19991101", "00:00"),
-            [scdu.create_line("20000101", "00:00", "normalscan", "common", "0", "-")],
+            [
+                scdu.create_line(
+                    "20000101", "00:00", "normalscan", "common", 0, "-", list()
+                )
+            ],
         )
 
     def test_no_lines_relevant(self):
@@ -927,10 +942,10 @@ class TestSchedulerUtils(unittest.TestCase):
         scd_file.close()
         lines = scdu.get_relevant_lines("20200916", "23:59")
         self.assertEqual(len(lines), 1)
-        self.assertEqual(lines[0]["prio"], "19")
-        self.assertEqual(lines[0]["duration"], "89")
-        self.assertEqual(lines[0]["experiment"], "ulfscan")
-        self.assertEqual(lines[0]["scheduling_mode"], "common")
+        self.assertEqual(lines[0].priority, 19)
+        self.assertEqual(lines[0].duration, datetime.timedelta(minutes=89))
+        self.assertEqual(lines[0].experiment, "ulfscan")
+        self.assertEqual(lines[0].scheduling_mode, "common")
 
     def test_some_lines_relevant(self):
         """
@@ -951,21 +966,21 @@ class TestSchedulerUtils(unittest.TestCase):
         self.assertEqual(len(lines), 3)
 
         # Should be the second line from test_scd_lines
-        self.assertEqual(lines[0]["duration"], "-")
-        self.assertEqual(lines[0]["prio"], "0")
-        self.assertEqual(lines[0]["experiment"], "normalscan")
-        self.assertEqual(lines[0]["scheduling_mode"], "discretionary")
+        self.assertEqual(lines[0].duration, "-")
+        self.assertEqual(lines[0].priority, 0)
+        self.assertEqual(lines[0].experiment, "normalscan")
+        self.assertEqual(lines[0].scheduling_mode, "discretionary")
 
-        self.assertEqual(lines[1]["duration"], "-")
-        self.assertEqual(lines[1]["prio"], "0")
-        self.assertEqual(lines[1]["experiment"], "twofsound")
-        self.assertEqual(lines[1]["scheduling_mode"], "common")
-        self.assertEqual(lines[1]["kwargs"], "freq=10500")
+        self.assertEqual(lines[1].duration, "-")
+        self.assertEqual(lines[1].priority, 0)
+        self.assertEqual(lines[1].experiment, "twofsound")
+        self.assertEqual(lines[1].scheduling_mode, "common")
+        self.assertEqual(lines[1].kwargs, ["freq=10500"])
 
-        self.assertEqual(lines[2]["duration"], "60")
-        self.assertEqual(lines[2]["prio"], "2")
-        self.assertEqual(lines[2]["experiment"], "politescan")
-        self.assertEqual(lines[2]["scheduling_mode"], "special")
+        self.assertEqual(lines[2].duration, datetime.timedelta(minutes=60))
+        self.assertEqual(lines[2].priority, 2)
+        self.assertEqual(lines[2].experiment, "politescan")
+        self.assertEqual(lines[2].scheduling_mode, "special")
 
     def test_all_lines_relevant_matched(self):
         """
@@ -985,26 +1000,23 @@ class TestSchedulerUtils(unittest.TestCase):
         lines = scdu.get_relevant_lines("20200917", "00:00")
         self.assertEqual(len(lines), 4)
 
-        self.assertEqual(lines[0]["duration"], "-")
-        self.assertEqual(lines[0]["prio"], "0")
-        self.assertEqual(lines[0]["experiment"], "normalscan")
-        self.assertEqual(lines[0]["scheduling_mode"], "common")
-
-        self.assertEqual(lines[1]["duration"], "-")
-        self.assertEqual(lines[1]["prio"], "0")
-        self.assertEqual(lines[1]["experiment"], "normalscan")
-        self.assertEqual(lines[1]["scheduling_mode"], "discretionary")
-
-        self.assertEqual(lines[2]["duration"], "-")
-        self.assertEqual(lines[2]["prio"], "0")
-        self.assertEqual(lines[2]["experiment"], "twofsound")
-        self.assertEqual(lines[2]["scheduling_mode"], "common")
-        self.assertEqual(lines[2]["kwargs"], "freq=10500")
-
-        self.assertEqual(lines[3]["duration"], "60")
-        self.assertEqual(lines[3]["prio"], "2")
-        self.assertEqual(lines[3]["experiment"], "politescan")
-        self.assertEqual(lines[3]["scheduling_mode"], "special")
+        self.assertEqual(lines[0].duration, "-")
+        self.assertEqual(lines[0].priority, 0)
+        self.assertEqual(lines[0].experiment, "normalscan")
+        self.assertEqual(lines[0].scheduling_mode, "common")
+        self.assertEqual(lines[1].duration, "-")
+        self.assertEqual(lines[1].priority, 0)
+        self.assertEqual(lines[1].experiment, "normalscan")
+        self.assertEqual(lines[1].scheduling_mode, "discretionary")
+        self.assertEqual(lines[2].duration, "-")
+        self.assertEqual(lines[2].priority, 0)
+        self.assertEqual(lines[2].experiment, "twofsound")
+        self.assertEqual(lines[2].scheduling_mode, "common")
+        self.assertEqual(lines[2].kwargs, ["freq=10500"])
+        self.assertEqual(lines[3].duration, datetime.timedelta(minutes=60))
+        self.assertEqual(lines[3].priority, 2)
+        self.assertEqual(lines[3].experiment, "politescan")
+        self.assertEqual(lines[3].scheduling_mode, "special")
 
     def test_all_lines_relevant(self):
         """
@@ -1024,26 +1036,23 @@ class TestSchedulerUtils(unittest.TestCase):
         lines = scdu.get_relevant_lines("20200916", "00:00")
         self.assertEqual(len(lines), 4)
 
-        self.assertEqual(lines[0]["duration"], "-")
-        self.assertEqual(lines[0]["prio"], "0")
-        self.assertEqual(lines[0]["experiment"], "normalscan")
-        self.assertEqual(lines[0]["scheduling_mode"], "common")
-
-        self.assertEqual(lines[1]["duration"], "-")
-        self.assertEqual(lines[1]["prio"], "0")
-        self.assertEqual(lines[1]["experiment"], "normalscan")
-        self.assertEqual(lines[1]["scheduling_mode"], "discretionary")
-
-        self.assertEqual(lines[2]["duration"], "-")
-        self.assertEqual(lines[2]["prio"], "0")
-        self.assertEqual(lines[2]["experiment"], "twofsound")
-        self.assertEqual(lines[2]["scheduling_mode"], "common")
-        self.assertEqual(lines[2]["kwargs"], "freq=10500")
-
-        self.assertEqual(lines[3]["duration"], "60")
-        self.assertEqual(lines[3]["prio"], "2")
-        self.assertEqual(lines[3]["experiment"], "politescan")
-        self.assertEqual(lines[3]["scheduling_mode"], "special")
+        self.assertEqual(lines[0].duration, "-")
+        self.assertEqual(lines[0].priority, 0)
+        self.assertEqual(lines[0].experiment, "normalscan")
+        self.assertEqual(lines[0].scheduling_mode, "common")
+        self.assertEqual(lines[1].duration, "-")
+        self.assertEqual(lines[1].priority, 0)
+        self.assertEqual(lines[1].experiment, "normalscan")
+        self.assertEqual(lines[1].scheduling_mode, "discretionary")
+        self.assertEqual(lines[2].duration, "-")
+        self.assertEqual(lines[2].priority, 0)
+        self.assertEqual(lines[2].experiment, "twofsound")
+        self.assertEqual(lines[2].scheduling_mode, "common")
+        self.assertEqual(lines[2].kwargs, ["freq=10500"])
+        self.assertEqual(lines[3].duration, datetime.timedelta(minutes=60))
+        self.assertEqual(lines[3].priority, 2)
+        self.assertEqual(lines[3].experiment, "politescan")
+        self.assertEqual(lines[3].scheduling_mode, "special")
 
     def test_one_relevant_line(self):
         """
@@ -1055,7 +1064,7 @@ class TestSchedulerUtils(unittest.TestCase):
             time_of_interest.strftime("%Y%m%d"), time_of_interest.strftime("%H:%M")
         )
         self.assertEqual(
-            [scdu.fmt_line(line).strip() for line in lines],
+            [str(line).strip() for line in lines],
             ["20220929 12:00 - 0 normalscan common"],
         )
 
@@ -1096,7 +1105,7 @@ class TestSchedulerUtils(unittest.TestCase):
             *time_of_interest.strftime("%Y%m%d %H:%M").split()
         )
         self.assertEqual(
-            [scdu.fmt_line(line).strip() for line in lines],
+            [str(line).strip() for line in lines],
             ["20210903 00:00 - 0 twofsound common"],
         )
 
@@ -1120,7 +1129,7 @@ class TestSchedulerUtils(unittest.TestCase):
             *time_of_interest.strftime("%Y%m%d %H:%M").split()
         )
         self.assertEqual(len(lines), 1)
-        self.assertEqual(scdu.fmt_line(lines[0]).strip(), test_scd_lines[-1].strip())
+        self.assertEqual(str(lines[0]).strip(), test_scd_lines[-1].strip())
 
 
 class TestRemoteServer(unittest.TestCase):

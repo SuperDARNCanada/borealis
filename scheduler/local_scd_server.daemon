@@ -1,0 +1,27 @@
+#!/bin/bash
+# Copyright 2024 SuperDARN Canada, University of Saskatchewan
+# Author: Remington Rohel
+#
+# This daemon continuously monitors the SuperDARN schedule repository and schedules new experiments when
+# a new schedule is available.
+#
+# Dependencies:
+#   - git
+#
+# Requires:
+#   - file ${HOME}/.scheduler with read permissions defining the following variables:
+#       - LOCAL_SCHEDULE_DIR (example: /home/radman/borealis_schedules)
+#       - SCHEDULING_ENV (example: /home/radman/scheduling-env)
+#   - variable ${BOREALISPATH} defined in either ${HOME}/.profile or ${HOME}/.bashrc
+#
+# This script should be run via a systemd service in the following location:
+# `/usr/lib/systemd/system/local_scd_server.service`
+
+# Source our environment
+source "${HOME}/.scheduler"
+source "${HOME}/.profile"
+source "${HOME}/.bashrc"
+source "${SCHEDULING_ENV}/bin/activate"
+
+# Run the script
+python3 "${BOREALISPATH}/scheduler/local_scd_server.py"

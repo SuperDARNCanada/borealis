@@ -58,10 +58,10 @@ typedef struct {
 
 static clocks_t borealis_clocks;
 
-// The maximum allowed drift between the system and GPS times held in the borealis_clocks
-// variable. If the drift is larger than this, the module will crash to avoid writing
-// corrupt metadata to file.
-#define MAX_CLOCK_DRIFT 1000.0 // seconds
+// The maximum allowed drift between the system and GPS times held in the
+// borealis_clocks variable. If the drift is larger than this, the module will
+// crash to avoid writing corrupt metadata to file.
+#define MAX_CLOCK_DRIFT 1000.0  // seconds
 
 /**
  * @brief      Makes a set of vectors of the samples for each TX channel from
@@ -329,6 +329,16 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
       } else {
         sequence_start_time = uhd::time_spec_t(
             sequence_start_time.get_full_secs(), fractional_second);
+      }
+    } else {
+      // round up to next millisecond
+      double next_ms = std::ceil(sequence_start_time.get_frac_secs() * 1000.0);
+      if (next_ms > 999.0) {
+        sequence_start_time =
+            uhd::time_spec_t(sequence_start_time.get_full_secs() + 1, 0.0);
+      } else {
+        sequence_start_time = uhd::time_spec_t(
+            sequence_start_time.get_full_secs(), next_ms / 1000.0);
       }
     }
 
