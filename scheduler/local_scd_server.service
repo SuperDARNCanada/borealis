@@ -23,7 +23,7 @@
 # Check the status with
 # `[sudo] systemctl status local_scd_server.service`
 [Unit]
-Description=Borealis Scheduling Server service
+Description=Borealis Scheduling Server
 
 [Service]
 User=radman
