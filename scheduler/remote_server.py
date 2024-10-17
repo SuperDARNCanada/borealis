@@ -421,11 +421,9 @@ def _main():
             with open(log_file, "w") as f:
                 f.write(log_msg_header)
                 f.write(error_msg)
-            message = f"remote_server @ {site_id}: Failed to schedule experiment {relevant_lines[i]}"
-            sp.call(
-                f"""curl --silent --header "Content-type: application/json" --data "{{'text':{message}}}" "${{!SLACK_WEBHOOK}}" """.split(),
-                shell=True,
-            )
+            message = f"remote_server @ {site_id}: Failed to schedule {str(relevant_lines[i])}"
+            command = f"""curl --silent --header "Content-type: application/json" --data "{{'text':{message}}}" "${{!SLACK_WEBHOOK_{site_id.upper()}}}" """
+            sp.call(command.split(), shell=True)
 
         else:
             timeline, warnings = convert_scd_to_timeline(
