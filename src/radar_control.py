@@ -29,8 +29,10 @@ from utils import socket_operations as so
 sys.path.append(os.environ["BOREALISPATH"])
 if __debug__:
     from build.debug.src.utils.protobuf.driverpacket_pb2 import DriverPacket
+    from build.debug.src.utils.capnp.driverpacket_capnp import DriverPacketPnp as DPnp
 else:
     from build.release.src.utils.protobuf.driverpacket_pb2 import DriverPacket
+    from build.release.src.utils.capnp.driverpacket_capnp import DriverPacketPnp as DPnp
 
 TIME_PROFILE = False
 
@@ -211,14 +213,13 @@ def create_driver_message(radctrl_params, pulse_transmit_data):
 
     # If this is the first time the driver is being set-up, only send tx and rx rates and center frequencies
     if radctrl_params.startup_flag:
-        message.txcenterfreq = (
-            radctrl_params.slice_dict[0].txctrfreq * 1000
-        )  # convert to Hz
-        message.rxcenterfreq = (
-            radctrl_params.slice_dict[0].rxctrfreq * 1000
-        )  # convert to Hz
-        message.txrate = radctrl_params.experiment.txrate
-        message.rxrate = radctrl_params.experiment.rxrate
+        message = DPnp.new_message(
+            txCtrFreq=radctrl_params.slice_dict[0].txctrfreq * 1000,  # convert to Hz
+            rxCtrFreq=radctrl_params.slice_dict[0].rxctrfreq * 1000,  # convert to Hz
+            txRate=radctrl_params.experiment.txrate,
+            rxRate=radctrl_params.experiment.rxrate,
+        )
+        return message.to_bytes()
     else:
         timing = pulse_transmit_data["timing"]
         SOB = pulse_transmit_data["startofburst"]

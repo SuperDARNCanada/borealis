@@ -1,4 +1,6 @@
 /*Copyright 2016 SuperDARN*/
+#include <capnp/message.h>
+#include <capnp/serialize.h>
 #include <stdint.h>
 #include <sys/mman.h>
 #include <unistd.h>
@@ -27,6 +29,7 @@
 #include <vector>
 #include <zmq.hpp>
 
+#include "src/utils/capnp/driverpacket.capnp.h"
 #include "src/utils/protobuf/driverpacket.pb.h"
 #include "src/utils/protobuf/rxsamplesmetadata.pb.h"
 #include "usrp.hpp"
@@ -710,19 +713,22 @@ int32_t UHD_SAFE_MAIN(int32_t argc, char *argv[]) {
   // that it can begin processing experiments without low averages in the first
   // integration period.
 
-  auto setup_data = recv_string(
-      driver_to_radar_control, driver_options.get_radctrl_to_driver_identity());
+  auto setup_data = recv_string(driver_to_radar_control,
+                                driver_options.get_radctrl_to_driver_identity())
+                        .c_str();
 
-  driverpacket::DriverPacket driver_packet;
-  if (driver_packet.ParseFromString(setup_data) == false) {
-    // TODO(keith): handle error
-  }
+  auto wordArray = kj::ArrayPtr<capnp::word const>(
+      reinterpret_cast<capnp::word const *>(&setup_data), sizeof(setup_data));
+  ::capnp::FlatArrayMessageReader msgReader =
+      ::capnp::FlatArrayMessageReader(wordArray);
+  DriverPacketPnp::Reader driver_packet = msgReader.getRoot<DriverPacketPnp>();
 
-  USRP usrp_d(driver_options, driver_packet.txrate(), driver_packet.rxrate());
+  USRP usrp_d(driver_options, driver_packet.getTxRate(),
+              driver_packet.getRxRate());
   auto tune_delay = uhd::time_spec_t(TUNING_DELAY);
-  usrp_d.set_tx_center_freq(driver_packet.txcenterfreq(),
+  usrp_d.set_tx_center_freq(driver_packet.getTxCtrFreq(),
                             driver_options.get_transmit_channels(), tune_delay);
-  usrp_d.set_rx_center_freq(driver_packet.rxcenterfreq(),
+  usrp_d.set_rx_center_freq(driver_packet.getRxCtrFreq(),
                             driver_options.get_receive_channels(), tune_delay);
 
   driver_to_radar_control.close();

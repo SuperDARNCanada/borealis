@@ -94,7 +94,7 @@ ENV_EXTENSIONS = {
     "_common": dict(
         # Common flags for all C++ builds
         CCFLAGS=["-Wall"],
-        CXXFLAGS=["-std=c++11"],
+        CXXFLAGS=["-std=c++14"],
         CFLAGS=["-std=c99"],
         # Modules should be able to include relative to build root dir
         CPPPATH=["#$BUILDROOT"],
