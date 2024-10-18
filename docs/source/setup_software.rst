@@ -53,7 +53,7 @@ the note when running ``install_radar_deps.py``.
 #. *Optional:* Use the BIOS to find a stable over-clock for the CPU. Usually the recommended turbo
    frequency is a good place to start. This step is optional, but will help system performance when
    it comes to streaming high rates from the USRP. Do not adjust higher over-clock settings without
-   doing research. **NOTE: Overclocking is no longer suggested, as the increase performace comes
+   doing research. **NOTE: Overclocking is no longer suggested, as the increase performance comes
    at the cost of reliability**
 
 #. Use the BIOS to enable boot-on-power. The computer should come back online when power is restored
@@ -113,7 +113,7 @@ the note when running ``install_radar_deps.py``.
 
    #. Use ``sysctl`` to adjust the kernel network buffer sizes. This should be added to a script
       that occurs on reboot for the interface used to connect to the USRPs. That's 50,000,000 for
-      ``rmem_max`` and 2,500,000 for ``wmwem_max``. ::
+      ``rmem_max`` and 2,500,000 for ``wmem_max``. ::
 
         sudo sysctl -w net.core.rmem_max=50000000
         sudo sysctl -w net.core.wmem_max=2500000
@@ -169,9 +169,8 @@ the note when running ``install_radar_deps.py``.
 
     @users - rtprio 99
 
-#. Once all dependencies are resolved, use ``scons`` to build the system. Use the script called
-   ``mode`` to change the build environment to debug or release depending on what version of the
-   system should be run. ``SCONSFLAGS`` variable can be added to ``.profile`` to hold any flags such
+#. Once all dependencies are resolved, use ``scons`` to build the system. 
+   ``SCONSFLAGS`` variable can be added to ``.profile`` to hold any flags such
    as ``-j`` for parallel builds. ::
 
     cd $BOREALISPATH
