@@ -14,6 +14,7 @@ import threading
 import time
 import zlib
 
+import dmap
 import zmq
 
 sys.path.append(str(Path(__file__).resolve().parents[3]))
@@ -54,8 +55,8 @@ if __name__ == "__main__":
     thread.start()
 
     # Load in a record of data
-    infile = open(str(Path(__file__).resolve().parent) + "/rawacf_record.pkl", "rb")
-    rawacf_data = pickle.load(infile)
+    infile = str(Path(__file__).resolve().parent) + "/20240912.1905.41.sas.a.rawacf"
+    rawacf_data = {0: (0.0, dmap.read_rawacf(infile))}
 
     for i in range(
         5

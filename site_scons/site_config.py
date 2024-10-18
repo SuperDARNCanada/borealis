@@ -84,6 +84,9 @@ ENV_OVERRIDES = {
     "release": dict(
         BUILDROOT=os.path.join(_BUILD_BASE, "release"),
     ),
+    "mock": dict(
+        BUILDROOT=os.path.join(_BUILD_BASE, "mock")
+    )
 }
 
 # Dictionary of flavor-specific settings that should extend values
@@ -107,6 +110,9 @@ ENV_EXTENSIONS = {
         # Extra flags for release C++ builds
         CCFLAGS=["-DNDEBUG", "-O3"],
     ),
+    "mock": dict(
+        # No C++, just Python and protobuf
+    )
 }
 
 

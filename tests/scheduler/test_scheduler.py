@@ -6,6 +6,7 @@ Run via: 'python3 test_scheduler.py'
 :author: Kevin Krieger
 """
 
+import copy
 import shutil
 import unittest
 import os
@@ -516,6 +517,31 @@ class TestSchedulerUtils(unittest.TestCase):
                 kwargs_str,
             )
             line.test(self.site_id)
+
+    def test_rawacf_format(self):
+        """
+        Test getting the next month from a given date with wrong type
+        """
+        line_dict = copy.deepcopy(self.linedict)
+        formats = ["hdf5", "dmap", None]
+        lines = [
+            "20000101 06:30 60 0 normalscan common --rawacf_format=hdf5\n",
+            "20000101 06:30 60 0 normalscan common --rawacf_format=dmap\n",
+            "20000101 06:30 60 0 normalscan common\n",
+        ]
+        for fmt, ln in zip(formats, lines):
+            line_dict["rawacf_format"] = fmt
+            line = scd_utils.ScheduleLine.from_str(ln)
+            self.assertEqual(line.rawacf_format, fmt)
+            self.assertEqual(str(line), ln.strip())
+
+        with self.assertRaises(ValidationError):
+            line_dict["rawacf_format"] = "json"
+            scd_utils.ScheduleLine(**line_dict)
+
+        with self.assertRaises(ValidationError):
+            line_dict["rawacf_format"] = 0
+            scd_utils.ScheduleLine(**line_dict)
 
     # read_scd tests
     def test_invalid_num_args(self):

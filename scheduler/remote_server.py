@@ -34,7 +34,13 @@ from utils.options import Options
 
 
 def format_to_atq(
-    dt, experiment, scheduling_mode, first_event_flag=False, kwargs="", embargo=False
+    dt,
+    experiment,
+    scheduling_mode,
+    first_event_flag=False,
+    kwargs="",
+    embargo=False,
+    rawacf_format=None,
 ):
     """
     Turns an experiment line from the scd into a formatted atq command.
@@ -51,6 +57,8 @@ def format_to_atq(
     :type   kwargs:             str
     :param  embargo:            Option to embargo the data (makes the CPID negative)
     :type   embargo:            bool
+    :param  rawacf_format:      File format to use when writing rawacf files.
+    :param  rawacf_format:      str
 
     :returns:   Formatted atq str.
     :rtype:     str
@@ -60,6 +68,8 @@ def format_to_atq(
     start_cmd = f"echo 'screen -d -m -S starter {borealis_path}/scripts/steamed_hams.py {experiment} release {scheduling_mode}"
     if embargo:
         start_cmd += " --embargo"
+    if rawacf_format is not None:
+        start_cmd += f" --rawacf-format {rawacf_format}"
     if kwargs:
         start_cmd += f" --kwargs {kwargs}"
     start_cmd += "'"  # Terminate the echo string
@@ -352,6 +362,7 @@ def timeline_to_atq(timeline, scd_dir, time_of_interest, site_id):
                     True,
                     event.kwargs,
                     event.embargo,
+                    event.rawacf_format
                 )
             )
             first_event = False
@@ -364,6 +375,7 @@ def timeline_to_atq(timeline, scd_dir, time_of_interest, site_id):
                     False,
                     event.kwargs,
                     event.embargo,
+                    event.rawacf_format
                 )
             )
     for cmd in atq:

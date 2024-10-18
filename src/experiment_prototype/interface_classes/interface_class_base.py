@@ -52,9 +52,11 @@ class InterfaceClassBase(object):
                                 pulse sequences. The keys of the transmit_metadata are:
 
                                 - 'output_rx_rate' [Hz],
-                                - 'main_antenna_count',
-                                - 'intf_antenna_count',
                                 - 'tr_window_time' [s],
+                                - 'main_antenna_locations',
+                                - 'intf_antenna_locations',
+                                - 'main_antenna_count'
+                                - 'intf_antenna_count'
                                 - 'main_antenna_spacing' [m],
                                 - 'intf_antenna_spacing' [m],
                                 - 'pulse_ramp_time' [s],

@@ -82,11 +82,13 @@ DriverOptions::DriverOptions() {
       tx_main_antenna_to_channel_map;  // Maps tx main antenna number to channel
                                        // number
 
+  auto antennas_info = config_pt.get_child("antennas");
+
   // Get number of physical antennas
   auto main_antenna_count = boost::lexical_cast<uint32_t>(
-      config_pt.get<std::string>("main_antenna_count"));
+      antennas_info.get<std::string>("main_antenna_count"));
   auto intf_antenna_count = boost::lexical_cast<uint32_t>(
-      config_pt.get<std::string>("intf_antenna_count"));
+      antennas_info.get<std::string>("intf_antenna_count"));
 
   uint32_t device_num = 0;  // Active device counter
 
