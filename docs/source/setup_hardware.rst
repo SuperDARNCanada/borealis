@@ -471,6 +471,8 @@ Once these components are selected, the supporting components such as motherboar
 drives can all be selected. Assemble the computer following the instructions that come with the
 motherboard.
 
+.. _ntp-hardware:
+
 -----------------------
 NTP discipline with PPS
 -----------------------
