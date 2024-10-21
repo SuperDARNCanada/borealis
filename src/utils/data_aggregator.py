@@ -26,9 +26,8 @@ class Aggregator:
     bfiq_accumulator: dict = field(default_factory=dict)
     bfiq_available: bool = False
     intfacfs_available: bool = False
-    gps_locked: bool = (
-        True  # init True so that logical AND works properly in update() method
-    )
+    # init True so that logical AND works properly in update() method
+    gps_locked: bool = True
     gps_to_system_time_diff: float = 0.0
     intfacfs_accumulator: dict = field(default_factory=dict)
     lp_status_word: int = 0b0
