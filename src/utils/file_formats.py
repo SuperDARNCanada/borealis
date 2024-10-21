@@ -599,7 +599,7 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "record",
             "nickname": "timestamp",
-            "units": "seconds since 1970-01-01",
+            "units": "seconds since 1970-01-01 00:00:00 UTC",
             "description": "GPS timestamps of start of first pulse for each sampling period in the averaging period",
             "dim_labels": ["sequence"],
             "required": True,
