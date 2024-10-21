@@ -59,6 +59,8 @@ radar to follow the schedule, and is started via the ``start_radar.sh`` script (
 This script should be added to the control computer boot-up scripts so that it generates a new set
 of scheduled commands.
 
+.. _automated-restarts:
+
 ------------------
 Automated Restarts
 ------------------

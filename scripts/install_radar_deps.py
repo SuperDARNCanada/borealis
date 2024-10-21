@@ -145,6 +145,8 @@ def install_packages(distro: str, dev: bool = True):
         "kernel-devel",
         "libboost_*_66_0",
         "uhd-devel",
+        "uhd-utils",
+        "uhd-firmware",
     ]
 
     dev_packages = [
