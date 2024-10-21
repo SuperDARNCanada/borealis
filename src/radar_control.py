@@ -21,6 +21,7 @@ import threading
 import numpy as np
 from functools import reduce
 from dataclasses import dataclass, field
+import capnp  # noqa: F401
 
 from utils.options import Options
 import utils.message_formats as messages

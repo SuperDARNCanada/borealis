@@ -713,14 +713,16 @@ int32_t UHD_SAFE_MAIN(int32_t argc, char *argv[]) {
   // that it can begin processing experiments without low averages in the first
   // integration period.
 
-  auto setup_data = recv_string(driver_to_radar_control,
-                                driver_options.get_radctrl_to_driver_identity())
-                        .c_str();
+  auto message = recv_message(driver_to_radar_control,
+                              driver_options.get_radctrl_to_driver_identity());
 
-  auto wordArray = kj::ArrayPtr<capnp::word const>(
-      reinterpret_cast<capnp::word const *>(&setup_data), sizeof(setup_data));
+  auto received_array =
+      kj::heapArray<capnp::word>(message.size() / sizeof(capnp::word));
+  memcpy(received_array.begin(), message.data(), message.size());
+
   ::capnp::FlatArrayMessageReader msgReader =
-      ::capnp::FlatArrayMessageReader(wordArray);
+      ::capnp::FlatArrayMessageReader(received_array);
+
   DriverPacketPnp::Reader driver_packet = msgReader.getRoot<DriverPacketPnp>();
 
   USRP usrp_d(driver_options, driver_packet.getTxRate(),

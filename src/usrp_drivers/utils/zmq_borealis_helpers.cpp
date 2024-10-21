@@ -33,6 +33,15 @@ std::string recv_string(zmq::socket_t &socket, std::string sender_iden) {
   return data_msg;
 }
 
+zmq::message_t recv_message(zmq::socket_t &socket, std::string sender_iden) {
+  zmq::multipart_t receiver;
+  ERR_CHK_ZMQ(recv_multipart(socket, std::back_inserter(receiver)));
+  auto sender = receiver.popstr();
+  assert(sender == sender_iden);
+
+  return receiver.remove();
+}
+
 void send_string(zmq::socket_t &socket, std::string recv_iden,
                  std::string &data_msg) {
   zmq::multipart_t sender;

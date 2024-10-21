@@ -27,6 +27,7 @@ std::vector<zmq::socket_t> create_sockets(zmq::context_t &context,
 void send_string(zmq::socket_t &socket, std::string recv_iden,
                  std::string &data_msg);
 std::string recv_string(zmq::socket_t &socket, std::string sender_iden);
+zmq::message_t recv_message(zmq::socket_t &socket, std::string sender_iden);
 void router(zmq::context_t &context, std::string router_address);
 
 #endif  // SRC_USRP_DRIVERS_UTILS_ZMQ_BOREALIS_HELPERS_HPP_

@@ -30,4 +30,4 @@ import os
 Import('*')
 
 Prog('usrp_driver', Glob("./*.c*"), with_libs=['utils', 'messages'],
-     LIBS=['protobuf', 'pthread', 'boost_system', 'uhd', 'zmq', 'rt', 'capnp'])
+     LIBS=['protobuf', 'pthread', 'boost_system', 'uhd', 'zmq', 'rt', 'capnp', 'kj'])
