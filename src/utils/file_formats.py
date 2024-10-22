@@ -227,8 +227,8 @@ class SliceData:
             "level": "record",
             "units": "a.u. ~ V",
             "description": "Samples decimated by dm_rate",
-            "dim_labels": ["antenna", "sequence", "time"],
-            "dim_scales": ["tx_antennas", "sqn_timestamps", "sample_time"],
+            "dim_labels": ["sequence", "antenna", "time"],
+            # "dim_scales": ["tx_antennas", "sqn_timestamps", "sample_time"],
             "required": True,
         }
     )
@@ -598,7 +598,7 @@ class SliceData:
     )
     sqn_timestamps: list[float] = field(
         metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
+            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf", "txdata"],
             "level": "record",
             "nickname": "timestamp",
             "units": "seconds since 1970-01-01 00:00:00 UTC",
@@ -635,7 +635,7 @@ class SliceData:
     )
     tx_antennas: list[int] = field(
         metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
+            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf", "txdata"],
             "level": "file",
             "description": "Indices into ``antenna_locations`` of the antennas used for transmitting in this experiment",
             "nickname": "tx antenna",
@@ -687,7 +687,7 @@ class SliceData:
             "units": "a.u. ~ V",
             "description": "Samples sent to USRPs for transmission",
             "dim_labels": ["sequence", "antenna", "time"],
-            "dim_scales": ["sqn_timestamps", "tx_antennas", "sample_time"],
+            # "dim_scales": ["sqn_timestamps", "tx_antennas", "sample_time"],
             "required": True,
         }
     )

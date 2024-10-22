@@ -360,7 +360,7 @@ class DataWrite:
                         shm.close()
                         shm.unlink()
         if write_tx:
-            self._write_tx_data(aveperiod_meta.sequences)
+            self._write_tx_data(aveperiod_meta.sequences, data_parsing)
 
         write_time = time.perf_counter() - start
         log.info(
@@ -598,7 +598,7 @@ class DataWrite:
             shared_mem.close()
             shared_mem.unlink()
 
-    def _write_tx_data(self, sequences: list[Sequence]):
+    def _write_tx_data(self, sequences: list[Sequence], data_parsing: Aggregator):
         """
         Writes out the tx samples and metadata for debugging purposes.
         Does not use same parameters of other writes.
@@ -635,16 +635,20 @@ class DataWrite:
             ],
             dtype=np.float32,
         )
+        tx_data.sqn_timestamps = data_parsing.timestamps
 
+        tx_antennas = set()
         for sqn in tx_sqns:
             meta_data = sqn.tx_data
-
+            for rxchan in sqn.rx_channels:
+                tx_antennas = tx_antennas.union(set(rxchan.tx_antennas))
             tx_data.decimated_tx_samples.append(meta_data.decimated_tx_samples)
             tx_data.dm_rate.append(meta_data.dm_rate)
             tx_data.pulse_timing.append(np.array(meta_data.pulse_timing_us))
             tx_data.pulse_sample_start.append(np.array(meta_data.pulse_sample_start))
             tx_data.tx_samples.append(meta_data.tx_samples)
 
+        tx_data.tx_antennas = sorted(list(tx_antennas))
         self._write_file(tx_data, self.tx_data_two_hr_name, "txdata")
 
 
