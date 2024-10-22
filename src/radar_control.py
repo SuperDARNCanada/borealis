@@ -29,11 +29,9 @@ from utils import socket_operations as so
 
 sys.path.append(os.environ["BOREALISPATH"])
 if __debug__:
-    from build.debug.src.utils.protobuf.driverpacket_pb2 import DriverPacket
-    from build.debug.src.utils.capnp.driverpacket_capnp import DriverPacketPnp as DPnp
+    from build.debug.src.utils.capnp.driverpacket_capnp import DriverPacket
 else:
-    from build.release.src.utils.protobuf.driverpacket_pb2 import DriverPacket
-    from build.release.src.utils.capnp.driverpacket_capnp import DriverPacketPnp as DPnp
+    from build.release.src.utils.capnp.driverpacket_capnp import DriverPacket
 
 TIME_PROFILE = False
 
@@ -210,64 +208,58 @@ def create_driver_message(radctrl_params, pulse_transmit_data):
     :rtype: dataclass
     """
 
-    message = DriverPacket()
+    message = DriverPacket.new_message(
+        txCtrFreq=radctrl_params.slice_dict[0].txctrfreq * 1000,  # convert to Hz
+        rxCtrFreq=radctrl_params.slice_dict[0].rxctrfreq * 1000,  # convert to Hz
+        txRate=radctrl_params.experiment.txrate,
+        rxRate=radctrl_params.experiment.rxrate,
+    )
 
     # If this is the first time the driver is being set-up, only send tx and rx rates and center frequencies
-    if radctrl_params.startup_flag:
-        message = DPnp.new_message(
-            txCtrFreq=radctrl_params.slice_dict[0].txctrfreq * 1000,  # convert to Hz
-            rxCtrFreq=radctrl_params.slice_dict[0].rxctrfreq * 1000,  # convert to Hz
-            txRate=radctrl_params.experiment.txrate,
-            rxRate=radctrl_params.experiment.rxrate,
-        )
-        return message.to_bytes()
-    else:
-        timing = pulse_transmit_data["timing"]
-        SOB = pulse_transmit_data["startofburst"]
-        EOB = pulse_transmit_data["endofburst"]
-
-        message.timetosendsamples = timing
-        message.SOB = SOB
-        message.EOB = EOB
-        message.sequence_num = (
-            radctrl_params.seqnum_start + radctrl_params.num_sequences
-        )
-        message.numberofreceivesamples = radctrl_params.sequence.numberofreceivesamples
-        message.seqtime = radctrl_params.sequence.seqtime
-        message.align_sequences = radctrl_params.sequence.align_sequences
+    if not radctrl_params.startup_flag:
+        message.startBurst = (pulse_transmit_data["startofburst"],)
+        message.endBurst = (pulse_transmit_data["endofburst"],)
+        message.timeToSendSamples = (pulse_transmit_data["timing"],)
+        message.sqnNum = radctrl_params.seqnum_start + radctrl_params.num_sequences
+        message.numRxSamples = radctrl_params.sequence.numberofreceivesamples
+        message.sqnTime = radctrl_params.sequence.seqtime
+        message.alignSqns = radctrl_params.sequence.align_sequences
 
         if pulse_transmit_data["isarepeat"]:
             # antennas empty
             # samples empty
             # ctrfreq empty
             # rxrate and txrate empty
-            log.debug("repeat timing", timing=timing, sob=SOB, eob=EOB)
+            log.debug(
+                "repeat timing",
+                timing=pulse_transmit_data["timing"],
+                sob=pulse_transmit_data["startofburst"],
+                eob=pulse_transmit_data["endofburst"],
+            )
         else:
             # Setup data to send to driver for transmit.
-            log.debug("non-repeat timing", timing=timing, sob=SOB, eob=EOB)
+            log.debug(
+                "non-repeat timing",
+                timing=pulse_transmit_data["timing"],
+                sob=pulse_transmit_data["startofburst"],
+                eob=pulse_transmit_data["endofburst"],
+            )
             samples_array = pulse_transmit_data["samples_array"]
-            for ant_idx in range(samples_array.shape[0]):
-                sample_add = message.channel_samples.add()
+            num_ants = samples_array.shape[0]
+            channels = message.init("channelSamples", num_ants)
+            for ant_idx in range(num_ants):
+                channel = channels[ant_idx]
+                channel.init("real", samples_array.shape[1])
+                channel.init("imag", samples_array.shape[1])
+
                 # Add one Samples message for each channel possible in config.
                 # Any unused channels will be sent zeros.
-                # Protobuf expects types: int, long, or float, will reject numpy types and
+                # cap'n proto expects types: int, long, or float, will reject numpy types and
                 # throw a TypeError so we must convert the numpy arrays to lists
-                sample_add.real.extend(samples_array[ant_idx, :].real.tolist())
-                sample_add.imag.extend(samples_array[ant_idx, :].imag.tolist())
+                channel.real = samples_array[ant_idx, :].real.tolist()
+                channel.imag = samples_array[ant_idx, :].imag.tolist()
 
-            message.txcenterfreq = (
-                radctrl_params.sequence.txctrfreq * 1000
-            )  # convert to Hz
-            message.rxcenterfreq = (
-                radctrl_params.sequence.rxctrfreq * 1000
-            )  # convert to Hz
-            message.txrate = radctrl_params.experiment.txrate
-            message.rxrate = radctrl_params.experiment.rxrate
-            message.numberofreceivesamples = (
-                radctrl_params.sequence.numberofreceivesamples
-            )
-
-    return message.SerializeToString()
+    return message.to_bytes()
 
 
 def dsp_comms_thread(radctrl_dsp_iden, dsp_socket_iden, router_addr):

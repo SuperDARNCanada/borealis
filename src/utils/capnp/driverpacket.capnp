@@ -1,6 +1,6 @@
 @0xd8bfb47e358210a0;
 
-struct DriverPacketPnp {
+struct DriverPacket {
   channelSamples @0 :List(SamplesBuffer);
   sqnNum @1 :UInt32;
   rxRate @2 :Float64;

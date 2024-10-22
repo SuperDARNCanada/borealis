@@ -30,7 +30,6 @@
 #include <zmq.hpp>
 
 #include "src/utils/capnp/driverpacket.capnp.h"
-#include "src/utils/protobuf/driverpacket.pb.h"
 #include "src/utils/protobuf/rxsamplesmetadata.pb.h"
 #include "usrp.hpp"
 #include "utils/driveroptions.hpp"
@@ -79,25 +78,25 @@ static clocks_t borealis_clocks;
  * to be parsed into a vector.
  */
 std::vector<std::vector<std::complex<float>>> make_tx_samples(
-    const driverpacket::DriverPacket &driver_packet,
+    const DriverPacket::Reader &driver_packet,
     const DriverOptions &driver_options) {
-  // channel_samples_size() will get you # of channels (protobuf in c++)
-  std::vector<std::vector<std::complex<float>>> samples(
-      driver_packet.channel_samples_size());
+  auto channel_samples = driver_packet.getChannelSamples();
 
-  for (int channel = 0; channel < driver_packet.channel_samples_size();
-       channel++) {
-    // Get the number of real samples in this particular channel (_size() is
-    // from protobuf)
-    auto num_samps = driver_packet.channel_samples(channel).real_size();
+  std::vector<std::vector<std::complex<float>>> samples(channel_samples.size());
+
+  size_t i = 0;
+  for (auto channel : channel_samples) {
+    // Get the number of real samples in this particular channel
+    auto real_samps = channel.getReal();
+    auto imag_samps = channel.getImag();
+    auto num_samps = real_samps.size();
+
     std::vector<std::complex<float>> v(num_samps);
-    // Type for smp? protobuf object, containing repeated double real and double
-    // imag
-    auto smp = driver_packet.channel_samples(channel);
-    for (int smp_num = 0; smp_num < num_samps; smp_num++) {
-      v[smp_num] = std::complex<float>(smp.real(smp_num), smp.imag(smp_num));
+    for (size_t smp_num = 0; smp_num < num_samps; smp_num++) {
+      v[smp_num] =
+          std::complex<float>(real_samps[smp_num], imag_samps[smp_num]);
     }
-    samples[channel] = v;
+    samples[i++] = v;
   }
 
   for (auto &s : samples) {
@@ -132,7 +131,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
 
   auto rx_rate = usrp_d.get_rx_rate();
 
-  driverpacket::DriverPacket driver_packet;
+  DriverPacket::Reader driver_packet;
 
   zmq::socket_t start_trigger(driver_c, ZMQ_PAIR);
   ERR_CHK_ZMQ(start_trigger.connect("inproc://thread"))
@@ -194,9 +193,18 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
     uint32_t agc_status_bank_l = 0b0;
     uint32_t lp_status_bank_l = 0b0;
     while (more_pulses) {
-      auto pulse_data =
-          recv_string(driver_to_radar_control,
-                      driver_options.get_radctrl_to_driver_identity());
+      auto message =
+          recv_message(driver_to_radar_control,
+                       driver_options.get_radctrl_to_driver_identity());
+
+      auto received_array =
+          kj::heapArray<capnp::word>(message.size() / sizeof(capnp::word));
+      memcpy(received_array.begin(), message.data(), message.size());
+
+      ::capnp::FlatArrayMessageReader msgReader =
+          ::capnp::FlatArrayMessageReader(received_array);
+
+      driver_packet = msgReader.getRoot<DriverPacket>();
 
       // Here we accept our driver_packet from the radar_control. We use that
       // info in order to configure the USRP devices based on experiment
@@ -204,12 +212,8 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
       TIMEIT_IF_TRUE_OR_DEBUG(
           false, COLOR_BLUE("TRANSMIT") << " total setup time: ",
           [&]() {
-            if (driver_packet.ParseFromString(pulse_data) == false) {
-              // TODO(keith): handle error
-            }
-
-            sqn_num = driver_packet.sequence_num();
-            seqtime = driver_packet.seqtime();
+            sqn_num = driver_packet.getSqnNum();
+            seqtime = driver_packet.getSqnTime();
             if (sqn_num != expected_sqn_num) {
               DEBUG_MSG("SEQUENCE NUMBER MISMATCH: SQN "
                         << sqn_num << " EXPECTED: " << expected_sqn_num);
@@ -217,36 +221,36 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
             }
 
             DEBUG_MSG(COLOR_BLUE("TRANSMIT")
-                      << " burst flags: SOB " << driver_packet.sob() << " EOB "
-                      << driver_packet.eob());
+                      << " burst flags: SOB " << driver_packet.getStartBurst()
+                      << " EOB " << driver_packet.getEndBurst());
 
             TIMEIT_IF_TRUE_OR_DEBUG(
                 false, COLOR_BLUE("TRANSMIT") << " center freq ",
                 [&]() {
                   // If there is new center frequency data, set TX center
                   // frequency for each USRP TX channel.
-                  if (tx_center_freq != driver_packet.txcenterfreq()) {
-                    if (driver_packet.txcenterfreq() > 0.0 &&
-                        driver_packet.sob() == true) {
+                  if (tx_center_freq != driver_packet.getTxCtrFreq()) {
+                    if (driver_packet.getTxCtrFreq() > 0.0 &&
+                        driver_packet.getStartBurst() == true) {
                       DEBUG_MSG(COLOR_BLUE("TRANSMIT")
                                 << " setting tx center freq to "
-                                << driver_packet.txcenterfreq());
+                                << driver_packet.getTxCtrFreq());
                       tx_center_freq = usrp_d.set_tx_center_freq(
-                          driver_packet.txcenterfreq(), tx_channels,
+                          driver_packet.getTxCtrFreq(), tx_channels,
                           uhd::time_spec_t(TUNING_DELAY));
                     }
                   }
 
                   // rxcenterfreq() will return 0 if it hasn't changed, so check
                   // for changes here
-                  if (rx_center_freq != driver_packet.rxcenterfreq()) {
-                    if (driver_packet.rxcenterfreq() > 0.0 &&
-                        driver_packet.sob() == true) {
+                  if (rx_center_freq != driver_packet.getRxCtrFreq()) {
+                    if (driver_packet.getRxCtrFreq() > 0.0 &&
+                        driver_packet.getStartBurst() == true) {
                       DEBUG_MSG(COLOR_BLUE("TRANSMIT")
                                 << " setting rx center freq to "
-                                << driver_packet.rxcenterfreq());
+                                << driver_packet.getRxCtrFreq());
                       rx_center_freq = usrp_d.set_rx_center_freq(
-                          driver_packet.rxcenterfreq(), receive_channels,
+                          driver_packet.getRxCtrFreq(), receive_channels,
                           uhd::time_spec_t(TUNING_DELAY));
                     }
                   }
@@ -257,12 +261,13 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
             TIMEIT_IF_TRUE_OR_DEBUG(
                 false,
                 COLOR_BLUE("TRANSMIT") << " sample unpack time: ", [&]() {
-                  if (driver_packet.sob() == true) {
+                  if (driver_packet.getStartBurst() == true) {
                     pulses.clear();
                   }
                   // Parse new samples from driver packet if they exist.
-                  if (driver_packet.channel_samples_size() >
-                      0) {  // ~700us to unpack 4x1600 samples
+                  if (driver_packet.getChannelSamples().size() >
+                      0) {  // todo: benchmark with capnp; ~700us to unpack
+                            // 4x1600 samples with protobuf
                     last_pulse_sent =
                         make_tx_samples(driver_packet, driver_options);
                     samples_set = true;
@@ -271,13 +276,13 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
                 }());
           }();
 
-          time_to_send_samples.push_back(driver_packet.timetosendsamples());
+          time_to_send_samples.push_back(driver_packet.getTimeToSendSamples());
 
-          if (driver_packet.sob() == true) {
-            num_recv_samples = driver_packet.numberofreceivesamples();
+          if (driver_packet.getStartBurst() == true) {
+            num_recv_samples = driver_packet.getNumRxSamples();
           }
 
-          if (driver_packet.eob() == true) { more_pulses = false; });
+          if (driver_packet.getEndBurst() == true) { more_pulses = false; });
     }
 
     // In order to transmit, these parameters need to be set at least once.
@@ -308,7 +313,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
     // Earliest possible time to start sending samples
     auto sequence_start_time = time_now + delay;
 
-    if (driver_packet.align_sequences() == true) {
+    if (driver_packet.getAlignSqns() == true) {
       // Get the digit of the next tenth of a second after min_start_time
       double tenth_of_second =
           std::ceil(sequence_start_time.get_frac_secs() *
@@ -723,7 +728,7 @@ int32_t UHD_SAFE_MAIN(int32_t argc, char *argv[]) {
   ::capnp::FlatArrayMessageReader msgReader =
       ::capnp::FlatArrayMessageReader(received_array);
 
-  DriverPacketPnp::Reader driver_packet = msgReader.getRoot<DriverPacketPnp>();
+  DriverPacket::Reader driver_packet = msgReader.getRoot<DriverPacket>();
 
   USRP usrp_d(driver_options, driver_packet.getTxRate(),
               driver_packet.getRxRate());
