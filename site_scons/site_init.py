@@ -43,11 +43,11 @@ def get_base_env(*args, **kwargs):
     All args received are passed transparently to SCons Environment init.
     """
     # Initialize new construction environment
-    env = Environment(*args, **kwargs)  # pylint: disable=undefined-variable
+    env = Environment(*args, **kwargs)  # noqa: F821
     # If a flavor is activated in the external environment - use it
     if "BUILD_FLAVOR" in os.environ:
         active_flavor = os.environ["BUILD_FLAVOR"]
-        if not active_flavor in flavors():
+        if active_flavor not in flavors():
             raise StopError("%s (from env) is not a known flavor." % (active_flavor))
         sprint('Using active flavor "%s" from your environment', active_flavor)
         env.flavors = [active_flavor]
@@ -55,9 +55,7 @@ def get_base_env(*args, **kwargs):
         # If specific flavor target specified, skip processing other flavors
         # Otherwise, include all known flavors
         env.flavors = (
-            set(flavors()).intersection(
-                COMMAND_LINE_TARGETS
-            )  # pylint: disable=undefined-variable
+            set(flavors()).intersection(COMMAND_LINE_TARGETS)  # noqa: F821
             or flavors()
         )
     # Perform base construction environment customizations from site_config
@@ -171,9 +169,9 @@ class FlavorBuilder(object):
         """Return a wrapped Protoc builder."""
 
         def compile_proto(proto_sources, **kwargs):
-            """Customized Protoc builder.
+            """Customized capnp builder.
 
-            Uses Protoc builder to compile proto files specified in
+            Uses capnp builder to compile proto files specified in
              `proto_sources`.
 
             Optionally pass `cpp=False` to disable C++ code generation.
@@ -188,8 +186,8 @@ class FlavorBuilder(object):
              in the module directory under the flavor build dir).
             Tip: Don't mess with these...
             """
-            if not hasattr(self._env, "Protoc"):
-                raise StopError("Protoc tool not installed.")
+            if not hasattr(self._env, "capnp"):
+                raise StopError("capnp tool not installed.")
             # use user-specified value, or set default
             kwargs.setdefault("PROTOPATH", ["$BUILDROOT"])
             any_output = False
@@ -206,30 +204,30 @@ class FlavorBuilder(object):
                     kwargs[path_name] = ""
             # check that at least one output language is enabled
             if any_output:
-                targets = self._env.Protoc([], proto_sources, **kwargs)
+                targets = self._env.capnp([], proto_sources, **kwargs)
                 for gen_node in targets:
                     gen_filename = os.path.basename(gen_node.path)
-                    if gen_filename.endswith(".pb.cc"):
+                    if gen_filename.endswith(".capnp.c++"):
                         # Save generated .pb.cc sources in proto_cc dictionary
                         #  (without the ".pb.cc" suffix)
-                        self._proto_cc[gen_filename[:-6]] = gen_node
+                        self._proto_cc[gen_filename[:-10]] = gen_node
             else:
                 sprint("warning: Proto target with no output directives")
 
         return compile_proto
 
     def _extend_proto_sources(self, sources, kwargs_dict):
-        """Return the sources list, extended with proto-cc-sources.
+        """Return the sources list, extended with capnp-cc-sources.
 
         @param  sources     The original list of sources
         @param kwargs_dict  The keyword argument dictionary
 
-        The protos list, if specified, is at kwargs_dict['protos'].
+        The capnp list, if specified, is at kwargs_dict['protos'].
         If it is specified, the sources list is extended accordingly,
          and the 'protos' key is removed (so it's safe to pass-through).
         """
         return listify(sources) + [
-            self._proto_cc[re.sub(r"\.proto$", "", proto)]
+            self._proto_cc[re.sub(r"\.capnp$", "", proto)]
             for proto in listify(kwargs_dict.pop("protos", None))
         ]
 

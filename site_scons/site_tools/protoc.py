@@ -39,10 +39,10 @@ import re
 
 import SCons
 
-_PROTOCS = "protoc"
-_PROTOSUFFIX = ".proto"
+_PROTOCS = "capnp compile"
+_PROTOSUFFIX = ".capnp"
 
-_PROTOC_SCANNER_RE = re.compile(r"^import\s+\"(.+\.proto)\"\;$", re.M)
+_PROTOC_SCANNER_RE = re.compile(r"^import\s+\"(.+\.capnp)\"\;$", re.M)
 
 
 def protoc_emitter(target, source, env):
@@ -50,10 +50,8 @@ def protoc_emitter(target, source, env):
     for src in source:
         proto = os.path.splitext(str(src))[0]
         if env["PROTOCPPOUT"]:
-            target.append("%s.pb.cc" % (proto))
-            target.append("%s.pb.h" % (proto))
-        if env["PROTOPYOUT"]:
-            target.append("%s_pb2.py" % (proto))
+            target.append("%s.capnp.c++" % (proto))
+            target.append("%s.capnp.h" % (proto))
     return target, source
 
 
@@ -76,16 +74,16 @@ def generate(env):
     """Add Builders, Scanners and construction variables
     for protoc to the build Environment."""
     try:
-        bldr = env["BUILDERS"]["Protoc"]
+        bldr = env["BUILDERS"]["capnp"]
     except KeyError:
         action = SCons.Action.Action("$PROTOCOM", "$PROTOCOMSTR")
         bldr = SCons.Builder.Builder(
             action=action, emitter=protoc_emitter, src_suffix="$PROTOCSRCSUFFIX"
         )
-        env["BUILDERS"]["Protoc"] = bldr
+        env["BUILDERS"]["capnp"] = bldr
 
     # pylint: disable=bad-whitespace
-    env["PROTOC"] = env.Detect(_PROTOCS) or "protoc"
+    env["PROTOC"] = env.Detect(_PROTOCS) or "capnp compile"
     env["PROTOCFLAGS"] = SCons.Util.CLVar("")
     env["PROTOCSRCSUFFIX"] = _PROTOSUFFIX
     # Default proto search path is same dir
@@ -95,10 +93,7 @@ def generate(env):
     # No default Python output
     env["PROTOPYOUT"] = ""
     proto_cmd = ["$PROTOC"]
-    proto_cmd.append('${["--proto_path=%s"%(x) for x in PROTOPATH]}')
-    proto_cmd.append("$PROTOCFLAGS")
-    proto_cmd.append('${PROTOCPPOUT and "--cpp_out=%s"%(PROTOCPPOUT) or ""}')
-    proto_cmd.append('${PROTOPYOUT and "--python_out=%s"%(PROTOPYOUT) or ""}')
+    proto_cmd.append("-oc++")
     proto_cmd.append("${SOURCES}")
     env["PROTOCOM"] = " ".join(proto_cmd)
 

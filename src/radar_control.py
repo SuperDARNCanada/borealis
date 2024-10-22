@@ -29,9 +29,9 @@ from utils import socket_operations as so
 
 sys.path.append(os.environ["BOREALISPATH"])
 if __debug__:
-    from build.debug.src.utils.capnp.driverpacket_capnp import DriverPacket
+    from build.debug.src.utils.capnp.messages_capnp import DriverPacket
 else:
-    from build.release.src.utils.capnp.driverpacket_capnp import DriverPacket
+    from build.release.src.utils.capnp.messages_capnp import DriverPacket
 
 TIME_PROFILE = False
 

@@ -15,15 +15,17 @@ import threading
 import argparse
 import zmq
 import pickle
+import capnp  # noqa: F401
+
 from utils import socket_operations as so
 from utils.options import Options
 from utils.message_formats import SequenceMetadataMessage
 
 sys.path.append(os.environ["BOREALISPATH"])
 if __debug__:
-    from build.debug.src.utils.protobuf import rxsamplesmetadata_pb2
+    from build.debug.src.utils.capnp.messages_capnp import RxSamplesMetadata
 else:
-    from build.release.src.utils.protobuf import rxsamplesmetadata_pb2
+    from build.release.src.utils.capnp.messages_capnp import RxSamplesMetadata
 
 TIME_PROFILE = True
 
@@ -195,19 +197,18 @@ def sequence_timing(options):
             reply = so.recv_bytes(
                 brian_to_driver, options.driver_to_brian_identity, log
             )
-            meta = rxsamplesmetadata_pb2.RxSamplesMetadata()
-            meta.ParseFromString(reply)
+            meta = RxSamplesMetadata().read(reply)
 
             log.debug(
                 "driver sent",
-                sequence_time=meta.sequence_time * 1e3,
+                sequence_time=meta.sqnTime * 1e3,
                 sequence_time_unit="ms",
-                sequence_num=meta.sequence_num,
+                sequence_num=meta.sqnNum,
             )
 
             # Requesting acknowledgement of work begins from DSP
             log.debug("requesting work begins from dsp")
-            iden = options.dspbegin_to_brian_identity + str(meta.sequence_num)
+            iden = options.dspbegin_to_brian_identity + str(meta.sqnNum)
             so.send_string(brian_to_dsp_begin, iden, "Requesting work begins")
 
             start_new_sock.send_string("driver collected sequence, ready for another")

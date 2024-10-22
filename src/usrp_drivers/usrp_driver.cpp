@@ -29,8 +29,7 @@
 #include <vector>
 #include <zmq.hpp>
 
-#include "src/utils/capnp/driverpacket.capnp.h"
-#include "src/utils/protobuf/rxsamplesmetadata.pb.h"
+#include "src/utils/capnp/messages.capnp.h"
 #include "usrp.hpp"
 #include "utils/driveroptions.hpp"
 #include "utils/shared_macros.hpp"
@@ -478,7 +477,9 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
         }()        // full usrp function lambda
     );             // full usrp function timeit macro
 
-    rxsamplesmetadata::RxSamplesMetadata samples_metadata;
+    ::capnp::MallocMessageBuilder message;
+    RxSamplesMetadata::Builder samples_metadata =
+        message.initRoot<RxSamplesMetadata>();
 
     clocks = borealis_clocks;
     system_since_epoch =
@@ -493,8 +494,8 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
                                std::to_string(gps_to_system_time_diff) +
                                " seconds");
     }
-    samples_metadata.set_gps_locked(usrp_d.gps_locked());
-    samples_metadata.set_gps_to_system_time_diff(gps_to_system_time_diff);
+    samples_metadata.setGpsLocked(usrp_d.gps_locked());
+    samples_metadata.setGpsToSystemTimeDiff(gps_to_system_time_diff);
 
     if (!usrp_d.gps_locked()) {
       RUNTIME_MSG("GPS UNLOCKED! time diff: "
@@ -515,39 +516,40 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
       std::this_thread::sleep_for(duration);
     }
 
-    samples_metadata.set_rx_rate(rx_rate);
-    samples_metadata.set_initialization_time(
-        initialization_time.get_real_secs());
-    samples_metadata.set_sequence_start_time(
-        sequence_start_time.get_real_secs());
-    samples_metadata.set_ringbuffer_size(ringbuffer_size);
-    samples_metadata.set_numberofreceivesamples(num_recv_samples);
-    samples_metadata.set_sequence_num(sqn_num);
+    samples_metadata.setRxRate(rx_rate);
+    samples_metadata.setInitTime(initialization_time.get_real_secs());
+    samples_metadata.setSqnStartTime(sequence_start_time.get_real_secs());
+    samples_metadata.setRingbufferSize(ringbuffer_size);
+    samples_metadata.setNumRxSamples(num_recv_samples);
+    samples_metadata.setSqnNum(sqn_num);
     auto actual_finish = borealis_clocks.usrp_time;
-    samples_metadata.set_sequence_time(
-        (actual_finish - time_now).get_real_secs());
+    samples_metadata.setSqnTime((actual_finish - time_now).get_real_secs());
 
-    samples_metadata.set_agc_status_bank_h(agc_status_bank_h);
-    samples_metadata.set_lp_status_bank_h(lp_status_bank_h);
-    samples_metadata.set_agc_status_bank_l(agc_status_bank_l);
-    samples_metadata.set_lp_status_bank_l(lp_status_bank_l);
+    samples_metadata.setAgcStatusH(agc_status_bank_h);
+    samples_metadata.setLpStatusH(lp_status_bank_h);
+    samples_metadata.setAgcStatusL(agc_status_bank_l);
+    samples_metadata.setLpStatusL(lp_status_bank_l);
 
-    std::string samples_metadata_str;
-    samples_metadata.SerializeToString(&samples_metadata_str);
+    //    std::string samples_metadata_str;
+    //    samples_metadata.SerializeToString(&samples_metadata_str);
+
+    kj::Array<capnp::word> words = messageToFlatArray(message);
+    kj::ArrayPtr<kj::byte> bytes = words.asBytes();
+    zmq::message_t msg(bytes);
 
     // Here we wait for a request from dsp for the samples metadata, then send
     // it, bro! https://www.youtube.com/watch?v=WIrWyr3HgXI
     auto request = RECV_REQUEST(driver_to_dsp,
                                 driver_options.get_dsp_to_driver_identity());
-    SEND_REPLY(driver_to_dsp, driver_options.get_dsp_to_driver_identity(),
-               samples_metadata_str);
+    send_message(driver_to_dsp, driver_options.get_dsp_to_driver_identity(),
+                 msg);
 
     // Here we wait for a request from brian for the samples metadata, then send
     // it
     request = RECV_REQUEST(driver_to_brian,
                            driver_options.get_brian_to_driver_identity());
-    SEND_REPLY(driver_to_brian, driver_options.get_brian_to_driver_identity(),
-               samples_metadata_str);
+    send_message(driver_to_brian, driver_options.get_brian_to_driver_identity(),
+                 msg);
 
     expected_sqn_num++;
     DEBUG_MSG(std::endl << std::endl);
@@ -695,7 +697,7 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d,
  * receive and transmit threads to operate on the multi-USRP object.
  */
 int32_t UHD_SAFE_MAIN(int32_t argc, char *argv[]) {
-  GOOGLE_PROTOBUF_VERIFY_VERSION;
+  //  GOOGLE_PROTOBUF_VERIFY_VERSION;
 
   DriverOptions driver_options;
 

@@ -42,6 +42,15 @@ zmq::message_t recv_message(zmq::socket_t &socket, std::string sender_iden) {
   return receiver.remove();
 }
 
+void send_message(zmq::socket_t &socket, std::string recv_iden,
+                  zmq::message_t &msg) {
+  zmq::multipart_t sender;
+  sender.addstr(recv_iden);
+  sender.addstr("");
+  sender.addtyp(msg);
+  sender.send(socket);
+}
+
 void send_string(zmq::socket_t &socket, std::string recv_iden,
                  std::string &data_msg) {
   zmq::multipart_t sender;

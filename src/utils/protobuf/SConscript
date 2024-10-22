@@ -25,9 +25,9 @@
 # SOFTWARE.
 
 
-Import('*')
-import os
-
-RadarProtos = ['driverpacket','rxsamplesmetadata']
-Proto(RadarProtos)
-Lib('messages', protos=RadarProtos)
+# Import('*')
+# import os
+#
+# RadarProtos = ['driverpacket', 'rxsamplesmetadata']
+# Proto(RadarProtos)
+# Lib('messages', protos=RadarProtos)
