@@ -1013,9 +1013,8 @@ def main():
                     for beam_iter in range(aveperiod.num_beams_in_scan):
                         cfs_params_dict[aveperiod].last_cfs_set_time[beam_iter] = 0
                         cfs_params_dict[aveperiod].set_new_freq[beam_iter] = True
-                        for beam_num in np.arange(aveperiod.num_beams_in_scan):
-                            cfs_params_dict[aveperiod].cfs_mags[beam_num] = dict()
-                            cfs_params_dict[aveperiod].cfs_masks[beam_num] = dict()
+                        cfs_params_dict[aveperiod].cfs_mags[beam_iter] = dict()
+                        cfs_params_dict[aveperiod].cfs_masks[beam_iter] = dict()
                 if TIME_PROFILE:
                     time_start_of_aveperiod = datetime.utcnow()
 
