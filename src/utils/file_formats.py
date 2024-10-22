@@ -227,9 +227,11 @@ class SliceData:
             "level": "record",
             "units": "a.u. ~ V",
             "description": "Samples decimated by dm_rate",
+            "dim_labels": ["antenna", "sequence", "time"],
+            "dim_scales": ["tx_antennas", "sqn_timestamps", "sample_time"],
             "required": True,
         }
-    )  # todo: Is this after each stage, or just the final samples?
+    )
     dm_rate: list[int] = field(
         metadata={
             "groups": ["txdata"],
@@ -237,7 +239,7 @@ class SliceData:
             "description": "Total decimation rate of the filtering scheme",
             "required": True,
         }
-    )  # todo: Is this supposed to be a list of ALL dm_rates, or just the total?
+    )
     experiment_comment: str = field(
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
@@ -410,22 +412,22 @@ class SliceData:
             "required": False,
         }
     )
-    pulse_sample_start: list[float] = field(
+    pulse_sample_start: list[np.ndarray] = field(
         metadata={
             "groups": ["txdata"],
             "level": "file",
             "description": "Beginning of pulses in sequence measured in samples",
-            "dim_labels": ["pulse"],
+            "dim_labels": ["sequence", "pulse"],
             "required": True,
         }
     )
-    pulse_timing: list[float] = field(
+    pulse_timing: list[np.ndarray] = field(
         metadata={
             "groups": ["txdata"],
             "level": "file",
             "units": "μs",
             "description": "Relative timing of pulse start for all pulses in the sequence",
-            "dim_labels": ["pulse"],
+            "dim_labels": ["sequence", "pulse"],
             "required": True,
         }
     )
@@ -651,7 +653,7 @@ class SliceData:
             "required": False,
         }
     )
-    tx_center_freq: list[float] = field(  # todo: Why is this a list?
+    tx_center_freq: float = field(
         metadata={
             "groups": ["txdata"],
             "level": "file",
@@ -669,7 +671,7 @@ class SliceData:
             "required": True,
         }
     )
-    tx_rate: list[float] = field(
+    tx_rate: float = field(
         metadata={
             "groups": ["txdata"],
             "level": "file",
@@ -677,15 +679,15 @@ class SliceData:
             "description": "Sampling rate of the samples being sent to the USRPs",
             "required": True,
         }
-    )  # todo: Why is this a list? Shouldn't it be a single number?
-    tx_samples: list = field(
+    )
+    tx_samples: list[np.ndarray] = field(
         metadata={
             "groups": ["txdata"],
             "level": "record",
             "units": "a.u. ~ V",
             "description": "Samples sent to USRPs for transmission",
-            "dim_labels": ["antenna", "time"],  # todo: verify
-            "dim_scales": ["tx_antennas", "sample_time"],
+            "dim_labels": ["sequence", "antenna", "time"],
+            "dim_scales": ["sqn_timestamps", "tx_antennas", "sample_time"],
             "required": True,
         }
     )
@@ -972,7 +974,7 @@ class SliceData:
             if isinstance(data, dict):
                 data = str(data)
             elif isinstance(data, str):
-                data = data.encode('utf-8')
+                data = data.encode("utf-8")
             elif isinstance(data, list):
                 if isinstance(data[0], str):
                     data = np.bytes_(data)
@@ -985,7 +987,9 @@ class SliceData:
                 group[relevant_field] = data
 
         FILENAME = ""  # todo: Use the name of the rawacf file? Or just the timestamp of the start of the file?
-        dmap_record = pydarnio.BorealisV1Convert.convert_rawacf_record(group, metadata, FILENAME)
+        dmap_record = pydarnio.BorealisV1Convert.convert_rawacf_record(
+            group, metadata, FILENAME
+        )
 
         return dmap_record
 

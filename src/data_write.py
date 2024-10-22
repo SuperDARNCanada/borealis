@@ -29,7 +29,7 @@ from scipy.constants import speed_of_light
 # local
 from utils.data_aggregator import Aggregator
 from utils import socket_operations as so
-from utils.message_formats import AveperiodMetadataMessage
+from utils.message_formats import AveperiodMetadataMessage, Sequence
 from utils.options import Options
 from utils.file_formats import SliceData
 from utils import writers
@@ -147,13 +147,13 @@ class DataWrite:
 
     def output_data(
         self,
-        write_bfiq,
-        write_antenna_iq,
-        write_raw_rf,
-        write_tx,
-        aveperiod_meta,
-        data_parsing,
-        write_rawacf=True,
+        write_bfiq: bool,
+        write_antenna_iq: bool,
+        write_raw_rf: bool,
+        write_tx: bool,
+        aveperiod_meta: AveperiodMetadataMessage,
+        data_parsing: Aggregator,
+        write_rawacf: bool = True,
     ):
         """
         Parse through samples and write to file.
@@ -360,7 +360,7 @@ class DataWrite:
                         shm.close()
                         shm.unlink()
         if write_tx:
-            self._write_tx_data(aveperiod_meta.sequences)
+            self._write_tx_data(all_slice_data, aveperiod_meta.sequences)
 
         write_time = time.perf_counter() - start
         log.info(
@@ -598,7 +598,9 @@ class DataWrite:
             shared_mem.close()
             shared_mem.unlink()
 
-    def _write_tx_data(self, sequences: list):
+    def _write_tx_data(
+        self, aveperiod_data: dict[int, SliceData], sequences: list[Sequence]
+    ):
         """
         Writes out the tx samples and metadata for debugging purposes.
         Does not use same parameters of other writes.
@@ -610,21 +612,27 @@ class DataWrite:
         for f in SliceData.all_fields("txdata"):
             setattr(tx_data, f, [])  # initialize to a list for all fields
 
-        has_tx_data = [sqn.tx_data is not None for sqn in sequences]
+        tx_sqns = [sqn for sqn in sequences if sqn.tx_data is not None]
+        if len(tx_sqns) == 0:
+            return
 
-        if True in has_tx_data:  # If any sequence has tx data, write to file
-            for sqn in sequences:
-                if sqn.tx_data is not None:
-                    meta_data = sqn.tx_data
-                    tx_data.tx_rate.append(meta_data.tx_rate)
-                    tx_data.tx_center_freq.append(meta_data.tx_ctr_freq)
-                    tx_data.pulse_timing.append(meta_data.pulse_timing_us)
-                    tx_data.pulse_sample_start.append(meta_data.pulse_sample_start)
-                    tx_data.dm_rate.append(meta_data.dm_rate)
-                    tx_data.tx_samples.append(meta_data.tx_samples)
-                    tx_data.decimated_tx_samples.append(meta_data.decimated_tx_samples)
+        # These fields are unchanging during an AVEPERIOD
+        tx_data.tx_rate = tx_sqns[0].tx_data.tx_rate
+        tx_data.tx_center_freq = tx_sqns[0].tx_data.tx_ctr_freq
+        tx_data.antennas = aveperiod_data[sequences[0].antennas]
+        for sqn in tx_sqns:
+            meta_data = sqn.tx_data
 
-                self._write_file(tx_data, self.tx_data_two_hr_name, "txdata")
+            tx_data.decimated_tx_samples.append(meta_data.decimated_tx_samples)
+            tx_data.dm_rate.append(meta_data.dm_rate)
+            tx_data.pulse_timing.append(np.array(meta_data.pulse_timing_us))
+            tx_data.pulse_sample_start.append(np.array(meta_data.pulse_sample_start))
+            tx_data.tx_samples.append(meta_data.tx_samples)
+
+            # tx_data.tx_antennas.append()
+            # tx_data.tx_antenna_phases.append(aveperiod_data[sqn.rx])
+
+        self._write_file(tx_data, self.tx_data_two_hr_name, "txdata")
 
 
 def dw_parser():

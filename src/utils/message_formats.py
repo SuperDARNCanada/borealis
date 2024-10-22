@@ -208,8 +208,8 @@ class TxData:
 
     tx_rate: float = None
     tx_ctr_freq: float = None
-    pulse_timing_us: int = None
-    pulse_sample_start: int = None
+    pulse_timing_us: list[int] = None
+    pulse_sample_start: list[int] = None
     tx_samples: np.ndarray = None  # [num_antennas, num_samples]
     dm_rate: int = None
     decimated_tx_samples: np.ndarray = None  # [num_antennas, num_samples/dm_rate]
