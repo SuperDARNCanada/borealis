@@ -635,7 +635,7 @@ class SliceData:
     )
     tx_antennas: list[int] = field(
         metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf", "txdata"],
+            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "file",
             "description": "Indices into ``antenna_locations`` of the antennas used for transmitting in this experiment",
             "nickname": "tx antenna",
@@ -644,7 +644,7 @@ class SliceData:
     )
     tx_antenna_phases: np.ndarray = field(
         metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf", "txdata"],
+            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "record",
             "units": "a.u.",
             "description": "Phases of transmit signal for each antenna. Magnitude between 0 (off) and 1 (full power)",

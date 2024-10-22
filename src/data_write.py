@@ -360,7 +360,7 @@ class DataWrite:
                         shm.close()
                         shm.unlink()
         if write_tx:
-            self._write_tx_data(all_slice_data, aveperiod_meta.sequences)
+            self._write_tx_data(aveperiod_meta.sequences)
 
         write_time = time.perf_counter() - start
         log.info(
@@ -598,9 +598,7 @@ class DataWrite:
             shared_mem.close()
             shared_mem.unlink()
 
-    def _write_tx_data(
-        self, aveperiod_data: dict[int, SliceData], sequences: list[Sequence]
-    ):
+    def _write_tx_data(self, sequences: list[Sequence]):
         """
         Writes out the tx samples and metadata for debugging purposes.
         Does not use same parameters of other writes.
@@ -619,7 +617,25 @@ class DataWrite:
         # These fields are unchanging during an AVEPERIOD
         tx_data.tx_rate = tx_sqns[0].tx_data.tx_rate
         tx_data.tx_center_freq = tx_sqns[0].tx_data.tx_ctr_freq
-        tx_data.antennas = aveperiod_data[sequences[0].antennas]
+        tx_data.antenna_locations = np.concatenate(
+            [
+                self.options.main_antenna_locations,
+                self.options.intf_antenna_locations,
+            ],
+            axis=0,
+        )
+        tx_data.antennas = np.arange(
+            tx_data.antenna_locations.shape[0], dtype=np.uint32
+        )
+        tx_data.station_location = np.array(
+            [
+                self.options.geo_lat,
+                self.options.geo_long,
+                self.options.altitude,
+            ],
+            dtype=np.float32,
+        )
+
         for sqn in tx_sqns:
             meta_data = sqn.tx_data
 
@@ -628,9 +644,6 @@ class DataWrite:
             tx_data.pulse_timing.append(np.array(meta_data.pulse_timing_us))
             tx_data.pulse_sample_start.append(np.array(meta_data.pulse_sample_start))
             tx_data.tx_samples.append(meta_data.tx_samples)
-
-            # tx_data.tx_antennas.append()
-            # tx_data.tx_antenna_phases.append(aveperiod_data[sqn.rx])
 
         self._write_file(tx_data, self.tx_data_two_hr_name, "txdata")
 
