@@ -42,11 +42,11 @@ class CFSParameters:
     of this class should be linked to a unique aveperiod.
 
     :param  cfs_freq:   list of frequencies sampled by CFS
-    :param  cfs_mags:   power measurements corresponding to cfs_freq, indexed by slice
-                        order in an aveperiod
+    :param  cfs_mags:   power measurements corresponding to cfs_freq, indexed by beam iterator
+                        then by slice order in an aveperiod
     :param  cfs_range:  lower and upper frequency bound of CFS
     :param  cfs_masks:  mask of frequencies in cfs range that cannot be used for tx,
-                        indexed by slice_id
+                        indexed by beam_iter, then slice_id
     :param  last_cfs_set_time:  epoch time since a CFS scan was last run. Indexed by
                         beam iterator
     :param  beam_frequency:     last frequency assigned to a slice on a beam. Indexed first
@@ -90,7 +90,7 @@ class CFSParameters:
 
             # calculate the ratio of the current freq power over all other freqs
             pwr_ratio = cfs_data[i][idx] - np.asarray(
-                cfs_data[i][self.cfs_masks[slice_id]]
+                cfs_data[i][self.cfs_masks[beam_iter][slice_id]]
             )
             if any(pwr_ratio > threshold):
                 self.set_new_freq[beam_iter] = True
@@ -549,9 +549,13 @@ def create_dw_message(radctrl_params):
     )  # multiply all
     message.scheduling_mode = radctrl_params.experiment.scheduling_mode
     message.cfs_freqs = radctrl_params.cfs_params.cfs_freq
-    message.cfs_noise = radctrl_params.cfs_params.cfs_mags
+    message.cfs_noise = radctrl_params.cfs_params.cfs_mags[
+        radctrl_params.aveperiod.beam_iter
+    ]
     message.cfs_range = radctrl_params.cfs_params.cfs_range
-    message.cfs_masks = radctrl_params.cfs_params.cfs_masks
+    message.cfs_masks = radctrl_params.cfs_params.cfs_masks[
+        radctrl_params.aveperiod.beam_iter
+    ]
     message.cfs_slice_ids = radctrl_params.aveperiod.cfs_slice_ids
 
     for sequence_index, sequence in enumerate(radctrl_params.aveperiod.sequences):
@@ -739,7 +743,7 @@ def cfs_block(ave_params, cfs_params_dict, cfs_sockets):
     cfs_params.cfs_freq = freq_spectrum.cfs_freq
 
     for ind, dset in enumerate(freq_spectrum.output_datasets):
-        cfs_params.cfs_mags[aveperiod.cfs_slice_ids[ind]] = dset.cfs_data
+        cfs_params.cfs_mags[beam][aveperiod.cfs_slice_ids[ind]] = dset.cfs_data
 
     if not (
         cfs_params.last_cfs_set_time[beam] < time.time() - aveperiod.cfs_stable_time
@@ -769,7 +773,7 @@ def cfs_block(ave_params, cfs_params_dict, cfs_sockets):
     # If using a power threshold and one of the power conditions were
     # triggerd, or if not using a power threshold, set the CFS params
     cfs_params.set_new_freq[beam] = False
-    cfs_params.cfs_masks, last_set_cfs = aveperiod.select_cfs_freqs(freq_spectrum)
+    cfs_params.cfs_masks[beam], last_set_cfs = aveperiod.select_cfs_freqs(freq_spectrum)
     cfs_params.beam_frequency[beam] = last_set_cfs
 
     for ind in range(len(aveperiod.cfs_slice_ids)):
@@ -1009,6 +1013,8 @@ def main():
                     for beam_iter in range(aveperiod.num_beams_in_scan):
                         cfs_params_dict[aveperiod].last_cfs_set_time[beam_iter] = 0
                         cfs_params_dict[aveperiod].set_new_freq[beam_iter] = True
+                        cfs_params_dict[aveperiod].cfs_mags[beam_iter] = dict()
+                        cfs_params_dict[aveperiod].cfs_masks[beam_iter] = dict()
                 if TIME_PROFILE:
                     time_start_of_aveperiod = datetime.utcnow()
 
