@@ -197,18 +197,17 @@ def sequence_timing(options):
             reply = so.recv_bytes(
                 brian_to_driver, options.driver_to_brian_identity, log
             )
-            meta = RxSamplesMetadata().read(reply)
+            with RxSamplesMetadata.from_bytes(reply) as meta:
+                log.debug(
+                    "driver sent",
+                    sequence_time=meta.sqnTime * 1e3,
+                    sequence_time_unit="ms",
+                    sequence_num=meta.sqnNum,
+                )
 
-            log.debug(
-                "driver sent",
-                sequence_time=meta.sqnTime * 1e3,
-                sequence_time_unit="ms",
-                sequence_num=meta.sqnNum,
-            )
-
-            # Requesting acknowledgement of work begins from DSP
-            log.debug("requesting work begins from dsp")
-            iden = options.dspbegin_to_brian_identity + str(meta.sqnNum)
+                # Requesting acknowledgement of work begins from DSP
+                log.debug("requesting work begins from dsp")
+                iden = options.dspbegin_to_brian_identity + str(meta.sqnNum)
             so.send_string(brian_to_dsp_begin, iden, "Requesting work begins")
 
             start_new_sock.send_string("driver collected sequence, ready for another")

@@ -627,13 +627,14 @@ def main():
         reply = so.recv_bytes(dsp_to_driver, options.driver_to_dsp_identity, log)
         log.debug("Received data from driver")
 
-        rx_metadata = RxSamplesMetadata.read(reply)
+        with RxSamplesMetadata.from_bytes(reply) as rep:
+            rx_metadata = rep.to_dict()
 
-        if sqn_meta_message.sequence_num != rx_metadata.sqnNum:
+        if sqn_meta_message.sequence_num != rx_metadata["sqnNum"]:
             log.error(
                 "driver packets != radctrl packets",
                 sqn_meta_sqn_num=sqn_meta_message.sqnNum,
-                rx_meta_sqn_num=rx_metadata.sqnNum,
+                rx_meta_sqn_num=rx_metadata["sqnNum"],
             )
             sys.exit(-1)
 
@@ -677,26 +678,26 @@ def main():
         total_dm_rate = np.prod(dm_rates)
 
         # Calculate where in the ringbuffer the samples are located.
-        samples_needed = rx_metadata.numRxSamples + 2 * extra_samples
+        samples_needed = rx_metadata["numRxSamples"] + 2 * extra_samples
         samples_needed = int(
             math.ceil(float(samples_needed) / float(total_dm_rate)) * total_dm_rate
         )
 
-        sample_time_diff = rx_metadata.sqnStartTime - rx_metadata.initTime
+        sample_time_diff = rx_metadata["sqnStartTime"] - rx_metadata["initTime"]
         sample_in_time = (
             (sample_time_diff * rx_rate) + first_rx_sample_off - extra_samples
         )
         start_sample = int(math.fmod(sample_in_time, ringbuffer.shape[1]))
         end_sample = start_sample + samples_needed
 
-        processed_data.initialization_time = rx_metadata.initTime
-        processed_data.sequence_start_time = rx_metadata.sqnStartTime
-        processed_data.gps_to_system_time_diff = rx_metadata.gpsToSystemTimeDiff
-        processed_data.agc_status_bank_h = rx_metadata.agcStatusH
-        processed_data.lp_status_bank_h = rx_metadata.lpStatusH
-        processed_data.agc_status_bank_l = rx_metadata.agcStatusL
-        processed_data.lp_status_bank_l = rx_metadata.lpStatusL
-        processed_data.gps_locked = rx_metadata.gpsLocked
+        processed_data.initialization_time = rx_metadata["initTime"]
+        processed_data.sequence_start_time = rx_metadata["sqnStartTime"]
+        processed_data.gps_to_system_time_diff = rx_metadata["gpsToSystemTimeDiff"]
+        processed_data.agc_status_bank_h = rx_metadata["agcStatusH"]
+        processed_data.lp_status_bank_h = rx_metadata["lpStatusH"]
+        processed_data.agc_status_bank_l = rx_metadata["agcStatusL"]
+        processed_data.lp_status_bank_l = rx_metadata["lpStatusL"]
+        processed_data.gps_locked = rx_metadata["gpsLocked"]
 
         rx_params = RxProcessingParameters(
             sqn_meta_message.sequence_num,

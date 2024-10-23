@@ -217,9 +217,9 @@ def create_driver_message(radctrl_params, pulse_transmit_data):
 
     # If this is the first time the driver is being set-up, only send tx and rx rates and center frequencies
     if not radctrl_params.startup_flag:
-        message.startBurst = (pulse_transmit_data["startofburst"],)
-        message.endBurst = (pulse_transmit_data["endofburst"],)
-        message.timeToSendSamples = (pulse_transmit_data["timing"],)
+        message.startBurst = pulse_transmit_data["startofburst"]
+        message.endBurst = pulse_transmit_data["endofburst"]
+        message.timeToSendSamples = pulse_transmit_data["timing"]
         message.sqnNum = radctrl_params.seqnum_start + radctrl_params.num_sequences
         message.numRxSamples = radctrl_params.sequence.numberofreceivesamples
         message.sqnTime = radctrl_params.sequence.seqtime

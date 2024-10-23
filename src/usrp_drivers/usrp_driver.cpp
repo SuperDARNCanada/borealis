@@ -265,8 +265,9 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
                   }
                   // Parse new samples from driver packet if they exist.
                   if (driver_packet.getChannelSamples().size() >
-                      0) {  // todo: benchmark with capnp; ~700us to unpack
-                            // 4x1600 samples with protobuf
+                      0) {  // ~1200us to unpack 16x2100 samples with capnp on
+                            // first sqn, ~870us afterwards ~900us to unpack
+                            // 16x2100 samples with protobuf
                     last_pulse_sent =
                         make_tx_samples(driver_packet, driver_options);
                     samples_set = true;
@@ -530,26 +531,24 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
     samples_metadata.setAgcStatusL(agc_status_bank_l);
     samples_metadata.setLpStatusL(lp_status_bank_l);
 
-    //    std::string samples_metadata_str;
-    //    samples_metadata.SerializeToString(&samples_metadata_str);
-
     kj::Array<capnp::word> words = messageToFlatArray(message);
     kj::ArrayPtr<kj::byte> bytes = words.asBytes();
-    zmq::message_t msg(bytes);
+    zmq::message_t dsp_msg(bytes.begin(), bytes.size() * sizeof(kj::byte));
+    zmq::message_t brian_msg(bytes.begin(), bytes.size() * sizeof(kj::byte));
 
     // Here we wait for a request from dsp for the samples metadata, then send
     // it, bro! https://www.youtube.com/watch?v=WIrWyr3HgXI
     auto request = RECV_REQUEST(driver_to_dsp,
                                 driver_options.get_dsp_to_driver_identity());
     send_message(driver_to_dsp, driver_options.get_dsp_to_driver_identity(),
-                 msg);
+                 dsp_msg);
 
     // Here we wait for a request from brian for the samples metadata, then send
     // it
     request = RECV_REQUEST(driver_to_brian,
                            driver_options.get_brian_to_driver_identity());
     send_message(driver_to_brian, driver_options.get_brian_to_driver_identity(),
-                 msg);
+                 brian_msg);
 
     expected_sqn_num++;
     DEBUG_MSG(std::endl << std::endl);
