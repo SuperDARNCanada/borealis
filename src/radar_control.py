@@ -56,7 +56,7 @@ class CFSParameters:
                         slices on a beam. Indexed by beam iterator
     """
 
-    total_beam_num: int
+    total_beam_num: int = 0
     cfs_freq: list = field(default_factory=list)
     cfs_mags: dict = field(default_factory=dict)
     cfs_range: dict = field(default_factory=dict)
@@ -84,6 +84,7 @@ class CFSParameters:
         :params threshold:      Power threshold (dB) used in check
         :type   threshold:      float
         :params beam_iter:      current beam index
+        :type   beam_iter:      int
         """
         cfs_data = [dset.cfs_data for dset in cfs_spectrum.output_datasets]
         for i, slice_id in enumerate(cfs_slices):
@@ -130,7 +131,7 @@ class RadctrlParameters:
     pulse_transmit_data_tracker: dict = field(default_factory=dict)
     slice_dict: dict = field(default_factory=dict, init=False)
     cfs_scan_flag: bool = False
-    cfs_params: ... = field(default=CFSParameters(0), init=False)
+    cfs_params: ... = field(default_factory=CFSParameters, init=False)
     scan_flag: bool = False
     dsp_cfs_identity: str = ""
     router_address: str = ""
