@@ -1022,7 +1022,6 @@ def main():
                     cfs_params_dict[aveperiod] = CFSParameters(
                         aveperiod.num_beams_in_scan
                     )
-
                 if TIME_PROFILE:
                     time_start_of_aveperiod = datetime.utcnow()
 
