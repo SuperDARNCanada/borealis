@@ -55,6 +55,7 @@ class CFSParameters:
                         slices on a beam. Indexed by beam iterator
     """
 
+    total_beam_num: int
     cfs_freq: list = field(default_factory=list)
     cfs_mags: dict = field(default_factory=dict)
     cfs_range: dict = field(default_factory=dict)
@@ -62,6 +63,13 @@ class CFSParameters:
     last_cfs_set_time: dict = field(default_factory=dict)
     beam_frequency: dict = field(default_factory=dict)
     set_new_freq: dict = field(default_factory=dict)
+
+    def __post_init__(self):
+        for beam_iter in range(self.total_beam_num):
+            self.last_cfs_set_time[beam_iter] = 0
+            self.set_new_freq[beam_iter] = True
+            self.cfs_mags[beam_iter] = dict()
+            self.cfs_masks[beam_iter] = dict()
 
     def check_update_freq(self, cfs_spectrum, cfs_slices, threshold, beam_iter):
         """
@@ -110,6 +118,7 @@ class RadctrlParameters:
     decimation_scheme: ... = field(init=False)
     seqnum_start: int
     startup_flag: bool
+    num_beams: int = 0
     num_sequences: int = 0
     last_sequence_num: int = 0
     sequence_index: int = 0
@@ -120,7 +129,7 @@ class RadctrlParameters:
     pulse_transmit_data_tracker: dict = field(default_factory=dict)
     slice_dict: dict = field(default_factory=dict, init=False)
     cfs_scan_flag: bool = False
-    cfs_params: dict = field(default_factory=CFSParameters)
+    cfs_params: CFSParameters = field(default=CFSParameters(0), init=False)
     scan_flag: bool = False
     dsp_cfs_identity: str = ""
     router_address: str = ""
@@ -130,6 +139,7 @@ class RadctrlParameters:
 
     def __post_init__(self):
         self.slice_dict = self.experiment.slice_dict
+        self.cfs_params = CFSParameters(self.num_beams)
         # Set slice_dict after an experiment has been assigned
         if self.sequence:
             self.decimation_scheme = self.sequence.decimation_scheme
@@ -1009,12 +1019,10 @@ def main():
                 # If there are multiple aveperiods in a scan they are alternated (AVEPERIOD interfaced)
                 aveperiod = scan.aveperiods[scan.aveperiod_iter]
                 if aveperiod not in cfs_params_dict.keys() and aveperiod.cfs_flag:
-                    cfs_params_dict[aveperiod] = CFSParameters()
-                    for beam_iter in range(aveperiod.num_beams_in_scan):
-                        cfs_params_dict[aveperiod].last_cfs_set_time[beam_iter] = 0
-                        cfs_params_dict[aveperiod].set_new_freq[beam_iter] = True
-                        cfs_params_dict[aveperiod].cfs_mags[beam_iter] = dict()
-                        cfs_params_dict[aveperiod].cfs_masks[beam_iter] = dict()
+                    cfs_params_dict[aveperiod] = CFSParameters(
+                        aveperiod.num_beams_in_scan
+                    )
+
                 if TIME_PROFILE:
                     time_start_of_aveperiod = datetime.utcnow()
 
@@ -1165,6 +1173,7 @@ def main():
                     options,
                     seqnum_start,
                     False,
+                    num_beams=aveperiod.num_beams_in_scan,
                 )
                 time_remains = True
 
