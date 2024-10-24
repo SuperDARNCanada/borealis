@@ -512,4 +512,4 @@ The mapping to rawacf dmap files is completed as follows:
 ..  toctree::
     :maxdepth: 2
 
-    rawacf_mapping
+    ./../rawacf_mapping

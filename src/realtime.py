@@ -16,22 +16,16 @@ import zlib
 
 from backscatter import fitacf
 import numpy as np
-import pydarnio
 import structlog
 import zmq
 
 
-def convert_and_fit_record(rawacf_record):
-    """Converts a rawacf record to DMAP format and fits using backscatter, returning the results"""
-    # We only grab the first slice. This means the first slice of any that are SEQUENCE or CONCURRENT interfaced.
-    first_key = sorted(list(rawacf_record.keys()))[0]
-    log.info("converting record", record=first_key)
-    converted = pydarnio.BorealisConvert._BorealisConvert__convert_rawacf_record(
-        0, (first_key, rawacf_record[first_key]), ""
-    )
+def fit_record(rawacf_records):
+    """Fits a list of DMAP-formatted rawacf records using backscatter, returning the results"""
+    log.info("converting record", record=rawacf_records[0])
 
     fitted_records = []
-    for rec in converted:
+    for rec in rawacf_records[1]:
         fit_data = fitacf._fit(rec)
         fitted_records.append(fit_data.copy())
 
@@ -57,11 +51,14 @@ def realtime_server(recv_socket, server_socket):
             return
 
         rawacf_data = pickle.loads(rawacf_pickled)
+        # this will be a dict keyed by slice ID, values are dicts of (timestamp, [DMAP data dicts])
 
+        slice_ids = sorted(list(rawacf_data.keys()))
         try:
-            fitted_recs = convert_and_fit_record(rawacf_data)
-        except Exception as e:
-            log.critical("error processing record", exception=e)
+            fitted_recs = fit_record(rawacf_data[slice_ids[0]])
+            # Only fit the first slice of any that are SEQUENCE or CONCURRENT interfaced.
+        except Exception as err:
+            log.critical("error processing record", exception=err)
             continue
 
         for rec in fitted_recs:
