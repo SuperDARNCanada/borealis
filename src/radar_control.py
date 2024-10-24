@@ -130,7 +130,7 @@ class RadctrlParameters:
     pulse_transmit_data_tracker: dict = field(default_factory=dict)
     slice_dict: dict = field(default_factory=dict, init=False)
     cfs_scan_flag: bool = False
-    cfs_params: CFSParameters = field(default=CFSParameters(0), init=False)
+    cfs_params: ... = field(default=CFSParameters(0), init=False)
     scan_flag: bool = False
     dsp_cfs_identity: str = ""
     router_address: str = ""
