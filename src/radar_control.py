@@ -41,6 +41,7 @@ class CFSParameters:
     Parameters used to track clear frequency search data, each use
     of this class should be linked to a unique aveperiod.
 
+    :param  total_beam_num: number of beams that will be scanned by slice
     :param  cfs_freq:   list of frequencies sampled by CFS
     :param  cfs_mags:   power measurements corresponding to cfs_freq, indexed by beam iterator
                         then by slice order in an aveperiod
