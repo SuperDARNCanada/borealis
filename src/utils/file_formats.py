@@ -479,21 +479,21 @@ class SliceData:
             "required": True,
         }
     )
-    rx_main_phases: list[complex] = field(
+    rx_main_excitations: list[complex] = field(
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "record",
-            "description": "Phases of main array receive antennas for each antenna. Magnitude between 0 (off) and 1 (full power)",
+            "description": "Complex excitations of main array receive antennas for each antenna. Magnitude between 0 (off) and 1 (full power)",
             "dim_labels": ["beam", "antenna"],
             "dim_scales": [["beam_azms", "beam_nums"], "rx_main_antennas"],
             "required": True,
         }
     )
-    rx_intf_phases: list[complex] = field(
+    rx_intf_excitations: list[complex] = field(
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "record",
-            "description": "Phases of interferometer array receive antennas for each antenna. Magnitude between 0 (off) and 1 (full power)",
+            "description": "Complex excitations of interferometer array receive antennas for each antenna. Magnitude between 0 (off) and 1 (full power)",
             "dim_labels": ["beam", "antenna"],
             "dim_scales": [["beam_azms", "beam_nums"], "rx_intf_antennas"],
             "required": False,
@@ -603,12 +603,12 @@ class SliceData:
             "required": True,
         }
     )
-    tx_antenna_phases: np.ndarray = field(
+    tx_excitations: np.ndarray = field(
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "record",
             "units": "a.u.",
-            "description": "Phases of transmit signal for each antenna. Magnitude between 0 (off) and 1 (full power)",
+            "description": "Complex excitations of transmit signal for each antenna. Magnitude between 0 (off) and 1 (full power)",
             "dim_labels": ["antenna"],
             "dim_scales": ["tx_antennas"],
             "required": False,

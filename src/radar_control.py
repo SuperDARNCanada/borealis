@@ -580,7 +580,7 @@ def create_dw_message(radctrl_params):
             rxchannel.rx_main_antennas = sqn_slice.rx_main_antennas
             rxchannel.rx_intf_antennas = sqn_slice.rx_intf_antennas
             rxchannel.tx_antennas = sqn_slice.tx_antennas
-            rxchannel.tx_antenna_phases = sequence.tx_main_phase_shifts[slice_id][
+            rxchannel.tx_excitations = sequence.tx_main_phase_shifts[slice_id][
                 radctrl_params.aveperiod.beam_iter
             ]
 
@@ -588,23 +588,27 @@ def create_dw_message(radctrl_params):
             if isinstance(beams, int):
                 beams = [beams]
 
-            rx_main_phases = []
-            rx_intf_phases = []
+            rx_main_excitations = []
+            rx_intf_excitations = []
             for beam in beams:
                 beam_add = messages.Beam(sqn_slice.beam_angle[beam], beam)
                 rxchannel.add_beam(beam_add)
-                rx_main_phases.append(
+                rx_main_excitations.append(
                     sequence.rx_beam_phases[slice_id]["main"][
                         beam, sequence.rx_main_antenna_indices[slice_id]
                     ]
                 )
-                rx_intf_phases.append(
+                rx_intf_excitations.append(
                     sequence.rx_beam_phases[slice_id]["intf"][
                         beam, sequence.rx_intf_antenna_indices[slice_id]
                     ]
                 )
-            rxchannel.rx_main_phases = np.array(rx_main_phases, dtype=np.complex64)
-            rxchannel.rx_intf_phases = np.array(rx_intf_phases, dtype=np.complex64)
+            rxchannel.rx_main_excitations = np.array(
+                rx_main_excitations, dtype=np.complex64
+            )
+            rxchannel.rx_intf_excitations = np.array(
+                rx_intf_excitations, dtype=np.complex64
+            )
 
             rxchannel.first_range = float(sqn_slice.first_range)
             rxchannel.num_ranges = sqn_slice.num_ranges

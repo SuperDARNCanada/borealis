@@ -292,8 +292,8 @@ class DataWrite:
                 parameters.range_sep = np.float32(rx_channel.range_sep)
                 parameters.rx_center_freq = aveperiod_meta.rx_ctr_freq
                 parameters.rx_sample_rate = sqn_meta.output_sample_rate
-                parameters.rx_main_phases = rx_channel.rx_main_phases
-                parameters.rx_intf_phases = rx_channel.rx_intf_phases
+                parameters.rx_main_excitations = rx_channel.rx_main_excitations
+                parameters.rx_intf_excitations = rx_channel.rx_intf_excitations
                 parameters.rx_main_antennas = np.array(rx_channel.rx_main_antennas)
                 parameters.rx_intf_antennas = (
                     np.array(rx_channel.rx_intf_antennas)
@@ -319,9 +319,7 @@ class DataWrite:
                     dtype=np.float32,
                 )
                 parameters.tau_spacing = np.uint32(rx_channel.tau_spacing)
-                parameters.tx_antenna_phases = np.complex64(
-                    rx_channel.tx_antenna_phases
-                )
+                parameters.tx_excitations = np.complex64(rx_channel.tx_excitations)
                 parameters.tx_antennas = np.array(rx_channel.tx_antennas)
                 parameters.tx_pulse_len = np.uint32(rx_channel.pulse_len)
 

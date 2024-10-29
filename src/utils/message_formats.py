@@ -175,10 +175,10 @@ class RxChannelMetadata:
     sequence_encodings: list = field(default_factory=list)
     rx_main_antennas: list[int] = field(default_factory=list)
     rx_intf_antennas: list[int] = field(default_factory=list)
-    rx_main_phases: list[complex] = field(default_factory=list)
-    rx_intf_phases: list[complex] = field(default_factory=list)
+    rx_main_excitations: list[complex] = field(default_factory=list)
+    rx_intf_excitations: list[complex] = field(default_factory=list)
     tx_antennas: list[int] = field(default_factory=list)
-    tx_antenna_phases: list[complex] = field(default_factory=list)
+    tx_excitations: list[complex] = field(default_factory=list)
     beams: list[Beam] = field(default_factory=list)
     first_range: float = None
     num_ranges: int = None

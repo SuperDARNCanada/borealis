@@ -22,7 +22,7 @@ import zmq
 
 def fit_record(rawacf_records):
     """Fits a list of DMAP-formatted rawacf records using backscatter, returning the results"""
-    log.info("converting record", record=rawacf_records[0])
+    log.info("fitting record", record=rawacf_records[0])
 
     fitted_records = []
     for rec in rawacf_records[1]:
