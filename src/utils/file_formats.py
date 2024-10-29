@@ -5,7 +5,7 @@ file_formats
 Contains the dataclass `SliceData` defining the data and metadata that is stored in files produced by borealis.
 
 `SliceData` fields contain associated metadata that determines which file types (`rawrf`, `antennas_iq`, `bfiq`,
-`rawacf`, and `txdata`) should contain the aforementioned field, and at which level (`file` or `record`) the field
+`rawacf`) should contain the aforementioned field, and at which level (`file` or `record`) the field
 should be written. Fields at the `file` level are written only once, with the associated data immutable throughout
 the experiment for the given slice. Fields at the `record` level are written to each averaging period, within the record
 for that averaging period.
@@ -73,7 +73,7 @@ class SliceData:
     )
     antenna_locations: np.ndarray = field(
         metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf", "txdata"],
+            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "file",
             "units": "m",
             "description": "Relative antenna locations",
@@ -83,7 +83,7 @@ class SliceData:
     )
     antennas: np.ndarray = field(
         metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf", "txdata"],
+            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "file",
             "description": "Labels for each antenna of the radar",
             "dim_labels": ["antenna"],
@@ -206,7 +206,7 @@ class SliceData:
     )
     coordinates: list[str] = field(
         metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf", "txdata"],
+            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "file",
             "description": "Descriptors for location coordinate dimensions",
             "nickname": "coordinate",
@@ -218,25 +218,6 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq", "rawacf"],
             "level": "file",
             "description": "Cumulative scale of all of the filters for a total scaling factor to normalize by",
-            "required": True,
-        }
-    )
-    decimated_tx_samples: list = field(
-        metadata={
-            "groups": ["txdata"],
-            "level": "record",
-            "units": "a.u. ~ V",
-            "description": "Samples decimated by dm_rate",
-            "dim_labels": ["sequence", "antenna", "time"],
-            # "dim_scales": ["tx_antennas", "sqn_timestamps", "sample_time"],
-            "required": True,
-        }
-    )
-    dm_rate: list[int] = field(
-        metadata={
-            "groups": ["txdata"],
-            "level": "file",
-            "description": "Total decimation rate of the filtering scheme",
             "required": True,
         }
     )
@@ -412,25 +393,6 @@ class SliceData:
             "required": False,
         }
     )
-    pulse_sample_start: list[np.ndarray] = field(
-        metadata={
-            "groups": ["txdata"],
-            "level": "file",
-            "description": "Beginning of pulses in sequence measured in samples",
-            "dim_labels": ["sequence", "pulse"],
-            "required": True,
-        }
-    )
-    pulse_timing: list[np.ndarray] = field(
-        metadata={
-            "groups": ["txdata"],
-            "level": "file",
-            "units": "μs",
-            "description": "Relative timing of pulse start for all pulses in the sequence",
-            "dim_labels": ["sequence", "pulse"],
-            "required": True,
-        }
-    )
     pulses: np.ndarray = field(
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf"],
@@ -598,7 +560,7 @@ class SliceData:
     )
     sqn_timestamps: list[float] = field(
         metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf", "txdata"],
+            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "record",
             "nickname": "timestamp",
             "units": "seconds since 1970-01-01 00:00:00 UTC",
@@ -635,7 +597,7 @@ class SliceData:
     )
     tx_antennas: list[int] = field(
         metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf", "txdata"],
+            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "file",
             "description": "Indices into ``antenna_locations`` of the antennas used for transmitting in this experiment",
             "nickname": "tx antenna",
@@ -653,41 +615,12 @@ class SliceData:
             "required": False,
         }
     )
-    tx_center_freq: float = field(
-        metadata={
-            "groups": ["txdata"],
-            "level": "file",
-            "units": "kHz",
-            "description": "Center frequency of the transmitted data in kHz",
-            "required": True,
-        }
-    )
     tx_pulse_len: float = field(
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf"],
             "level": "file",
             "units": "μs",
             "description": "Length of the pulse in microseconds",
-            "required": True,
-        }
-    )
-    tx_rate: float = field(
-        metadata={
-            "groups": ["txdata"],
-            "level": "file",
-            "units": "Hz",
-            "description": "Sampling rate of the samples being sent to the USRPs",
-            "required": True,
-        }
-    )
-    tx_samples: list[np.ndarray] = field(
-        metadata={
-            "groups": ["txdata"],
-            "level": "record",
-            "units": "a.u. ~ V",
-            "description": "Samples sent to USRPs for transmission",
-            "dim_labels": ["sequence", "antenna", "time"],
-            # "dim_scales": ["sqn_timestamps", "tx_antennas", "sample_time"],
             "required": True,
         }
     )

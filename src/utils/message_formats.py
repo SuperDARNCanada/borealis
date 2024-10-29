@@ -203,24 +203,10 @@ class RxChannelMetadata:
 
 
 @dataclass
-class TxData:
-    """Defines a tx_data structure for inclusion in a Sequence dataclass"""
-
-    tx_rate: float = None
-    tx_ctr_freq: float = None
-    pulse_timing_us: list[int] = None
-    pulse_sample_start: list[int] = None
-    tx_samples: np.ndarray = None  # [num_antennas, num_samples]
-    dm_rate: int = None
-    decimated_tx_samples: np.ndarray = None  # [num_antennas, num_samples/dm_rate]
-
-
-@dataclass
 class Sequence:
     """Defines a sequence structure for inclusion in an AveperiodMetadataMessage"""
 
     blanks: list[int] = field(default_factory=list)
-    tx_data: TxData = None
     output_sample_rate: float = None
     rx_channels: list[RxChannelMetadata] = field(default_factory=list)
 

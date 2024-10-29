@@ -29,7 +29,7 @@ from scipy.constants import speed_of_light
 # local
 from utils.data_aggregator import Aggregator
 from utils import socket_operations as so
-from utils.message_formats import AveperiodMetadataMessage, Sequence
+from utils.message_formats import AveperiodMetadataMessage
 from utils.options import Options
 from utils.file_formats import SliceData
 from utils import writers
@@ -55,10 +55,6 @@ class DataWrite:
         # Special name and format for rawrf. Contains no slice info.
         self.raw_rf_two_hr_format = "{dt}.{site}.rawrf"
         self.raw_rf_two_hr_name = None
-
-        # Special name and format for tx data. Contains no slice info
-        self.tx_data_two_hr_format = "{dt}.{site}.txdata"
-        self.tx_data_two_hr_name = None
 
         # A dict to hold filenames for all available slices in the experiment as they are received.
         self.slice_filenames = {}
@@ -150,7 +146,6 @@ class DataWrite:
         write_bfiq: bool,
         write_antenna_iq: bool,
         write_raw_rf: bool,
-        write_tx: bool,
         aveperiod_meta: AveperiodMetadataMessage,
         data_parsing: Aggregator,
         write_rawacf: bool = True,
@@ -166,8 +161,6 @@ class DataWrite:
         :type   write_antenna_iq:   bool
         :param  write_raw_rf:       Should raw rf samples be written to file?
         :type   write_raw_rf:       bool
-        :param  write_tx:           Should the generated tx samples and metadata be written to file?
-        :type   write_tx:           bool
         :param  aveperiod_meta:     Metadata from radar control about averaging period
         :type   aveperiod_meta:     AveperiodMetadataMessage
         :param  data_parsing:       All parsed and concatenated data from averaging period
@@ -188,9 +181,6 @@ class DataWrite:
             self.raw_rf_two_hr_name = self.raw_rf_two_hr_format.format(
                 dt=time_now.strftime("%Y%m%d.%H%M.%S"), site=self.options.site_id
             )
-            self.tx_data_two_hr_name = self.tx_data_two_hr_format.format(
-                dt=time_now.strftime("%Y%m%d.%H%M.%S"), site=self.options.site_id
-            )
             self.next_boundary = self.two_hr_ceiling(time_now)
             self.first_time = False
 
@@ -205,9 +195,6 @@ class DataWrite:
 
         if time_now > self.next_boundary:
             self.raw_rf_two_hr_name = self.raw_rf_two_hr_format.format(
-                dt=time_now.strftime("%Y%m%d.%H%M.%S"), site=self.options.site_id
-            )
-            self.tx_data_two_hr_name = self.tx_data_two_hr_format.format(
                 dt=time_now.strftime("%Y%m%d.%H%M.%S"), site=self.options.site_id
             )
             for slice_id in self.slice_filenames.keys():
@@ -359,8 +346,6 @@ class DataWrite:
                         shm = shared_memory.SharedMemory(name=rf_samples_location)
                         shm.close()
                         shm.unlink()
-        if write_tx:
-            self._write_tx_data(aveperiod_meta.sequences, data_parsing)
 
         write_time = time.perf_counter() - start
         log.info(
@@ -598,59 +583,6 @@ class DataWrite:
             shared_mem.close()
             shared_mem.unlink()
 
-    def _write_tx_data(self, sequences: list[Sequence], data_parsing: Aggregator):
-        """
-        Writes out the tx samples and metadata for debugging purposes.
-        Does not use same parameters of other writes.
-
-        :param  sequences: List of ProcessedSequenceMetadata messages
-        :type   sequences: ProcessedSequenceMessage
-        """
-        tx_data = SliceData()
-        for f in SliceData.all_fields("txdata"):
-            setattr(tx_data, f, [])  # initialize to a list for all fields
-
-        tx_sqns = [sqn for sqn in sequences if sqn.tx_data is not None]
-        if len(tx_sqns) == 0:
-            return
-
-        # These fields are unchanging during an AVEPERIOD
-        tx_data.tx_rate = tx_sqns[0].tx_data.tx_rate
-        tx_data.tx_center_freq = tx_sqns[0].tx_data.tx_ctr_freq
-        tx_data.antenna_locations = np.concatenate(
-            [
-                self.options.main_antenna_locations,
-                self.options.intf_antenna_locations,
-            ],
-            axis=0,
-        )
-        tx_data.antennas = np.arange(
-            tx_data.antenna_locations.shape[0], dtype=np.uint32
-        )
-        tx_data.station_location = np.array(
-            [
-                self.options.geo_lat,
-                self.options.geo_long,
-                self.options.altitude,
-            ],
-            dtype=np.float32,
-        )
-        tx_data.sqn_timestamps = data_parsing.timestamps
-
-        tx_antennas = set()
-        for sqn in tx_sqns:
-            meta_data = sqn.tx_data
-            for rxchan in sqn.rx_channels:
-                tx_antennas = tx_antennas.union(set(rxchan.tx_antennas))
-            tx_data.decimated_tx_samples.append(meta_data.decimated_tx_samples)
-            tx_data.dm_rate.append(meta_data.dm_rate)
-            tx_data.pulse_timing.append(np.array(meta_data.pulse_timing_us))
-            tx_data.pulse_sample_start.append(np.array(meta_data.pulse_sample_start))
-            tx_data.tx_samples.append(meta_data.tx_samples)
-
-        tx_data.tx_antennas = sorted(list(tx_antennas))
-        self._write_file(tx_data, self.tx_data_two_hr_name, "txdata")
-
 
 def dw_parser():
     parser = ap.ArgumentParser(description="Write processed SuperDARN data to file")
@@ -668,11 +600,6 @@ def dw_parser():
     parser.add_argument(
         "--enable-raw-rf",
         help="Save raw, unfiltered IQ samples. Requires HDF5.",
-        action="store_true",
-    )
-    parser.add_argument(
-        "--enable-tx",
-        help="Save tx samples and metadata. Requires HDF5.",
         action="store_true",
     )
     parser.add_argument(
@@ -808,7 +735,6 @@ def main():
                             write_bfiq=args.enable_bfiq,
                             write_antenna_iq=args.enable_antenna_iq,
                             write_raw_rf=args.enable_raw_rf,
-                            write_tx=args.enable_tx,
                             aveperiod_meta=aveperiod_metadata,
                             data_parsing=aggregator,
                             write_rawacf=args.enable_raw_acfs,
