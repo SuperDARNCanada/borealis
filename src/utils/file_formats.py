@@ -806,7 +806,8 @@ class SliceData:
         Write ``data`` to ``group`` along with the associated ``metadata``
         """
         kw = dict()
-        if not np.isscalar(data):
+        # Cannot compress rawrf data quickly enough, so don't bother
+        if not np.isscalar(data) and name != "rawrf_data":
             kw = {"compression": "gzip", "compression_opts": 9}
         group.create_dataset(name, data=data, **kw)
         group[name].attrs["description"] = metadata.get("description")
