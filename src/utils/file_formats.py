@@ -429,11 +429,10 @@ class SliceData:
             "description": "I&Q complex voltage samples for each antenna",
             "units": "a.u. ~ V",
             "dim_labels": [
-                "antenna",
-                "sequence",
+                "sequence" "antenna",
                 "time",
-            ],  # todo: verify these dimensions
-            "dim_scales": ["rx_antennas", "sqn_timestamps", "sample_time"],
+            ],
+            "dim_scales": ["sqn_timestamps", "rx_antennas", "sample_time"],
             "required": True,
         }
     )
