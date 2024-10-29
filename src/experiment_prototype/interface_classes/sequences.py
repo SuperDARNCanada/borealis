@@ -175,7 +175,7 @@ class Sequence(InterfaceClassBase):
         main_antenna_spacing = self.transmit_metadata["main_antenna_spacing"]
         intf_antenna_count = self.transmit_metadata["intf_antenna_count"]
         intf_antenna_spacing = self.transmit_metadata["intf_antenna_spacing"]
-        
+
         max_usrp_dac_amplitude = self.transmit_metadata["max_usrp_dac_amplitude"]
         tr_window_time = self.transmit_metadata["tr_window_time"]
         intf_offset = self.transmit_metadata["intf_offset"]
@@ -484,27 +484,7 @@ class Sequence(InterfaceClassBase):
         )
 
         self.output_encodings = collections.defaultdict(list)
-
-        # create debug dict for tx samples.
-        debug_dict = {
-            "txrate": txrate,
-            "txctrfreq": self.txctrfreq,
-            "pulse_timing": [],
-            "pulse_sample_start": [],
-            "sequence_samples": {},
-            "decimated_samples": {},
-            "dmrate": dm_rate,
-        }
-
-        for i, cpm in enumerate(combined_pulses_metadata):
-            debug_dict["pulse_timing"].append(cpm["start_time_us"])
-            debug_dict["pulse_sample_start"].append(cpm["pulse_sample_start"])
-
-        for i in range(main_antenna_count):
-            debug_dict["sequence_samples"][i] = []
-            debug_dict["decimated_samples"][i] = []
-
-        self.debug_dict = debug_dict
+        self.dm_rate = dm_rate
 
         first_slice_pulse_len = self.combined_pulses_metadata[0]["component_info"][0][
             "pulse_num_samps"
@@ -602,8 +582,6 @@ class Sequence(InterfaceClassBase):
         :returns:   Transmit data for each pulse where each pulse is a dict, including timing and
                     samples
         :rtype:     list
-        :returns:   The transmit sequence and related data to use for debug.
-        :rtype:     dict
         """
         txrate = self.transmit_metadata["txrate"]
 
@@ -681,21 +659,14 @@ class Sequence(InterfaceClassBase):
 
             pulse_data.append(new_pulse_info)
 
-        if __debug__:
-            debug_dict = copy.deepcopy(self.debug_dict)
-            debug_dict["sequence_samples"] = sequence
-            debug_dict["decimated_samples"] = sequence[:, :: debug_dict["dmrate"]]
-        else:
-            debug_dict = None
-
-        return pulse_data, debug_dict
+        return pulse_data
 
     def find_blanks(self):
         """
         Finds the blanked samples after all pulse positions are calculated.
         """
         blanks = []
-        dm_rate = self.debug_dict["dmrate"]
+        dm_rate = self.dm_rate
         for pulse in self.combined_pulses_metadata:
             pulse_start = pulse["pulse_sample_start"]
             num_samples = pulse["total_num_samps"] + 2 * pulse["tr_window_num_samps"]

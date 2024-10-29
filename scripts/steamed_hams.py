@@ -181,17 +181,17 @@ elif args.run_mode == "pythonprofiling":
     mode = "debug"
     data_write_args = f"--enable-raw-acfs --enable-antenna-iq {rawacf_format}"
 elif args.run_mode == "testdata":
-    # run in scons release with python debug for tx data and print raw rf, for verifying data
+    # run in scons release with python debug for raw rf, for verifying data
     python_opts = "-u"
     c_debug_opts = ""
     mode = "release"
-    data_write_args = "--enable-tx --enable-raw-rf"
+    data_write_args = "--enable-raw-rf"
 elif args.run_mode == "engineeringdebug":
-    # run all modules in debug with tx and rawrf data - this mode is very slow
+    # run all modules in debug with rawrf data - this mode is very slow
     python_opts = "-u"
     c_debug_opts = "/usr/local/cuda/bin/cuda-gdb -ex start"
     mode = "debug"
-    data_write_args = "--enable-bfiq --enable-antenna-iq --enable-raw-rf --enable-tx;"
+    data_write_args = "--enable-bfiq --enable-antenna-iq --enable-raw-rf"
 elif args.run_mode == "filterdata":
     # run all modules in debug with rawrf, antennas_iq, and filter stage data.
     python_opts = "-u"

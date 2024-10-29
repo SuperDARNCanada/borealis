@@ -5,7 +5,7 @@ file_formats
 Contains the dataclass `SliceData` defining the data and metadata that is stored in files produced by borealis.
 
 `SliceData` fields contain associated metadata that determines which file types (`rawrf`, `antennas_iq`, `bfiq`,
-`rawacf`, and `txdata`) should contain the aforementioned field, and at which level (`file` or `record`) the field
+`rawacf`) should contain the aforementioned field, and at which level (`file` or `record`) the field
 should be written. Fields at the `file` level are written only once, with the associated data immutable throughout
 the experiment for the given slice. Fields at the `record` level are written to each averaging period, within the record
 for that averaging period.
@@ -73,7 +73,7 @@ class SliceData:
     )
     antenna_locations: np.ndarray = field(
         metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf", "txdata"],
+            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "file",
             "units": "m",
             "description": "Relative antenna locations",
@@ -83,7 +83,7 @@ class SliceData:
     )
     antennas: np.ndarray = field(
         metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf", "txdata"],
+            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "file",
             "description": "Labels for each antenna of the radar",
             "dim_labels": ["antenna"],
@@ -206,7 +206,7 @@ class SliceData:
     )
     coordinates: list[str] = field(
         metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf", "txdata"],
+            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "file",
             "description": "Descriptors for location coordinate dimensions",
             "nickname": "coordinate",
@@ -221,23 +221,6 @@ class SliceData:
             "required": True,
         }
     )
-    decimated_tx_samples: list = field(
-        metadata={
-            "groups": ["txdata"],
-            "level": "record",
-            "units": "a.u. ~ V",
-            "description": "Samples decimated by dm_rate",
-            "required": True,
-        }
-    )  # todo: Is this after each stage, or just the final samples?
-    dm_rate: list[int] = field(
-        metadata={
-            "groups": ["txdata"],
-            "level": "file",
-            "description": "Total decimation rate of the filtering scheme",
-            "required": True,
-        }
-    )  # todo: Is this supposed to be a list of ALL dm_rates, or just the total?
     experiment_comment: str = field(
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
@@ -408,25 +391,6 @@ class SliceData:
             "dim_labels": ["sequence", "pulse"],
             "dim_scales": ["sqn_timestamps", "pulses"],
             "required": False,
-        }
-    )
-    pulse_sample_start: list[float] = field(
-        metadata={
-            "groups": ["txdata"],
-            "level": "file",
-            "description": "Beginning of pulses in sequence measured in samples",
-            "dim_labels": ["pulse"],
-            "required": True,
-        }
-    )
-    pulse_timing: list[float] = field(
-        metadata={
-            "groups": ["txdata"],
-            "level": "file",
-            "units": "μs",
-            "description": "Relative timing of pulse start for all pulses in the sequence",
-            "dim_labels": ["pulse"],
-            "required": True,
         }
     )
     pulses: np.ndarray = field(
@@ -633,7 +597,7 @@ class SliceData:
     )
     tx_antennas: list[int] = field(
         metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf", "txdata"],
+            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "file",
             "description": "Indices into ``antenna_locations`` of the antennas used for transmitting in this experiment",
             "nickname": "tx antenna",
@@ -642,7 +606,7 @@ class SliceData:
     )
     tx_antenna_phases: np.ndarray = field(
         metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf", "txdata"],
+            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "record",
             "units": "a.u.",
             "description": "Phases of transmit signal for each antenna. Magnitude between 0 (off) and 1 (full power)",
@@ -651,41 +615,12 @@ class SliceData:
             "required": False,
         }
     )
-    tx_center_freq: list[float] = field(  # todo: Why is this a list?
-        metadata={
-            "groups": ["txdata"],
-            "level": "file",
-            "units": "kHz",
-            "description": "Center frequency of the transmitted data in kHz",
-            "required": True,
-        }
-    )
     tx_pulse_len: float = field(
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf"],
             "level": "file",
             "units": "μs",
             "description": "Length of the pulse in microseconds",
-            "required": True,
-        }
-    )
-    tx_rate: list[float] = field(
-        metadata={
-            "groups": ["txdata"],
-            "level": "file",
-            "units": "Hz",
-            "description": "Sampling rate of the samples being sent to the USRPs",
-            "required": True,
-        }
-    )  # todo: Why is this a list? Shouldn't it be a single number?
-    tx_samples: list = field(
-        metadata={
-            "groups": ["txdata"],
-            "level": "record",
-            "units": "a.u. ~ V",
-            "description": "Samples sent to USRPs for transmission",
-            "dim_labels": ["antenna", "time"],  # todo: verify
-            "dim_scales": ["tx_antennas", "sample_time"],
             "required": True,
         }
     )
@@ -972,7 +907,7 @@ class SliceData:
             if isinstance(data, dict):
                 data = str(data)
             elif isinstance(data, str):
-                data = data.encode('utf-8')
+                data = data.encode("utf-8")
             elif isinstance(data, list):
                 if isinstance(data[0], str):
                     data = np.bytes_(data)
@@ -985,7 +920,9 @@ class SliceData:
                 group[relevant_field] = data
 
         FILENAME = ""  # todo: Use the name of the rawacf file? Or just the timestamp of the start of the file?
-        dmap_record = pydarnio.BorealisV1Convert.convert_rawacf_record(group, metadata, FILENAME)
+        dmap_record = pydarnio.BorealisV1Convert.convert_rawacf_record(
+            group, metadata, FILENAME
+        )
 
         return dmap_record
 

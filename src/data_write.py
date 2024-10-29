@@ -56,10 +56,6 @@ class DataWrite:
         self.raw_rf_two_hr_format = "{dt}.{site}.rawrf"
         self.raw_rf_two_hr_name = None
 
-        # Special name and format for tx data. Contains no slice info
-        self.tx_data_two_hr_format = "{dt}.{site}.txdata"
-        self.tx_data_two_hr_name = None
-
         # A dict to hold filenames for all available slices in the experiment as they are received.
         self.slice_filenames = {}
 
@@ -147,13 +143,12 @@ class DataWrite:
 
     def output_data(
         self,
-        write_bfiq,
-        write_antenna_iq,
-        write_raw_rf,
-        write_tx,
-        aveperiod_meta,
-        data_parsing,
-        write_rawacf=True,
+        write_bfiq: bool,
+        write_antenna_iq: bool,
+        write_raw_rf: bool,
+        aveperiod_meta: AveperiodMetadataMessage,
+        data_parsing: Aggregator,
+        write_rawacf: bool = True,
     ):
         """
         Parse through samples and write to file.
@@ -166,8 +161,6 @@ class DataWrite:
         :type   write_antenna_iq:   bool
         :param  write_raw_rf:       Should raw rf samples be written to file?
         :type   write_raw_rf:       bool
-        :param  write_tx:           Should the generated tx samples and metadata be written to file?
-        :type   write_tx:           bool
         :param  aveperiod_meta:     Metadata from radar control about averaging period
         :type   aveperiod_meta:     AveperiodMetadataMessage
         :param  data_parsing:       All parsed and concatenated data from averaging period
@@ -188,9 +181,6 @@ class DataWrite:
             self.raw_rf_two_hr_name = self.raw_rf_two_hr_format.format(
                 dt=time_now.strftime("%Y%m%d.%H%M.%S"), site=self.options.site_id
             )
-            self.tx_data_two_hr_name = self.tx_data_two_hr_format.format(
-                dt=time_now.strftime("%Y%m%d.%H%M.%S"), site=self.options.site_id
-            )
             self.next_boundary = self.two_hr_ceiling(time_now)
             self.first_time = False
 
@@ -205,9 +195,6 @@ class DataWrite:
 
         if time_now > self.next_boundary:
             self.raw_rf_two_hr_name = self.raw_rf_two_hr_format.format(
-                dt=time_now.strftime("%Y%m%d.%H%M.%S"), site=self.options.site_id
-            )
-            self.tx_data_two_hr_name = self.tx_data_two_hr_format.format(
                 dt=time_now.strftime("%Y%m%d.%H%M.%S"), site=self.options.site_id
             )
             for slice_id in self.slice_filenames.keys():
@@ -359,8 +346,6 @@ class DataWrite:
                         shm = shared_memory.SharedMemory(name=rf_samples_location)
                         shm.close()
                         shm.unlink()
-        if write_tx:
-            self._write_tx_data(aveperiod_meta.sequences)
 
         write_time = time.perf_counter() - start
         log.info(
@@ -598,34 +583,6 @@ class DataWrite:
             shared_mem.close()
             shared_mem.unlink()
 
-    def _write_tx_data(self, sequences: list):
-        """
-        Writes out the tx samples and metadata for debugging purposes.
-        Does not use same parameters of other writes.
-
-        :param  sequences: List of ProcessedSequenceMetadata messages
-        :type   sequences: ProcessedSequenceMessage
-        """
-        tx_data = SliceData()
-        for f in SliceData.all_fields("txdata"):
-            setattr(tx_data, f, [])  # initialize to a list for all fields
-
-        has_tx_data = [sqn.tx_data is not None for sqn in sequences]
-
-        if True in has_tx_data:  # If any sequence has tx data, write to file
-            for sqn in sequences:
-                if sqn.tx_data is not None:
-                    meta_data = sqn.tx_data
-                    tx_data.tx_rate.append(meta_data.tx_rate)
-                    tx_data.tx_center_freq.append(meta_data.tx_ctr_freq)
-                    tx_data.pulse_timing.append(meta_data.pulse_timing_us)
-                    tx_data.pulse_sample_start.append(meta_data.pulse_sample_start)
-                    tx_data.dm_rate.append(meta_data.dm_rate)
-                    tx_data.tx_samples.append(meta_data.tx_samples)
-                    tx_data.decimated_tx_samples.append(meta_data.decimated_tx_samples)
-
-                self._write_file(tx_data, self.tx_data_two_hr_name, "txdata")
-
 
 def dw_parser():
     parser = ap.ArgumentParser(description="Write processed SuperDARN data to file")
@@ -643,11 +600,6 @@ def dw_parser():
     parser.add_argument(
         "--enable-raw-rf",
         help="Save raw, unfiltered IQ samples. Requires HDF5.",
-        action="store_true",
-    )
-    parser.add_argument(
-        "--enable-tx",
-        help="Save tx samples and metadata. Requires HDF5.",
         action="store_true",
     )
     parser.add_argument(
@@ -783,7 +735,6 @@ def main():
                             write_bfiq=args.enable_bfiq,
                             write_antenna_iq=args.enable_antenna_iq,
                             write_raw_rf=args.enable_raw_rf,
-                            write_tx=args.enable_tx,
                             aveperiod_meta=aveperiod_metadata,
                             data_parsing=aggregator,
                             write_rawacf=args.enable_raw_acfs,

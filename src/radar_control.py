@@ -458,12 +458,10 @@ def search_for_experiment(radar_control_to_exp_handler, exphan_to_radctrl_iden, 
 
 
 def make_next_samples(radctrl_params):
-    sqn, dbg = radctrl_params.sequence.make_sequence(
+    sqn = radctrl_params.sequence.make_sequence(
         radctrl_params.aveperiod.beam_iter,
         radctrl_params.num_sequences + len(radctrl_params.aveperiod.sequences),
     )
-    if dbg:
-        radctrl_params.debug_samples.append(dbg)
     radctrl_params.pulse_transmit_data_tracker[radctrl_params.sequence_index][
         radctrl_params.num_sequences + len(radctrl_params.aveperiod.sequences)
     ] = sqn
@@ -558,27 +556,6 @@ def create_dw_message(radctrl_params):
         sequence_add = messages.Sequence()
         sequence_add.blanks = sequence.blanks
         sequence_add.output_sample_rate = sequence.output_rx_rate
-
-        if len(radctrl_params.debug_samples) > 0:
-            tx_data = messages.TxData()
-            tx_data.tx_rate = radctrl_params.debug_samples[sequence_index]["txrate"]
-            tx_data.tx_ctr_freq = radctrl_params.debug_samples[sequence_index][
-                "txctrfreq"
-            ]
-            tx_data.pulse_timing_us = radctrl_params.debug_samples[sequence_index][
-                "pulse_timing"
-            ]
-            tx_data.pulse_sample_start = radctrl_params.debug_samples[sequence_index][
-                "pulse_sample_start"
-            ]
-            tx_data.tx_samples = radctrl_params.debug_samples[sequence_index][
-                "sequence_samples"
-            ]
-            tx_data.dm_rate = radctrl_params.debug_samples[sequence_index]["dmrate"]
-            tx_data.decimated_tx_samples = radctrl_params.debug_samples[sequence_index][
-                "decimated_samples"
-            ]
-            sequence_add.tx_data = tx_data
 
         for slice_id in sequence.slice_ids:
             sqn_slice = sequence.slice_dict[slice_id]
@@ -1212,11 +1189,9 @@ def main():
                         # On first sequence, we make the first set of samples
                         if sequence_index not in ave_params.pulse_transmit_data_tracker:
                             ave_params.pulse_transmit_data_tracker[sequence_index] = {}
-                            sqn, dbg = sequence.make_sequence(
+                            sqn = sequence.make_sequence(
                                 aveperiod.beam_iter, ave_params.num_sequences
                             )
-                            if dbg:
-                                ave_params.debug_samples.append(dbg)
                             ave_params.pulse_transmit_data_tracker[sequence_index][
                                 ave_params.num_sequences
                             ] = sqn
