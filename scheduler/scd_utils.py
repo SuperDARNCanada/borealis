@@ -11,7 +11,7 @@ import os
 import datetime as dt
 import shutil
 import sys
-from typing_extensions import Annotated, Union, Literal, Self
+from typing_extensions import Annotated, Union, Literal, Self, Optional
 
 from pydantic.dataclasses import dataclass
 from pydantic import field_validator, Field, model_validator
@@ -44,6 +44,7 @@ class ScheduleLine:
     scheduling_mode: Literal["common", "discretionary", "special"]
     kwargs: list[str] = Field(default_factory=list)
     embargo: bool = False
+    rawacf_format: Optional[Literal["dmap", "hdf5"]] = None
 
     def __str__(self):
         dur = self.duration
@@ -56,6 +57,7 @@ class ScheduleLine:
             f" {self.experiment}"
             f" {self.scheduling_mode}"
             f"{' --embargo' if self.embargo else ''}"
+            f"{' --rawacf_format=' + self.rawacf_format if self.rawacf_format is not None else ''}"
             f"{' ' + ' '.join(self.kwargs) if len(self.kwargs) > 0 else ''}"
         )
         return line
@@ -128,6 +130,18 @@ class ScheduleLine:
         if embargo:
             kwargs.remove("--embargo")
 
+        raw_format = None
+        raw_format_flag = ["rawacf_format" in x for x in kwargs]
+        if any(raw_format_flag):
+            idx = raw_format_flag.index(True)
+            if len(kwargs[idx].split("=")) == 1:
+                # supplied as --rawacf_format <format>
+                raw_format = kwargs.pop(idx + 1)
+                kwargs.pop(idx)
+            else:
+                # supplied as --rawacf_format=<format>
+                raw_format = kwargs.pop(idx).split("=")[1]
+
         scd_line = ScheduleLine(
             timestamp=dt.datetime.strptime(f"{fields[0]} {fields[1]}", "%Y%m%d %H:%M"),
             duration=duration,
@@ -136,6 +150,7 @@ class ScheduleLine:
             scheduling_mode=fields[5],
             embargo=embargo,
             kwargs=kwargs,
+            rawacf_format=raw_format,
         )
         return scd_line
 
@@ -194,6 +209,7 @@ class SCDUtils:
         duration,
         kwargs,
         embargo=False,
+        rawacf_format=None,
     ) -> ScheduleLine:
         """
         Creates a line dictionary from inputs, turning the date and time into a timestamp since epoch.
@@ -214,6 +230,8 @@ class SCDUtils:
         :type   kwargs:             list[str]
         :param  embargo:            flag for embargoing files. (Default value = False)
         :type   embargo:            bool
+        :param  rawacf_format:      The file format to save rawacf files in.
+        :type   rawacf_format:      str
 
         :returns:   Line details
         :rtype:     ScheduleLine
@@ -229,6 +247,7 @@ class SCDUtils:
             scheduling_mode=scheduling_mode,
             kwargs=kwargs,
             embargo=embargo,
+            rawacf_format=rawacf_format,
         )
 
     def read_scd(self):
@@ -284,6 +303,7 @@ class SCDUtils:
         duration="-",
         kwargs=None,
         embargo=False,
+        rawacf_format=None,
     ):
         """
         Adds a new line to the schedule.
@@ -304,6 +324,8 @@ class SCDUtils:
         :type   kwargs:             list[str]
         :param  embargo:            flag for embargoing files. (Default value = False)
         :type   embargo:            bool
+        :param  rawacf_format:      File format to use when writing rawacf files.
+        :type   rawacf_format:      str
 
         :raises ValueError: If line parameters are invalid or if line is a duplicate.
         """
@@ -316,6 +338,7 @@ class SCDUtils:
             duration,
             kwargs,
             embargo=embargo,
+            rawacf_format=rawacf_format,
         )
 
         scd_lines = self.read_scd()
@@ -357,6 +380,7 @@ class SCDUtils:
         duration="-",
         kwargs=None,
         embargo=False,
+        rawacf_format=None,
     ):
         """
         Removes a line from the schedule
@@ -377,6 +401,8 @@ class SCDUtils:
         :type   kwargs:             list[str]
         :param  embargo:            flag for embargoing files. (Default value = False)
         :type   embargo:            bool
+        :param  rawacf_format:      File format to use when writing rawacf files.
+        :type   rawacf_format:      str
 
         :raises ValueError: If line parameters are invalid or if line does not exist.
         """
@@ -391,6 +417,7 @@ class SCDUtils:
             duration,
             kwargs,
             embargo=embargo,
+            rawacf_format=rawacf_format,
         )
 
         scd_lines = self.read_scd()

@@ -175,9 +175,10 @@ class RxChannelMetadata:
     sequence_encodings: list = field(default_factory=list)
     rx_main_antennas: list[int] = field(default_factory=list)
     rx_intf_antennas: list[int] = field(default_factory=list)
-    rx_main_phases: list[complex] = field(default_factory=list)
-    rx_intf_phases: list[complex] = field(default_factory=list)
-    tx_antenna_phases: list[complex] = field(default_factory=list)
+    rx_main_excitations: list[complex] = field(default_factory=list)
+    rx_intf_excitations: list[complex] = field(default_factory=list)
+    tx_antennas: list[int] = field(default_factory=list)
+    tx_excitations: list[complex] = field(default_factory=list)
     beams: list[Beam] = field(default_factory=list)
     first_range: float = None
     num_ranges: int = None
@@ -202,24 +203,10 @@ class RxChannelMetadata:
 
 
 @dataclass
-class TxData:
-    """Defines a tx_data structure for inclusion in a Sequence dataclass"""
-
-    tx_rate: float = None
-    tx_ctr_freq: float = None
-    pulse_timing_us: int = None
-    pulse_sample_start: int = None
-    tx_samples: np.ndarray = None  # [num_antennas, num_samples]
-    dm_rate: int = None
-    decimated_tx_samples: np.ndarray = None  # [num_antennas, num_samples/dm_rate]
-
-
-@dataclass
 class Sequence:
     """Defines a sequence structure for inclusion in an AveperiodMetadataMessage"""
 
     blanks: list[int] = field(default_factory=list)
-    tx_data: TxData = None
     output_sample_rate: float = None
     rx_channels: list[RxChannelMetadata] = field(default_factory=list)
 

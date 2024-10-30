@@ -17,6 +17,7 @@ detailed descriptions of each configuration option.
 
 import os
 import json
+import numpy as np
 from dataclasses import dataclass, field
 
 
@@ -32,8 +33,9 @@ class Options:
     data_directory: str = field(init=False)
     hdw_path: str = field(init=False)
     rx_intf_antennas: list[int] = field(init=False)
-    intf_antenna_spacing: float = field(init=False)
+    intf_antenna_locations: np.ndarray = field(init=False)
     intf_antenna_count: int = field(init=False)
+    intf_antenna_spacing: float = field(init=False)
     log_aggregator_addr: str = field(init=False)
     log_aggregator_bool: bool = field(init=False)
     log_aggregator_port: int = field(init=False)
@@ -45,8 +47,9 @@ class Options:
     log_logfile_bool: bool = field(init=False)
     rx_main_antennas: list[int] = field(init=False)
     tx_main_antennas: list[int] = field(init=False)
-    main_antenna_spacing: float = field(init=False)
+    main_antenna_locations: np.ndarray = field(init=False)
     main_antenna_count: int = field(init=False)
+    main_antenna_spacing: float = field(init=False)
     max_filtering_stages: int = field(init=False)
     max_filter_taps_per_stage: int = field(init=False)
     max_freq: float = field(init=False)
@@ -61,10 +64,12 @@ class Options:
     n200_addrs: list[str] = field(init=False)
     n200_count: int = field(init=False)
     pulse_ramp_time: float = field(init=False)
+    rawacf_format: str = field(init=False)
     realtime_address: str = field(init=False)
     ringbuffer_name: str = field(init=False)
     router_address: str = field(init=False)
     site_id: str = field(init=False)
+    standard_antenna_positions: bool = field(init=False)
     tr_window_time: float = field(init=False)
     usrp_master_clock_rate: float = field(init=False)
 
@@ -152,8 +157,7 @@ class Options:
 
         # Initialize all options from config file
         self.site_id = raw_config["site_id"]
-        self.main_antenna_count = int(raw_config["main_antenna_count"])
-        self.intf_antenna_count = int(raw_config["intf_antenna_count"])
+        antenna_fields = raw_config["antennas"]
 
         # Parse N200 array and calculate which main and intf antennas operating
         self.n200_count = 0
@@ -170,17 +174,24 @@ class Options:
                 problem = "channel[1:] must be an integer"
                 raise ValueError(problem)
             if channel_str[0] == "m":
+                if channel_str[1:] not in antenna_fields["main_locations"].keys():
+                    raise ValueError(
+                        f"channel {channel_str[1:]} not in main antenna list {list(antenna_fields['main_locations'].keys())}"
+                    )
                 if rx:
                     self.rx_main_antennas.append(antenna_num)
                 else:
                     self.tx_main_antennas.append(antenna_num)
             elif channel_str[0] == "i":
-                if rx:
-                    self.rx_intf_antennas.append(antenna_num)
-                else:
+                if not rx:
                     raise ValueError(
                         "Cannot connect tx channel to interferometer array"
                     )
+                if channel_str[1:] not in antenna_fields["intf_locations"].keys():
+                    raise ValueError(
+                        f"channel {channel_str[1:]} not in intf antenna list {list(antenna_fields['intf_locations'].keys())}"
+                    )
+                self.rx_intf_antennas.append(antenna_num)
             else:
                 problem = "channel must start with either 'm' or 'i' for main or interferometer array"
                 raise ValueError(problem)
@@ -220,8 +231,55 @@ class Options:
         self.rx_intf_antennas.sort()
         self.tx_main_antennas.sort()
 
-        self.main_antenna_spacing = float(raw_config["main_antenna_spacing"])  # m
-        self.intf_antenna_spacing = float(raw_config["intf_antenna_spacing"])  # m
+        # Parse the antenna parameters
+        self.main_antenna_count = int(antenna_fields["main_antenna_count"])
+        self.intf_antenna_count = int(antenna_fields["intf_antenna_count"])
+        self.main_antenna_spacing = float(antenna_fields["main_antenna_spacing"])
+        self.intf_antenna_spacing = float(antenna_fields["intf_antenna_spacing"])
+        self.standard_antenna_positions = antenna_fields["standard_positions"]
+
+        def parse_antennas(array_name: str):
+            """Read the antenna_fields for an array and verify congruency of all fields"""
+            config_locations = antenna_fields[f"{array_name}_locations"]
+            antenna_locations = list()
+            antenna_names = list()
+            antenna_count = int(antenna_fields[f"{array_name}_antenna_count"])
+            if len(config_locations.keys()) != antenna_count:
+                raise ValueError(
+                    f"Number of specified antenna locations != {array_name}_antenna_count ({len(config_locations.keys())} != {antenna_count})"
+                )
+            for name, location in config_locations.items():
+                if len(location) != 3:
+                    raise ValueError(
+                        f"Antenna {name} has invalid location {location} (expected [x, y, z])"
+                    )
+                if int(name) < 0 or int(name) >= antenna_count:
+                    raise ValueError(
+                        f"Antenna {name} lies outside range [0, {array_name}_antenna_count) => [0, {antenna_count})"
+                    )
+                antenna_locations.append(location)
+                antenna_names.append(int(name))
+            sorted_antenna_indices = sorted(
+                range(len(antenna_names)), key=lambda k: antenna_names[k]
+            )
+            sorted_locations = np.array(antenna_locations, dtype=np.float32)[
+                sorted_antenna_indices
+            ]
+            if antenna_fields["standard_positions"] and len(sorted_locations) > 1:
+                expected_diffs = np.zeros_like(sorted_locations[1:])
+                expected_diffs[:, 0] = antenna_fields[f"{array_name}_antenna_spacing"]
+                if not np.allclose(
+                    sorted_locations[1:] - sorted_locations[:-1], expected_diffs
+                ):
+                    raise ValueError(
+                        f"{array_name} locations not in line parallel to x-axis and equally spaced by {antenna_fields[f'{array_name}_antenna_spacing']} m"
+                    )
+
+            return sorted_locations
+
+        self.main_antenna_locations = parse_antennas("main")
+        self.intf_antenna_locations = parse_antennas("intf")
+
         self.min_freq = float(raw_config["min_freq"])  # Hz
         self.max_freq = float(raw_config["max_freq"])  # Hz
         self.min_pulse_length = float(raw_config["min_pulse_length"])  # us
@@ -247,6 +305,7 @@ class Options:
         self.ringbuffer_name = raw_config["ringbuffer_name"]
 
         self.data_directory = raw_config["data_directory"]
+        self.rawacf_format = raw_config["rawacf_format"]
         self.log_directory = raw_config["log_handlers"]["logfile"]["directory"]
         self.hdw_path = raw_config["hdw_path"]
 
@@ -368,33 +427,12 @@ class Options:
             raise ValueError("Two or more n200s have identical IP addresses")
 
         if len(self.rx_main_antennas) > 0:
-            if (
-                min(self.rx_main_antennas) < 0
-                or max(self.rx_main_antennas) >= self.main_antenna_count
-            ):
-                raise ValueError(
-                    "rx_main_antennas and main_antenna_count are not consistent"
-                )
             if len(self.rx_main_antennas) != len(set(self.rx_main_antennas)):
                 raise ValueError("rx_main_antennas has duplicate values")
         if len(self.tx_main_antennas) > 0:
-            if (
-                min(self.tx_main_antennas) < 0
-                or max(self.tx_main_antennas) >= self.main_antenna_count
-            ):
-                raise ValueError(
-                    "tx_main_antennas and main_antenna_count are not consistent"
-                )
             if len(self.tx_main_antennas) != len(set(self.tx_main_antennas)):
                 raise ValueError("tx_main_antennas has duplicate values")
         if len(self.rx_intf_antennas) > 0:
-            if (
-                min(self.rx_intf_antennas) < 0
-                or max(self.rx_intf_antennas) >= self.intf_antenna_count
-            ):
-                raise ValueError(
-                    "rx_intf_antennas and intf_antenna_count are not consistent"
-                )
             if len(self.rx_intf_antennas) != len(set(self.rx_intf_antennas)):
                 raise ValueError("rx_intf_antennas has duplicate values")
 
@@ -448,6 +486,7 @@ class Options:
                        \n    max_range_gates = {self.max_range_gates} \
                        \n    max_beams = {self.max_beams} \
                        \n    default_freq = {self.default_freq} kHz \
-                       \n    restricted_ranges = {self.restricted_ranges} kHz
+                       \n    restricted_ranges = {self.restricted_ranges} kHz \
+                       \n    rawacf_format = {self.rawacf_format}
                        \n"""
         return return_str

@@ -212,7 +212,7 @@ def create_driver_message(radctrl_params, pulse_transmit_data):
         * ``startofburst`` - start of burst boolean, true for first pulse in sequence
         * ``endofburst`` - end of burst boolean, true for last pulse in sequence
         * ``timing`` - in us, the time past timezero to send this pulse. Timezero is the start of the sequence
-        * ``sarepeat`` - a boolean indicating whether the pulse is the exact same as the last pulse
+        * ``isarepeat`` - a boolean indicating whether the pulse is the exact same as the last pulse
           in the sequence, in which case we will save the time and not send the samples list and other
           params that will be the same
     :return: The compiled ``DriverPacket`` message to send to the usrp driver
@@ -470,12 +470,10 @@ def search_for_experiment(radar_control_to_exp_handler, exphan_to_radctrl_iden, 
 
 
 def make_next_samples(radctrl_params):
-    sqn, dbg = radctrl_params.sequence.make_sequence(
+    sqn = radctrl_params.sequence.make_sequence(
         radctrl_params.aveperiod.beam_iter,
         radctrl_params.num_sequences + len(radctrl_params.aveperiod.sequences),
     )
-    if dbg:
-        radctrl_params.debug_samples.append(dbg)
     radctrl_params.pulse_transmit_data_tracker[radctrl_params.sequence_index][
         radctrl_params.num_sequences + len(radctrl_params.aveperiod.sequences)
     ] = sqn
@@ -575,27 +573,6 @@ def create_dw_message(radctrl_params):
         sequence_add.blanks = sequence.blanks
         sequence_add.output_sample_rate = sequence.output_rx_rate
 
-        if len(radctrl_params.debug_samples) > 0:
-            tx_data = messages.TxData()
-            tx_data.tx_rate = radctrl_params.debug_samples[sequence_index]["txrate"]
-            tx_data.tx_ctr_freq = radctrl_params.debug_samples[sequence_index][
-                "txctrfreq"
-            ]
-            tx_data.pulse_timing_us = radctrl_params.debug_samples[sequence_index][
-                "pulse_timing"
-            ]
-            tx_data.pulse_sample_start = radctrl_params.debug_samples[sequence_index][
-                "pulse_sample_start"
-            ]
-            tx_data.tx_samples = radctrl_params.debug_samples[sequence_index][
-                "sequence_samples"
-            ]
-            tx_data.dm_rate = radctrl_params.debug_samples[sequence_index]["dmrate"]
-            tx_data.decimated_tx_samples = radctrl_params.debug_samples[sequence_index][
-                "decimated_samples"
-            ]
-            sequence_add.tx_data = tx_data
-
         for slice_id in sequence.slice_ids:
             sqn_slice = sequence.slice_dict[slice_id]
             rxchannel = messages.RxChannelMetadata()
@@ -618,7 +595,8 @@ def create_dw_message(radctrl_params):
 
             rxchannel.rx_main_antennas = sqn_slice.rx_main_antennas
             rxchannel.rx_intf_antennas = sqn_slice.rx_intf_antennas
-            rxchannel.tx_antenna_phases = sequence.tx_main_phase_shifts[slice_id][
+            rxchannel.tx_antennas = sqn_slice.tx_antennas
+            rxchannel.tx_excitations = sequence.tx_main_phase_shifts[slice_id][
                 radctrl_params.aveperiod.beam_iter
             ]
 
@@ -626,23 +604,27 @@ def create_dw_message(radctrl_params):
             if isinstance(beams, int):
                 beams = [beams]
 
-            rx_main_phases = []
-            rx_intf_phases = []
+            rx_main_excitations = []
+            rx_intf_excitations = []
             for beam in beams:
                 beam_add = messages.Beam(sqn_slice.beam_angle[beam], beam)
                 rxchannel.add_beam(beam_add)
-                rx_main_phases.append(
+                rx_main_excitations.append(
                     sequence.rx_beam_phases[slice_id]["main"][
                         beam, sequence.rx_main_antenna_indices[slice_id]
                     ]
                 )
-                rx_intf_phases.append(
+                rx_intf_excitations.append(
                     sequence.rx_beam_phases[slice_id]["intf"][
                         beam, sequence.rx_intf_antenna_indices[slice_id]
                     ]
                 )
-            rxchannel.rx_main_phases = np.array(rx_main_phases, dtype=np.complex64)
-            rxchannel.rx_intf_phases = np.array(rx_intf_phases, dtype=np.complex64)
+            rxchannel.rx_main_excitations = np.array(
+                rx_main_excitations, dtype=np.complex64
+            )
+            rxchannel.rx_intf_excitations = np.array(
+                rx_intf_excitations, dtype=np.complex64
+            )
 
             rxchannel.first_range = float(sqn_slice.first_range)
             rxchannel.num_ranges = sqn_slice.num_ranges
@@ -1228,11 +1210,9 @@ def main():
                         # On first sequence, we make the first set of samples
                         if sequence_index not in ave_params.pulse_transmit_data_tracker:
                             ave_params.pulse_transmit_data_tracker[sequence_index] = {}
-                            sqn, dbg = sequence.make_sequence(
+                            sqn = sequence.make_sequence(
                                 aveperiod.beam_iter, ave_params.num_sequences
                             )
-                            if dbg:
-                                ave_params.debug_samples.append(dbg)
                             ave_params.pulse_transmit_data_tracker[sequence_index][
                                 ave_params.num_sequences
                             ] = sqn

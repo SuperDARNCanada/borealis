@@ -1,8 +1,6 @@
-.. _antennas_iq:
-
-================
-antennas_iq v0.7
-================
+=========
+bfiq v0.7
+=========
 
 This is the most up to date version of this file format produced by Borealis version 0.7, the
 current version.
@@ -10,17 +8,17 @@ current version.
 For data files from previous Borealis software versions, see `here
 <https://borealis.readthedocs.io/en/latest/borealis_data.html#previous-versions>`__.
 
-The pyDARNio format class for this format is BorealisAntennasIq found in the `borealis_formats
-<https://github.com/SuperDARN/pyDARNio/blob/main/pydarnio/borealis/borealis_formats.py>`_.
+The pyDARNio format class for this format is BorealisBfiq found in the `borealis_formats
+<https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`_.
 
-The antennas_iq format is intended to hold individual antennas I and Q data. The data is filtered,
-but is not averaged.
+The bfiq format is intended to hold beamformed I and Q data for the main and interferometer arrays.
+The data is not averaged.
 
 Both site files and array-restructured files exist for this file type. Both are described below.
 
------------------------
-antennas_iq array files
------------------------
+----------------
+bfiq array files
+----------------
 
 Array restructured files are produced after the radar has finished writing a file and contain record
 data in multi-dimensional arrays so as to avoid repeated values, shorten the read time, and improve
@@ -31,13 +29,13 @@ experiment (and are therefore repeated for all records) are written only once.
 The group names in these files are the field names themselves, greatly reducing the number of group
 names in the file when compared to site files and making the file much more human readable.
 
-The naming convention of the antennas_iq array-structured files are: ::
+The naming convention of the bfiq array-structured files are: ::
 
-    [YYYYmmDD].[HHMM].[SS].[station_id].[slice_id].antennas_iq.hdf5
+    [YYYYmmDD].[HHMM].[SS].[station_id].[slice_id].bfiq.hdf5
 
 For example: ::
 
-    20191105.1400.02.sas.0.antennas_iq.hdf5
+    20191105.1400.02.sas.0.bfiq.hdf5
 
 This is the file that began writing at 14:00:02 UT on November 5 2019 at the Saskatoon site, and it
 provides data for slice 0 of the experiment that ran at that time. It has been array restructured
@@ -46,7 +44,7 @@ because it does not have a .site designation at the end of the filename.
 These files are zlib compressed which is native to hdf5 and no decompression is necessary before
 reading using your hdf5 library.
 
-The file fields in the antennas_iq array files are:
+The file fields in the bfiq array files are:
 
 +-----------------------------------+---------------------------------------------+
 | | **FIELD NAME**                  | **description**                             |
@@ -60,10 +58,7 @@ The file fields in the antennas_iq array files are:
 +-----------------------------------+---------------------------------------------+
 | | **antenna_arrays_order**        | | States what order the data is in and      |
 | | *bytes*                         | | describes the data layout for the         |
-| | [num_antennas]                  | | num_antennas data dimension               |
-| |                                 | | Antennas are recorded main array          |
-| |                                 | | ascending and then interferometer array   |
-| |                                 | | ascending                                 |
+| | [num_antenna_arrays]            | | num_antenna_arrays data dimension         |
 +-----------------------------------+---------------------------------------------+
 | | **beam_azms**                   | | A list of the beam azimuths for each beam |
 | | *float64*                       | | in degrees off boresite. Note that this   |
@@ -115,15 +110,17 @@ The file fields in the antennas_iq array files are:
 +-----------------------------------+---------------------------------------------+
 | | **data**                        | | A set of samples (complex float) at given |
 | | *complex64*                     | | sample rate. Note that records that do not|
-| | [num_records x                  | | have num_sequences = max_num_sequences    |
-| | num_antennas x                  | | will have padded zeros. The num_sequences |
-| | max_num_sequences x             | | array should be used to determine the     |
-| | num_samps]                      | | correct number of sequences to read for   |
-| |                                 | | the record.                               |
+| | [num_records x                  | | have num_sequences = max_num_sequences or |
+| | num_antenna_arrays x            | | num_beams = max_num_beams will have       |
+| | max_num_sequences x             | | padded zeros. The num_sequences and       |
+| | max_num_beams x                 | | num_beams arrays should be used to        |
+| | num_samps]                      | | determine the correct number of sequences |
+| |                                 | | and beams to read for the record.         |
 +-----------------------------------+---------------------------------------------+
 | | **data_descriptors**            | | Denotes what each data dimension          |
 | | *bytes*                         | | represents. = 'num_records',              |
-| | [4]                             | | ‘num_antennas’, ‘max_num_sequences’,      |
+| | [5]                             | | ‘num_antenna_arrays’,                     |
+| |                                 | | ‘max_num_sequences’, ‘max_num_beams’,     |
 | |                                 | | ‘num_samps’                               |
 +-----------------------------------+---------------------------------------------+
 | | **data_normalization_factor**   | | Scale of all the filters used,            |
@@ -154,9 +151,9 @@ The file fields in the antennas_iq array files are:
 | | [num_records]                   | | False if it unlocked at least once.       |
 +-----------------------------------+---------------------------------------------+
 | | **gps_to_system_time_diff**     | | The max time difference between box_time  |
-| | *float32*                       | | (GPS time) and system time (NTP) during   |
-| | [num_records]                   | | the integration. Negative when GPS time   |
-| |                                 | | is ahead of system time.                  |
+| | *float32*                       | | GPS time) and system time (NTP) during the|
+| | [num_records]                   | | integration. Negative when GPS time is    |
+| |                                 | | ahead of system time.                     |
 +-----------------------------------+---------------------------------------------+
 | | **int_time**                    | | Integration time in seconds.              |
 | | *float32*                       | |                                           |
@@ -189,9 +186,11 @@ The file fields in the antennas_iq array files are:
 | |                                 | | correct number of sequences to read for   |
 | |                                 | | the record.                               |
 +-----------------------------------+---------------------------------------------+
-| | **num_beams**                   | | The number of beams to calculate for each |
-| | *uint32*                        | | record.                                   |
-| | [num_records]                   | |                                           |
+| | **num_beams**                   | | The number of beams calculated for each   |
+| | *uint32*                        | | record. Allows the user to correctly read |
+| | [num_records]                   | | the data up to the correct number and     |
+| |                                 | | remove the padded zeros in the data       |
+| |                                 | | array.                                    |
 +-----------------------------------+---------------------------------------------+
 | | **num_blanked_samples**         | | The number of blanked samples for each    |
 | | *uint32*                        | | record.                                   |
@@ -265,7 +264,7 @@ The file fields in the antennas_iq array files are:
 | |                                 | | driver and the USRPs are GPS disciplined  |
 | |                                 | | and synchronized using the Octoclock.     |
 | |                                 | | Provided in seconds since epoch.          |
-| |                                 | | Note that records that do not have        |
+| |                                 | | Note that records do not have             |
 | |                                 | | num_sequences = max_num_sequences will    |
 | |                                 | | have padded zeros. The num_sequences      |
 | |                                 | | array should be used to determine the     |
@@ -288,28 +287,28 @@ The file fields in the antennas_iq array files are:
 | | *uint32*                        | | microseconds.                             |
 +-----------------------------------+---------------------------------------------+
 
-----------------------
-antennas_iq site files
-----------------------
+---------------
+bfiq site files
+---------------
 
 Site files are produced by the Borealis code package and have the data in a record by record style
 format. In site files, the hdf5 group names (ie record names) are given as the timestamp in ms past
 epoch of the first sequence or sampling period recorded in the record.
 
-The naming convention of the antennas_iq site-structured files are: ::
+The naming convention of the bfiq site-structured files are: ::
 
-    [YYYYmmDD].[HHMM].[SS].[station_id].[slice_id].antennas_iq.hdf5.site
+    [YYYYmmDD].[HHMM].[SS].[station_id].[slice_id].bfiq.hdf5.site
 
 For example: ::
 
-    20191105.1400.02.sas.0.antennas_iq.hdf5.site
+    20191105.1400.02.sas.0.bfiq.hdf5.site
 
 This is the file that began writing at 14:00:02 UT on November 5 2019 at the Saskatoon site, and it
 provides data for slice 0 of the experiment that ran at that time.
 
 These files are often bzipped after they are produced.
 
-The file fields under the record name in antennas_iq site files are:
+The file fields under the record name in bfiq site files are:
 
 +----------------------------------+---------------------------------------------+
 | | **Field name**                 | **description**                             |
@@ -322,9 +321,7 @@ The file fields under the record name in antennas_iq site files are:
 +----------------------------------+---------------------------------------------+
 | | **antenna_arrays_order**       | | States what order the data is in and      |
 | | *[bytes, ]*                    | | describes the data layout for the         |
-| |                                | | num_antennas data dimension. Antennas are |
-| |                                | | recorded main array ascending and then    |
-| |                                | | interferometer array ascending.           |
+| |                                | | num_antenna_arrays data dimension         |
 +----------------------------------+---------------------------------------------+
 | | **beam_azms**                  | | A list of the beam azimuths for each      |
 | | *[float64, ]*                  | | beam in degrees off boresite.             |
@@ -346,12 +343,12 @@ The file fields under the record name in antennas_iq site files are:
 +----------------------------------+---------------------------------------------+
 | | **data**                       | | A contiguous set of samples (complex      |
 | | *[complex64, ]*                | | float) at given sample rate. Dimensions   |
-| |                                | | match data_dimensions field.              |
+| |                                | | match that of data_dimensions field.      |
 +----------------------------------+---------------------------------------------+
 | | **data_descriptors**           | | Denotes what each data dimension          |
-| | *[bytes, ]*                    | | represents. = ‘num_antennas’,             |
-| |                                | | ‘num_sequences’, ‘num_samps’ for          |
-| |                                | | antennas_iq                               |
+| | *[bytes, ]*                    | | represents. = ‘num_antenna_arrays’,       |
+| |                                | | ‘num_sequences’, ‘num_beams’, ‘num_samps’ |
+| |                                | | for bfiq                                  |
 +----------------------------------+---------------------------------------------+
 | | **data_dimensions**            | | The dimensions of the data.               |
 | | *[uint32, ]*                   | | Dimensions correspond to                  |
@@ -498,3 +495,21 @@ code is housed within `pyDARNio <https://github.com/SuperDARN/pyDARNio>`_.
 
 Restructuring between site and array formats occur within the BorealisRestructure class, found `here
 <https://github.com/SuperDARN/pyDARNio/blob/main/pydarnio/borealis/borealis_restructure.py>`__.
+
+-------------------------------------
+bfiq to iqdat SDARN (DMap) Conversion
+-------------------------------------
+
+Conversion to SDARN IO (DMap iqdat) is available but can fail based on experiment complexity. The
+conversion also reduces the precision of the data due to conversion from complex floats to int of
+all samples. Similar precision is lost in timestamps.
+
+HDF5 is a much more user-friendly format and we encourage the use of this data if possible. Please
+reach out if you have questions on how to use the Borealis bfiq files.
+
+The mapping from bfiq to iqdat dmap files is completed as follows:
+
+..  toctree::
+    :maxdepth: 2
+
+    ./../iqdat_mapping
