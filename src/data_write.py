@@ -516,9 +516,7 @@ class DataWrite:
                     np.arange(stage_data.antennas_iq_data.shape[-1], dtype=np.float32)
                     / stage_data.rx_sample_rate
                 )
-                stage_data.sample_time = np.round(sample_timing_s * 1e6).astype(
-                    np.float32
-                )
+                stage_data.sample_time = sample_timing_s * 1e6
                 final_data_params[slice_num][stage] = stage_data
 
         for slice_num, slice_ in final_data_params.items():
@@ -572,7 +570,7 @@ class DataWrite:
             np.arange(slice_data.rawrf_data.shape[-1], dtype=np.float32)
             / slice_data.rx_sample_rate
         )
-        slice_data.sample_time = np.round(sample_timing_s * 1e6).astype(np.float32)
+        slice_data.sample_time = sample_timing_s * 1e6
 
         self._write_file(slice_data, self.raw_rf_two_hr_name, "rawrf")
 
