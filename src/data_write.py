@@ -517,7 +517,7 @@ class DataWrite:
                     / stage_data.rx_sample_rate
                 )
                 stage_data.sample_time = np.round(sample_timing_s * 1e6).astype(
-                    np.int32
+                    np.float32
                 )
                 final_data_params[slice_num][stage] = stage_data
 
@@ -572,7 +572,7 @@ class DataWrite:
             np.arange(slice_data.rawrf_data.shape[-1], dtype=np.float32)
             / slice_data.rx_sample_rate
         )
-        slice_data.sample_time = np.round(sample_timing_s * 1e6).astype(np.int32)
+        slice_data.sample_time = np.round(sample_timing_s * 1e6).astype(np.float32)
 
         self._write_file(slice_data, self.raw_rf_two_hr_name, "rawrf")
 
