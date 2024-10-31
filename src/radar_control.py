@@ -22,6 +22,7 @@ import numpy as np
 from functools import reduce
 from dataclasses import dataclass, field
 
+from experiment_prototype.interface_classes.averaging_periods import CFSAveragingPeriod
 from utils.options import Options
 import utils.message_formats as messages
 from utils import socket_operations as so
@@ -41,7 +42,6 @@ class CFSParameters:
     Parameters used to track clear frequency search data, each use
     of this class should be linked to a unique aveperiod.
 
-    :param  total_beam_num: number of beams that will be scanned by slice
     :param  cfs_freq:   list of frequencies sampled by CFS
     :param  cfs_mags:   power measurements corresponding to cfs_freq, indexed by beam iterator
                         then by slice order in an aveperiod
@@ -56,54 +56,13 @@ class CFSParameters:
                         slices on a beam. Indexed by beam iterator
     """
 
-    total_beam_num: int = 0
-    cfs_freq: list = field(default_factory=list)
-    cfs_mags: dict = field(default_factory=dict)
-    cfs_range: dict = field(default_factory=dict)
-    cfs_masks: dict = field(default_factory=dict)
-    last_cfs_set_time: dict = field(default_factory=dict)
-    beam_frequency: dict = field(default_factory=dict)
-    set_new_freq: dict = field(default_factory=dict)
-
-    def __post_init__(self):
-        for beam_iter in range(self.total_beam_num):
-            self.last_cfs_set_time[beam_iter] = 0
-            self.set_new_freq[beam_iter] = True
-            self.cfs_mags[beam_iter] = dict()
-            self.cfs_masks[beam_iter] = dict()
-
-    def check_update_freq(self, cfs_spectrum, cfs_slices, threshold, beam_iter):
-        """
-        Checks if any scanned frequencies have power levels that
-        exceed the current power of each cfs slice based on a threshold
-
-        :params cfs_spectrum:   Results of the CFS analysis
-        :type   cfs_spectrum:   OutputDataset dataclass from message_formats.py
-        :params cfs_slices:     Slice ids of each cfs slice to be checked
-        :type   cfs_slices:     list
-        :params threshold:      Power threshold (dB) used in check
-        :type   threshold:      float
-        :params beam_iter:      current beam index
-        :type   beam_iter:      int
-        """
-        cfs_data = [dset.cfs_data for dset in cfs_spectrum.output_datasets]
-        for i, slice_id in enumerate(cfs_slices):
-            # Shift the current frequency down to baseband and then use the
-            # result to determine the index in the measured frequency
-            # spectrum that the current frequency is from
-            shifted_frequency = self.beam_frequency[beam_iter][slice_id] - int(
-                sum(self.cfs_range[slice_id]) / 2
-            )
-            idx = (
-                np.abs(np.asarray(self.cfs_freq) - shifted_frequency * 1000)
-            ).argmin()
-
-            # calculate the ratio of the current freq power over all other freqs
-            pwr_ratio = cfs_data[i][idx] - np.asarray(
-                cfs_data[i][self.cfs_masks[beam_iter][slice_id]]
-            )
-            if any(pwr_ratio > threshold):
-                self.set_new_freq[beam_iter] = True
+    cfs_freq: list
+    cfs_mags: dict
+    cfs_range: dict
+    cfs_masks: dict
+    last_cfs_set_time: dict
+    beam_frequency: dict
+    set_new_freq: dict
 
 
 @dataclass
@@ -131,7 +90,7 @@ class RadctrlParameters:
     pulse_transmit_data_tracker: dict = field(default_factory=dict)
     slice_dict: dict = field(default_factory=dict, init=False)
     cfs_scan_flag: bool = False
-    cfs_params: ... = field(default_factory=CFSParameters, init=False)
+    cfs_params: CFSParameters = field(init=False)
     scan_flag: bool = False
     dsp_cfs_identity: str = ""
     router_address: str = ""
@@ -141,7 +100,7 @@ class RadctrlParameters:
 
     def __post_init__(self):
         self.slice_dict = self.experiment.slice_dict
-        self.cfs_params = CFSParameters(self.num_beams)
+        self.cfs_params = None
         # Set slice_dict after an experiment has been assigned
         if self.sequence:
             self.decimation_scheme = self.sequence.decimation_scheme
@@ -680,7 +639,7 @@ def run_cfs_scan(radctrl_params, sockets):
 
     aveperiod = radctrl_params.aveperiod
     sequence = aveperiod.cfs_sequence
-    sqn, dbg = sequence.make_sequence(aveperiod.beam_iter, 0)
+    sqn = sequence.make_sequence(aveperiod.beam_iter, 0)
 
     cfs_sqn_num = radctrl_params.seqnum_start + radctrl_params.num_sequences
     so.send_pyobj(cfs_socket, radctrl_params.dw_cfs_identity, cfs_sqn_num)
@@ -715,16 +674,25 @@ def run_cfs_scan(radctrl_params, sockets):
     return freq_data
 
 
-def cfs_block(ave_params, cfs_params_dict, cfs_sockets):
+def cfs_block(ave_params, cfs_sockets):
     aveperiod = ave_params.aveperiod
-    cfs_params = cfs_params_dict[aveperiod]
+    cfs_params = CFSParameters(
+        aveperiod.cfs_freq,
+        aveperiod.cfs_mags,
+        aveperiod.cfs_range,
+        aveperiod.cfs_masks,
+        aveperiod.last_cfs_set_time,
+        aveperiod.beam_frequency,
+        aveperiod.set_new_freq,
+    )
     beam = aveperiod.beam_iter
     if not (
-        cfs_params.last_cfs_set_time[beam] < time.time() - aveperiod.cfs_stable_time
+        aveperiod.last_cfs_set_time[beam]
+        < datetime.utcnow() - aveperiod.cfs_stable_time
         or aveperiod.cfs_always_run
     ):
         ave_params.cfs_params = cfs_params
-        return False
+        return
 
     # Only let CFS run after the user set stable time has
     # passed to prevent CFS from switching freqs to quickly
@@ -734,47 +702,47 @@ def cfs_block(ave_params, cfs_params_dict, cfs_sockets):
     freq_spectrum = run_cfs_scan(ave_params, cfs_sockets)
     ave_params.num_sequences += 1
     ave_params.cfs_scan_flag = False
-    cfs_params.cfs_freq = freq_spectrum.cfs_freq
+    aveperiod.cfs_freq = freq_spectrum.cfs_freq
 
     for ind, dset in enumerate(freq_spectrum.output_datasets):
-        cfs_params.cfs_mags[beam][aveperiod.cfs_slice_ids[ind]] = dset.cfs_data
+        aveperiod.cfs_mags[beam][aveperiod.cfs_slice_ids[ind]] = dset.cfs_data
 
     if not (
-        cfs_params.last_cfs_set_time[beam] < time.time() - aveperiod.cfs_stable_time
+        aveperiod.last_cfs_set_time[beam] < time.time() - aveperiod.cfs_stable_time
     ):
         ave_params.cfs_params = cfs_params
-        return False
+        return
 
     # Only attempt to update the cfs frequency of stable time has elapsed
-    cfs_params.last_cfs_set_time[beam] = time.time()
+    aveperiod.last_cfs_set_time[beam] = time.time()
 
-    if not cfs_params.set_new_freq[beam] and aveperiod.cfs_pwr_threshold is not None:
+    if not aveperiod.set_new_freq[beam] and aveperiod.cfs_pwr_threshold is not None:
         # If using a user set power threshold to trigger CFS freq setting, check
         # if any power related condition are triggered and set the corresponding
         # flag
-        cfs_params.check_update_freq(
+        aveperiod.check_update_freq(
             freq_spectrum,
             aveperiod.cfs_slice_ids,
             aveperiod.cfs_pwr_threshold,
             beam,
         )
 
-    if not (cfs_params.set_new_freq[beam] or aveperiod.cfs_pwr_threshold is None):
+    if not (aveperiod.set_new_freq[beam] or aveperiod.cfs_pwr_threshold is None):
         # Return if the frequency does not need to be changed.
         ave_params.cfs_params = cfs_params
-        return False
+        return
 
     # If using a power threshold and one of the power conditions were
     # triggerd, or if not using a power threshold, set the CFS params
-    cfs_params.set_new_freq[beam] = False
-    cfs_params.cfs_masks[beam], last_set_cfs = aveperiod.select_cfs_freqs(freq_spectrum)
-    cfs_params.beam_frequency[beam] = last_set_cfs
+    aveperiod.set_new_freq[beam] = False
+    aveperiod.cfs_masks[beam], last_set_cfs = aveperiod.select_cfs_freqs(freq_spectrum)
+    aveperiod.beam_frequency[beam] = last_set_cfs
 
     for ind in range(len(aveperiod.cfs_slice_ids)):
-        cfs_params.cfs_range[aveperiod.cfs_slice_ids[ind]] = aveperiod.cfs_range[ind]
+        aveperiod.cfs_range[aveperiod.cfs_slice_ids[ind]] = aveperiod.cfs_range[ind]
 
     ave_params.cfs_params = cfs_params
-    return True
+    aveperiod.update_cfs_freqs()
 
 
 def main():
@@ -894,7 +862,6 @@ def main():
     first_aveperiod = True
     next_scan_start = None
 
-    cfs_params_dict = dict()
     while True:
         # This loops through all scans in an experiment, or restarts this loop if a new experiment occurs.
         # TODO : further documentation throughout in comments (high level) and in separate documentation.
@@ -1002,10 +969,6 @@ def main():
             ):
                 # If there are multiple aveperiods in a scan they are alternated (AVEPERIOD interfaced)
                 aveperiod = scan.aveperiods[scan.aveperiod_iter]
-                if aveperiod not in cfs_params_dict.keys() and aveperiod.cfs_flag:
-                    cfs_params_dict[aveperiod] = CFSParameters(
-                        aveperiod.num_beams_in_scan
-                    )
                 if TIME_PROFILE:
                     time_start_of_aveperiod = datetime.utcnow()
 
@@ -1161,29 +1124,18 @@ def main():
                 time_remains = True
 
                 while time_remains:
-                    if ave_params.num_sequences == 0 and aveperiod.cfs_flag:
+                    if ave_params.num_sequences == 0 and isinstance(
+                        aveperiod, CFSAveragingPeriod
+                    ):
                         cfs_time = time.time()
-                        updated = cfs_block(
+                        cfs_block(
                             ave_params,
-                            cfs_params_dict,
                             [
                                 radctrl_inproc_socket,
                                 radctrl_brian_socket,
                                 driver_comms_socket,
                             ],
                         )
-                        if not updated:
-                            # Need to update current beam frequency to pre-determined value
-                            beam = aveperiod.beam_iter
-                            cfs_set_freqs = dict()
-                            for slice_id in cfs_params_dict[aveperiod].beam_frequency[
-                                beam
-                            ]:
-                                cfs_set_freqs[slice_id] = cfs_params_dict[
-                                    aveperiod
-                                ].beam_frequency[beam][slice_id]
-                            aveperiod.update_cfs_freqs(cfs_set_freqs)
-
                         log.verbose("CFS block run time", time=time.time() - cfs_time)
 
                     for sequence_index, sequence in enumerate(aveperiod.sequences):

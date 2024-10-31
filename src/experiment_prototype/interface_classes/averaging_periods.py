@@ -11,6 +11,9 @@ or intt(max time for integrations), and it contains sequences of class Sequence.
 :author: Marci Detwiller
 """
 
+import collections
+import datetime
+
 # built-in
 import inspect
 from pathlib import Path
@@ -98,29 +101,6 @@ class AveragingPeriod(InterfaceClassBase):
         self.slice_to_beamorder = slice_to_beamorder_dict
         self.slice_to_beamdir = slice_to_beamdir_dict
 
-        # Metadata for an AveragingPeriod: clear frequency search, integration time, number of averages goal
-        self.cfs_flag = False
-        self.cfs_always_run = False
-        self.cfs_sequence = None
-        self.cfs_slice_ids = []
-        self.cfs_scan_order = []
-        self.cfs_stable_time = 0
-        self.cfs_pwr_threshold = 0
-        self.cfs_fft_n = 0
-        # there may be multiple slices in this averaging period at different frequencies so
-        # we may have to search multiple ranges.
-        self.cfs_range = []
-        for slice_id in self.slice_ids:
-            if self.slice_dict[slice_id].cfs_flag:
-                self.cfs_stable_time = self.slice_dict[slice_id].cfs_stable_time
-                self.cfs_pwr_threshold = self.slice_dict[slice_id].cfs_pwr_threshold
-                self.cfs_fft_n = self.slice_dict[slice_id].cfs_fft_n
-                self.cfs_flag = True
-                self.cfs_slice_ids.append(slice_id)
-                self.cfs_range.append(self.slice_dict[slice_id].cfs_range)
-                if self.slice_dict[slice_id].cfs_always_run:
-                    self.cfs_always_run = True
-
         self.intt = self.slice_dict[self.slice_ids[0]].intt
         self.intn = self.slice_dict[self.slice_ids[0]].intn
         self.txctrfreq = self.slice_dict[self.slice_ids[0]].txctrfreq
@@ -166,43 +146,16 @@ class AveragingPeriod(InterfaceClassBase):
                     " interfaced and do not have the same rxctrfreq"
                 )
                 raise ExperimentException(errmsg)
-        for slice_id in self.cfs_slice_ids:
-            if self.slice_dict[slice_id].cfs_pwr_threshold != self.cfs_pwr_threshold:
-                errmsg = (
-                    f"Slices {self.slice_ids[0]} and {slice_id} are SEQUENCE or CONCURRENT"
-                    " interfaced and do not have the same cfs_power_threshold"
-                )
-                raise ExperimentException(errmsg)
-            if self.slice_dict[slice_id].cfs_fft_n != self.cfs_fft_n:
-                errmsg = (
-                    f"Slices {self.slice_ids[0]} and {slice_id} are SEQUENCE or CONCURRENT"
-                    " interfaced and do not have the same cfs_fft_n"
-                )
-                raise ExperimentException(errmsg)
-            if self.slice_dict[slice_id].cfs_stable_time != self.cfs_stable_time:
-                errmsg = (
-                    f"Slices {self.slice_ids[0]} and {slice_id} are SEQUENCE or CONCURRENT"
-                    " interfaced and do not have the same cfs_stable_time"
-                )
-                raise ExperimentException(errmsg)
 
         self.num_beams_in_scan = len(self.slice_dict[self.slice_ids[0]].rx_beam_order)
 
         # NOTE: Do not need beam information inside the AveragingPeriod, this is in Scan.
 
-        if self.cfs_flag:
-            self.build_cfs_sequence()
-
         # Determine how this averaging period is made by separating out the SEQUENCE interfaced.
         self.nested_slice_list = self.get_nested_slice_ids()
         self.sequences = []
-
-        self.cfs_sequences = []
         for params in self.prep_for_nested_interface_class():
-            new_sequence = Sequence(*params)
-            if new_sequence.cfs_flag:
-                self.cfs_sequences.append(new_sequence)
-            self.sequences.append(new_sequence)
+            self.sequences.append(Sequence(*params))
 
         self.one_pulse_only = False
 
@@ -241,6 +194,93 @@ class AveragingPeriod(InterfaceClassBase):
             raise ExperimentException(errmsg)
 
         return slice_to_beamdir_dict
+
+
+class CFSAveragingPeriod(AveragingPeriod):
+    """
+    A variation of AveragingPeriod that conducts a clear frequency search to determine the frequency to use
+    for some or all of the slices within the averaging period.
+    """
+
+    def __init__(
+        self,
+        ave_keys,
+        ave_slice_dict,
+        ave_interface,
+        transmit_metadata,
+        slice_to_beamorder_dict,
+        slice_to_beamdir_dict,
+    ):
+        super().__init__(
+            ave_keys,
+            ave_slice_dict,
+            ave_interface,
+            transmit_metadata,
+            slice_to_beamorder_dict,
+            slice_to_beamdir_dict,
+        )
+
+        # Metadata for an AveragingPeriod: clear frequency search, integration time, number of averages goal
+        self.cfs_always_run = False
+        self.cfs_sequence = None
+        self.cfs_slice_ids = []
+        self.cfs_scan_order = []
+        self.cfs_stable_time = 0
+        self.cfs_pwr_threshold = 0
+        self.cfs_fft_n = 0
+
+        # These are from CFSParameters in radar_control.py
+        # Each field below is keyed by slice ID
+        self.cfs_freq = collections.defaultdict(list)
+        self.cfs_mags = collections.defaultdict(dict)
+        self.cfs_range = collections.defaultdict(dict)
+        self.cfs_masks = collections.defaultdict(dict)
+        self.last_cfs_set_time = collections.defaultdict(list)
+        self.beam_frequency = collections.defaultdict(dict)
+        self.set_new_freq = collections.defaultdict(dict)
+
+        # there may be multiple slices in this averaging period at different frequencies so
+        # we may have to search multiple ranges.
+        self.cfs_range = []
+        for slice_id in self.slice_ids:
+            if self.slice_dict[slice_id].cfs_flag:
+                self.cfs_stable_time = self.slice_dict[slice_id].cfs_stable_time
+                self.last_cfs_set_time[slice_id] = [
+                    datetime.datetime.utcnow()
+                    - datetime.timedelta(seconds=self.cfs_stable_time)
+                    for _ in range(len(self.slice_dict[slice_id].rx_beam_order))
+                ]
+                self.cfs_pwr_threshold = self.slice_dict[slice_id].cfs_pwr_threshold
+                self.cfs_fft_n = self.slice_dict[slice_id].cfs_fft_n
+                self.cfs_flag = True
+                self.cfs_slice_ids.append(slice_id)
+                self.cfs_range.append(self.slice_dict[slice_id].cfs_range)
+                if self.slice_dict[slice_id].cfs_always_run:
+                    self.cfs_always_run = True
+
+        for slice_id in self.cfs_slice_ids:
+            if self.slice_dict[slice_id].cfs_pwr_threshold != self.cfs_pwr_threshold:
+                errmsg = (
+                    f"Slices {self.slice_ids[0]} and {slice_id} are SEQUENCE or CONCURRENT"
+                    " interfaced and do not have the same cfs_power_threshold"
+                )
+                raise ExperimentException(errmsg)
+            if self.slice_dict[slice_id].cfs_fft_n != self.cfs_fft_n:
+                errmsg = (
+                    f"Slices {self.slice_ids[0]} and {slice_id} are SEQUENCE or CONCURRENT"
+                    " interfaced and do not have the same cfs_fft_n"
+                )
+                raise ExperimentException(errmsg)
+            if self.slice_dict[slice_id].cfs_stable_time != self.cfs_stable_time:
+                errmsg = (
+                    f"Slices {self.slice_ids[0]} and {slice_id} are SEQUENCE or CONCURRENT"
+                    " interfaced and do not have the same cfs_stable_time"
+                )
+                raise ExperimentException(errmsg)
+
+        self.build_cfs_sequence()
+
+        self.cfs_sequences = [sqn for sqn in self.sequences if sqn.cfs_flag]
 
     def select_cfs_freqs(self, cfs_spectrum):
         """
@@ -356,6 +396,7 @@ class AveragingPeriod(InterfaceClassBase):
             slice_masks[slice_id] = mask
             ind = np.argmin(cfs_data[i][mask])
             cfs_set_freq[slice_id] = int(np.round(shifted_cfs_khz[ind]))
+            self.beam_frequency[self.beam_iter][slice_id] = cfs_set_freq[slice_id]
 
             for sqn in self.cfs_sequences:
                 if slice_id in sqn.slice_ids:
@@ -370,14 +411,14 @@ class AveragingPeriod(InterfaceClassBase):
                         )
             # Set cfs slice frequency and add frequency to used_freqs for all other concurrent slices
 
-        self.update_cfs_freqs(cfs_set_freq)
+        self.update_cfs_freqs()
 
         return slice_masks, cfs_set_freq
 
-    def update_cfs_freqs(self, cfs_set_freq):
+    def update_cfs_freqs(self):
         for i, slice_id in enumerate(self.cfs_slice_ids):
             slice_obj = self.slice_dict[slice_id]
-            slice_obj.freq = cfs_set_freq[slice_id]
+            slice_obj.freq = self.beam_frequency[self.beam_iter][slice_id]
             log.verbose(
                 "selecting cfs slice freq",
                 slice_id=slice_obj.slice_id,
@@ -385,6 +426,39 @@ class AveragingPeriod(InterfaceClassBase):
             )
         for sequence in self.cfs_sequences:
             sequence.build_sequence_pulses()
+
+    def check_update_freq(self, cfs_spectrum, cfs_slices, threshold, beam_iter):
+        """
+        Checks if any scanned frequencies have power levels that
+        exceed the current power of each cfs slice based on a threshold
+
+        :params cfs_spectrum:   Results of the CFS analysis
+        :type   cfs_spectrum:   OutputDataset dataclass from message_formats.py
+        :params cfs_slices:     Slice ids of each cfs slice to be checked
+        :type   cfs_slices:     list
+        :params threshold:      Power threshold (dB) used in check
+        :type   threshold:      float
+        :params beam_iter:      current beam index
+        :type   beam_iter:      int
+        """
+        cfs_data = [dset.cfs_data for dset in cfs_spectrum.output_datasets]
+        for i, slice_id in enumerate(cfs_slices):
+            # Shift the current frequency down to baseband and then use the
+            # result to determine the index in the measured frequency
+            # spectrum that the current frequency is from
+            shifted_frequency = self.beam_frequency[beam_iter][slice_id] - int(
+                sum(self.cfs_range[slice_id]) / 2
+            )
+            idx = (
+                np.abs(np.asarray(self.cfs_freq) - shifted_frequency * 1000)
+            ).argmin()
+
+            # calculate the ratio of the current freq power over all other freqs
+            pwr_ratio = cfs_data[i][idx] - np.asarray(
+                cfs_data[i][self.cfs_masks[beam_iter][slice_id]]
+            )
+            if any(pwr_ratio > threshold):
+                self.set_new_freq[beam_iter] = True
 
     def build_cfs_sequence(self):
         """
