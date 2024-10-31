@@ -327,11 +327,7 @@ def create_dsp_message(radctrl_params):
             beam_num = slice_dict[slice_id].tx_beam_order[
                 radctrl_params.aveperiod.beam_iter
             ]
-            scan_id = int(
-                np.argwhere(
-                    np.array(radctrl_params.aveperiod.cfs_scan_order) == slice_id
-                )
-            )
+            scan_id = radctrl_params.aveperiod.cfs_scan_order.index(slice_id)
             beam_dict[scan_id] = {
                 "main": np.array([tx_phases[beam_num]]),
                 "intf": np.array([intf_phases]),
@@ -518,12 +514,14 @@ def create_dw_message(radctrl_params):
     )  # multiply all
     message.scheduling_mode = radctrl_params.experiment.scheduling_mode
     message.cfs_freqs = radctrl_params.cfs_params.cfs_freq
-    message.cfs_noise = radctrl_params.cfs_params.cfs_mags[
-        radctrl_params.aveperiod.beam_iter
+    message.cfs_noise = [
+        x[radctrl_params.aveperiod.beam_iter]
+        for x in radctrl_params.cfs_params.cfs_mags.values()
     ]
     message.cfs_range = radctrl_params.cfs_params.cfs_range
-    message.cfs_masks = radctrl_params.cfs_params.cfs_masks[
-        radctrl_params.aveperiod.beam_iter
+    message.cfs_masks = [
+        x[radctrl_params.aveperiod.beam_iter]
+        for x in radctrl_params.cfs_params.cfs_masks.values()
     ]
     message.cfs_slice_ids = radctrl_params.aveperiod.cfs_slice_ids
 
@@ -641,6 +639,7 @@ def run_cfs_scan(radctrl_params, sockets):
     sequence = aveperiod.cfs_sequence
     sqn = sequence.make_sequence(aveperiod.beam_iter, 0)
 
+    # todo: modify the sqn_num to avoid dimension mismatch?
     cfs_sqn_num = radctrl_params.seqnum_start + radctrl_params.num_sequences
     so.send_pyobj(cfs_socket, radctrl_params.dw_cfs_identity, cfs_sqn_num)
 
@@ -685,64 +684,57 @@ def cfs_block(ave_params, cfs_sockets):
         aveperiod.beam_frequency,
         aveperiod.set_new_freq,
     )
+    ave_params.cfs_params = cfs_params
     beam = aveperiod.beam_iter
     if not (
         aveperiod.last_cfs_set_time[beam]
-        < datetime.utcnow() - aveperiod.cfs_stable_time
+        < datetime.utcnow() - timedelta(seconds=aveperiod.cfs_stable_time)
         or aveperiod.cfs_always_run
     ):
-        ave_params.cfs_params = cfs_params
         return
 
+    aveperiod.last_cfs_set_time[beam] = datetime.utcnow()
+
     # Only let CFS run after the user set stable time has
-    # passed to prevent CFS from switching freqs to quickly
+    # passed to prevent CFS from switching freqs too quickly
     ave_params.sequence = aveperiod.cfs_sequence
     ave_params.decimation_scheme = aveperiod.cfs_sequence.decimation_scheme
 
-    freq_spectrum = run_cfs_scan(ave_params, cfs_sockets)
+    processed_cfs_packet = run_cfs_scan(ave_params, cfs_sockets)
     ave_params.num_sequences += 1
     ave_params.cfs_scan_flag = False
-    aveperiod.cfs_freq = freq_spectrum.cfs_freq
+    aveperiod.cfs_freq = processed_cfs_packet.cfs_freq
 
-    for ind, dset in enumerate(freq_spectrum.output_datasets):
-        aveperiod.cfs_mags[beam][aveperiod.cfs_slice_ids[ind]] = dset.cfs_data
+    for ind, dset in enumerate(processed_cfs_packet.output_datasets):
+        aveperiod.cfs_mags[aveperiod.cfs_slice_ids[ind]][beam] = dset.cfs_data
 
-    if not (
-        aveperiod.last_cfs_set_time[beam] < time.time() - aveperiod.cfs_stable_time
+    if (
+        not all([x[beam] for x in aveperiod.set_new_freq.values()])
+        and aveperiod.cfs_pwr_threshold is not None
     ):
-        ave_params.cfs_params = cfs_params
-        return
-
-    # Only attempt to update the cfs frequency of stable time has elapsed
-    aveperiod.last_cfs_set_time[beam] = time.time()
-
-    if not aveperiod.set_new_freq[beam] and aveperiod.cfs_pwr_threshold is not None:
-        # If using a user set power threshold to trigger CFS freq setting, check
-        # if any power related condition are triggered and set the corresponding
-        # flag
+        # If using a user set power threshold to trigger CFS freq setting, check if any
+        # power related conditions are triggered and set the corresponding flag
         aveperiod.check_update_freq(
-            freq_spectrum,
+            processed_cfs_packet,
             aveperiod.cfs_slice_ids,
             aveperiod.cfs_pwr_threshold,
             beam,
         )
 
-    if not (aveperiod.set_new_freq[beam] or aveperiod.cfs_pwr_threshold is None):
+    if not (
+        any([x[beam] for x in aveperiod.set_new_freq.values()])
+        or aveperiod.cfs_pwr_threshold is None
+    ):
         # Return if the frequency does not need to be changed.
-        ave_params.cfs_params = cfs_params
         return
 
     # If using a power threshold and one of the power conditions were
-    # triggerd, or if not using a power threshold, set the CFS params
-    aveperiod.set_new_freq[beam] = False
-    aveperiod.cfs_masks[beam], last_set_cfs = aveperiod.select_cfs_freqs(freq_spectrum)
-    aveperiod.beam_frequency[beam] = last_set_cfs
-
-    for ind in range(len(aveperiod.cfs_slice_ids)):
-        aveperiod.cfs_range[aveperiod.cfs_slice_ids[ind]] = aveperiod.cfs_range[ind]
-
-    ave_params.cfs_params = cfs_params
-    aveperiod.update_cfs_freqs()
+    # triggered, or if not using a power threshold, set the CFS params
+    slice_masks, last_set_cfs = aveperiod.select_cfs_freqs(processed_cfs_packet)
+    for slice_id in aveperiod.cfs_slice_ids:
+        aveperiod.set_new_freq[slice_id][beam] = False
+        aveperiod.cfs_masks[slice_id][beam] = slice_masks[slice_id]
+        aveperiod.beam_frequency[slice_id][beam] = last_set_cfs[slice_id]
 
 
 def main():
@@ -1242,8 +1234,10 @@ def main():
                     ave_params.scan_flag = False
 
                 ave_params.last_sequence_num = (
-                    ave_params.seqnum_start + ave_params.num_sequences - 1
+                    ave_params.seqnum_start + ave_params.num_sequences
                 )
+                if ave_params.cfs_scan_flag:
+                    ave_params.last_sequence_num -= 1
 
                 dw_message = create_dw_message(ave_params)
                 dw_comms_socket.send_pyobj(dw_message)
