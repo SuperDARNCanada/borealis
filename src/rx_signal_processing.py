@@ -174,7 +174,7 @@ def sequence_worker(options, ringbuffer):
         processed_socket = sequence_worker_sockets[2]
 
         # Generate a timer dict for a uniform log
-        log_dict = {"time_units": "ms"}
+        log_dict = {"time_unit": "ms"}
         start_timer = time.perf_counter()
 
         # Copy samples from ring buffer
@@ -330,7 +330,7 @@ def sequence_worker(options, ringbuffer):
             )
 
         # Generate a new timer dict for a uniform log
-        log_dict = {"time_units": "ms"}
+        log_dict = {"time_unit": "ms"}
         start_timer = time.perf_counter()
 
         # Extract outputs from processing into groups that will be put into message fields.
@@ -487,7 +487,7 @@ def sequence_worker(options, ringbuffer):
             "done with sequence",
             sequence_num=rx_params.sequence_num,
             processing_time=total_processing_time,
-            time_units="ms",
+            time_unit="ms",
             slice_ids=[d["slice_id"] for d in rx_params.slice_details],
         )
         log.verbose("sequence timing", sequence_num=rx_params.sequence_num, **log_dict)
