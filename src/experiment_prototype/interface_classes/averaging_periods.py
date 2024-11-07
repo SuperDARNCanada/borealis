@@ -423,8 +423,6 @@ class CFSAveragingPeriod(AveragingPeriod):
                         )
             # Set cfs slice frequency and add frequency to used_freqs for all other concurrent slices
 
-        self.update_cfs_freqs()
-
         return slice_masks, cfs_set_freq
 
     def update_cfs_freqs(self):

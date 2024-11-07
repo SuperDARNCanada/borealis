@@ -90,7 +90,6 @@ class RadctrlParameters:
     pulse_transmit_data_tracker: dict = field(default_factory=dict)
     slice_dict: dict = field(default_factory=dict, init=False)
     cfs_scan_flag: bool = False
-    cfs_params: CFSParameters = field(init=False)
     scan_flag: bool = False
     dsp_cfs_identity: str = ""
     router_address: str = ""
@@ -100,7 +99,6 @@ class RadctrlParameters:
 
     def __post_init__(self):
         self.slice_dict = self.experiment.slice_dict
-        self.cfs_params = None
         # Set slice_dict after an experiment has been assigned
         if self.sequence:
             self.decimation_scheme = self.sequence.decimation_scheme
@@ -503,15 +501,15 @@ def create_dw_message(radctrl_params):
         message.num_sequences = (
             radctrl_params.num_sequences - 1
         )  # first sequence was CFS
-        message.cfs_freqs = radctrl_params.cfs_params.cfs_freq
+        message.cfs_freqs = radctrl_params.aveperiod.cfs_freq
         message.cfs_noise = [
             x[radctrl_params.aveperiod.beam_iter]
-            for x in radctrl_params.cfs_params.cfs_mags.values()
+            for x in radctrl_params.aveperiod.cfs_mags.values()
         ]
-        message.cfs_range = radctrl_params.cfs_params.cfs_range
+        message.cfs_range = radctrl_params.aveperiod.cfs_range
         message.cfs_masks = [
             x[radctrl_params.aveperiod.beam_iter]
-            for x in radctrl_params.cfs_params.cfs_masks.values()
+            for x in radctrl_params.aveperiod.cfs_masks.values()
         ]
         message.cfs_slice_ids = radctrl_params.aveperiod.cfs_slice_ids
     else:
@@ -675,16 +673,6 @@ def run_cfs_scan(radctrl_params, sockets):
 
 def cfs_block(ave_params, cfs_sockets):
     aveperiod = ave_params.aveperiod
-    cfs_params = CFSParameters(
-        aveperiod.cfs_freq,
-        aveperiod.cfs_mags,
-        aveperiod.cfs_range,
-        aveperiod.cfs_masks,
-        aveperiod.last_cfs_set_time,
-        aveperiod.beam_frequency,
-        aveperiod.set_new_freq,
-    )
-    ave_params.cfs_params = cfs_params
     beam = aveperiod.beam_iter
     if not (
         aveperiod.last_cfs_set_time[beam]
@@ -704,7 +692,6 @@ def cfs_block(ave_params, cfs_sockets):
     ave_params.num_sequences += 1
     ave_params.cfs_scan_flag = False
     aveperiod.cfs_freq = processed_cfs_packet.cfs_freq
-    ave_params.cfs_params.cfs_freq = processed_cfs_packet.cfs_freq
 
     for ind, dset in enumerate(processed_cfs_packet.output_datasets):
         aveperiod.cfs_mags[aveperiod.cfs_slice_ids[ind]][beam] = dset.cfs_data
@@ -1129,6 +1116,7 @@ def main():
                                 driver_comms_socket,
                             ],
                         )
+                        aveperiod.update_cfs_freqs()  # always update, to use correct freq for beam
                         log.verbose("CFS block run time", time=time.time() - cfs_time)
 
                     for sequence_index, sequence in enumerate(aveperiod.sequences):
