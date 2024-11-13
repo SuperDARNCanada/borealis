@@ -334,10 +334,11 @@ class CFSAveragingPeriod(AveragingPeriod):
             sqn_cfs_ids = sqn_slice_ids.intersection(cfs_slice_set)
             for slice_id in sqn_slice_ids.difference(cfs_slice_set):
                 slice_obj = sequence.slice_dict[slice_id]
-                df = int(round(1e3 / (2 * slice_obj.pulse_len)))
-                # bandwidth of tx pulse / 2 in kHz
-                used_range.append([slice_obj.freq - df, slice_obj.freq + df])
-                # record pulse widths of all non-cfs slices in use
+                if not slice_obj.rxonly:
+                    df = int(round(1e3 / (2 * slice_obj.pulse_len)))
+                    # bandwidth of tx pulse / 2 in kHz
+                    used_range.append([slice_obj.freq - df, slice_obj.freq + df])
+                    # record pulse widths of all non-cfs slices in use
             slice_used_freqs.update({k: used_range for k in sqn_cfs_ids})
 
         for i, slice_id in enumerate(self.cfs_slice_ids):
