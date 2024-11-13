@@ -624,15 +624,12 @@ class ExperimentSlice:
             rx_antenna_pattern(
                 values["beam_angle"],
                 values["freq"],
-                options.main_antenna_count,
-                options.main_antenna_spacing,
+                options.main_antenna_locations,
             ),
             rx_antenna_pattern(
                 values["beam_angle"],
                 values["freq"],
-                options.intf_antenna_count,
-                options.intf_antenna_spacing,
-                offset=-100,
+                options.intf_antenna_locations,
             ),
         ]
         for index in range(0, len(antenna_pattern)):

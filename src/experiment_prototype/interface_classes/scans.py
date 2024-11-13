@@ -21,7 +21,10 @@ from pathlib import Path
 import structlog
 
 # local
-from experiment_prototype.interface_classes.averaging_periods import AveragingPeriod
+from experiment_prototype.interface_classes.averaging_periods import (
+    AveragingPeriod,
+    CFSAveragingPeriod,
+)
 from experiment_prototype.interface_classes.interface_class_base import (
     InterfaceClassBase,
 )
@@ -76,7 +79,10 @@ class Scan(InterfaceClassBase):
         self.nested_slice_list = self.get_nested_slice_ids()
 
         for params in self.prep_for_nested_interface_class():
-            self.aveperiods.append(AveragingPeriod(*params))
+            if any([s.cfs_flag for s in params[1].values()]):
+                self.aveperiods.append(CFSAveragingPeriod(*params))
+            else:
+                self.aveperiods.append(AveragingPeriod(*params))
 
         # determine how many beams in scan:
         num_unique_aveperiods = 0

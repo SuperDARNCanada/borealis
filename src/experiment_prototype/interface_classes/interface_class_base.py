@@ -238,6 +238,7 @@ class InterfaceClassBase(object):
             "AveragingPeriod": [
                 "CONCURRENT"
             ],  # Combine everything CONCURRENT interfaced
+            "CFSAveragingPeriod": ["CONCURRENT"],  # Same as AveragingPeriod
             "Sequence": [],  # All slices in a Sequence are already CONCURRENT and should be combined already
         }
 

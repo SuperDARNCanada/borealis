@@ -349,7 +349,7 @@ class DataWrite:
         log.info(
             "wrote record",
             write_time=write_time * 1e3,
-            time_units="ms",
+            time_unit="ms",
             dataset_name=self.timestamp,
         )
 
@@ -670,7 +670,7 @@ def main():
                 expected_type=int,
             )
             log.debug(
-                "Received CFS sequence, increasing expected_sqn_num",
+                "received CFS sequence, increasing expected_sqn_num",
                 cfs_sqn_num=cfs_sqn_num,
             )
             cfs_nums.append(cfs_sqn_num)
@@ -750,7 +750,7 @@ def main():
                 log.info(
                     f"parsed sequence {pd.sequence_num}",
                     parse_time=parse_time * 1e3,
-                    time_units="ms",
+                    time_unit="ms",
                     slice_ids=[dset.slice_id for dset in pd.output_datasets],
                 )
 
