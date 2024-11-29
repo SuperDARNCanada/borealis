@@ -12,7 +12,7 @@ license = {file = "LICENSE"}
 requires-python = ">=3.8"
 dependencies = [
     "backscatter @ git+https://github.com/SuperDARNCanada/backscatter.git",
-    "darn-dmap>=1.4.0",
+    "darn-dmap>=0.1.6",
     "graypy",
     "h5py>=3.3.0",
     "inotify",
