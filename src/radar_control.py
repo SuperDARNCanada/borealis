@@ -359,13 +359,23 @@ def create_dsp_message(radctrl_params):
 
             # Get the phase offset for this pulse combination
             pulse_phase_offsets = radctrl_params.sequence.output_encodings
-            if len(pulse_phase_offsets[slice_id]) != 0:
-                pulse_phase_offset = pulse_phase_offsets[slice_id][-1]
+            base_pulse_offset = calc_pulse_base_offset(slice_dict[slice_id])
+            if len(pulse_phase_offsets[slice_id]) != 0 or base_pulse_offset is not None:
+                if len(pulse_phase_offsets[slice_id]) != 0:
+                    pulse_phase_offset = pulse_phase_offsets[slice_id][-1]
+                else:
+                    pulse_phase_offset = np.zeros(len(base_pulse_offset))
                 lag0_idx = slice_dict[slice_id].pulse_sequence.index(lag[0])
                 lag1_idx = slice_dict[slice_id].pulse_sequence.index(lag[1])
-                phase_in_rad = np.radians(
-                    pulse_phase_offset[lag0_idx] - pulse_phase_offset[lag1_idx]
-                )
+                if base_pulse_offset is not None:
+                    phase_in_rad = np.radians(
+                        (pulse_phase_offset[lag0_idx] + base_pulse_offset[lag0_idx])
+                        - (pulse_phase_offset[lag1_idx] + base_pulse_offset[lag1_idx])
+                    )
+                else:
+                    phase_in_rad = np.radians(
+                        pulse_phase_offset[lag0_idx] - pulse_phase_offset[lag1_idx]
+                    )
                 phase_offset = np.exp(1j * np.array(phase_in_rad, np.float32))
             # Catch case where no pulse phase offsets are specified
             else:
@@ -377,6 +387,38 @@ def create_dsp_message(radctrl_params):
         message.add_rx_channel(chan_add)
 
     return message
+
+
+def calc_pulse_base_offset(exp_slice):
+    """
+    Determine the phase offset of each pulse from the first pulse based on the
+    transmit frequency and the pulse separation (tau spacing). Required due to
+    phase shift that occurs when the signal is shifted down to baseband. When
+    the frequency is not a multiple of 10 kHz (or when the pulse transmit delay
+    from first pulse is not an integer multiple of 1 ms), the lag pulses become
+    out of phase introducing an artificial velocity shift in the rawacf data.
+
+    :param      exp_slice:  The experiment slice information
+    :type       exp_slice:  class
+
+    :returns:   Base pulse phase offsets when shifting to baseband.
+    :rtype:     array (deg) or None (if all phases are the same)
+    """
+    freq_khz = exp_slice.freq
+    tau_us = exp_slice.tau_spacing
+    num_pulses = len(exp_slice.pulse_sequence)
+
+    pulse_phases = np.zeros(num_pulses)
+    for p in range(num_pulses):
+        pulse_time = exp_slice.pulse_sequence[p] * tau_us
+        pulse_phases[p] = np.degrees(
+            np.angle(np.exp(2j * np.pi * freq_khz * pulse_time / 1e3))
+        )
+
+    if all(np.isclose(pulse_phases, pulse_phases[0], atol=1e-6)):
+        pulse_phases = None
+
+    return pulse_phases
 
 
 def search_for_experiment(radar_control_to_exp_handler, exphan_to_radctrl_iden, status):
