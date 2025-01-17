@@ -324,11 +324,16 @@ int UHD_SAFE_MAIN(int argc, char* argv[]) {
 
   // set the antenna
   if (vm.count("tx-ant")) {
-    std::cout << boost::format("Setting TX Antenna: %s ...") % rx_ant
+    std::cout << boost::format("Available TX Antennas: ...");
+    for (int i = 0; i < tx_usrp->get_tx_antennas().size(); ++i)
+      std::cout << tx_usrp->get_tx_antennas()[i] << ' ';
+    std::cout << std::endl << std::endl;
+
+    std::cout << boost::format("Setting TX Antenna: %s ...") % tx_ant
               << std::endl;
-    rx_usrp->set_tx_antenna(tx_ant);
+    tx_usrp->set_tx_antenna(tx_ant);
     std::cout << boost::format("Actual TX Antenna: %s ...") %
-                     (rx_usrp->get_tx_antenna())
+                     (tx_usrp->get_tx_antenna())
               << std::endl
               << std::endl;
   }

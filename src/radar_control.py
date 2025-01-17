@@ -26,6 +26,7 @@ from experiment_prototype.interface_classes.averaging_periods import CFSAveragin
 from utils.options import Options
 import utils.message_formats as messages
 from utils import socket_operations as so
+from utils.signals import calc_pulse_base_offset
 
 sys.path.append(os.environ["BOREALISPATH"])
 if __debug__:
@@ -359,13 +360,23 @@ def create_dsp_message(radctrl_params):
 
             # Get the phase offset for this pulse combination
             pulse_phase_offsets = radctrl_params.sequence.output_encodings
-            if len(pulse_phase_offsets[slice_id]) != 0:
-                pulse_phase_offset = pulse_phase_offsets[slice_id][-1]
+            base_pulse_offset = calc_pulse_base_offset(slice_dict[slice_id])
+            if len(pulse_phase_offsets[slice_id]) != 0 or base_pulse_offset is not None:
+                if len(pulse_phase_offsets[slice_id]) != 0:
+                    pulse_phase_offset = pulse_phase_offsets[slice_id][-1]
+                else:
+                    pulse_phase_offset = np.zeros(len(base_pulse_offset))
                 lag0_idx = slice_dict[slice_id].pulse_sequence.index(lag[0])
                 lag1_idx = slice_dict[slice_id].pulse_sequence.index(lag[1])
-                phase_in_rad = np.radians(
-                    pulse_phase_offset[lag0_idx] - pulse_phase_offset[lag1_idx]
-                )
+                if base_pulse_offset is not None:
+                    phase_in_rad = np.radians(
+                        (pulse_phase_offset[lag0_idx] + base_pulse_offset[lag0_idx])
+                        - (pulse_phase_offset[lag1_idx] + base_pulse_offset[lag1_idx])
+                    )
+                else:
+                    phase_in_rad = np.radians(
+                        pulse_phase_offset[lag0_idx] - pulse_phase_offset[lag1_idx]
+                    )
                 phase_offset = np.exp(1j * np.array(phase_in_rad, np.float32))
             # Catch case where no pulse phase offsets are specified
             else:

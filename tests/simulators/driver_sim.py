@@ -49,12 +49,16 @@ def driver_thread():
     ringbuffer = np.frombuffer(mapped_mem, dtype=np.complex64).reshape(num_antennas, -1)
 
     # initialize ringbuffer as "noise"
-    rng = np.random.default_rng(0)
-    noise_pwr = -50.0 + 3.0 * rng.standard_normal(
-        size=ringbuffer.shape, dtype=np.float32
+    seed = np.random.randint(
+        100
+    )  # generate a random seed. Manually set this to produce repeatable results
+    rng = np.random.RandomState(seed)
+    noise_pwr = (
+        -50.0 + 3.0 * np.round(rng.standard_normal(ringbuffer.shape) * 100) / 100
     )  # -50.0 +/- 3.0 dB
+    rng = np.random.RandomState(seed)
     noise_phase = (
-        2 * np.pi * rng.random(size=ringbuffer.shape, dtype=np.float32)
+        2 * np.pi * np.round(rng.random(ringbuffer.shape) * 100) / 100
     )  # [0, 2pi)
     ringbuffer[:] = np.power(10, noise_pwr / 10.0) * np.exp(1j * noise_phase)
 
@@ -72,6 +76,7 @@ def driver_thread():
     # let radar_control know that driver is good to start
     so.send_string(radctrl_socket, options.radctrl_to_driver_identity, "DRIVER_READY")
 
+    seed_mod = 0
     while True:
         # Get parameters from radar_control
         more_pulses = True
@@ -119,11 +124,36 @@ def driver_thread():
         # Generate some mock data, of the correct shape and size based on the parameters
         # generate background noise
         shape = (num_antennas, num_rx_samps)
-        noise_pwr = -50.0 + 3.0 * rng.standard_normal(
-            size=shape, dtype=np.float32
+        rng = np.random.RandomState(seed + seed_mod)
+        noise_pwr = (
+            -50.0 + 3.0 * np.round((rng.standard_normal(shape) * 100)) / 100
         )  # -50.0 +/- 3.0 dB
-        noise_phase = 2 * np.pi * rng.random(size=shape, dtype=np.float32)  # [0, 2pi)
+        rng = np.random.RandomState(seed + seed_mod)
+        noise_phase = 2 * np.pi * np.round((rng.random(shape) * 100)) / 100  # [0, 2pi)
         mock_samples = np.power(10, noise_pwr / 10.0) * np.exp(1j * noise_phase)
+
+        log.info(
+            "sample info",
+            shape=mock_samples.shape,
+            pulse_starts=pulse_starts,
+            rx_rate=rx_rate,
+        )
+        for i, pulse_sent in enumerate(pulse_samples):
+            if not pulse_sent.any():
+                continue
+            pulse_len = len(pulse_sent[0, :])
+            start_samp = int(pulse_starts[i] * 5 + 1000)
+            log.info(
+                "pulse info",
+                pulse_num=i,
+                start_samp=start_samp,
+                end_samp=start_samp + pulse_len,
+                pulse_len=len(pulse_sent[0, :]),
+                pulse_duration=pulse_durations[i],
+            )
+            mock_samples[:16, start_samp : start_samp + pulse_len] += pulse_sent
+
+        seed_mod += 1
 
         # todo: put the pulses into the mock data
         starting_pulses = dt.datetime.utcnow()
