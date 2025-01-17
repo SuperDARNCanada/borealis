@@ -26,6 +26,7 @@ from experiment_prototype.interface_classes.averaging_periods import CFSAveragin
 from utils.options import Options
 import utils.message_formats as messages
 from utils import socket_operations as so
+from utils.signals import calc_pulse_base_offset
 
 sys.path.append(os.environ["BOREALISPATH"])
 if __debug__:
@@ -387,38 +388,6 @@ def create_dsp_message(radctrl_params):
         message.add_rx_channel(chan_add)
 
     return message
-
-
-def calc_pulse_base_offset(exp_slice):
-    """
-    Determine the phase offset of each pulse from the first pulse based on the
-    transmit frequency and the pulse separation (tau spacing). Required due to
-    phase shift that occurs when the signal is shifted down to baseband. When
-    the frequency is not a multiple of 10 kHz (or when the pulse transmit delay
-    from first pulse is not an integer multiple of 1 ms), the lag pulses become
-    out of phase introducing an artificial velocity shift in the rawacf data.
-
-    :param      exp_slice:  The experiment slice information
-    :type       exp_slice:  class
-
-    :returns:   Base pulse phase offsets when shifting to baseband.
-    :rtype:     array (deg) or None (if all phases are the same)
-    """
-    freq_khz = exp_slice.freq
-    tau_us = exp_slice.tau_spacing
-    num_pulses = len(exp_slice.pulse_sequence)
-
-    pulse_phases = np.zeros(num_pulses)
-    for p in range(num_pulses):
-        pulse_time = exp_slice.pulse_sequence[p] * tau_us
-        pulse_phases[p] = np.degrees(
-            np.angle(np.exp(2j * np.pi * freq_khz * pulse_time / 1e3))
-        )
-
-    if all(np.isclose(pulse_phases, pulse_phases[0], atol=1e-6)):
-        pulse_phases = None
-
-    return pulse_phases
 
 
 def search_for_experiment(radar_control_to_exp_handler, exphan_to_radctrl_iden, status):
