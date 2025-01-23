@@ -370,8 +370,8 @@ def create_dsp_message(radctrl_params):
                 lag1_idx = slice_dict[slice_id].pulse_sequence.index(lag[1])
                 if base_pulse_offset is not None:
                     phase_in_rad = np.radians(
-                        (pulse_phase_offset[lag0_idx] + base_pulse_offset[lag0_idx])
-                        - (pulse_phase_offset[lag1_idx] + base_pulse_offset[lag1_idx])
+                        (pulse_phase_offset[lag0_idx] - base_pulse_offset[lag0_idx])
+                        - (pulse_phase_offset[lag1_idx] - base_pulse_offset[lag1_idx])
                     )
                 else:
                     phase_in_rad = np.radians(
