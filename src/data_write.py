@@ -517,14 +517,11 @@ class DataWrite:
                     / stage_data.rx_sample_rate
                 )
                 stage_data.sample_time = sample_timing_s * 1e6
-                final_data_params[slice_num][stage] = stage_data
 
-        for slice_num, slice_ in final_data_params.items():
-            for stage, params in slice_.items():
                 two_hr_file_with_type = self.slice_filenames[slice_num].format(
                     ext=f"{stage}_iq"
                 )
-                self._write_file(params, two_hr_file_with_type, "antennas_iq")
+                self._write_file(stage_data, two_hr_file_with_type, "antennas_iq")
 
     def _write_raw_rf_params(
         self, slice_data: SliceData, parsed_data: Aggregator, sample_rate: float
