@@ -20,6 +20,7 @@ from functools import reduce
 import inspect
 import math
 from pathlib import Path
+from src.utils.signals import basic_pulse_phase_offset
 
 # third-party
 import numpy as np
@@ -595,6 +596,12 @@ class Sequence(InterfaceClassBase):
             basic_samples = self.basic_slice_pulses[slice_id][beam_num]
 
             num_pulses = len(exp_slice.pulse_sequence)
+            basic_phases = basic_pulse_phase_offset(exp_slice)
+            basic_phases = np.exp(1j * basic_phases)
+            # Build pulse sequence slices with phases adjusted for time between pulses
+            # to mimic a sampled continuous wave
+            samples = np.einsum("i,jk->ijk", basic_phases, basic_samples)
+
             encode_fn = exp_slice.pulse_phase_offset
             if encode_fn:
                 # Must return 1D array of length [pulses].
@@ -610,10 +617,7 @@ class Sequence(InterfaceClassBase):
                 # samples: [pulses, antennas, samples]
                 phase_encoding = np.radians(phase_encoding)
                 phase_encoding = np.exp(1j * phase_encoding)
-                samples = np.einsum("i,jk->ijk", phase_encoding, basic_samples)
-
-            else:  # no encodings, all pulses in the slice are all the same
-                samples = np.repeat(basic_samples[np.newaxis, :, :], num_pulses, axis=0)
+                samples = np.einsum("i,ijk->ijk", phase_encoding, samples)
 
             # sum the samples into their position in the sequence buffer. Find where the relative
             # timing of each pulse matches the sample number in the buffer. Directly sum the samples
