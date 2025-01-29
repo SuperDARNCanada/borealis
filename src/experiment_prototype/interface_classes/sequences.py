@@ -20,7 +20,6 @@ from functools import reduce
 import inspect
 import math
 from pathlib import Path
-from src.utils.signals import basic_pulse_phase_offset
 
 # third-party
 import numpy as np
@@ -31,7 +30,7 @@ from experiment_prototype.interface_classes.interface_class_base import (
     InterfaceClassBase,
 )
 from experiment_prototype.experiment_exception import ExperimentException
-from utils.signals import get_samples, get_phase_shift
+from utils.signals import get_samples, get_phase_shift, basic_pulse_phase_offset
 
 # Obtain the module name that imported this log_config
 caller = Path(inspect.stack()[-1].filename)

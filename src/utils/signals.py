@@ -539,7 +539,7 @@ def basic_pulse_phase_offset(exp_slice):
     """
     freq_hz = exp_slice.freq * 1e3
     tau_s = exp_slice.tau_spacing / 1e6
-    omega = -2 * np.pi * freq_hz
+    omega = 2 * np.pi * freq_hz
     pulse_sequence = exp_slice.pulse_sequence
 
     num_pulses = len(pulse_sequence)
