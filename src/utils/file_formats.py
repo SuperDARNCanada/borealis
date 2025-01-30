@@ -59,7 +59,7 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "record",
             "description": "32 bits, a 1 in bit position corresponds to an AGC fault on that transmitter",
-            "required": True,
+            "required_for": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
         }
     )
     antenna_arrays: list[str] = field(
@@ -68,7 +68,7 @@ class SliceData:
             "level": "file",
             "nickname": "array",
             "description": "Descriptor of each antenna array contained in the data",
-            "required": True,
+            "required_for": ["bfiq"],
         }
     )
     antenna_locations: np.ndarray = field(
@@ -78,7 +78,7 @@ class SliceData:
             "units": "m",
             "description": "Relative antenna locations",
             "dim_labels": ["antenna", "coordinate"],
-            "required": True,
+            "required_for": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
         }
     )
     antennas: np.ndarray = field(
@@ -87,7 +87,7 @@ class SliceData:
             "level": "file",
             "description": "Labels for each antenna of the radar",
             "dim_labels": ["antenna"],
-            "required": True,
+            "required_for": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
         }
     )
     antennas_iq_data: np.ndarray = field(
@@ -98,7 +98,7 @@ class SliceData:
             "description": "Filtered and downsampled I&Q complex voltage samples for each antenna",
             "dim_labels": ["antenna", "sequence", "time"],
             "dim_scales": ["rx_antennas", "sqn_timestamps", "sample_time"],
-            "required": True,
+            "required_for": ["antennas_iq"],
         }
     )
     averaging_method: str = field(
@@ -106,7 +106,7 @@ class SliceData:
             "groups": ["rawacf"],
             "level": "file",
             "description": "Averaging method, e.g. mean, median",
-            "required": True,
+            "required_for": ["rawacf"],
         }
     )
     beam_azms: list[float] = field(
@@ -117,7 +117,7 @@ class SliceData:
             "description": "Beams azimuths for each beam in degrees CW of boresight",
             "units": "degrees",
             "dim_labels": ["beam"],
-            "required": True,
+            "required_for": ["antennas_iq", "bfiq", "rawacf"],
         }
     )
     beam_nums: list[int] = field(
@@ -127,7 +127,7 @@ class SliceData:
             "nickname": "beam number",
             "description": "Beam numbers used in this slice",
             "dim_labels": ["beam"],
-            "required": True,
+            "required_for": ["antennas_iq", "bfiq", "rawacf"],
         }
     )
     bfiq_data: np.ndarray = field(
@@ -143,7 +143,7 @@ class SliceData:
                 ["beam_nums", "beam_azms"],
                 "sample_time",
             ],
-            "required": True,
+            "required_for": ["bfiq"],
         }
     )
     blanked_samples: np.ndarray = field(
@@ -152,7 +152,7 @@ class SliceData:
             "level": "file",
             "description": "Samples blanked during transmission of a pulse",
             "dim_labels": ["time"],
-            "required": True,
+            "required_for": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
         }
     )
     borealis_git_hash: str = field(
@@ -160,7 +160,7 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "file",
             "description": "Version and commit hash of Borealis at runtime",
-            "required": True,
+            "required_for": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
         }
     )
     cfs_freqs: np.ndarray = field(
@@ -171,7 +171,7 @@ class SliceData:
             "description": "Frequencies measured during clear frequency search",
             "units": "Hz",
             "dim_labels": ["freq"],
-            "required": False,
+            "required_for": [],
         }
     )
     cfs_masks: np.ndarray = field(
@@ -181,7 +181,7 @@ class SliceData:
             "description": "Mask for cfs_freqs restricting freqs available for setting cfs slice freq",
             "dim_labels": ["freq"],
             "dim_scales": ["cfs_freqs"],
-            "required": False,
+            "required_for": [],
         }
     )
     cfs_noise: np.ndarray = field(
@@ -192,7 +192,7 @@ class SliceData:
             "units": "a.u. ~ dBW",
             "dim_labels": ["freq"],
             "dim_scales": ["cfs_freqs"],
-            "required": False,
+            "required_for": [],
         }
     )
     cfs_range: np.ndarray = field(
@@ -201,7 +201,7 @@ class SliceData:
             "level": "file",
             "description": "Lower and upper bound of frequencies examined by clear frequency search",
             "units": "Hz",
-            "required": False,
+            "required_for": [],
         }
     )
     coordinates: list[str] = field(
@@ -210,7 +210,7 @@ class SliceData:
             "level": "file",
             "description": "Descriptors for location coordinate dimensions",
             "nickname": "coordinate",
-            "required": True,
+            "required_for": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
         }
     )
     data_normalization_factor: float = field(
@@ -218,7 +218,7 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq", "rawacf"],
             "level": "file",
             "description": "Cumulative scale of all of the filters for a total scaling factor to normalize by",
-            "required": True,
+            "required_for": ["antennas_iq", "bfiq", "rawacf"],
         }
     )
     experiment_comment: str = field(
@@ -226,7 +226,7 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "file",
             "description": "Comment about the whole experiment",
-            "required": True,
+            "required_for": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
         }
     )
     experiment_id: int = field(
@@ -234,7 +234,7 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "file",
             "description": "Number used to identify experiment",
-            "required": True,
+            "required_for": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
         }
     )
     experiment_name: str = field(
@@ -242,7 +242,7 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "file",
             "description": "Name of the experiment class",
-            "required": True,
+            "required_for": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
         }
     )
     first_range: int = field(
@@ -251,7 +251,7 @@ class SliceData:
             "level": "file",
             "units": "km",
             "description": "Distance to first range in km",
-            "required": True,
+            "required_for": ["antennas_iq", "bfiq", "rawacf"],
         }
     )
     first_range_rtt: float = field(
@@ -260,7 +260,7 @@ class SliceData:
             "level": "file",
             "units": "μs",
             "description": "Round trip time of flight to first range in microseconds",
-            "required": True,
+            "required_for": ["antennas_iq", "bfiq", "rawacf"],
         }
     )
     freq: float = field(
@@ -269,7 +269,7 @@ class SliceData:
             "level": "record",
             "units": "kHz",
             "description": "Frequency used for this experiment slice, in kHz",
-            "required": True,
+            "required_for": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
         }
     )
     gps_locked: bool = field(
@@ -277,7 +277,7 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "record",
             "description": "True if the GPS was locked during the entire averaging period",
-            "required": True,
+            "required_for": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
         }
     )
     gps_to_system_time_diff: float = field(
@@ -287,7 +287,7 @@ class SliceData:
             "units": "s",
             "description": "Max time diff in seconds between GPS and system/NTP time during the averaging "
             "period",
-            "required": True,
+            "required_for": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
         }
     )
     int_time: float = field(
@@ -296,7 +296,7 @@ class SliceData:
             "level": "record",
             "units": "s",
             "description": "Integration time in seconds",
-            "required": True,
+            "required_for": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
         }
     )
     intf_acfs: np.ndarray = field(
@@ -307,6 +307,7 @@ class SliceData:
             "units": "a.u. ~ W",
             "dim_labels": ["beam", "range", "lag"],
             "dim_scales": [["beam_azms", "beam_nums"], "range_gates", "lag_numbers"],
+            "required_for": [],
         }
     )
     lags: np.ndarray = field(
@@ -315,7 +316,7 @@ class SliceData:
             "level": "file",
             "nickname": "lag",
             "description": "Lag indices",
-            "required": True,
+            "required_for": ["rawacf"],
         }
     )
     lag_numbers: np.ndarray = field(
@@ -325,7 +326,7 @@ class SliceData:
             "nickname": "lag",
             "units": "tau_spacing",
             "description": "Difference in units of tau_spacing of unique pairs of pulse in the pulse array",
-            "required": True,
+            "required_for": ["rawacf"],
         }
     )
     lag_pulses: np.ndarray = field(
@@ -336,7 +337,7 @@ class SliceData:
             "description": "Unique pairs of pulses in pulse array, in units of tau_spacing",
             "dim_labels": ["lag", "pulse"],
             "dim_scales": ["lags", "lag_pulse_descriptors"],
-            "required": True,
+            "required_for": ["rawacf"],
         }
     )
     lag_pulse_descriptors: list[str] = field(
@@ -344,7 +345,7 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq", "rawacf"],
             "level": "file",
             "description": "Descriptor of the pulse pairs used in a lag",
-            "required": True,
+            "required_for": ["rawacf"],
         }
     )
     lp_status_word: int = field(
@@ -352,7 +353,7 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "record",
             "description": "32 bits, a 1 in bit position corresponds to a low power condition on that transmitter",
-            "required": True,
+            "required_for": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
         }
     )
     main_acfs: np.ndarray = field(
@@ -363,7 +364,7 @@ class SliceData:
             "description": "Main array autocorrelations",
             "dim_labels": ["beam", "range", "lag"],
             "dim_scales": [["beam_azms", "beam_nums"], "range_gates", "lag_numbers"],
-            "required": True,
+            "required_for": ["rawacf"],
         }
     )
     num_sequences: int = field(
@@ -371,7 +372,7 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "record",
             "description": "Number of sampling periods in the averaging period",
-            "required": True,
+            "required_for": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
         }
     )
     num_slices: int = field(
@@ -379,7 +380,7 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "file",
             "description": "Number of slices in the experiment for this averaging period",
-            "required": True,
+            "required_for": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
         }
     )
     pulse_phase_offset: np.ndarray = field(
@@ -390,7 +391,7 @@ class SliceData:
             "description": "Phase offset in degrees for each pulse in pulses",
             "dim_labels": ["sequence", "pulse"],
             "dim_scales": ["sqn_timestamps", "pulses"],
-            "required": False,
+            "required_for": [],
         }
     )
     pulses: np.ndarray = field(
@@ -400,7 +401,7 @@ class SliceData:
             "nickname": "pulse",
             "description": "Pulse sequence in units of tau_spacing",
             "dim_labels": ["pulse"],
-            "required": True,
+            "required_for": ["antennas_iq", "bfiq", "rawacf"],
         }
     )
     range_gates: np.ndarray = field(
@@ -410,7 +411,7 @@ class SliceData:
             "description": "Range gates of interest for the experiment, beginning at ``first_range`` and spaced by "
             "``range_sep``",
             "nickname": "range gate",
-            "required": True,
+            "required_for": ["antennas_iq", "bfiq", "rawacf"],
         }
     )
     range_sep: int = field(
@@ -419,7 +420,7 @@ class SliceData:
             "level": "file",
             "units": "km",
             "description": "Range gate separation (equivalent distance between samples) in km",
-            "required": True,
+            "required_for": ["antennas_iq", "bfiq", "rawacf"],
         }
     )
     rawrf_data: np.ndarray = field(
@@ -434,7 +435,7 @@ class SliceData:
                 "time",
             ],
             "dim_scales": ["sqn_timestamps", "rx_antennas", "sample_time"],
-            "required": True,
+            "required_for": ["rawrf"],
         }
     )
     rx_antennas: np.ndarray = field(
@@ -443,7 +444,7 @@ class SliceData:
             "level": "file",
             "nickname": "rx antenna",
             "description": "Indices into ``antenna_locations`` of the antennas with recorded data",
-            "required": True,
+            "required_for": ["antennas_iq", "rawrf"],
         }
     )
     rx_intf_antennas: list[int] = field(
@@ -451,7 +452,7 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "file",
             "description": "Indices into ``antenna_locations`` of the interferometer array antennas used in this experiment",
-            "required": False,
+            "required_for": [],
         }
     )
     rx_main_antennas: list[int] = field(
@@ -459,7 +460,7 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "file",
             "description": "Indices into ``antenna_locations`` of the main array antennas used in this experiment",
-            "required": True,
+            "required_for": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
         }
     )
     rx_center_freq: float = field(
@@ -468,7 +469,7 @@ class SliceData:
             "level": "file",
             "units": "kHz",
             "description": "Center frequency of the data in kHz",
-            "required": True,
+            "required_for": ["rawrf"],
         }
     )
     rx_sample_rate: float = field(
@@ -477,7 +478,7 @@ class SliceData:
             "level": "file",
             "units": "Hz",
             "description": "Sampling rate of the samples being written to file in Hz",
-            "required": True,
+            "required_for": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
         }
     )
     rx_main_excitations: list[complex] = field(
@@ -487,7 +488,7 @@ class SliceData:
             "description": "Complex excitations of main array receive antennas for each antenna. Magnitude between 0 (off) and 1 (full power)",
             "dim_labels": ["beam", "antenna"],
             "dim_scales": [["beam_azms", "beam_nums"], "rx_main_antennas"],
-            "required": True,
+            "required_for": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
         }
     )
     rx_intf_excitations: list[complex] = field(
@@ -497,7 +498,7 @@ class SliceData:
             "description": "Complex excitations of interferometer array receive antennas for each antenna. Magnitude between 0 (off) and 1 (full power)",
             "dim_labels": ["beam", "antenna"],
             "dim_scales": [["beam_azms", "beam_nums"], "rx_intf_antennas"],
-            "required": False,
+            "required_for": [],
         }
     )
     samples_data_type: str = field(
@@ -505,7 +506,7 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "file",
             "description": "C data type of the samples",
-            "required": True,
+            "required_for": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
         }
     )
     sample_time: np.ndarray = field(
@@ -514,7 +515,7 @@ class SliceData:
             "level": "file",
             "description": "Time of measurement relative to the first pulse in the sequence",
             "dim_labels": ["time"],
-            "required": True,
+            "required_for": ["antennas_iq", "bfiq", "rawrf"],
             "units": "μs",
         }
     )
@@ -523,7 +524,7 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "record",
             "description": "Designates if the record is the first in a scan",
-            "required": True,
+            "required_for": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
         }
     )
     scheduling_mode: str = field(
@@ -531,7 +532,7 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "file",
             "description": "Type of scheduling time at the time of this dataset",
-            "required": True,
+            "required_for": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
         }
     )
     slice_comment: str = field(
@@ -539,7 +540,7 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq", "rawacf"],
             "level": "file",
             "description": "Comment that describes the slice",
-            "required": True,
+            "required_for": ["antennas_iq", "bfiq", "rawacf"],
         }
     )
     slice_id: int = field(
@@ -547,7 +548,7 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq", "rawacf"],
             "level": "file",
             "description": "Slice ID of the file and dataset",
-            "required": True,
+            "required_for": ["antennas_iq", "bfiq", "rawacf"],
         }
     )
     slice_interfacing: dict = field(
@@ -555,7 +556,7 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq", "rawacf"],
             "level": "file",
             "description": "Interfacing of this slice to other slices",
-            "required": True,
+            "required_for": ["antennas_iq", "bfiq", "rawacf"],
         }
     )
     sqn_timestamps: list[float] = field(
@@ -566,7 +567,7 @@ class SliceData:
             "units": "seconds since 1970-01-01 00:00:00 UTC",
             "description": "GPS timestamps of start of first pulse for each sampling period in the averaging period",
             "dim_labels": ["sequence"],
-            "required": True,
+            "required_for": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
         }
     )
     station: str = field(
@@ -574,7 +575,7 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "file",
             "description": "Three letter radar identifier",
-            "required": True,
+            "required_for": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
         }
     )
     station_location: np.ndarray = field(
@@ -583,7 +584,7 @@ class SliceData:
             "level": "file",
             "description": "Location of the radar",
             "dim_labels": ["coordinate"],
-            "required": True,
+            "required_for": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
         }
     )
     tau_spacing: float = field(
@@ -592,7 +593,7 @@ class SliceData:
             "level": "file",
             "units": "μs",
             "description": "Unit of spacing between pulses in microseconds",
-            "required": True,
+            "required_for": ["antennas_iq", "bfiq", "rawacf"],
         }
     )
     tx_antennas: list[int] = field(
@@ -601,7 +602,7 @@ class SliceData:
             "level": "file",
             "description": "Indices into ``antenna_locations`` of the antennas used for transmitting in this experiment",
             "nickname": "tx antenna",
-            "required": True,
+            "required_for": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
         }
     )
     tx_excitations: np.ndarray = field(
@@ -612,7 +613,7 @@ class SliceData:
             "description": "Complex excitations of transmit signal for each antenna. Magnitude between 0 (off) and 1 (full power)",
             "dim_labels": ["antenna"],
             "dim_scales": ["tx_antennas"],
-            "required": False,
+            "required_for": [],
         }
     )
     tx_pulse_len: float = field(
@@ -621,7 +622,7 @@ class SliceData:
             "level": "file",
             "units": "μs",
             "description": "Length of the pulse in microseconds",
-            "required": True,
+            "required_for": ["antennas_iq", "bfiq", "rawacf"],
         }
     )
     xcfs: np.ndarray = field(
@@ -632,7 +633,7 @@ class SliceData:
             "description": "Cross-correlations between main and interferometer arrays",
             "dim_labels": ["beam", "range", "lag"],
             "dim_scales": [["beam_azms", "beam_nums"], "range_gates", "lag_numbers"],
-            "required": False,
+            "required_for": [],
         }
     )
 
@@ -649,12 +650,7 @@ class SliceData:
         Returns a list of names for all fields which are required for ``file_type`` files.
         """
         return [
-            f.name
-            for f in fields(cls)
-            if (
-                file_type in f.metadata.get("groups")
-                and f.metadata.get("required") is True
-            )
+            f.name for f in fields(cls) if file_type in f.metadata.get("required_for")
         ]
 
     @classmethod
@@ -667,7 +663,7 @@ class SliceData:
             for f in fields(cls)
             if (
                 file_type in f.metadata.get("groups")
-                and f.metadata.get("required") is False
+                and file_type not in f.metadata.get("required_for")
             )
         ]
 
