@@ -1,0 +1,29 @@
+#!/bin/sh
+#
+# This shell script if placed in /etc/apcupsd will be called by /etc/apcupsd/apccontrol when the
+# UPS goes back on to the mains after a power failure.
+
+
+# Send signal to start Borealis, or check if the stop_radar.sh process was called by onbattery and
+# cancel it
+SCRIPT_DIR="/home/radar/borealis/scripts/"
+PID_FILE="/tmp/stop_radar.pid"
+
+# First, check if this computer is running Borealis:
+NOW=$(date +'%Y-%m-%d %H:%M:%S')
+if systemctl status restart_borealis.service > /dev/null 2>&1; then
+        PID=$(cat $PID_FILE)
+        if kill -0 "$PID" >/dev/null 2>&1; then
+                # stop_radar.sh hasn't executed yet - cancel it
+                echo "$NOW Cancelling the scheduled stop_radar.sh (PID $PID) command"
+                pkill -9 -P "$PID"
+                # Radar should still be running, so no need to start it
+        else
+                # stop_radar.sh finished, so radar is not running. Start it.
+                echo "$NOW Radar not running - executing start_radar.sh"
+                sudo -u radar ${SCRIPT_DIR}start_radar.sh
+        fi
+        rm $PID_FILE
+fi
+
+exit 0

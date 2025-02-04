@@ -14,7 +14,7 @@ nohup python3 $BOREALISPATH/scheduler/remote_server.py \
 PID=$!	# Get pid of remote_server.py process
 sleep 1
 
-NOW=$(date +'%Y%m%d %H:%M:%S')
+NOW=$(date +'%Y-%m-%d %H:%M:%S')
 if ! ps -p $PID &> /dev/null; then	 # Check if remote_server.py process still running
 	echo "${NOW} START: FAIL - remote_server.py failed to start." | tee -a $LOGFILE
 	exit 1
