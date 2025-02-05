@@ -2,21 +2,35 @@
 #
 # This shell script if placed in /etc/apcupsd will be called by /etc/apcupsd/apccontrol when the UPS
 # goes on batteries.
+#
+# Must be run as root
 
 
 # Send signal to stop Borealis, but wait a specified time. If offbattery is called within the
 # specified time, Borealis won't be shut off.
-SCRIPT_DIR="/home/radar/borealis/scripts/"
-WAIT_TIME=30 # 30s
+HOME="/home/radar"
+SCRIPT_DIR="${HOME}/borealis/scripts"
+PID_FILE="${HOME}/borealis/stop_radar.pid"
+FLAG_FILE="${HOME}/borealis/apcusd.flag"
+
+WAIT_TIME=30    # seconds
 
 # First, check if this computer is running Borealis by checking the restart_borealis service:
-NOW=$(date +'%Y-%m-%d %H:%M:%S')
+NOW=$(date +'%Y-%m-%d %H:%M:%S %z ')
 if systemctl status restart_borealis.service > /dev/null 2>&1; then
         # Run command in the background to not block apcupsd
-        (sleep $WAIT_TIME && sudo -u radar ${SCRIPT_DIR}stop_radar.sh) &
-        # Save the PID of stop_radar.sh, so it can be stopped by offbattery if needed
-        echo $! > /tmp/stop_radar.pid
-        echo "$NOW Scheduled stop_radar.sh (PID $(cat /tmp/stop_radar.pid)) to run in ${WAIT_TIME}s"
+        (sleep $WAIT_TIME && sudo -u radar ${SCRIPT_DIR}/stop_radar.sh) &
+
+        # Save the PID of stop_radar.sh
+        echo $! > $PID_FILE
+
+        # Stop restart_borealis service during power outage
+        systemctl stop restart_borealis.service
+
+        # Create a flag file to indicate to offbattery that this computer
+        touch $FLAG_FILE
+
+        echo "$NOW Scheduled stop_radar.sh (PID $(cat $PID_FILE )) to run in ${WAIT_TIME}s"
 fi
 
 exit 0
