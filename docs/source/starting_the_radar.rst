@@ -42,7 +42,7 @@ module will not be run. For example::
     /home/radar/borealis/scripts/steamed_hams.py normalscan release discretionary --realtime-off
 
 If starting the radar in normal operation according to the schedule, there is a helper script called
-``start_radar.sh``.
+``start_radar.sh``, shown :ref:`below <start_radar-sh>`.
 
 ------------------
 Automated Start-up
@@ -108,8 +108,9 @@ There are several ways to stop the Borealis radar. They are ranked here from mos
 last-resort:
 
 #. Run the script ``stop_radar.sh`` from the Borealis ``scripts/`` directory. This script kills the
-   scheduling server, removes all entries from the schedule and kills the screen session running the
-   Borealis software modules. ``stop_radar.sh`` is shown :ref:`below <stop_radar-sh>`.
+   scheduling server, removes all scheduled entries from the ``at`` queue and kills the screen
+   session running the Borealis software modules. ``stop_radar.sh`` is shown :ref:`below
+   <stop_radar-sh>`.
 
 #. While viewing the screen session running the Borealis software modules, type ``ctrl-A, ctrl-\\``.
    This will kill the screen session and all software modules running within it.
@@ -118,6 +119,31 @@ last-resort:
    start back up again once the computer reboots.
 
 #. Shut down the Borealis computer.
+
+
+-------------------
+UPS & Power Outages
+-------------------
+
+To protect the Borealis computer from power outages and ensure the computer can safely turn off, the
+computer should be powered by an Uninterruptible Power Supply (UPS). Additionally, powering the
+Borealis hardware (N200s, octoclocks, and network equipment) with the UPS will mitigate potential
+radar restarts due to power brownouts or short power outages. In this scenario, the UPS should shut
+temporarily turn off the radar while the Borealis equipment is on battery power during the power
+outage (since the transmitters will be powered off). This can be done as follows:
+
+1. Use ``apcupsd`` to communicate between the radar computer and the UPS. Follow the `APCUPSD User
+   Manual <https://web.archive.org/web/20220815033620/http://www.apcupsd.org/manual/manual.html>`__
+   to install and configure for your setup.
+2. Copy the ``offbattery`` and ``onbattery`` scripts from ``borealis/scripts/apcupsd/`` to
+   ``/etc/apcupsd/``. These scripts will be executed when each event occurs on the UPS:
+
+   1. ``onbattery``: This occurs when the power outage starts. This script will schedule the radar
+      to turn off via ``stop_radar.sh``, and stop the ``restart_borealis.service`` daemon so the
+      radar doesn't restart during the power outage.
+   2. ``offbattery``: This occurs when the power outage ends. This script will cancel the scheduled
+      ``stop_radar.sh`` script call, and restart the ``restart_borealis.service`` daemon.
+
 
 -------
 Scripts
