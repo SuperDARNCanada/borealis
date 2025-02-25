@@ -169,7 +169,40 @@ class DecimationScheme(object):
         return True
 
 
-def create_default_scheme():
+def two_stage_filter():
+    """
+    Two-stage kaiser window scheme.
+
+    Works well with the following parameters:
+    sample_rate = 5e6
+    dm_rate = [30, 50]
+    transition_width = [150e3, 25e3]
+    cutoff_hz = [10e3, 5e3]
+    ripple_db = [115, 50]
+    """
+    sample_rate = 5e6  # 5 MHz
+    dm_rate = [30, 50]  # downsampling rates after filters
+    transition_width = [150e3, 30e3]  # transition from passband to stopband
+    cutoff_hz = [10e3, 5e3]  # bandwidth for output of filter
+    ripple_db = [115, 50]  # dB between passband and stopband
+    scaling_factors = [1000.0, 10000.0]  # multiplicative factors for each filter stage
+
+    dm_rate_so_far = 1
+    stages = []
+    for i in range(2):
+        rate = sample_rate / dm_rate_so_far
+        taps = scaling_factors[i] * create_firwin_filter_by_attenuation(
+            rate, transition_width[i], cutoff_hz[i], ripple_db[i]
+        )
+        stages.append(DecimationStage(i, rate, dm_rate[i], taps.tolist()))
+        dm_rate_so_far *= dm_rate[i]
+
+    scheme = DecimationScheme(sample_rate, sample_rate / dm_rate_so_far, stages=stages)
+
+    return scheme
+
+
+def default_scheme():
     """
     Previously known as create_test_scheme_9 until July 23/2019!
     Create four stages of FIR filters and a decimation scheme. Returns a decimation scheme of type DecimationScheme.
@@ -204,6 +237,12 @@ def create_default_scheme():
         )
 
     return DecimationScheme(5.0e6, 10.0e3 / 3, stages=all_stages)
+
+
+def create_default_scheme():
+    """Creates a default DecimationScheme with 5 MHz input, 3.333 kHz output"""
+    # return default_scheme()
+    return two_stage_filter()
 
 
 def create_default_cfs_scheme():
