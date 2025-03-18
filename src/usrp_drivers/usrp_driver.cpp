@@ -250,7 +250,8 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
             );
 
             TIMEIT_IF_TRUE_OR_DEBUG(
-                true, COLOR_BLUE("TRANSMIT") << " sample unpack time: ", [&]() {
+                false,
+                COLOR_BLUE("TRANSMIT") << " sample unpack time: ", [&]() {
                   if (driver_packet.sob() == true) {
                     pulses.clear();
                   }
