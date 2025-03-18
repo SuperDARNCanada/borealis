@@ -67,6 +67,8 @@ class Options:
     rawacf_format: str = field(init=False)
     realtime_address: str = field(init=False)
     ringbuffer_name: str = field(init=False)
+    pulse_buffer_name: str = field(init=False)
+    pulse_buffer_size: int = field(init=False)
     router_address: str = field(init=False)
     site_id: str = field(init=False)
     standard_antenna_positions: bool = field(init=False)
@@ -303,6 +305,8 @@ class Options:
         self.router_address = raw_config["router_address"]
         self.realtime_address = raw_config["realtime_address"]
         self.ringbuffer_name = raw_config["ringbuffer_name"]
+        self.pulse_buffer_name = raw_config["pulse_buffer_name"]
+        self.pulse_buffer_size = int(raw_config["pulse_buffer_size"])
 
         self.data_directory = raw_config["data_directory"]
         self.rawacf_format = raw_config["rawacf_format"]
