@@ -12,15 +12,10 @@ import sys
 import numpy as np
 
 sys.path.append(os.environ["BOREALISPATH"])
-if __debug__:
-    from build.debug.src.utils.protobuf.driverpacket_pb2 import DriverPacket
-    from build.debug.src.utils.protobuf.rxsamplesmetadata_pb2 import RxSamplesMetadata
-else:
-    from build.release.src.utils.protobuf.driverpacket_pb2 import DriverPacket
-    from build.release.src.utils.protobuf.rxsamplesmetadata_pb2 import RxSamplesMetadata
 
 from src.utils import socket_operations as so
 from src.utils.options import Options
+from src.utils.message_formats import DriverPacket, RxSamplesMetadata
 
 
 def driver_thread():
@@ -37,6 +32,21 @@ def driver_thread():
 
     expected_sqn_num = 0
     sqn_num = 0
+
+    # set up the pulse_buffer
+    num_antennas = len(options.tx_main_antennas)
+    buffer_size_per_antenna_samps = (
+        options.pulse_buffer_size * 8
+    )  # 8 bytes per complex64 sample
+    pulse_buffer_size = num_antennas * buffer_size_per_antenna_samps
+    shm = ipc.SharedMemory(
+        options.pulse_buffer_name, flags=ipc.O_CREX, size=pulse_buffer_size
+    )
+    pulse_buffer_mem = mmap.mmap(shm.fd, shm.size)
+    pulse_buffer = np.frombuffer(pulse_buffer_mem, dtype=np.complex64).reshape(
+        num_antennas, -1
+    )
+    log.info("pulse_buffer size", shape=pulse_buffer.shape, size=pulse_buffer.size)
 
     # set up the ringbuffer
     num_antennas = len(options.rx_main_antennas) + len(options.rx_intf_antennas)
@@ -66,8 +76,7 @@ def driver_thread():
 
     # On startup, radar_control sends some preliminary data to help the driver set up
     radctrl_msg = so.recv_bytes(radctrl_socket, options.radctrl_to_driver_identity, log)
-    driver_packet = DriverPacket()
-    driver_packet.ParseFromString(radctrl_msg)
+    driver_packet = DriverPacket.parse(radctrl_msg.decode("utf-8"))
     rx_rate = driver_packet.rxrate
     # tx_rate = driver_packet.txrate
     # tx_ctr_freq = driver_packet.txcenterfreq
@@ -83,7 +92,6 @@ def driver_thread():
         pulse_starts = []
         pulse_durations = []
         pulse_samples = []
-        tx_samples = []
         align_sqns = False
         num_rx_samps = 0
 
@@ -91,8 +99,7 @@ def driver_thread():
             radctrl_msg = so.recv_bytes(
                 radctrl_socket, options.radctrl_to_driver_identity, log
             )
-            driver_packet = DriverPacket()
-            driver_packet.ParseFromString(radctrl_msg)
+            driver_packet = DriverPacket.parse(radctrl_msg.decode("utf-8"))
             sqn_num = driver_packet.sequence_num
             if sqn_num != expected_sqn_num:
                 raise ValueError(
@@ -103,19 +110,16 @@ def driver_thread():
             # tx_ctr_freq = driver_packet.txcenterfreq
             # rx_ctr_freq = driver_packet.txcenterfreq
             pulse_durations.append(driver_packet.seqtime)
-            pulse_starts.append(driver_packet.timetosendsamples)
-            burst_start = driver_packet.SOB
-            burst_end = driver_packet.EOB
+            pulse_starts.append(driver_packet.sample_timing)
+            burst_start = driver_packet.burst_start
+            burst_end = driver_packet.burst_end
             align_sqns = driver_packet.align_sequences
             if burst_start:
-                num_rx_samps = driver_packet.numberofreceivesamples
-                for chan in driver_packet.channel_samples:
-                    tx_samples.append(
-                        np.array(chan.real, dtype=float)
-                        + 1j * np.array(chan.imag, dtype=float)
-                    )
-                tx_samples = np.array(tx_samples, dtype=np.complex64)
-                # mock_samples[:, ]
+                num_rx_samps = driver_packet.num_rx_samps
+
+            num_tx_samps = driver_packet.num_tx_samps
+            offset = driver_packet.buffer_offset
+            tx_samples = pulse_buffer[:, offset : offset + num_tx_samps]
             pulse_samples.append(tx_samples)
 
             if burst_end:
@@ -185,7 +189,7 @@ def driver_thread():
         rx_metadata.initialization_time = initialization_time.timestamp()
         rx_metadata.sequence_start_time = sqn_start_time.timestamp()
         rx_metadata.ringbuffer_size = buffer_size_per_antenna_samps
-        rx_metadata.numberofreceivesamples = num_rx_samps
+        rx_metadata.num_rx_samps = num_rx_samps
         rx_metadata.sequence_num = sqn_num
         rx_metadata.sequence_time = (
             dt.datetime.utcnow() - starting_pulses
@@ -196,7 +200,7 @@ def driver_thread():
         rx_metadata.lp_status_bank_l = np.int16(0)
         rx_metadata.gps_locked = True
         rx_metadata.gps_to_system_time_diff = 2.0e-8
-        metadata_msg = rx_metadata.SerializeToString()
+        metadata_msg = rx_metadata.format_for_ipc()
 
         # Wait for request for metadata from rx_signal_processing
         so.recv_string(dsp_socket, options.dsp_to_driver_identity, log)

@@ -34,16 +34,12 @@ else:
 
 sys.path.append(os.environ["BOREALISPATH"])
 
-if __debug__:
-    from build.debug.src.utils.protobuf.rxsamplesmetadata_pb2 import RxSamplesMetadata
-else:
-    from build.release.src.utils.protobuf.rxsamplesmetadata_pb2 import RxSamplesMetadata
-
 from utils.message_formats import (
     ProcessedSequenceMessage,
     DebugDataStage,
     OutputDataset,
     SequenceMetadataMessage,
+    RxSamplesMetadata,
 )
 from utils.signals import DSP
 
@@ -627,8 +623,8 @@ def main():
         reply = so.recv_bytes(dsp_to_driver, options.driver_to_dsp_identity, log)
         log.debug("Received data from driver")
 
-        rx_metadata = RxSamplesMetadata()
-        rx_metadata.ParseFromString(reply)
+        # parse the message from usrp_driver into a dataclass
+        rx_metadata = RxSamplesMetadata.parse(reply.decode("utf-8"))
 
         if sqn_meta_message.sequence_num != rx_metadata.sequence_num:
             log.error(
@@ -678,7 +674,7 @@ def main():
         total_dm_rate = np.prod(dm_rates)
 
         # Calculate where in the ringbuffer the samples are located.
-        samples_needed = rx_metadata.numberofreceivesamples + 2 * extra_samples
+        samples_needed = rx_metadata.num_rx_samps + 2 * extra_samples
         samples_needed = int(
             math.ceil(float(samples_needed) / float(total_dm_rate)) * total_dm_rate
         )

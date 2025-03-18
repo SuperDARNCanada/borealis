@@ -30,10 +30,6 @@ import utils.message_formats as messages
 from utils import socket_operations as so
 
 sys.path.append(os.environ["BOREALISPATH"])
-if __debug__:
-    pass
-else:
-    pass
 
 TIME_PROFILE = False
 
@@ -179,33 +175,27 @@ def create_driver_message(radctrl_params, pulse_transmit_data, pulse_buffer):
     :rtype: dataclass
     """
 
-    message = dict()
+    message = messages.DriverPacket()
 
-    message["txcenterfreq"] = (
-        f"{radctrl_params.slice_dict[0].txctrfreq * 1000}"  # convert to Hz
-    )
-    message["rxcenterfreq"] = (
-        f"{radctrl_params.slice_dict[0].rxctrfreq * 1000}"  # convert to Hz
-    )
-    message["txrate"] = f"{radctrl_params.experiment.txrate}"
-    message["rxrate"] = f"{radctrl_params.experiment.rxrate}"
-
-    def format_message():
-        msg_str = " ".join([f"{k}={v}" for k, v in message.items()])
-        return msg_str
+    message.txcenterfreq = (
+        radctrl_params.slice_dict[0].txctrfreq * 1000
+    )  # convert to Hz
+    message.rxcenterfreq = (
+        radctrl_params.slice_dict[0].rxctrfreq * 1000
+    )  # convert to Hz
+    message.txrate = radctrl_params.experiment.txrate
+    message.rxrate = radctrl_params.experiment.rxrate
 
     # If this is the first time the driver is being set-up, only send tx and rx rates and center frequencies
     if radctrl_params.startup_flag:
-        msg = format_message()
-        return msg
+        return message.format_for_ipc()
 
-    message["sample_timing"] = pulse_transmit_data["timing"]
-    message["burst_start"] = int(pulse_transmit_data["startofburst"])
-    message["burst_end"] = int(pulse_transmit_data["endofburst"])
-    message["sequence_num"] = radctrl_params.seqnum_start + radctrl_params.num_sequences
-    message["numberofreceivesamples"] = radctrl_params.sequence.numberofreceivesamples
-    message["seqtime"] = radctrl_params.sequence.seqtime
-    message["align_sequences"] = int(radctrl_params.sequence.align_sequences)
+    message.sample_timing = pulse_transmit_data["timing"]
+    message.burst_start = int(pulse_transmit_data["startofburst"])
+    message.burst_end = int(pulse_transmit_data["endofburst"])
+    message.sequence_num = radctrl_params.seqnum_start + radctrl_params.num_sequences
+    message.seqtime = radctrl_params.sequence.seqtime
+    message.align_sequences = int(radctrl_params.sequence.align_sequences)
 
     samples_array = pulse_transmit_data["samples_array"]
     num_samps = samples_array.shape[1]
@@ -214,14 +204,13 @@ def create_driver_message(radctrl_params, pulse_transmit_data, pulse_buffer):
         offset = 0
     pulse_buffer[:, offset : offset + num_samps] = samples_array
 
-    message["buffer_offset"] = offset
-    message["num_tx_samps"] = num_samps
+    message.buffer_offset = offset
+    message.num_tx_samps = num_samps
 
     radctrl_params.pulse_buffer_offset = offset + num_samps
-    message["num_rx_samps"] = radctrl_params.sequence.numberofreceivesamples
+    message.num_rx_samps = radctrl_params.sequence.numberofreceivesamples
 
-    msg = format_message()
-    return msg
+    return message.format_for_ipc()
 
 
 def dsp_comms_thread(radctrl_dsp_iden, dsp_socket_iden, router_addr):

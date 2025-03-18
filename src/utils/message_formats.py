@@ -2,7 +2,7 @@
 #
 # Copyright 2022 SuperDARN Canada
 # Author: Remington Rohel
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 import numpy as np
 
 
@@ -244,3 +244,95 @@ class AveperiodMetadataMessage:
     def add_sequence(self, sequence: dict):
         """Add a sequence dict to the message."""
         self.sequences.append(sequence)
+
+
+@dataclass
+class RxSamplesMetadata:
+    """
+    Message from usrp_driver to rx_signal_processing.
+    """
+
+    sequence_num: int = 0
+    num_rx_samps: int = 0
+    rx_rate: float = 0.0
+    sequence_time: float = 0.0
+    initialization_time: float = 0.0
+    sequence_start_time: float = 0.0
+    ringbuffer_size: int = 0
+    agc_status_bank_h: int = 0
+    lp_status_bank_h: int = 0
+    agc_status_bank_l: int = 0
+    lp_status_bank_l: int = 0
+    gps_locked: bool = False
+    gps_to_system_time_diff: float = 0.0
+
+    @staticmethod
+    def parse(message: str):
+        """Parses a string of `k1=v1 k2=v2` into RxSamplesMetadata"""
+        rx_metadata = RxSamplesMetadata()
+        split_reply = message.split(" ")  # expect "k1=v1 k2=v2 k3=v3"
+        for token in split_reply:
+            split_token = token.split("=")
+            k = split_token[0]
+            v = split_token[1]
+            var_type = getattr(rx_metadata, k)
+            if isinstance(var_type, bool):
+                v = bool(int(v))  # bool("0") -> True, bool(int("0")) -> False
+            else:
+                v = type(var_type)(v)
+            setattr(rx_metadata, k, v)
+        return rx_metadata
+
+    def format_for_ipc(self):
+        str_list = list()
+        for f in fields(self):
+            v = getattr(self, f.name)
+            if isinstance(v, bool):
+                v = int(v)
+            str_list.append(f"{f.name}={v}")
+        msg_str = " ".join(str_list)
+        return msg_str.encode("utf-8")
+
+
+@dataclass
+class DriverPacket:
+    sequence_num: int = 0
+    rxrate: float = 0.0
+    txrate: float = 0.0
+    txcenterfreq: float = 0.0
+    rxcenterfreq: float = 0.0
+    num_rx_samps: int = 0
+    num_tx_samps: int = 0
+    seqtime: float = 0.0
+    sample_timing: float = 0.0
+    burst_start: bool = False
+    burst_end: bool = False
+    align_sequences: bool = False
+    buffer_offset: int = 0
+
+    @staticmethod
+    def parse(message: str):
+        """Parses a string of `k1=v1 k2=v2` into DriverPacket"""
+        packet = DriverPacket()
+        split_reply = message.split(" ")  # expect "k1=v1 k2=v2 k3=v3"
+        for token in split_reply:
+            split_token = token.split("=")
+            k = split_token[0]
+            v = split_token[1]
+            var_type = type(getattr(packet, k))
+            if var_type is bool:
+                v = bool(int(v))  # bool("0") -> True, bool(int("0")) -> False
+            else:
+                v = var_type(v)
+            setattr(packet, k, v)
+        return packet
+
+    def format_for_ipc(self):
+        str_list = list()
+        for f in fields(self):
+            v = getattr(self, f.name)
+            if isinstance(v, bool):
+                v = int(v)
+            str_list.append(f"{f.name}={v}")
+        msg_str = " ".join(str_list)
+        return msg_str.encode("utf-8")
