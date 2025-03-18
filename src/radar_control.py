@@ -31,9 +31,9 @@ from utils import socket_operations as so
 
 sys.path.append(os.environ["BOREALISPATH"])
 if __debug__:
-    from build.debug.src.utils.protobuf.driverpacket_pb2 import DriverPacket
+    pass
 else:
-    from build.release.src.utils.protobuf.driverpacket_pb2 import DriverPacket
+    pass
 
 TIME_PROFILE = False
 
@@ -146,7 +146,7 @@ def driver_comms_thread(radctrl_driver_iden, driver_socket_iden, router_addr):
 
 def create_driver_message(radctrl_params, pulse_transmit_data, pulse_buffer):
     """
-    Place data in the driver packet and send it via zeromq to the driver.
+    Format data for sending to usrp_driver via zeromq
 
     :param radctrl_params: The current averaging period parameters dataclass.The parameters extracted are:
 
@@ -179,52 +179,49 @@ def create_driver_message(radctrl_params, pulse_transmit_data, pulse_buffer):
     :rtype: dataclass
     """
 
-    message = DriverPacket()
+    message = dict()
+
+    message["txcenterfreq"] = (
+        f"{radctrl_params.slice_dict[0].txctrfreq * 1000}"  # convert to Hz
+    )
+    message["rxcenterfreq"] = (
+        f"{radctrl_params.slice_dict[0].rxctrfreq * 1000}"  # convert to Hz
+    )
+    message["txrate"] = f"{radctrl_params.experiment.txrate}"
+    message["rxrate"] = f"{radctrl_params.experiment.rxrate}"
+
+    def format_message():
+        msg_str = " ".join([f"{k}={v}" for k, v in message.items()])
+        return msg_str
 
     # If this is the first time the driver is being set-up, only send tx and rx rates and center frequencies
     if radctrl_params.startup_flag:
-        message.txcenterfreq = (
-            radctrl_params.slice_dict[0].txctrfreq * 1000
-        )  # convert to Hz
-        message.rxcenterfreq = (
-            radctrl_params.slice_dict[0].rxctrfreq * 1000
-        )  # convert to Hz
-        message.txrate = radctrl_params.experiment.txrate
-        message.rxrate = radctrl_params.experiment.rxrate
-    else:
-        timing = pulse_transmit_data["timing"]
-        SOB = pulse_transmit_data["startofburst"]
-        EOB = pulse_transmit_data["endofburst"]
+        msg = format_message()
+        return msg
 
-        message.timetosendsamples = timing
-        message.SOB = SOB
-        message.EOB = EOB
-        message.sequence_num = (
-            radctrl_params.seqnum_start + radctrl_params.num_sequences
-        )
-        message.numberofreceivesamples = radctrl_params.sequence.numberofreceivesamples
-        message.seqtime = radctrl_params.sequence.seqtime
-        message.align_sequences = radctrl_params.sequence.align_sequences
+    message["sample_timing"] = pulse_transmit_data["timing"]
+    message["burst_start"] = int(pulse_transmit_data["startofburst"])
+    message["burst_end"] = int(pulse_transmit_data["endofburst"])
+    message["sequence_num"] = radctrl_params.seqnum_start + radctrl_params.num_sequences
+    message["numberofreceivesamples"] = radctrl_params.sequence.numberofreceivesamples
+    message["seqtime"] = radctrl_params.sequence.seqtime
+    message["align_sequences"] = int(radctrl_params.sequence.align_sequences)
 
-        samples_array = pulse_transmit_data["samples_array"]
-        num_samps = samples_array.shape[1]
-        offset = radctrl_params.pulse_buffer_offset
-        if offset + num_samps >= pulse_buffer.shape[1]:
-            offset = 0
-        pulse_buffer[:, offset : offset + num_samps] = samples_array
+    samples_array = pulse_transmit_data["samples_array"]
+    num_samps = samples_array.shape[1]
+    offset = radctrl_params.pulse_buffer_offset
+    if offset + num_samps >= pulse_buffer.shape[1]:
+        offset = 0
+    pulse_buffer[:, offset : offset + num_samps] = samples_array
 
-        message.buffer_offset = offset
-        message.numberoftransmitsamples = num_samps
+    message["buffer_offset"] = offset
+    message["num_tx_samps"] = num_samps
 
-        radctrl_params.pulse_buffer_offset = offset + num_samps
+    radctrl_params.pulse_buffer_offset = offset + num_samps
+    message["num_rx_samps"] = radctrl_params.sequence.numberofreceivesamples
 
-        message.txcenterfreq = radctrl_params.sequence.txctrfreq * 1000  # convert to Hz
-        message.rxcenterfreq = radctrl_params.sequence.rxctrfreq * 1000  # convert to Hz
-        message.txrate = radctrl_params.experiment.txrate
-        message.rxrate = radctrl_params.experiment.rxrate
-        message.numberofreceivesamples = radctrl_params.sequence.numberofreceivesamples
-
-    return message.SerializeToString()
+    msg = format_message()
+    return msg
 
 
 def dsp_comms_thread(radctrl_dsp_iden, dsp_socket_iden, router_addr):

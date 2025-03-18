@@ -63,6 +63,109 @@ static clocks_t borealis_clocks;
 // crash to avoid writing corrupt metadata to file.
 #define MAX_CLOCK_DRIFT 1000.0  // seconds
 
+/// Struct replacing the driver_packet.proto definition. This will be populated
+/// from the CSV-style messages received from radar_control.
+typedef struct {
+  uint32 sequence_num;
+  double rxrate;
+  double txrate;
+  double txcenterfreq;
+  double rxcenterfreq;
+  uint32 num_rx_samps;
+  uint32 num_tx_samps;
+  double seqtime;
+  double sample_timing;
+  bool burst_start;
+  bool burst_end;
+  bool align_sequences;
+  uint32 buffer_offset;
+} RadctrlPacket;
+
+/**
+ * @brief      Parses a string into a RadctrlPacket, if possible.
+ *
+ * @param[in]  message  The message in string form
+ *
+ * @return     A struct containing the parsed message.
+ */
+RadctrlPacket parse_radctrl_packet(zmq::message_t message) {
+  std::istringstream iss(static_cast<char *>(message.data()));
+  RadctrlPacket packet;
+
+  std::string field_name;
+  std::string token;
+
+  while (iss >> token) {
+    // Now token contains a `name=value` string, which we want to parse
+    auto idx = token.find("=") std::string key = token.substr(0, idx);
+    std::stringstream val(token.substr(idx + 1, token.length()));
+    switch (key) {
+      case "sequence_num":
+        val >> packet.sequence_num;
+        break;
+      case "rxrate":
+        val >> packet.rxrate;
+        break;
+      case "txrate":
+        val >> packet.txrate;
+        break;
+      case "txcenterfreq":
+        val >> packet.txcenterfreq;
+        break;
+      case "rxcenterfreq":
+        val >> packet.rxcenterfreq;
+        break;
+      case "num_rx_samps":
+        val >> packet.num_rx_samps;
+        break;
+      case "num_tx_samps":
+        val >> packet.num_tx_samps;
+        break;
+      case "seqtime":
+        val >> packet.seqtime;
+        break;
+      case "sample_timing":
+        val >> packet.sample_timing;
+        break;
+      case "burst_start":
+        val >> packet.burst_start;
+        break;
+      case "burst_end":
+        val >> packet.burst_end;
+        break;
+      case "align_sequences":
+        val >> packet.align_sequences;
+        break;
+      case "buffer_offset":
+        val >> packet.buffer_offset;
+        break;
+      default:
+        RUNTIME_MSG("Invalid key `" << token
+                                    << "` in message from radar_control");
+        exit(1)  // todo: figure out how to error here
+    }
+  }
+}
+
+/// Struct replacing the rxsamplesmetadata.proto definition. This will be
+/// populated and converted to CSV-style messages to send to
+/// rx_signal_processing.
+typedef struct {
+  uint32 sequence_num;
+  uint32 num_rx_samps;
+  double rx_rate;
+  double sequence_time;
+  double initialization_time;
+  double sequence_start_time;
+  uint64 ringbuffer_size;
+  uint32 agc_status_bank_h;
+  uint32 lp_status_bank_h;
+  uint32 agc_status_bank_l;
+  uint32 lp_status_bank_l;
+  bool gps_locked;
+  double gps_to_system_time_diff;
+} RxPacket;
+
 /**
  * @brief      Makes a set of vectors of the samples for each TX channel from
  * shared memory.
@@ -77,8 +180,8 @@ std::vector<std::vector<std::complex<float>>> make_tx_samples(
     int total_tx_channels, const driverpacket::DriverPacket &driver_packet,
     std::vector<std::complex<float> *> pulse_ptrs) {
   std::vector<std::vector<std::complex<float>>> samples(total_tx_channels);
-  auto num_samps = driver_packet.numberoftransmitsamples();
-  auto offset = driver_packet.buffer_offset();
+  auto num_samps = driver_packet.num_tx_samps;
+  auto offset = driver_packet.buffer_offset;
   for (int channel = 0; channel < total_tx_channels; channel++) {
     auto start = pulse_ptrs[channel] + offset;
     std::vector<std::complex<float>> v(start, start + num_samps);
@@ -109,8 +212,6 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
   auto samples_set = false;
 
   auto rx_rate = usrp_d.get_rx_rate();
-
-  driverpacket::DriverPacket driver_packet;
 
   zmq::socket_t start_trigger(driver_c, ZMQ_PAIR);
   ERR_CHK_ZMQ(start_trigger.connect("inproc://thread"))
@@ -199,12 +300,14 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
       TIMEIT_IF_TRUE_OR_DEBUG(
           false, COLOR_BLUE("TRANSMIT") << " total setup time: ",
           [&]() {
-            if (driver_packet.ParseFromString(pulse_data) == false) {
-              // TODO(keith): handle error
-            }
+            RadctrlPacket driver_packet = parse_radctrl_packet(pulse_data);
+            //            if (driver_packet.ParseFromString(pulse_data) ==
+            //            false) {
+            //              // TODO(keith): handle error
+            //            }
 
-            sqn_num = driver_packet.sequence_num();
-            seqtime = driver_packet.seqtime();
+            sqn_num = driver_packet.sequence_num;
+            seqtime = driver_packet.seqtime;
             if (sqn_num != expected_sqn_num) {
               DEBUG_MSG("SEQUENCE NUMBER MISMATCH: SQN "
                         << sqn_num << " EXPECTED: " << expected_sqn_num);
@@ -212,36 +315,36 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
             }
 
             DEBUG_MSG(COLOR_BLUE("TRANSMIT")
-                      << " burst flags: SOB " << driver_packet.sob() << " EOB "
-                      << driver_packet.eob());
+                      << " burst flags: SOB " << driver_packet.burst_start
+                      << " EOB " << driver_packet.burst_end);
 
             TIMEIT_IF_TRUE_OR_DEBUG(
                 false, COLOR_BLUE("TRANSMIT") << " center freq ",
                 [&]() {
                   // If there is new center frequency data, set TX center
                   // frequency for each USRP TX channel.
-                  if (tx_center_freq != driver_packet.txcenterfreq()) {
-                    if (driver_packet.txcenterfreq() > 0.0 &&
-                        driver_packet.sob() == true) {
+                  if (tx_center_freq != driver_packet.txcenterfreq) {
+                    if (driver_packet.txcenterfreq > 0.0 &&
+                        driver_packet.burst_start == true) {
                       DEBUG_MSG(COLOR_BLUE("TRANSMIT")
                                 << " setting tx center freq to "
-                                << driver_packet.txcenterfreq());
+                                << driver_packet.txcenterfreq);
                       tx_center_freq = usrp_d.set_tx_center_freq(
-                          driver_packet.txcenterfreq(), tx_channels,
+                          driver_packet.txcenterfreq, tx_channels,
                           uhd::time_spec_t(TUNING_DELAY));
                     }
                   }
 
                   // rxcenterfreq() will return 0 if it hasn't changed, so check
                   // for changes here
-                  if (rx_center_freq != driver_packet.rxcenterfreq()) {
-                    if (driver_packet.rxcenterfreq() > 0.0 &&
-                        driver_packet.sob() == true) {
+                  if (rx_center_freq != driver_packet.rxcenterfreq) {
+                    if (driver_packet.rxcenterfreq > 0.0 &&
+                        driver_packet.burst_start == true) {
                       DEBUG_MSG(COLOR_BLUE("TRANSMIT")
                                 << " setting rx center freq to "
-                                << driver_packet.rxcenterfreq());
+                                << driver_packet.rxcenterfreq);
                       rx_center_freq = usrp_d.set_rx_center_freq(
-                          driver_packet.rxcenterfreq(), receive_channels,
+                          driver_packet.rxcenterfreq, receive_channels,
                           uhd::time_spec_t(TUNING_DELAY));
                     }
                   }
@@ -251,7 +354,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
 
             TIMEIT_IF_TRUE_OR_DEBUG(
                 true, COLOR_BLUE("TRANSMIT") << " sample unpack time: ", [&]() {
-                  if (driver_packet.sob() == true) {
+                  if (driver_packet.burst_start == true) {
                     pulses.clear();
                   }
                   // Parse new samples from shared memory.
@@ -263,13 +366,13 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
                 }());
           }();
 
-          time_to_send_samples.push_back(driver_packet.timetosendsamples());
+          time_to_send_samples.push_back(driver_packet.sample_timing);
 
-          if (driver_packet.sob() == true) {
-            num_recv_samples = driver_packet.numberofreceivesamples();
+          if (driver_packet.burst_start == true) {
+            num_recv_samples = driver_packet.num_rx_samps;
           }
 
-          if (driver_packet.eob() == true) { more_pulses = false; });
+          if (driver_packet.burst_end == true) { more_pulses = false; });
     }
 
     // In order to transmit, these parameters need to be set at least once.
@@ -300,7 +403,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
     // Earliest possible time to start sending samples
     auto sequence_start_time = time_now + delay;
 
-    if (driver_packet.align_sequences() == true) {
+    if (driver_packet.align_sequences == true) {
       // Get the digit of the next tenth of a second after min_start_time
       double tenth_of_second =
           std::ceil(sequence_start_time.get_frac_secs() *
@@ -708,7 +811,7 @@ int32_t UHD_SAFE_MAIN(int32_t argc, char *argv[]) {
   auto setup_data = recv_string(
       driver_to_radar_control, driver_options.get_radctrl_to_driver_identity());
 
-  driverpacket::DriverPacket driver_packet;
+  RadctrlPacket driver_packet;
   if (driver_packet.ParseFromString(setup_data) == false) {
     // TODO(keith): handle error
   }
