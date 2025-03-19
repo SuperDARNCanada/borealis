@@ -19,20 +19,22 @@ from pathlib import Path
 
 # third-party
 import numpy as np
-from pydantic.v1.dataclasses import dataclass, Field
-from pydantic.v1 import (
-    validator,
+from pydantic.dataclasses import dataclass
+from pydantic import (
+    field_validator, model_validator, Field, validator,
     root_validator,
     conlist,
-    conint,
-    confloat,
+    Strict,
     StrictBool,
     StrictInt,
     PositiveFloat,
+    NonNegativeFloat,
+    AfterValidator,
+    ValidationError,
 )
 from scipy.constants import speed_of_light
 import structlog
-from typing import Optional, Union, Literal, Callable
+from typing import List, Optional, Union, Literal, Callable, Hashable, TypeVar
 
 # local
 from utils.options import Options
@@ -41,6 +43,7 @@ from experiment_prototype.experiment_utils.decimation_scheme import (
     create_default_scheme,
     create_default_cfs_scheme,
 )
+from typing_extensions import Annotated
 
 # Obtain the module name that imported this log_config
 caller = Path(inspect.stack()[-1].filename)
@@ -114,20 +117,44 @@ class SliceConfig:
     """
 
     validate_assignment = True
-    validate_all = True
+    validate_default = True
     extra = "forbid"
     arbitrary_types_allowed = True
 
 
-freq_hz = confloat(ge=options.min_freq, le=options.max_freq)
-freq_khz = confloat(ge=options.min_freq / 1e3, le=options.max_freq / 1e3)
-freq_float_hz = confloat(ge=options.min_freq, le=options.max_freq, strict=True)
-freq_float_khz = confloat(
+T = TypeVar('T', bound=Hashable)
+
+
+def _validate_unique_list(v: list[T]) -> list[T]:
+    """Validates that a list contains unique items"""
+    if len(v) != len(set(v)):
+        raise ValidationError('unique_list', 'List must be unique')
+    return v
+
+
+def check_list_increasing(v: list[T]):
+    """Validates that a list has increasing entries"""
+    if not all(x < y for x, y in zip(v, v[1:])):
+        raise ValidationError("increasing_list", "List must have increasing values")
+    return v
+
+
+UniqueList = Annotated[List[T], AfterValidator(_validate_unique_list), Field(json_schema_extra={'uniqueItems': True})]
+UniqueBoundedList = Annotated[List[T], AfterValidator(_validate_unique_list), Field(json_schema_extra={"uniqueItems": True})]
+
+freq_hz = Annotated[float, Field(ge=options.min_freq, le=options.max_freq)]
+freq_khz = Annotated[float, Field(ge=options.min_freq / 1e3, le=options.max_freq / 1e3)]
+freq_float_hz = Annotated[float, Field(ge=options.min_freq, le=options.max_freq, strict=True)]
+freq_float_khz = Annotated[float, Field(
     ge=options.min_freq / 1e3, le=options.max_freq / 1e3, strict=True
-)
-freq_int_hz = conint(ge=options.min_freq, le=options.max_freq, strict=True)
-freq_int_khz = conint(ge=options.min_freq / 1e3, le=options.max_freq / 1e3, strict=True)
-beam_order_type = list[conint(ge=0, strict=True)]
+)]
+freq_int_hz = Annotated[int, Field(ge=options.min_freq, le=options.max_freq, strict=True)]
+freq_int_khz = Annotated[int, Field(ge=options.min_freq / 1e3, le=options.max_freq / 1e3, strict=True)]
+
+positive_int = Annotated[int, Field(gt=0), Strict()]
+non_neg_int = Annotated[int, Field(ge=0), Strict()]
+positive_float = Annotated[float, Field(gt=0), Strict()]
+non_neg_float = Annotated[float, Field(ge=0), Strict()]
 
 
 @dataclass(config=SliceConfig)
@@ -326,22 +353,20 @@ class ExperimentSlice:
 
     # These fields are for checking the validity of the user-specified fields, to ensure the slice is
     # compatible with the experiment settings.
-    tx_bandwidth: float
-    rx_bandwidth: float
-    transition_bandwidth: float
+    tx_bandwidth: positive_float
+    rx_bandwidth: positive_float
+    transition_bandwidth: positive_float
 
     # These fields can be specified in exp_slice_dict, subject to some conditions. Some may have dynamic default values.
-    slice_id: conint(ge=0, strict=True)
-    beam_angle: conlist(
-        Union[confloat(strict=True), conint(strict=True)], unique_items=True
-    )
+    slice_id: positive_float
+    beam_angle: Annotated[UniqueList[float], AfterValidator(check_list_increasing)]
     cpid: StrictInt
-    first_range: Union[confloat(ge=0), conint(ge=0)]
-    num_ranges: conint(gt=0, strict=True)
-    tau_spacing: conint(ge=options.min_tau_spacing_length, strict=True)
-    pulse_len: conint(ge=options.min_pulse_length, strict=True)
-    pulse_sequence: conlist(conint(ge=0, strict=True), unique_items=True)
-    rx_beam_order: list[Union[beam_order_type, conint(ge=0, strict=True)]]
+    first_range: NonNegativeFloat
+    num_ranges: non_neg_int
+    tau_spacing: Annotated[int, Field(ge=options.min_tau_spacing_length, strict=True)]
+    pulse_len: Annotated[int, Field(ge=options.min_pulse_length, strict=True)]
+    pulse_sequence: Annotated[UniqueList[Annotated[int, Field(ge=0, strict=True)]], AfterValidator(check_list_increasing)]
+    rx_beam_order: List[Union[List[non_neg_int], non_neg_int]]
 
     # Frequency rx and tx limits are dependent on the tx and rx center frequencies. Since the center freq
     # parameter is defined by slice, the max and min rx frequencies must be determined after center freq validation
@@ -354,43 +379,28 @@ class ExperimentSlice:
     # These fields have default values. Some have specification requirements in conjunction with each other
     # e.g. one of intt or intn must be specified.
     rxonly: Optional[StrictBool] = False
-    tx_antennas: Optional[
-        conlist(
-            conint(ge=0, lt=options.main_antenna_count, strict=True),
-            max_items=options.main_antenna_count,
-            unique_items=True,
-        )
-    ] = None
-    rx_main_antennas: Optional[
-        conlist(
-            conint(ge=0, lt=options.main_antenna_count, strict=True),
-            max_items=options.main_antenna_count,
-            unique_items=True,
-        )
-    ] = None
-    rx_intf_antennas: Optional[
-        conlist(
-            conint(ge=0, lt=options.intf_antenna_count, strict=True),
-            max_items=options.intf_antenna_count,
-            unique_items=True,
-        )
-    ] = None
+    tx_antennas: Optional[UniqueList[conlist(Annotated[int, Field(ge=0, lt=options.main_antenna_count, strict=True)],
+                                             max_length=options.main_antenna_count)]] = None
+    rx_main_antennas: Optional[UniqueList[conlist(Annotated[int, Field(ge=0, lt=options.main_antenna_count, strict=True)],
+                                                  max_length=options.main_antenna_count)]] = None
+    rx_intf_antennas: Optional[UniqueList[conlist(Annotated[int, Field(ge=0, lt=options.main_antenna_count, strict=True)],
+                                                  max_length=options.intf_antenna_count)]] = None
     tx_antenna_pattern: Optional[Callable] = default_callable
     rx_antenna_pattern: Optional[Callable] = default_callable
-    tx_beam_order: Optional[beam_order_type] = Field(default_factory=list)
-    intt: Optional[confloat(ge=0)] = None
-    scanbound: Optional[list[confloat(ge=0)]] = Field(default_factory=list)
+    tx_beam_order: Optional[List[Union[List[non_neg_int], non_neg_int]]] = None
+    intt: Optional[non_neg_float] = None
+    scanbound: Optional[Annotated[List[non_neg_float], AfterValidator(check_list_increasing)]] = None
     pulse_phase_offset: Optional[Callable] = default_callable
     decimation_scheme: DecimationScheme = Field(default_factory=create_default_scheme)
 
-    cfs_range: Optional[conlist(freq_int_khz, min_items=2, max_items=2)] = None
-    cfs_flag: StrictBool = Field(init=False)
-    cfs_duration: Optional[conint(ge=0, strict=True)] = 90  # ms
+    cfs_range: Optional[Annotated[conlist(freq_int_khz, min_length=2, max_length=2), AfterValidator(check_list_increasing)]] = None
+    cfs_flag: StrictBool = False
+    cfs_duration: Optional[non_neg_int] = 90  # ms
     cfs_scheme: DecimationScheme = Field(default_factory=create_default_cfs_scheme)
-    cfs_stable_time: Optional[conint(ge=0, strict=True)] = 0  # seconds
-    cfs_pwr_threshold: Optional[confloat(ge=0)] = None  # dB
-    cfs_fft_n: Optional[conint(ge=0, strict=True)] = 512
-    cfs_freq_res: Optional[confloat(ge=0)] = None  # Hz
+    cfs_stable_time: Optional[non_neg_int] = 0  # seconds
+    cfs_pwr_threshold: Optional[NonNegativeFloat] = None  # dB
+    cfs_fft_n: Optional[non_neg_int] = 512
+    cfs_freq_res: Optional[NonNegativeFloat] = None  # Hz
     cfs_always_run: Optional[StrictBool] = False
 
     acf: Optional[StrictBool] = False
@@ -398,37 +408,40 @@ class ExperimentSlice:
     align_sequences: Optional[StrictBool] = False
     averaging_method: Optional[Literal["mean", "median"]] = "mean"
     comment: Optional[str] = ""
-    intn: Optional[conint(ge=0, strict=True)] = None
-    lag_table: Optional[list[list[StrictInt]]] = Field(default_factory=list)
+    intn: Optional[non_neg_int] = None
+    lag_table: Optional[List[Annotated[List[non_neg_int], AfterValidator(check_list_increasing)]]] = Field(default_factory=list)
     range_sep: Optional[PositiveFloat] = Field(init=False)
-    seqoffset: Optional[conint(ge=0, strict=True)] = 0
+    seqoffset: Optional[non_neg_int] = 0
     wait_for_first_scanbound: Optional[StrictBool] = False
-    xcf: Optional[bool] = False
+    xcf: Optional[StrictBool] = False
 
     # Validators which check that all mutually exclusive sets of fields have one option set
-
-    @root_validator(pre=True)
+    @model_validator(mode="before")
+    @classmethod
     def check_tx_specifier(cls, values):
         if "tx_antenna_pattern" not in values and "tx_beam_order" in values:
             raise ValueError(
                 f"tx_beam_order must be specified if tx_antenna_pattern specified. Slice: "
                 f"{values['slice_id']}"
             )
-        elif "tx_beam_order" in values and "rxonly" in values and values["rxonly"]:
+        elif (
+            "tx_beam_order" in values
+            and values.get("rxonly", False)
+        ):
             raise ValueError(
                 f"rxonly specified as True but tx_beam_order specified. Slice: {values['slice_id']}"
             )
         elif (
             "tx_beam_order" not in values
-            and "rxonly" in values
-            and values["rxonly"] is False
+            and values.get("rxonly", True) is False
         ):
             raise ValueError(
                 f"rxonly specified as False but tx_beam_order not given. Slice: {values['slice_id']}"
             )
         return values
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
+    @classmethod
     def check_intt_intn(cls, values):
         if not values["intt"] and not values["intn"]:
             raise ValueError(
@@ -441,7 +454,8 @@ class ExperimentSlice:
             )
         return values
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
+    @classmethod
     def check_freq_cfs_range(cls, values):
         if "cfs_range" in values and values["cfs_range"]:
             values["cfs_flag"] = True
@@ -458,99 +472,83 @@ class ExperimentSlice:
             )
         return values
 
-    # Validate that a list is increasing
-
-    @validator("pulse_sequence", "beam_angle")
-    def check_list_increasing(cls, v_list):
-        if not all(x < y for x, y in zip(v_list, v_list[1:])):
-            raise ValueError(f"not increasing: {v_list}")
-        return v_list
-
     # Validators that depend on other previously-validated fields
 
-    @validator("intt")
-    def check_intt(cls, intt, values):
-        if not intt:  # Not provided
-            return
+    @model_validator(mode="after")
+    def check_intt(self):
+        if self.intt is None:  # Not provided
+            return self
 
         # check intn and intt make sense given tau_spacing, and pulse_sequence.
         # Sequence length is length of pulse sequence plus the scope sync delay time.
         # TODO: this is an old check and seqtime now set in sequences class, update.
-        if (
-            "tau_spacing" in values
-            and "pulse_sequence" in values
-            and "num_ranges" in values
-            and "pulse_len" in values
-        ):
-            seq_len = (
-                values["tau_spacing"] * (values["pulse_sequence"][-1])
-                + (values["num_ranges"] + 19 + 10) * values["pulse_len"]
-            )  # us
-            if seq_len > (intt * 1000):  # seq_len in us, intt in ms
-                raise ValueError(
-                    f"Slice {values['slice_id']}: pulse sequence is too long for integration time given"
-                )
-        return intt
+        seq_len = (self.tau_spacing * self.pulse_sequence[-1]) + (self.num_ranges + 19 + 10) * self.pulse_len  # us
+        if seq_len > (self.intt * 1000):  # seq_len in us, intt in ms
+            raise ValueError(
+                f"Slice {self.slice_id}: pulse sequence is too long for integration time given"
+            )
+        return self
 
-    @validator("cfs_duration")
-    def check_cfs_duration(cls, cfs_duration, values):
-        if values["cfs_flag"]:
-            if cfs_duration < 10:
+    @model_validator(mode="after")
+    def check_cfs_duration(self):
+        if self.cfs_flag:
+            if self.cfs_duration < 10:
                 raise ValueError(
-                    f"Clear frequency search duration of {cfs_duration} ms is too short. "
+                    f"Clear frequency search duration of {self.cfs_duration} ms is too short. "
                     f"Must be at least 10 ms long."
                 )
 
-        return cfs_duration
+        return self
 
-    @validator("cfs_scheme")
-    def check_cfs_scheme(cls, cfs_scheme, values):
-        if values["cfs_flag"]:
-            if len(cfs_scheme.stages) > options.max_filtering_stages:
+    @model_validator(mode="after")
+    def check_cfs_scheme(self):
+        if self.cfs_flag:
+            if len(self.cfs_scheme.stages) > options.max_filtering_stages:
                 errmsg = (
-                    f"Number of cfs decimation stages ({len(cfs_scheme.stages)}) is greater than max"
+                    f"Number of cfs decimation stages ({len(self.cfs_scheme.stages)}) is greater than max"
                     f" available {options.max_filtering_stages}"
                 )
                 raise ValueError(errmsg)
 
             # Check that the rx_bandwidth matches input rate of the DecimationScheme
-            input_rate = cfs_scheme.input_rates[0]
-            if input_rate != values["rx_bandwidth"]:
+            input_rate = self.cfs_scheme.input_rates[0]
+            if input_rate != self.rx_bandwidth:
                 raise ValueError(
                     f"decimation_scheme input data rate {input_rate} does not match rx_bandwidth "
-                    f"{values['rx_bandwidth']}"
+                    f"{self.rx_bandwidth}"
                 )
 
             # Make sure default cfs scheme is only used with expected 300kHz range
-            if "cfs_range" in values:
-                cfs_width = int(values["cfs_range"][1] - values["cfs_range"][0])
+            if self.cfs_range is not None:
+                cfs_width = int(self.cfs_range[1] - self.cfs_range[0])
                 if cfs_width > 300:
                     test_scheme = create_default_cfs_scheme()
-                    if cfs_scheme == test_scheme:
+                    if self.cfs_scheme == test_scheme:
                         raise ValueError(
-                            f"CFS slice {values['slice_id']} range is greater than the default 300kHz width. "
+                            f"CFS slice {self.slice_id} range is greater than the default 300kHz width. "
                             f"You must define a custom decimation scheme to match the {cfs_width}kHz width or "
                             f"adjust the cfs_range values of the experiment."
                         )
 
-        return cfs_scheme
+        return self
 
-    @validator("cfs_freq_res")
-    def check_cfs_freq_res(cls, cfs_freq_res, values):
+    @model_validator(mode="after")
+    def check_cfs_freq_res(self):
         # TODO: Implement a check to default to cfs_fft_n if the parameter was set by the user
-        if cfs_freq_res is not None:
+        if self.cfs_freq_res is not None:
             dm = 1
-            for stage in values["cfs_scheme"].stages:
+            for stage in self.cfs_scheme.stages:
                 dm = dm * stage.dm_rate
-            new_n = int((values["rx_bandwidth"] / dm) / cfs_freq_res)
+            new_n = int((self.rx_bandwidth / dm) / self.cfs_freq_res)
             log.info(
-                f"CFS frequency resolution of {cfs_freq_res} Hz was requested",
-                resolution_set=(values["rx_bandwidth"] / dm) / new_n,
+                f"CFS frequency resolution of {self.cfs_freq_res} Hz was requested",
+                resolution_set=(self.rx_bandwidth / dm) / new_n,
             )
-            values["cfs_fft_n"] = new_n
-            return cfs_freq_res
+            self.cfs_fft_n = new_n
+            return self
 
-    @validator("tx_antennas")
+    @field_validator("tx_antennas", mode="after")
+    @classmethod
     def check_tx_antennas(cls, tx_antennas):
         if tx_antennas is None:
             tx_antennas = [i for i in options.tx_main_antennas]
@@ -560,7 +558,8 @@ class ExperimentSlice:
         tx_antennas.sort()
         return tx_antennas
 
-    @validator("rx_main_antennas")
+    @field_validator("rx_main_antennas", mode="after")
+    @classmethod
     def check_rx_main_antennas(cls, rx_main_antennas):
         if rx_main_antennas is None:
             rx_main_antennas = [i for i in options.rx_main_antennas]
@@ -572,7 +571,8 @@ class ExperimentSlice:
         rx_main_antennas.sort()
         return rx_main_antennas
 
-    @validator("rx_intf_antennas")
+    @field_validator("rx_intf_antennas", mode="after")
+    @classmethod
     def check_rx_intf_antennas(cls, rx_intf_antennas):
         if rx_intf_antennas is None:
             return [i for i in options.rx_intf_antennas]
@@ -582,53 +582,53 @@ class ExperimentSlice:
         rx_intf_antennas.sort()
         return rx_intf_antennas
 
-    @validator("tx_antenna_pattern")
-    def check_tx_antenna_pattern(cls, tx_antenna_pattern, values):
-        if tx_antenna_pattern is default_callable:  # No value given
-            return
+    @model_validator(mode="after")
+    def check_tx_antenna_pattern(self):
+        if self.tx_antenna_pattern is default_callable:  # No value given
+            return self
 
-        antenna_pattern = tx_antenna_pattern(
-            values["freq"], values["tx_antennas"], options.main_antenna_spacing
+        antenna_pattern = self.tx_antenna_pattern(
+            self.freq, self.tx_antennas, options.main_antenna_spacing
         )
         if not isinstance(antenna_pattern, np.ndarray):
             raise ValueError(
-                f"Slice {values['slice_id']} tx antenna pattern return is not a numpy array"
+                f"Slice {self.slice_id} tx antenna pattern return is not a numpy array"
             )
         else:
             if len(antenna_pattern.shape) != 2:
                 raise ValueError(
-                    f"Slice {values['slice_id']} tx antenna pattern return shape "
+                    f"Slice {self.slice_id} tx antenna pattern return shape "
                     f"{antenna_pattern.shape} must be 2-dimensional"
                 )
             elif antenna_pattern.shape[1] != options.main_antenna_count:
                 raise ValueError(
-                    f"Slice {values['slice_id']} tx antenna pattern return 2nd dimension "
+                    f"Slice {self.slice_id} tx antenna pattern return 2nd dimension "
                     f"({antenna_pattern.shape[1]}) must be equal to number of main antennas "
                     f"({options.main_antenna_count})"
                 )
             antenna_pattern_mag = np.abs(antenna_pattern)
             if np.argwhere(antenna_pattern_mag > 1.0).size > 0:
                 raise ValueError(
-                    f"Slice {values['slice_id']} tx antenna pattern return must not have any "
+                    f"Slice {self.slice_id} tx antenna pattern return must not have any "
                     f"values with a magnitude greater than 1"
                 )
-        return tx_antenna_pattern
+        return self
 
-    @validator("rx_antenna_pattern")
-    def check_rx_antenna_pattern(cls, rx_antenna_pattern, values):
-        if rx_antenna_pattern is default_callable:  # No value given
+    @model_validator(mode="after")
+    def check_rx_antenna_pattern(self):
+        if self.rx_antenna_pattern is default_callable:  # No value given
             return
 
         # Main and interferometer patterns
         antenna_pattern = [
-            rx_antenna_pattern(
-                values["beam_angle"],
-                values["freq"],
+            self.rx_antenna_pattern(
+                self.beam_angle,
+                self.freq,
                 options.main_antenna_locations,
             ),
-            rx_antenna_pattern(
-                values["beam_angle"],
-                values["freq"],
+            self.rx_antenna_pattern(
+                self.beam_angle,
+                self.freq,
                 options.intf_antenna_locations,
             ),
         ]
@@ -641,167 +641,152 @@ class ExperimentSlice:
                 antenna_num = len(options.rx_intf_antennas)
             if not isinstance(antenna_pattern[index], np.ndarray):
                 raise ValueError(
-                    f"Slice {values['slice_id']} {pattern} array rx antenna pattern return is "
+                    f"Slice {self.slice_id} {pattern} array rx antenna pattern return is "
                     f"not a numpy array"
                 )
             else:
                 if antenna_pattern[index].shape != (
-                    len(values["beam_angle"]),
+                    len(self.beam_angle),
                     antenna_num,
                 ):
                     raise ValueError(
-                        f"Slice {values['slice_id']} {pattern} array must be the same shape as"
+                        f"Slice {self.slice_id} {pattern} array must be the same shape as"
                         f" ([beam angle], [antenna_count])"
                     )
             antenna_pattern_mag = np.abs(antenna_pattern[index])
             if np.argwhere(antenna_pattern_mag > 1.0).size > 0:
                 raise ValueError(
-                    f"Slice {values['slice_id']} {pattern} array rx antenna pattern return must not have "
+                    f"Slice {self.slice_id} {pattern} array rx antenna pattern return must not have "
                     f"any values with a magnitude greater than 1"
                 )
-        return rx_antenna_pattern
+        return self
 
-    @validator("rx_beam_order", each_item=True)
-    def check_rx_beam_order(cls, rx_beam, values):
-        if "beam_angle" in values:
+    @model_validator(mode="after")
+    def check_rx_beam_order(self):
+        for rx_beam in self.rx_beam_order:
             if isinstance(rx_beam, list):
                 for beamnum in rx_beam:
-                    if beamnum >= len(values["beam_angle"]):
+                    if beamnum >= len(self.beam_angle):
                         raise ValueError(
                             f"Beam number {beamnum} could not index in beam_angle list of length "
-                            f"{len(values['beam_angle'])}. Slice: {values['slice_id']}"
+                            f"{len(self.beam_angle)}. Slice: {self.slice_id}"
                         )
             else:
-                if rx_beam >= len(values["beam_angle"]):
+                if rx_beam >= len(self.beam_angle):
                     raise ValueError(
                         f"Beam number {rx_beam} could not index in beam_angle list of length "
-                        f"{len(values['beam_angle'])}. Slice: {values['slice_id']}"
+                        f"{len(self.beam_angle)}. Slice: {self.slice_id}"
                     )
-        return rx_beam
+        return self
 
-    @validator("tx_beam_order")
-    def check_tx_beam_order(cls, tx_beam_order, values):
-        if not tx_beam_order:  # Empty list, was not specified
-            return
+    @model_validator(mode="after")
+    def check_tx_beam_order(self):
+        if self.tx_beam_order is None:  # Empty list, was not specified
+            return self
 
-        if "rx_beam_order" in values and len(tx_beam_order) != len(
-            values["rx_beam_order"]
-        ):
+        if len(self.tx_beam_order) != len(self.rx_beam_order):
             raise ValueError(
-                f"tx_beam_order does not have same length as rx_beam_order. Slice: {values['slice_id']}"
+                f"tx_beam_order does not have same length as rx_beam_order. Slice: {self.slice_id}"
             )
-        for element in tx_beam_order:
+        for element in self.tx_beam_order:
             if (
-                "beam_angle" in values
-                and element >= len(values["beam_angle"])
-                and (
-                    "tx_antenna_pattern" not in values
-                    or not values["tx_antenna_pattern"]
-                )
+                element >= len(self.beam_angle)
+                and self.tx_antenna_pattern is default_callable
             ):
                 raise ValueError(
                     f"Beam number {element} in tx_beam_order could not index in beam_angle list of "
-                    f"length {len(values['beam_angle'])}. Slice: {values['slice_id']}"
+                    f"length {len(self.beam_angle)}. Slice: {self.slice_id}"
                 )
 
         num_beams = None
-        if "tx_antenna_pattern" in values and values["tx_antenna_pattern"]:
-            antenna_pattern = values["tx_antenna_pattern"](
-                values["freq"], values["tx_antennas"], options.main_antenna_spacing
+        if self.tx_antenna_pattern is not default_callable:
+            antenna_pattern = self.tx_antenna_pattern(
+                self.freq, self.tx_antennas, options.main_antenna_spacing
             )
             if isinstance(antenna_pattern, np.ndarray):
                 num_beams = antenna_pattern.shape[0]
-        elif "beam_angle" in values:
-            num_beams = len(values["beam_angle"])
+        else:
+            num_beams = len(self.beam_angle)
         if num_beams:
-            for bmnum in tx_beam_order:
+            for bmnum in self.tx_beam_order:
                 if bmnum >= num_beams:
                     raise ValueError(
-                        f"Slice {values['slice_id']} scan tx beam number {bmnum} DNE"
+                        f"Slice {self.slice_id} scan tx beam number {bmnum} DNE"
                     )
-        if "tx_antennas" in values and len(values["tx_antennas"]) == 0:
+        if len(self.tx_antennas) == 0:
             raise ValueError(
                 "Must have TX antennas specified if tx_beam_order specified"
             )
 
-        return tx_beam_order
+        return self
 
-    @validator("scanbound")
-    def check_scanbound(cls, scanbound, values):
-        if not scanbound:  # No scanbound defined
-            return
+    @model_validator(mode="after")
+    def check_scanbound(self):
+        if self.scanbound is None:  # No scanbound defined
+            return self
 
-        if "intt" not in values or not values["intt"]:
+        if self.intt is None:
             raise ValueError(
-                f"Slice {values['slice_id']} must have intt enabled to use scanbound"
+                f"Slice {self.slice_id} must have intt enabled to use scanbound"
             )
-        elif any(i < 0 for i in scanbound):
-            raise ValueError(
-                f"Slice {values['slice_id']} scanbound times must be non-negative"
-            )
-        elif len(scanbound) > 1 and not all(
-            i < j for i, j in zip(scanbound, scanbound[1:])
-        ):
-            raise ValueError(
-                f"Slice {values['slice_id']} scanbound times must be increasing"
-            )
-        elif "intt" in values and values["intt"]:
-            # Check if any scanbound times are shorter than the intt.
-            tolerance = 1e-9
-            if len(scanbound) == 1:
-                if values["intt"] > (scanbound[0] * 1000 + tolerance):
+
+        # Check if any scanbound times are shorter than the intt.
+        tolerance = 1e-9
+        if len(self.scanbound) == 1:
+            if self.intt > (self.scanbound[0] * 1000 + tolerance):
+                raise ValueError(
+                    f"Slice {self.slice_id} intt {self.intt}ms longer than "
+                    f"scanbound time {self.scanbound[0]}s"
+                )
+        else:
+            for i in range(len(self.scanbound) - 1):
+                beam_time = (self.scanbound[i + 1] - self.scanbound[i]) * 1000
+                if self.intt > beam_time + tolerance:
                     raise ValueError(
-                        f"Slice {values['slice_id']} intt {values['intt']}ms longer than "
-                        f"scanbound time {scanbound[0]}s"
+                        f"Slice {self.slice_id} intt {self.intt}ms longer than "
+                        f"one of the scanbound times"
                     )
-            else:
-                for i in range(len(scanbound) - 1):
-                    beam_time = (scanbound[i + 1] - scanbound[i]) * 1000
-                    if values["intt"] > beam_time + tolerance:
-                        raise ValueError(
-                            f"Slice {values['slice_id']} intt {values['intt']}ms longer than "
-                            f"one of the scanbound times"
-                        )
-        return scanbound
+        return self
 
-    @validator("pulse_phase_offset")
-    def check_pulse_phase_offset(cls, ppo, values):
-        if ppo is default_callable:  # No value given
-            return
+    @model_validator(mode="after")
+    def check_pulse_phase_offset(self):
+        if self.pulse_phase_offset is default_callable:  # No value given
+            return self
 
         # Test the encoding fn with beam iterator of 0 and sequence num of 0. test the user's
         # phase encoding function on first beam (beam_iterator = 0) and first sequence
         # (sequence_number = 0)
-        phase_encoding = ppo(0, 0, len(values["pulse_sequence"]))
+        phase_encoding = self.pulse_phase_offset(0, 0, len(self.pulse_sequence))
         if not isinstance(phase_encoding, np.ndarray):
             raise ValueError(
-                f"Slice {values['slice_id']} Phase encoding return is not numpy array"
+                f"Slice {self.slice_id} Phase encoding return is not numpy array"
             )
         else:
             if len(phase_encoding.shape) > 1:
                 raise ValueError(
-                    f"Slice {values['slice_id']} Phase encoding return must be 1 dimensional"
+                    f"Slice {self.slice_id} Phase encoding return must be 1 dimensional"
                 )
             else:
-                if phase_encoding.shape[0] != len(values["pulse_sequence"]):
+                if phase_encoding.shape[0] != len(self.pulse_sequence):
                     raise ValueError(
-                        f"Slice {values['slice_id']} Phase encoding return dimension must be equal to "
+                        f"Slice {self.slice_id} Phase encoding return dimension must be equal to "
                         f"number of pulses"
                     )
-        return ppo
+        return self
 
-    @validator("txctrfreq", always=True, pre=True)
-    def check_txctrfreq(cls, txctrfreq):
-        if isinstance(txctrfreq, (float, int)):
+    @field_validator("txctrfreq", "rxctrfreq", mode="before")
+    @classmethod
+    def check_ctrfreq(cls, ctrfreq):
+        if isinstance(ctrfreq, (float, int)):
             # convert from kHz to Hz to get correct clock divider. Return the result back in kHz.
             clock_multiples = options.usrp_master_clock_rate / 2**32
-            clock_divider = math.ceil(txctrfreq * 1e3 / clock_multiples)
-            txctrfreq = (clock_divider * clock_multiples) / 1e3
+            clock_divider = math.ceil(ctrfreq * 1e3 / clock_multiples)
+            ctrfreq = (clock_divider * clock_multiples) / 1e3
 
-        return txctrfreq
+        return ctrfreq
 
-    @validator("tx_freq_bounds", always=True, pre=True)
-    def check_tx_freq_bounds(cls, tx_freq_bounds, values):
+    @model_validator(mode="before")
+    def check_tx_freq_bounds(self, values):
         # max frequency is defined as [center freq] + [bandwidth / 2] - [bandwidth * 0.15]
         # min frequency is defined as [center freq] - [bandwidth / 2] + [bandwidth * 0.15]
         # [bandwidth * 0.15] is the transition bandwidth. This was set a 750 kHz originally
@@ -826,18 +811,9 @@ class ExperimentSlice:
 
         return tx_freq_bounds
 
-    @validator("rxctrfreq", always=True, pre=True)
-    def check_rxctrfreq(cls, rxctrfreq):
-        if isinstance(rxctrfreq, (float, int)):
-            # convert from kHz to Hz to get correct clock divider. Return the result back in kHz.
-            clock_multiples = options.usrp_master_clock_rate / 2**32
-            clock_divider = math.ceil(rxctrfreq * 1e3 / clock_multiples)
-            rxctrfreq = (clock_divider * clock_multiples) / 1e3
-
-        return rxctrfreq
-
-    @validator("rx_freq_bounds", always=True, pre=True)
-    def check_rx_freq_bounds(cls, rx_freq_bounds, values):
+    @model_validator(mode="before")
+    @classmethod
+    def check_rx_freq_bounds(cls, values):
         # max frequency is defined as [center freq] + [bandwidth / 2] - [bandwidth * 0.15]
         # min frequency is defined as [center freq] - [bandwidth / 2] + [bandwidth * 0.15]
         # [bandwidth * 0.15] is the transition bandwidth. This was set a 750 kHz originally
@@ -862,289 +838,263 @@ class ExperimentSlice:
 
         return rx_freq_bounds
 
-    @validator("freq")
-    def check_freq(cls, freq, values):
-        if freq is None:
-            return
+    @model_validator(mode="after")
+    def check_freq(self):
+        if self.freq is None:
+            return self
 
         for freq_range in options.restricted_ranges:
-            if freq_range[0] <= freq <= freq_range[1]:
+            if freq_range[0] <= self.freq <= freq_range[1]:
                 raise ValueError(
                     f"freq is within a restricted frequency range {freq_range}"
                 )
 
         # TODO review issue #195 - Characterize transmit waveforms near edge of tx bandwidth
-        transmitting = True
-        if "rxonly" in values and values["rxonly"]:
-            transmitting = False
-
-        if transmitting:
+        if self.rxonly is False:
             # Frequency must be within bandwidth of rx and tx center frequency
-            if "rxctrfreq" in values and values["rxctrfreq"] is not None:
-                rx_center = values["rxctrfreq"]
-                if (freq > values["rx_freq_bounds"][1]) or (
-                    freq < values["rx_freq_bounds"][0]
-                ):
-                    raise ValueError(
-                        f"Slice frequency is outside bandwidth around rx center frequency {int(rx_center)}"
-                    )
-                # Frequency cannot be set to the rx or tx center frequency (100kHz bandwidth around center freqs)
-                if abs(freq - rx_center) < 50:
-                    raise ValueError(
-                        f"Slice frequency cannot be within 50kHz of rx center frequency {int(rx_center)}"
-                    )
+            rx_center = self.rxctrfreq
+            if (self.freq > self.rx_freq_bounds[1]) or (
+                self.freq < self.rx_freq_bounds[0]
+            ):
+                raise ValueError(
+                    f"Slice frequency is outside bandwidth around rx center frequency {int(rx_center)}"
+                )
+            # Frequency cannot be set to the rx or tx center frequency (100kHz bandwidth around center freqs)
+            if abs(self.freq - rx_center) < 50:
+                raise ValueError(
+                    f"Slice frequency cannot be within 50kHz of rx center frequency {int(rx_center)}"
+                )
 
-            if "txctrfreq" in values and values["txctrfreq"] is not None:
-                tx_center = values["txctrfreq"]
-                if (freq > values["tx_freq_bounds"][1]) or (
-                    freq < values["tx_freq_bounds"][0]
-                ):
-                    raise ValueError(
-                        f"Slice frequency is outside bandwidth around tx center frequency {int(tx_center)}"
-                    )
-                if abs(freq - tx_center) < 50:
-                    raise ValueError(
-                        f"Slice frequency cannot be within 50kHz of tx center frequency {int(tx_center)}"
-                    )
+            tx_center = self.txctrfreq
+            if (self.freq > self.tx_freq_bounds[1]) or (
+                self.freq < self.tx_freq_bounds[0]
+            ):
+                raise ValueError(
+                    f"Slice frequency is outside bandwidth around tx center frequency {int(tx_center)}"
+                )
+            if abs(self.freq - tx_center) < 50:
+                raise ValueError(
+                    f"Slice frequency cannot be within 50kHz of tx center frequency {int(tx_center)}"
+                )
 
-        return freq
+        return self
 
-    @validator("cfs_range")
-    def check_cfs_range(cls, cfs_range, values):
-        if not cfs_range:
-            return cfs_range
-
-        if cfs_range[0] >= cfs_range[1]:
-            raise ValueError(
-                f"Slice {values['slice_id']} cfs_range must be between min and max tx frequencies "
-                f"and rx frequencies according to license and/or center "
-                f"frequencies / sampling rates / transition bands, and must have lower frequency first."
-            )
+    @model_validator(mode="after")
+    def check_cfs_range(self):
+        if self.cfs_range is None:
+            return self
 
         # Need to prevent the cfs_range from being outside the tx and rx operating ranges.
         if (
-            cfs_range[0] < values["tx_freq_bounds"][0]
-            or cfs_range[0] < values["rx_freq_bounds"][0]
+            self.cfs_range[0] < self.tx_freq_bounds[0]
+            or self.cfs_range[0] < self.rx_freq_bounds[0]
         ):
             raise ValueError(
-                f"Slice {values['slice_id']} cfs_range minimum value needs to be equal to "
+                f"Slice {self.slice_id} cfs_range minimum value needs to be equal to "
                 f"or greater than the tx and rx minimum operating frequencies: "
-                f"{values['tx_freq_bounds'][0]} and {values['rx_freq_bounds'][0]}"
+                f"{self.tx_freq_bounds[0]} and {self.rx_freq_bounds[0]}"
             )
 
         if (
-            cfs_range[1] > values["tx_freq_bounds"][1]
-            or cfs_range[1] > values["rx_freq_bounds"][1]
+            self.cfs_range[1] > self.tx_freq_bounds[1]
+            or self.cfs_range[1] > self.rx_freq_bounds[1]
         ):
             raise ValueError(
-                f"Slice {values['slice_id']} cfs_range maximum value needs to be equal to "
+                f"Slice {self.slice_id} cfs_range maximum value needs to be equal to "
                 f"or less than the tx and rx maximum operating frequencies: "
-                f"{values['tx_freq_bounds'][1]} and {values['rx_freq_bounds'][1]}"
+                f"{self.tx_freq_bounds[1]} and {self.rx_freq_bounds[1]}"
             )
 
         for freq_range in options.restricted_ranges:
-            if freq_range[0] <= cfs_range[0] <= freq_range[1]:
-                if freq_range[0] <= cfs_range[1] <= freq_range[1]:
+            if freq_range[0] <= self.cfs_range[0] <= freq_range[1]:
+                if freq_range[0] <= self.cfs_range[1] <= freq_range[1]:
                     # the range is entirely within the restricted range.
                     raise ValueError(
                         f"cfs_range is entirely within restricted range {freq_range}. Slice: "
-                        f"{values['slice_id']}"
+                        f"{self.slice_id}"
                     )
 
-        if values["txctrfreq"] is not None:
-            tx_band = (values["txctrfreq"] - 50, values["txctrfreq"] + 50)
-            if cfs_range[0] <= tx_band[1] and cfs_range[1] >= tx_band[0]:
-                log.warning(
-                    f"Slice {values['slice_id']} cfs range {cfs_range} is close to the "
-                    f"tx center frequency {values['txctrfreq']}. The cfs frequency "
-                    f"selection cannot chose a frequency within 50kHz of the center freq. "
-                    f"Frequencies within {tx_band} will not be used for transmission"
-                )
+        tx_band = (self.txctrfreq - 50, self.txctrfreq + 50)
+        if self.cfs_range[0] <= tx_band[1] and self.cfs_range[1] >= tx_band[0]:
+            log.warning(
+                f"Slice {self.slice_id} cfs range {self.cfs_range} is close to the "
+                f"tx center frequency {self.txctrfreq}. The cfs frequency "
+                f"selection cannot chose a frequency within 50kHz of the center freq. "
+                f"Frequencies within {tx_band} will not be used for transmission"
+            )
 
-        if values["rxctrfreq"] is not None:
-            rx_band = (values["rxctrfreq"] - 50, values["rxctrfreq"] + 50)
-            if cfs_range[0] <= rx_band[1] and cfs_range[1] >= rx_band[0]:
-                log.warning(
-                    f"Slice {values['slice_id']} cfs range {cfs_range} is close to the "
-                    f"rx center frequency {values['rxctrfreq']}. The cfs frequency "
-                    f"selection cannot chose a frequency within 50kHz of the center freq. "
-                    f"Frequencies within {rx_band} will not be used for transmission"
-                )
+        rx_band = (self.rxctrfreq - 50, self.rxctrfreq + 50)
+        if self.cfs_range[0] <= rx_band[1] and self.cfs_range[1] >= rx_band[0]:
+            log.warning(
+                f"Slice {self.slice_id} cfs range {self.cfs_range} is close to the "
+                f"rx center frequency {self.rxctrfreq}. The cfs frequency "
+                f"selection cannot chose a frequency within 50kHz of the center freq. "
+                f"Frequencies within {rx_band} will not be used for transmission"
+            )
 
-        return cfs_range
+        return self
 
-    @validator("decimation_scheme")
-    def check_decimation_rates(cls, decimation_scheme, values):
+    @model_validator(mode="after")
+    def check_decimation_rates(self):
         # check that number of stages is not too large
-        if len(decimation_scheme.stages) > options.max_filtering_stages:
+        if len(self.decimation_scheme.stages) > options.max_filtering_stages:
             errmsg = (
-                f"Number of decimation stages ({len(decimation_scheme.stages)}) is greater than max"
+                f"Number of decimation stages ({len(self.decimation_scheme.stages)}) is greater than max"
                 f" available {options.max_filtering_stages}"
             )
             raise ValueError(errmsg)
 
         # Check that the rx_bandwidth matches input rate of the DecimationScheme
-        input_rate = decimation_scheme.input_rates[0]
-        if input_rate != values["rx_bandwidth"]:
+        input_rate = self.decimation_scheme.input_rates[0]
+        if input_rate != self.rx_bandwidth:
             raise ValueError(
                 f"decimation_scheme input data rate {input_rate} does not match rx_bandwidth "
-                f"{values['rx_bandwidth']}"
+                f"{self.rx_bandwidth}"
             )
 
-        return decimation_scheme
+        return self
 
     # Validators that set dynamic default values (depends on user-specified fields)
 
-    @validator("xcf", always=True)
-    def check_xcf(cls, xcf, values):
-        if "acf" not in values or not values["acf"]:
-            xcf = False
+    @model_validator(mode="after")
+    def check_xcf(self):
+        if not self.acf:
+            self.xcf = False
             log.verbose(
-                f"XCF defaulted to False as ACF not set. Slice: {values['slice_id']}"
+                f"XCF defaulted to False as ACF not set. Slice: {self.slice_id}"
             )
-            return False
+            return self
         if (
-            xcf
-            and "rx_intf_antennas" in values
-            and len(values["rx_intf_antennas"]) == 0
+            self.xcf
+            and len(self.rx_intf_antennas) == 0
         ):
             raise ValueError("XCF set to True but no interferometer antennas present")
-        return xcf
+        return self
 
-    @validator("acfint", always=True)
-    def check_acfint(cls, acfint, values):
-        if "acf" not in values or not values["acf"]:
-            acfint = False
+    @model_validator(mode="after")
+    def check_acfint(self):
+        if not self.acf:
+            self.acfint = False
             log.verbose(
-                f"ACFINT defaulted to False as ACF not set. Slice: {values['slice_id']}"
+                f"ACFINT defaulted to False as ACF not set. Slice: {self.slice_id}"
             )
         if (
-            acfint
-            and "rx_intf_antennas" in values
-            and len(values["rx_intf_antennas"]) == 0
+            self.acfint
+            and len(self.rx_intf_antennas) == 0
         ):
             raise ValueError(
                 "ACFINT set to True but no interferometer antennas present"
             )
-        return acfint
+        return self
 
-    @validator("range_sep", always=True)
-    def check_range_sep(cls, range_sep, values):
-        if "pulse_len" in values:
-            # This is the distance travelled by the wave in the length of the pulse, divided by
-            # two because it's an echo (travels there and back). In km.
-            correct_range_sep = (
-                values["pulse_len"] * 1.0e-9 * speed_of_light / 2.0
-            )  # km
-            if "acf" in values and values["acf"] and range_sep is not None:
-                if not math.isclose(range_sep, correct_range_sep, abs_tol=0.01):
-                    errmsg = (
-                        f"range_sep = {range_sep} was set incorrectly. range_sep will be overwritten "
-                        f"based on pulse_len, which must be equal to 1/rx_rate. The new range_sep = "
-                        f"{correct_range_sep}"
-                    )
-                    log.warning(errmsg)
-            range_sep = correct_range_sep
-        return range_sep
+    @model_validator(mode="after")
+    def check_range_sep(self):
+        # This is the distance travelled by the wave in the length of the pulse, divided by
+        # two because it's an echo (travels there and back). In km.
+        correct_range_sep = (
+            self.pulse_len * 1.0e-9 * speed_of_light / 2.0
+        )  # km
+        if self.acf and self.range_sep is not None:
+            if not math.isclose(self.range_sep, correct_range_sep, abs_tol=0.01):
+                errmsg = (
+                    f"range_sep = {self.range_sep} was set incorrectly. range_sep will be overwritten "
+                    f"based on pulse_len, which must be equal to 1/rx_rate. The new range_sep = "
+                    f"{correct_range_sep}"
+                )
+                log.warning(errmsg)
+        self.range_sep = correct_range_sep
+        return self
 
-    @validator("averaging_method", always=True)
-    def check_averaging_method(cls, averaging_method, values):
-        if "acf" in values and values["acf"]:
-            return averaging_method or "mean"
+    @model_validator(mode="after")
+    def check_averaging_method(self):
+        if self.acf:
+            return self.averaging_method or "mean"
         else:
             log.verbose(
-                f"Averaging method unset as ACF not set. Slice: {values['slice_id']}"
+                f"Averaging method unset as ACF not set. Slice: {self.slice_id}"
             )
-            return None
+            return self
 
-    @validator("lag_table", always=True)
-    def check_lag_table(cls, lag_table, values):
-        if "acf" in values and values["acf"] and "pulse_sequence" in values:
-            if lag_table:
+    @model_validator(mode="after")
+    def check_lag_table(self):
+        if self.acf:
+            if self.lag_table is not None:
                 # Check that lags are valid
-                for lag in lag_table:
+                for lag in self.lag_table:
                     if not set(np.array(lag).flatten()).issubset(
-                        set(values["pulse_sequence"])
+                        set(self.pulse_sequence)
                     ):
                         raise ValueError(
                             f"Lag {lag} not valid; One of the pulses does not exist in the sequence. "
-                            f"Slice: {values['slice_id']}"
+                            f"Slice: {self.slice_id}"
                         )
             else:
                 # build lag table from pulse_sequence
-                lag_table = list(itertools.combinations(values["pulse_sequence"], 2))
+                lag_table = list(itertools.combinations(self.pulse_sequence, 2))
                 lag_table.append(
-                    [values["pulse_sequence"][0], values["pulse_sequence"][0]]
+                    [self.pulse_sequence[0], self.pulse_sequence[0]]
                 )  # lag 0
                 # sort by lag number
                 lag_table = sorted(lag_table, key=lambda x: x[1] - x[0])
                 lag_table.append(
-                    [values["pulse_sequence"][-1], values["pulse_sequence"][-1]]
+                    [self.pulse_sequence[-1], self.pulse_sequence[-1]]
                 )  # alternate lag 0
+                self.lag_table = lag_table
         else:
-            log.verbose(f"Lag table unused as ACF not set. Slice: {values['slice_id']}")
-            lag_table = []
-        return lag_table
+            log.verbose(f"Lag table unused as ACF not set. Slice: {self.slice_id}")
+            self.lag_table = []
+        return self
 
     # Validators for when a check requires that an early-validated field and later-validated field have both been
     # validated. E.g. could not validate pulse_len fully off the bat because it depends on acf, which gets validated
     # later.
 
-    @root_validator
-    def check_tau_spacing(cls, values):
+    @model_validator(mode="after")
+    def check_tau_spacing(self):
         # TODO : tau_spacing needs to be an integer multiple of pulse_len in ros - is there a max ratio
         #  allowed for pulse_len/tau_spacing ? Add this check and add check for each slice's tx duty-cycle
         #  and make sure we aren't transmitting the entire time after combination with all slices
-        if "tau_spacing" not in values or "decimation_scheme" not in values:
-            return values
 
-        tau_spacing = values["tau_spacing"]
-        filter_scheme = values["decimation_scheme"]
         dm_rate = 1
-        for stage in filter_scheme.stages:
+        for stage in self.decimation_scheme.stages:
             dm_rate *= stage.dm_rate
-        output_rx_rate = values["rx_bandwidth"] / dm_rate
-        if not math.isclose((tau_spacing * output_rx_rate % 1.0), 0.0, abs_tol=0.0001):
+        output_rx_rate = self.rx_bandwidth / dm_rate
+        if not math.isclose((self.tau_spacing * output_rx_rate % 1.0), 0.0, abs_tol=0.0001):
             raise ValueError(
-                f"Slice {values['slice_id']} correlation lags will be off because tau_spacing "
-                f"{tau_spacing} us is not a multiple of the output rx sampling period "
+                f"Slice {self.slice_id} correlation lags will be off because tau_spacing "
+                f"{self.tau_spacing} us is not a multiple of the output rx sampling period "
                 f"(1/output_rx_rate {output_rx_rate:.3f} Hz)."
             )
-        return values
+        return self
 
-    @root_validator
-    def check_pulse_len(cls, values):
-        if "pulse_len" not in values:
-            return values
-
-        pulse_len = values["pulse_len"]
-        if "tau_spacing" in values and pulse_len > values["tau_spacing"]:
+    @model_validator(mode="after")
+    def check_pulse_len(self):
+        if self.pulse_len > self.tau_spacing:
             raise ValueError(
-                f"Slice {values['slice_id']} pulse length greater than tau_spacing"
+                f"Slice {self.slice_id} pulse length greater than tau_spacing"
             )
-        if pulse_len <= 2 * options.pulse_ramp_time * 1.0e6:
-            raise ValueError(f"Slice {values['slice_id']} pulse length too small")
+        if self.pulse_len <= 2 * options.pulse_ramp_time * 1.0e6:
+            raise ValueError(f"Slice {self.slice_id} pulse length too small")
 
-        if "acf" in values and values["acf"] and "decimation_scheme" in values:
-            filter_scheme = values["decimation_scheme"]
+        if self.acf:
             dm_rate = 1
-            for stage in filter_scheme.stages:
+            for stage in self.decimation_scheme.stages:
                 dm_rate *= stage.dm_rate
-            output_rx_rate = values["rx_bandwidth"] / dm_rate
+            output_rx_rate = self.rx_bandwidth / dm_rate
             # The below check is an assumption that is made during acf calculation
             # (1 output received sample = 1 range separation)
             if not math.isclose(
-                values["pulse_len"],
+                self.pulse_len,
                 (1 / output_rx_rate * 1e6),
                 abs_tol=0.0000001,
             ):
                 raise ValueError(
                     f"For an experiment slice with real-time acfs, pulse length must be equal (within 1 "
                     f"us) to 1/output_rx_rate to make acfs valid. Current pulse length is "
-                    f"{values['pulse_len']} us, output rate is {output_rx_rate:.3f} Hz. "
-                    f"Slice: {values['slice_id']}"
+                    f"{self.pulse_len} us, output rate is {output_rx_rate:.3f} Hz. "
+                    f"Slice: {self.slice_id}"
                 )
-        return values
+        return self
 
     # Post-initialization validator
 
