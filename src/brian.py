@@ -20,10 +20,7 @@ from utils.options import Options
 from utils.message_formats import SequenceMetadataMessage
 
 sys.path.append(os.environ["BOREALISPATH"])
-if __debug__:
-    from build.debug.src.utils.protobuf import rxsamplesmetadata_pb2
-else:
-    from build.release.src.utils.protobuf import rxsamplesmetadata_pb2
+from utils.message_formats import RxSamplesMetadata
 
 TIME_PROFILE = True
 
@@ -195,8 +192,7 @@ def sequence_timing(options):
             reply = so.recv_bytes(
                 brian_to_driver, options.driver_to_brian_identity, log
             )
-            meta = rxsamplesmetadata_pb2.RxSamplesMetadata()
-            meta.ParseFromString(reply)
+            meta = RxSamplesMetadata.parse(reply.decode("utf-8"))
 
             log.debug(
                 "driver sent",

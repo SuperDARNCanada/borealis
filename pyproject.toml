@@ -18,7 +18,6 @@ dependencies = [
     "inotify",
     "numpy<2",
     "posix_ipc",
-    "protobuf==3.19.5",
     "pydantic>=2",
     "pyDARNio @ git+https://github.com/SuperDARN/pyDARNio.git@borealis_v1",
     "rich",

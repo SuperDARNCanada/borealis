@@ -27,8 +27,6 @@
 #include <vector>
 #include <zmq.hpp>
 
-#include "src/utils/protobuf/driverpacket.pb.h"
-#include "src/utils/protobuf/rxsamplesmetadata.pb.h"
 #include "usrp.hpp"
 #include "utils/driveroptions.hpp"
 #include "utils/shared_macros.hpp"
@@ -63,6 +61,131 @@ static clocks_t borealis_clocks;
 // crash to avoid writing corrupt metadata to file.
 #define MAX_CLOCK_DRIFT 1000.0  // seconds
 
+/// Struct replacing the driver_packet.proto definition. This will be populated
+/// from the messages received from radar_control.
+typedef struct {
+  uint32_t sequence_num{};
+  double rxrate{};
+  double txrate{};
+  double txcenterfreq{};
+  double rxcenterfreq{};
+  uint32_t num_rx_samps{};
+  uint32_t num_tx_samps{};
+  double seqtime{};
+  double sample_timing{};
+  bool burst_start{};
+  bool burst_end{};
+  bool align_sequences{};
+  uint32_t buffer_offset{};
+} RadctrlPacket;
+
+/**
+ * @brief      Parses a string into a RadctrlPacket, if possible.
+ *
+ * @param[in]  message  The message in string form
+ *
+ * @return     A struct containing the parsed message.
+ */
+RadctrlPacket parse_radctrl_packet(std::string message) {
+  std::istringstream iss(message);
+  RadctrlPacket packet;
+
+  std::string field_name;
+  std::string token;
+
+  while (iss >> token) {
+    // Now token contains a `name=value` string, which we want to parse
+    auto idx = token.find("=");
+    std::string key = token.substr(0, idx);
+    std::stringstream val(token.substr(idx + 1, token.length()));
+
+    if (key == "sequence_num") {
+      val >> packet.sequence_num;
+    } else if (key == "rxrate") {
+      val >> packet.rxrate;
+    } else if (key == "txrate") {
+      val >> packet.txrate;
+    } else if (key == "txcenterfreq") {
+      val >> packet.txcenterfreq;
+    } else if (key == "rxcenterfreq") {
+      val >> packet.rxcenterfreq;
+    } else if (key == "num_rx_samps") {
+      val >> packet.num_rx_samps;
+    } else if (key == "num_tx_samps") {
+      val >> packet.num_tx_samps;
+    } else if (key == "seqtime") {
+      val >> packet.seqtime;
+    } else if (key == "sample_timing") {
+      val >> packet.sample_timing;
+    } else if (key == "burst_start") {
+      val >> packet.burst_start;
+    } else if (key == "burst_end") {
+      val >> packet.burst_end;
+    } else if (key == "align_sequences") {
+      val >> packet.align_sequences;
+    } else if (key == "buffer_offset") {
+      val >> packet.buffer_offset;
+    } else {
+      RUNTIME_MSG("Invalid key `" << token
+                                  << "` in message from radar_control");
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+      exit(1);
+    }
+  }
+  return packet;
+}
+
+/// Struct replacing the rxsamplesmetadata.proto definition. This will be
+/// populated and converted to messages to send to
+/// rx_signal_processing.
+typedef struct {
+  uint32_t sequence_num;
+  uint32_t num_rx_samps;
+  double rx_rate;
+  double sequence_time;
+  double initialization_time;
+  double sequence_start_time;
+  uint64_t ringbuffer_size;
+  uint32_t agc_status_bank_h;
+  uint32_t lp_status_bank_h;
+  uint32_t agc_status_bank_l;
+  uint32_t lp_status_bank_l;
+  bool gps_locked;
+  double gps_to_system_time_diff;
+} RxPacket;
+
+/**
+ * @brief      Formats an RxPacket into a string for IPC messaging.
+ *
+ * @param[in]  packet   The RxPacket to format
+ *
+ * @return     A string containing the formatted message.
+ */
+std::string format_rxpacket(RxPacket packet) {
+  std::ostringstream buffer;
+  buffer.precision(10);
+  buffer.setf(std::ios::fixed);
+
+  std::string field_name;
+  std::string token;
+
+  buffer << "sequence_num=" << packet.sequence_num << " ";
+  buffer << "num_rx_samps=" << packet.num_rx_samps << " ";
+  buffer << "ringbuffer_size=" << packet.ringbuffer_size << " ";
+  buffer << "agc_status_bank_h=" << packet.agc_status_bank_h << " ";
+  buffer << "lp_status_bank_h=" << packet.lp_status_bank_h << " ";
+  buffer << "agc_status_bank_l=" << packet.agc_status_bank_l << " ";
+  buffer << "lp_status_bank_l=" << packet.lp_status_bank_l << " ";
+  buffer << "gps_locked=" << packet.gps_locked << " ";
+  buffer << "gps_to_system_time_diff=" << packet.gps_to_system_time_diff << " ";
+  buffer << "rx_rate=" << packet.rx_rate << " ";
+  buffer << "sequence_time=" << packet.sequence_time << " ";
+  buffer << "initialization_time=" << packet.initialization_time << " ";
+  buffer << "sequence_start_time=" << packet.sequence_start_time;
+
+  return buffer.str();
+}
+
 /**
  * @brief      Makes a set of vectors of the samples for each TX channel from
  * shared memory.
@@ -74,11 +197,11 @@ static clocks_t borealis_clocks;
  * @return     A set of vectors of TX samples for each USRP channel.
  */
 std::vector<std::vector<std::complex<float>>> make_tx_samples(
-    int total_tx_channels, const driverpacket::DriverPacket &driver_packet,
+    int total_tx_channels, const RadctrlPacket &driver_packet,
     std::vector<std::complex<float> *> pulse_ptrs) {
   std::vector<std::vector<std::complex<float>>> samples(total_tx_channels);
-  auto num_samps = driver_packet.numberoftransmitsamples();
-  auto offset = driver_packet.buffer_offset();
+  auto num_samps = driver_packet.num_tx_samps;
+  auto offset = driver_packet.buffer_offset;
   for (int channel = 0; channel < total_tx_channels; channel++) {
     auto start = pulse_ptrs[channel] + offset;
     std::vector<std::complex<float>> v(start, start + num_samps);
@@ -106,11 +229,11 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
   zmq::socket_t &driver_to_dsp = sockets_vector[1];
   zmq::socket_t &driver_to_brian = sockets_vector[2];
 
+  RadctrlPacket driver_packet;
+
   auto samples_set = false;
 
   auto rx_rate = usrp_d.get_rx_rate();
-
-  driverpacket::DriverPacket driver_packet;
 
   zmq::socket_t start_trigger(driver_c, ZMQ_PAIR);
   ERR_CHK_ZMQ(start_trigger.connect("inproc://thread"))
@@ -199,12 +322,10 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
       TIMEIT_IF_TRUE_OR_DEBUG(
           false, COLOR_BLUE("TRANSMIT") << " total setup time: ",
           [&]() {
-            if (driver_packet.ParseFromString(pulse_data) == false) {
-              // TODO(keith): handle error
-            }
+            driver_packet = parse_radctrl_packet(pulse_data);
 
-            sqn_num = driver_packet.sequence_num();
-            seqtime = driver_packet.seqtime();
+            sqn_num = driver_packet.sequence_num;
+            seqtime = driver_packet.seqtime;
             if (sqn_num != expected_sqn_num) {
               DEBUG_MSG("SEQUENCE NUMBER MISMATCH: SQN "
                         << sqn_num << " EXPECTED: " << expected_sqn_num);
@@ -212,36 +333,36 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
             }
 
             DEBUG_MSG(COLOR_BLUE("TRANSMIT")
-                      << " burst flags: SOB " << driver_packet.sob() << " EOB "
-                      << driver_packet.eob());
+                      << " burst flags: SOB " << driver_packet.burst_start
+                      << " EOB " << driver_packet.burst_end);
 
             TIMEIT_IF_TRUE_OR_DEBUG(
                 false, COLOR_BLUE("TRANSMIT") << " center freq ",
                 [&]() {
                   // If there is new center frequency data, set TX center
                   // frequency for each USRP TX channel.
-                  if (tx_center_freq != driver_packet.txcenterfreq()) {
-                    if (driver_packet.txcenterfreq() > 0.0 &&
-                        driver_packet.sob() == true) {
+                  if (tx_center_freq != driver_packet.txcenterfreq) {
+                    if (driver_packet.txcenterfreq > 0.0 &&
+                        driver_packet.burst_start) {
                       DEBUG_MSG(COLOR_BLUE("TRANSMIT")
                                 << " setting tx center freq to "
-                                << driver_packet.txcenterfreq());
+                                << driver_packet.txcenterfreq);
                       tx_center_freq = usrp_d.set_tx_center_freq(
-                          driver_packet.txcenterfreq(), tx_channels,
+                          driver_packet.txcenterfreq, tx_channels,
                           uhd::time_spec_t(TUNING_DELAY));
                     }
                   }
 
                   // rxcenterfreq() will return 0 if it hasn't changed, so check
                   // for changes here
-                  if (rx_center_freq != driver_packet.rxcenterfreq()) {
-                    if (driver_packet.rxcenterfreq() > 0.0 &&
-                        driver_packet.sob() == true) {
+                  if (rx_center_freq != driver_packet.rxcenterfreq) {
+                    if (driver_packet.rxcenterfreq > 0.0 &&
+                        driver_packet.burst_start) {
                       DEBUG_MSG(COLOR_BLUE("TRANSMIT")
                                 << " setting rx center freq to "
-                                << driver_packet.rxcenterfreq());
+                                << driver_packet.rxcenterfreq);
                       rx_center_freq = usrp_d.set_rx_center_freq(
-                          driver_packet.rxcenterfreq(), receive_channels,
+                          driver_packet.rxcenterfreq, receive_channels,
                           uhd::time_spec_t(TUNING_DELAY));
                     }
                   }
@@ -252,7 +373,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
             TIMEIT_IF_TRUE_OR_DEBUG(
                 false,
                 COLOR_BLUE("TRANSMIT") << " sample unpack time: ", [&]() {
-                  if (driver_packet.sob() == true) {
+                  if (driver_packet.burst_start) {
                     pulses.clear();
                   }
                   // Parse new samples from shared memory.
@@ -264,13 +385,13 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
                 }());
           }();
 
-          time_to_send_samples.push_back(driver_packet.timetosendsamples());
+          time_to_send_samples.push_back(driver_packet.sample_timing);
 
-          if (driver_packet.sob() == true) {
-            num_recv_samples = driver_packet.numberofreceivesamples();
+          if (driver_packet.burst_start) {
+            num_recv_samples = driver_packet.num_rx_samps;
           }
 
-          if (driver_packet.eob() == true) { more_pulses = false; });
+          if (driver_packet.burst_end > 0) { more_pulses = false; });
     }
 
     // In order to transmit, these parameters need to be set at least once.
@@ -301,7 +422,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
     // Earliest possible time to start sending samples
     auto sequence_start_time = time_now + delay;
 
-    if (driver_packet.align_sequences() == true) {
+    if (driver_packet.align_sequences == true) {
       // Get the digit of the next tenth of a second after min_start_time
       double tenth_of_second =
           std::ceil(sequence_start_time.get_frac_secs() *
@@ -466,7 +587,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
         }()        // full usrp function lambda
     );             // full usrp function timeit macro
 
-    rxsamplesmetadata::RxSamplesMetadata samples_metadata;
+    RxPacket samples_metadata;
 
     clocks = borealis_clocks;
     system_since_epoch =
@@ -481,8 +602,8 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
                                std::to_string(gps_to_system_time_diff) +
                                " seconds");
     }
-    samples_metadata.set_gps_locked(usrp_d.gps_locked());
-    samples_metadata.set_gps_to_system_time_diff(gps_to_system_time_diff);
+    samples_metadata.gps_locked = usrp_d.gps_locked();
+    samples_metadata.gps_to_system_time_diff = gps_to_system_time_diff;
 
     if (!usrp_d.gps_locked()) {
       RUNTIME_MSG("GPS UNLOCKED! time diff: "
@@ -503,25 +624,23 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
       std::this_thread::sleep_for(duration);
     }
 
-    samples_metadata.set_rx_rate(rx_rate);
-    samples_metadata.set_initialization_time(
-        initialization_time.get_real_secs());
-    samples_metadata.set_sequence_start_time(
-        sequence_start_time.get_real_secs());
-    samples_metadata.set_ringbuffer_size(ringbuffer_size);
-    samples_metadata.set_numberofreceivesamples(num_recv_samples);
-    samples_metadata.set_sequence_num(sqn_num);
+    samples_metadata.rx_rate = rx_rate;
+    samples_metadata.initialization_time = initialization_time.get_real_secs();
+    samples_metadata.sequence_start_time = sequence_start_time.get_real_secs();
+    samples_metadata.ringbuffer_size = ringbuffer_size;
+    samples_metadata.num_rx_samps = num_recv_samples;
+    samples_metadata.sequence_num = sqn_num;
     auto actual_finish = borealis_clocks.usrp_time;
-    samples_metadata.set_sequence_time(
-        (actual_finish - time_now).get_real_secs());
+    samples_metadata.sequence_time = (actual_finish - time_now).get_real_secs();
 
-    samples_metadata.set_agc_status_bank_h(agc_status_bank_h);
-    samples_metadata.set_lp_status_bank_h(lp_status_bank_h);
-    samples_metadata.set_agc_status_bank_l(agc_status_bank_l);
-    samples_metadata.set_lp_status_bank_l(lp_status_bank_l);
+    samples_metadata.agc_status_bank_h = agc_status_bank_h;
+    samples_metadata.lp_status_bank_h = lp_status_bank_h;
+    samples_metadata.agc_status_bank_l = agc_status_bank_l;
+    samples_metadata.lp_status_bank_l = lp_status_bank_l;
 
-    std::string samples_metadata_str;
-    samples_metadata.SerializeToString(&samples_metadata_str);
+    std::string samples_metadata_str = format_rxpacket(samples_metadata);
+
+    DEBUG_MSG("Message for rx_signal_processing: " << samples_metadata_str);
 
     // Here we wait for a request from dsp for the samples metadata, then send
     // it, bro! https://www.youtube.com/watch?v=WIrWyr3HgXI
@@ -683,8 +802,6 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d,
  * receive and transmit threads to operate on the multi-USRP object.
  */
 int32_t UHD_SAFE_MAIN(int32_t argc, char *argv[]) {
-  GOOGLE_PROTOBUF_VERIFY_VERSION;
-
   DriverOptions driver_options;
 
   DEBUG_MSG(driver_options.get_device_args());
@@ -709,16 +826,13 @@ int32_t UHD_SAFE_MAIN(int32_t argc, char *argv[]) {
   auto setup_data = recv_string(
       driver_to_radar_control, driver_options.get_radctrl_to_driver_identity());
 
-  driverpacket::DriverPacket driver_packet;
-  if (driver_packet.ParseFromString(setup_data) == false) {
-    // TODO(keith): handle error
-  }
+  RadctrlPacket driver_packet = parse_radctrl_packet(setup_data);
 
-  USRP usrp_d(driver_options, driver_packet.txrate(), driver_packet.rxrate());
+  USRP usrp_d(driver_options, driver_packet.txrate, driver_packet.rxrate);
   auto tune_delay = uhd::time_spec_t(TUNING_DELAY);
-  usrp_d.set_tx_center_freq(driver_packet.txcenterfreq(),
+  usrp_d.set_tx_center_freq(driver_packet.txcenterfreq,
                             driver_options.get_transmit_channels(), tune_delay);
-  usrp_d.set_rx_center_freq(driver_packet.rxcenterfreq(),
+  usrp_d.set_rx_center_freq(driver_packet.rxcenterfreq,
                             driver_options.get_receive_channels(), tune_delay);
 
   driver_to_radar_control.close();

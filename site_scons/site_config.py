@@ -55,10 +55,16 @@ def modules():
             last_dir = os.path.basename(dirpath)
             return last_dir.startswith(".")
 
+        def archive_dir_skipper(dirpath):
+            """Return True if `dirpath` matches `tests/archive`"""
+            last_two_dirs = f"{os.path.dirname(dirpath)}/{os.path.basename(dirpath)}"
+            test = last_two_dirs == "tests/archive"
+            return test
+
         for module_path in module_dirs_generator(
             max_depth=7,
             followlinks=False,
-            dir_skip_list=[build_dir_skipper, hidden_dir_skipper],
+            dir_skip_list=[build_dir_skipper, hidden_dir_skipper, archive_dir_skipper],
             file_skip_list=".noscons",
         ):
             _CACHED_MODULES.append(module_path)
@@ -84,9 +90,7 @@ ENV_OVERRIDES = {
     "release": dict(
         BUILDROOT=os.path.join(_BUILD_BASE, "release"),
     ),
-    "mock": dict(
-        BUILDROOT=os.path.join(_BUILD_BASE, "mock")
-    )
+    "mock": dict(BUILDROOT=os.path.join(_BUILD_BASE, "mock")),
 }
 
 # Dictionary of flavor-specific settings that should extend values
@@ -112,7 +116,7 @@ ENV_EXTENSIONS = {
     ),
     "mock": dict(
         # No C++, just Python and protobuf
-    )
+    ),
 }
 
 

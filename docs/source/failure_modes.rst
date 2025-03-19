@@ -200,6 +200,8 @@ newer than this, so we recommend using previous versions.
 Solution:
 Either upgrade your protobuf version or install an older version of the protoc compiler.
 
+**Update since v1.0:** protobuf is no longer a dependency, so this issue should no longer exist.
+
 **Number of sequences per integration time decreasing over time**
 
 This behaviour has been seen when setting up Borealis on new computers. Typically the radar starts

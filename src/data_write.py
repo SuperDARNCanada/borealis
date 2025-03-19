@@ -3,7 +3,7 @@
 """
 data_write package
 ~~~~~~~~~~~~~~~~~~
-This package contains utilities to parse protobuf packets containing antennas_iq data, bfiq
+This package contains utilities to parse packets containing antennas_iq data, bfiq
 data, rawacf data, etc. and write that data to HDF5 or DMAP files.
 
 :copyright: 2017 SuperDARN Canada

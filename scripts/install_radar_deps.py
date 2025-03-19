@@ -114,9 +114,9 @@ def install_packages(distro: str, dev: bool = True):
         "at",  # Required for the scheduler
         "mutt",  # Required for the scheduler
         "hdf5",
-        "autoconf",  # Required for installing protobuf and zmq
-        "automake",  # Required for installing protobuf and zmq
-        "libtool",  # Required for installing protobuf and zmq
+        "autoconf",  # Required for installing zmq
+        "automake",  # Required for installing zmq
+        "libtool",  # Required for installing zmq
         "python3-mako",  # Required for UHD
         "cmake",
         "pps-tools",
@@ -173,28 +173,6 @@ def install_packages(distro: str, dev: bool = True):
         install_cmd = pck_mgr + " install -y " + pck
         print(install_cmd)
         execute_cmd(install_cmd)
-
-
-def install_protobuf():
-    """
-    Install protobuf.
-    """
-    print("### Installing protocol buffers ###")
-    proto_cmd = (
-        "cd ${IDIR};"
-        "git clone https://github.com/protocolbuffers/protobuf.git;"
-        "cd protobuf || exit;"
-        "git checkout v3.19.4;"
-        "git submodule init && git submodule update;"
-        "./autogen.sh;"
-        "./configure;"
-        "make;"
-        "make check;"
-        "make install;"
-        "ldconfig;"
-    )
-
-    execute_cmd(proto_cmd)
 
 
 def install_zmq():
@@ -525,7 +503,6 @@ def main():
     # Installing fresh, do it all!
     install_packages(distro, args.dev)
     install_python(distro, args.python_version)
-    install_protobuf()
     install_zmq()
     install_ntp()
     install_uhd(distro)
