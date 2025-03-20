@@ -556,7 +556,9 @@ def main():
             detail["range_sep"] = np.float32(chan.range_sep)
             detail["tau_spacing"] = np.uint32(chan.tau_spacing)
             detail["num_range_gates"] = np.uint32(chan.num_ranges)
-            detail["first_range_off"] = np.uint32(chan.first_range / chan.range_sep)
+            detail["first_range_off"] = np.uint32(
+                round(chan.first_range / chan.range_sep)
+            )
 
             lag_phase_offsets = []
 
