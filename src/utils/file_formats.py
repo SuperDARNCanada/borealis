@@ -77,7 +77,8 @@ class SliceData:
             "level": "file",
             "units": "m",
             "description": "Relative antenna locations",
-            "dim_labels": ["antenna", "coordinate"],
+            "dim_labels": ["antenna", "local_coord"],
+            "dim_scales": ["antennas", "local_coord"],
             "required_for": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
         }
     )
@@ -204,15 +205,6 @@ class SliceData:
             "required_for": [],
         }
     )
-    coordinates: list[str] = field(
-        metadata={
-            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
-            "level": "file",
-            "description": "Descriptors for location coordinate dimensions",
-            "nickname": "coordinate",
-            "required_for": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
-        }
-    )
     data_normalization_factor: float = field(
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf"],
@@ -269,6 +261,16 @@ class SliceData:
             "level": "record",
             "units": "kHz",
             "description": "Frequency used for this experiment slice, in kHz",
+            "required_for": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
+        }
+    )
+    global_coord: list[str] = field(
+        metadata={
+            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
+            "level": "file",
+            "description": "Descriptors for global coordinates",
+            "nickname": "global coord",
+            "dim_labels": ["global_coord"],
             "required_for": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
         }
     )
@@ -346,6 +348,16 @@ class SliceData:
             "level": "file",
             "description": "Descriptor of the pulse pairs used in a lag",
             "required_for": ["rawacf"],
+        }
+    )
+    local_coord: list[str] = field(
+        metadata={
+            "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
+            "level": "file",
+            "description": "Descriptors for local coordinates",
+            "nickname": "local coord",
+            "dim_labels": ["local_coord"],
+            "required_for": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
         }
     )
     lp_status_word: int = field(
@@ -583,7 +595,8 @@ class SliceData:
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "file",
             "description": "Location of the radar",
-            "dim_labels": ["coordinate"],
+            "dim_labels": ["global_coord"],
+            "dim_scales": ["global_coord"],
             "required_for": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
         }
     )
