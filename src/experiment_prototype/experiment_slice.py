@@ -11,7 +11,6 @@ make sense in the context of SuperDARN operations.
 """
 
 # built-in
-import copy
 import inspect
 import itertools
 import math
@@ -21,7 +20,9 @@ from pathlib import Path
 import numpy as np
 from pydantic.dataclasses import dataclass
 from pydantic import (
-    field_validator, model_validator, Field,
+    field_validator,
+    model_validator,
+    Field,
     conlist,
     Strict,
     StrictBool,
@@ -30,7 +31,6 @@ from pydantic import (
     NonNegativeFloat,
     StrictFloat,
     AfterValidator,
-    ValidationError,
 )
 from scipy.constants import speed_of_light
 import structlog
@@ -117,13 +117,13 @@ class SliceConfig:
     arbitrary_types_allowed = True
 
 
-T = TypeVar('T', bound=Hashable)
+T = TypeVar("T", bound=Hashable)
 
 
 def _validate_unique_list(v: list[T]) -> list[T]:
     """Validates that a list contains unique items"""
     if len(v) != len(set(v)):
-        raise ValueError('List must be unique')
+        raise ValueError("List must be unique")
     return v
 
 
@@ -143,12 +143,18 @@ def check_list_sorted(v: list[T]):
 
 freq_hz = Annotated[float, Field(ge=options.min_freq, le=options.max_freq)]
 freq_khz = Annotated[float, Field(ge=options.min_freq / 1e3, le=options.max_freq / 1e3)]
-freq_float_hz = Annotated[float, Field(ge=options.min_freq, le=options.max_freq, strict=True)]
-freq_float_khz = Annotated[float, Field(
-    ge=options.min_freq / 1e3, le=options.max_freq / 1e3, strict=True
-)]
-freq_int_hz = Annotated[int, Field(ge=options.min_freq, le=options.max_freq, strict=True)]
-freq_int_khz = Annotated[int, Field(ge=options.min_freq / 1e3, le=options.max_freq / 1e3, strict=True)]
+freq_float_hz = Annotated[
+    float, Field(ge=options.min_freq, le=options.max_freq, strict=True)
+]
+freq_float_khz = Annotated[
+    float, Field(ge=options.min_freq / 1e3, le=options.max_freq / 1e3, strict=True)
+]
+freq_int_hz = Annotated[
+    int, Field(ge=options.min_freq, le=options.max_freq, strict=True)
+]
+freq_int_khz = Annotated[
+    int, Field(ge=options.min_freq / 1e3, le=options.max_freq / 1e3, strict=True)
+]
 
 positive_int = Annotated[int, Field(gt=0), Strict()]
 non_neg_int = Annotated[int, Field(ge=0), Strict()]
@@ -364,7 +370,10 @@ class ExperimentSlice:
     num_ranges: non_neg_int
     tau_spacing: Annotated[int, Field(ge=options.min_tau_spacing_length, strict=True)]
     pulse_len: Annotated[int, Field(ge=options.min_pulse_length, strict=True)]
-    pulse_sequence: Annotated[List[Annotated[int, Field(ge=0, strict=True)]], AfterValidator(check_list_increasing)]
+    pulse_sequence: Annotated[
+        List[Annotated[int, Field(ge=0, strict=True)]],
+        AfterValidator(check_list_increasing),
+    ]
     rx_beam_order: List[Union[List[non_neg_int], non_neg_int]]
 
     # Frequency rx and tx limits are dependent on the tx and rx center frequencies. Since the center freq
@@ -386,21 +395,49 @@ class ExperimentSlice:
 
     # These fields have default values. Some have specification requirements in conjunction with each other
     # e.g. one of intt or intn must be specified.
-    tx_antennas: Optional[Annotated[conlist(Annotated[int, Field(ge=0, lt=options.main_antenna_count, strict=True)],
-                                             max_length=options.main_antenna_count), AfterValidator(_validate_unique_list)]] = None
-    rx_main_antennas: Optional[Annotated[conlist(Annotated[int, Field(ge=0, lt=options.main_antenna_count, strict=True)],
-                                                  max_length=options.main_antenna_count), AfterValidator(_validate_unique_list)]] = None
-    rx_intf_antennas: Optional[Annotated[conlist(Annotated[int, Field(ge=0, lt=options.main_antenna_count, strict=True)],
-                                                  max_length=options.intf_antenna_count), AfterValidator(_validate_unique_list)]] = None
+    tx_antennas: Optional[
+        Annotated[
+            conlist(
+                Annotated[int, Field(ge=0, lt=options.main_antenna_count, strict=True)],
+                max_length=options.main_antenna_count,
+            ),
+            AfterValidator(_validate_unique_list),
+        ]
+    ] = None
+    rx_main_antennas: Optional[
+        Annotated[
+            conlist(
+                Annotated[int, Field(ge=0, lt=options.main_antenna_count, strict=True)],
+                max_length=options.main_antenna_count,
+            ),
+            AfterValidator(_validate_unique_list),
+        ]
+    ] = None
+    rx_intf_antennas: Optional[
+        Annotated[
+            conlist(
+                Annotated[int, Field(ge=0, lt=options.main_antenna_count, strict=True)],
+                max_length=options.intf_antenna_count,
+            ),
+            AfterValidator(_validate_unique_list),
+        ]
+    ] = None
     tx_antenna_pattern: Optional[Callable] = None
     rx_antenna_pattern: Optional[Callable] = None
     tx_beam_order: Optional[List[Union[List[non_neg_int], non_neg_int]]] = None
     intt: Optional[non_neg_float] = None
-    scanbound: Optional[Annotated[List[non_neg_float], AfterValidator(check_list_increasing)]] = None
+    scanbound: Optional[
+        Annotated[List[non_neg_float], AfterValidator(check_list_increasing)]
+    ] = None
     pulse_phase_offset: Optional[Callable] = None
     decimation_scheme: DecimationScheme = Field(default_factory=create_default_scheme)
 
-    cfs_range: Optional[Annotated[conlist(freq_int_khz, min_length=2, max_length=2), AfterValidator(check_list_increasing)]] = None
+    cfs_range: Optional[
+        Annotated[
+            conlist(freq_int_khz, min_length=2, max_length=2),
+            AfterValidator(check_list_increasing),
+        ]
+    ] = None
     cfs_flag: StrictBool = False
     cfs_duration: Optional[non_neg_int] = 90  # ms
     cfs_scheme: DecimationScheme = Field(default_factory=create_default_cfs_scheme)
@@ -412,7 +449,9 @@ class ExperimentSlice:
 
     acfint: Optional[StrictBool] = False
     xcf: Optional[StrictBool] = False
-    lag_table: Optional[List[Annotated[List[non_neg_int], AfterValidator(check_list_sorted)]]] = Field(default_factory=list)
+    lag_table: Optional[
+        List[Annotated[List[non_neg_int], AfterValidator(check_list_sorted)]]
+    ] = Field(default_factory=list)
     range_sep: Optional[PositiveFloat] = None
     slice_interfacing: Optional[dict[non_neg_int, str]] = Field(default_factory=dict)
 
@@ -429,10 +468,7 @@ class ExperimentSlice:
                 f"tx_beam_order must be specified if tx_antenna_pattern specified. Slice: "
                 f"{data['slice_id']}"
             )
-        elif (
-            data.get("tx_beam_order", None) is not None
-            and data.get("rxonly", False)
-        ):
+        elif data.get("tx_beam_order", None) is not None and data.get("rxonly", False):
             raise ValueError(
                 f"rxonly specified as True but tx_beam_order specified. Slice: {data['slice_id']}"
             )
@@ -495,7 +531,9 @@ class ExperimentSlice:
         # check intn and intt make sense given tau_spacing, and pulse_sequence.
         # Sequence length is length of pulse sequence plus the scope sync delay time.
         # TODO: this is an old check and seqtime now set in sequences class, update.
-        seq_len = (self.tau_spacing * self.pulse_sequence[-1]) + (self.num_ranges + 19 + 10) * self.pulse_len  # us
+        seq_len = (self.tau_spacing * self.pulse_sequence[-1]) + (
+            self.num_ranges + 19 + 10
+        ) * self.pulse_len  # us
         if seq_len > (self.intt * 1000):  # seq_len in us, intt in ms
             raise ValueError(
                 f"Slice {self.slice_id}: pulse sequence is too long for integration time given"
@@ -704,7 +742,9 @@ class ExperimentSlice:
         if tx_beam_order is None:  # Empty list, was not specified
             return tx_beam_order
 
-        if info.data.get("rx_beam_order", None) is not None and len(tx_beam_order) != len(info.data["rx_beam_order"]):
+        if info.data.get("rx_beam_order", None) is not None and len(
+            tx_beam_order
+        ) != len(info.data["rx_beam_order"]):
             raise ValueError(
                 f"tx_beam_order does not have same length as rx_beam_order. Slice: {info.data['slice_id']}"
             )
@@ -712,7 +752,9 @@ class ExperimentSlice:
         num_beams = None
         if info.data.get("tx_antenna_pattern", None) is not None:
             antenna_pattern = info.data["tx_antenna_pattern"](
-                info.data["freq"], info.data["tx_antennas"], options.main_antenna_locations
+                info.data["freq"],
+                info.data["tx_antennas"],
+                options.main_antenna_locations,
             )
             if isinstance(antenna_pattern, np.ndarray):
                 num_beams = antenna_pattern.shape[0]
@@ -726,7 +768,10 @@ class ExperimentSlice:
                 raise ValueError(
                     f"Slice {info.data['slice_id']} scan tx beam number {bmnum} DNE"
                 )
-        if info.data.get("tx_antennas", None) is None or len(info.data["tx_antennas"]) == 0:
+        if (
+            info.data.get("tx_antennas", None) is None
+            or len(info.data["tx_antennas"]) == 0
+        ):
             raise ValueError(
                 "Must have TX antennas specified if tx_beam_order specified"
             )
@@ -871,7 +916,7 @@ class ExperimentSlice:
 
         # Frequency must be within bandwidth of rx and tx center frequency
         if (freq > info.data["rx_freq_bounds"][1]) or (
-                freq < info.data["rx_freq_bounds"][0]
+            freq < info.data["rx_freq_bounds"][0]
         ):
             raise ValueError(
                 f"Slice frequency is outside rx frequency bounds {info.data['rx_freq_bounds']}"
@@ -982,7 +1027,9 @@ class ExperimentSlice:
             dm_rate *= stage.dm_rate
         output_rx_rate = info.data["rx_bandwidth"] / dm_rate
         if info.data.get("tau_spacing", None) is not None:
-            if not math.isclose((info.data["tau_spacing"] * output_rx_rate % 1.0), 0.0, abs_tol=0.0001):
+            if not math.isclose(
+                (info.data["tau_spacing"] * output_rx_rate % 1.0), 0.0, abs_tol=0.0001
+            ):
                 raise ValueError(
                     f"Slice {info.data['slice_id']} correlation lags will be off because tau_spacing "
                     f"{info.data['tau_spacing']} us is not a multiple of the output rx sampling period "
@@ -1001,10 +1048,7 @@ class ExperimentSlice:
             log.verbose(
                 f"XCF defaulted to False as ACF not set. Slice: {info.data['slice_id']}"
             )
-        if (
-            xcf
-            and len(info.data.get("rx_intf_antennas", [])) == 0
-        ):
+        if xcf and len(info.data.get("rx_intf_antennas", [])) == 0:
             raise ValueError("XCF set to True but no interferometer antennas present")
         return xcf
 
@@ -1016,10 +1060,7 @@ class ExperimentSlice:
             log.verbose(
                 f"ACFINT defaulted to False as ACF not set. Slice: {info.data['slice_id']}"
             )
-        if (
-            acfint
-            and len(info.data.get("rx_intf_antennas", [])) == 0
-        ):
+        if acfint and len(info.data.get("rx_intf_antennas", [])) == 0:
             raise ValueError(
                 "ACFINT set to True but no interferometer antennas present"
             )
@@ -1033,9 +1074,7 @@ class ExperimentSlice:
         if info.data.get("pulse_len", None) is None:
             return range_sep
 
-        correct_range_sep = (
-            info.data["pulse_len"] * 1.0e-9 * speed_of_light / 2.0
-        )  # km
+        correct_range_sep = info.data["pulse_len"] * 1.0e-9 * speed_of_light / 2.0  # km
         if info.data.get("acf", False) and range_sep is not None:
             if not math.isclose(range_sep, correct_range_sep, abs_tol=0.01):
                 errmsg = (
@@ -1085,7 +1124,9 @@ class ExperimentSlice:
                 )  # alternate lag 0
                 lag_table = lag_table
         else:
-            log.verbose(f"Lag table unused as ACF not set. Slice: {info.data['slice_id']}")
+            log.verbose(
+                f"Lag table unused as ACF not set. Slice: {info.data['slice_id']}"
+            )
             lag_table = []
         return lag_table
 

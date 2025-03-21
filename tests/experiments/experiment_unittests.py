@@ -340,7 +340,7 @@ def run_tests(raw_args=None, buffer=True, print_results=True):
         "--no-tests",
         required=False,
         action="store_true",
-        help="Only test the main experiments, not those in testing_archive/"
+        help="Only test the main experiments, not those in testing_archive/",
     )
     args = parser.parse_args(raw_args)
 

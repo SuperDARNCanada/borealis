@@ -173,7 +173,6 @@ class Sequence(InterfaceClassBase):
         intf_antenna_locations = self.transmit_metadata["intf_antenna_locations"]
         max_usrp_dac_amplitude = self.transmit_metadata["max_usrp_dac_amplitude"]
         tr_window_time = self.transmit_metadata["tr_window_time"]
-        intf_offset = self.transmit_metadata["intf_offset"]
 
         single_pulse_timing = []
 
@@ -495,7 +494,6 @@ class Sequence(InterfaceClassBase):
     def build_tx_phases(self, slice_id, exp_slice, freq_khz):
         txrate = self.transmit_metadata["txrate"]
         main_antenna_locations = self.transmit_metadata["main_antenna_locations"]
-        main_antenna_spacing = self.transmit_metadata["main_antenna_spacing"]
 
         pulse_ramp_time = self.transmit_metadata["pulse_ramp_time"]
         wave_freq_hz = (freq_khz - self.txctrfreq) * 1000
@@ -512,7 +510,9 @@ class Sequence(InterfaceClassBase):
             if exp_slice.tx_antenna_pattern is not None:
                 # Returns an array of size [tx_antennas] of complex numbers of magnitude <= 1
                 tx_main_phase_shift = exp_slice.tx_antenna_pattern(
-                    freq_khz, exp_slice.tx_antennas, main_antenna_locations[self.tx_main_antennas]
+                    freq_khz,
+                    exp_slice.tx_antennas,
+                    main_antenna_locations[self.tx_main_antennas],
                 )
             else:
                 tx_main_phase_shift = get_phase_shift(
