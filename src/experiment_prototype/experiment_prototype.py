@@ -945,16 +945,6 @@ class ExperimentPrototype:
         # TODO: check if self.cpid is not unique - incorporate known cpids from git repo
         # TODO: use pygit2 for this
 
-        # run check_slice on all slices. Check_slice is a full check and can be done on a slice at
-        # any time after setup. We run it now in case the user has changed something
-        # inappropriately (ie, any way other than using edit_slice, add_slice, or del_slice).
-        # "Private" instance variables with leading underscores are not actually private in
-        # python they just have a bit of a mangled name so they are not readily available but give
-        # the user notice that they should be left alone. If the __slice_dict has been changed
-        # improperly, we should check it for problems here.
-        for exp_slice in self.slice_dict.values():
-            exp_slice.check_slice()
-
         log.info("No Self Check Errors. Continuing...")
 
     @staticmethod

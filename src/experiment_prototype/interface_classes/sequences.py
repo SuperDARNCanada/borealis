@@ -195,19 +195,17 @@ class Sequence(InterfaceClassBase):
                     exp_slice.beam_angle,
                     freq_khz,
                     intf_antenna_locations[self.rx_intf_antennas],
-                    intf_offset,
                 )
             else:
                 rx_main_phase_shift = get_phase_shift(
                     exp_slice.beam_angle,
                     freq_khz,
-                    main_antenna_locations[self.rx_main_antennas],
+                    main_antenna_locations[self.rx_main_antennas, 0],
                 )
                 rx_intf_phase_shift = get_phase_shift(
                     exp_slice.beam_angle,
                     freq_khz,
-                    intf_antenna_locations[self.rx_intf_antennas],
-                    intf_offset,
+                    intf_antenna_locations[self.rx_intf_antennas, 0],
                 )
 
             # The antenna indices for receiving by this slice
@@ -430,7 +428,7 @@ class Sequence(InterfaceClassBase):
         # number ranges to the first range for all slice ids
         num_ranges_to_first_range = {
             slice_id: int(
-                math.ceil(
+                round(
                     self.slice_dict[slice_id].first_range
                     / self.slice_dict[slice_id].range_sep
                 )
@@ -514,13 +512,13 @@ class Sequence(InterfaceClassBase):
             if exp_slice.tx_antenna_pattern is not None:
                 # Returns an array of size [tx_antennas] of complex numbers of magnitude <= 1
                 tx_main_phase_shift = exp_slice.tx_antenna_pattern(
-                    freq_khz, exp_slice.tx_antennas, main_antenna_spacing
+                    freq_khz, exp_slice.tx_antennas, main_antenna_locations[self.tx_main_antennas]
                 )
             else:
                 tx_main_phase_shift = get_phase_shift(
                     exp_slice.beam_angle,
                     freq_khz,
-                    main_antenna_locations[self.tx_main_antennas],
+                    main_antenna_locations[self.tx_main_antennas, 0],
                 )
 
             # The antennas used for transmitting this slice

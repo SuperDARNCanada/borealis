@@ -431,7 +431,6 @@ def get_phase_shift(
     beam_angle: list[float],
     freq_khz: float,
     antenna_locations: np.ndarray,
-    centre_offset=(0.0, 0.0, 0.0),
 ):
     """
     Find the complex excitation for all antennas to make beams in all given directions.
@@ -442,13 +441,8 @@ def get_phase_shift(
     :type   beam_angle:         list
     :param  freq_khz:           transmit frequency in kHz
     :type   freq_khz:           float
-    :param  antenna_locations:  [x, y, z] coordinates of each antenna in the array, in meters. Shape [antennas, 3]
+    :param  antenna_locations:  x-coordinates of each antenna in the array, in meters. Shape [num_antennas]
     :type   antenna_locations:  np.ndarray
-    :param  centre_offset:      the phase reference for the midpoint of the array. Default = (0.0, 0.0, 0.0), in
-                                metres. Important if there is a shift in centre point between arrays
-                                in the direction along the array. Positive is shifted to the right
-                                when looking along boresight (from the ground).
-    :type   centre_offset:      list[float]
 
     :returns:   phase_shift     a 2D array of shape [beams, antennas] giving the complex excitation for each
                                 antenna required to form each beam.
@@ -459,15 +453,12 @@ def get_phase_shift(
     k = 2 * np.pi * freq_hz / speed_of_light  # 2pi / wavelength
     beam_rads = np.deg2rad(np.array(beam_angle, dtype=np.float32))
 
-    # Get the x-position of each antenna relative to the array midpoint
-    x = antenna_locations[:, 0] - centre_offset[0]
-
     # phase shift = 0 at array midpoint (by convention), so this is the displacement in x of each beam from the array
     # midpoint after the wave traverses one wavelength. Essentially, the component along x of the beam, normalized by
     # the wavelength.
     beam_displacements = -1 * np.sin(beam_rads) * k
 
-    phase_shift = np.einsum("i,j->ij", beam_displacements, x)
+    phase_shift = np.einsum("i,j->ij", beam_displacements, antenna_locations)
     phase_shift = np.exp(1j * phase_shift)
 
     return phase_shift
