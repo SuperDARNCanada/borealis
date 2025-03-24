@@ -119,6 +119,8 @@ class Sequence(InterfaceClassBase):
         for slice_id in self.slice_ids:
             if self.slice_dict[slice_id].freq is None:  # cfs slices have freq == None
                 continue
+            if self.slice_dict[slice_id].rxonly:
+                continue
             pulse_width_khz = int(
                 round(1e3 / (2 * self.slice_dict[slice_id].pulse_len))
             )
@@ -132,8 +134,8 @@ class Sequence(InterfaceClassBase):
                 if lower_bound or upper_bound:
                     errmsg = (
                         f"Slice {slice_id} frequency {self.slice_dict[slice_id].freq} "
-                        f"it too close to CONCURRENT slice frequency {int((freq_range[0] + freq_range[1]) / 2)}. "
-                        f"Adjust slice frequencies to have at least {pulse_width_khz} khz separation. "
+                        f"is too close to CONCURRENT slice frequency {int((freq_range[0] + freq_range[1]) / 2)}. "
+                        f"Adjust slice frequencies to have at least {pulse_width_khz} kHz separation. "
                     )
                     raise ExperimentException(errmsg)
             slice_freq_ranges.append(check_freq)

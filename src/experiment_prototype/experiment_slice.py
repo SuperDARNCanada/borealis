@@ -507,12 +507,14 @@ class ExperimentSlice:
         else:
             data = values.kwargs
         if data.get("cfs_range", False):
-            data["cfs_flag"] = True
-            if data.get("freq", False):
+            if ("cfs_flag" not in data or not data.get("cfs_flag", False)) and data.get(
+                "freq", False
+            ):
                 log.info(
-                    f"Slice parameter 'freq' removed as 'cfs_range' takes precedence. If this is not desired,"
+                    f"Slice parameter 'freq' ignored as 'cfs_range' takes precedence. If this is not desired, "
                     f"remove 'cfs_range' parameter from experiment. Slice: {data['slice_id']}"
                 )
+            data["cfs_flag"] = True
         elif data.get("freq", False):
             data["cfs_flag"] = False
         else:
