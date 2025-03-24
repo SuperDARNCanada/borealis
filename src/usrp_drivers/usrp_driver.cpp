@@ -190,9 +190,9 @@ std::string format_rxpacket(RxPacket packet) {
  * @brief      Makes a set of vectors of the samples for each TX channel from
  * shared memory.
  *
- * @param[in]  total tx channels.
- * @param[in]  driver_packet    A received driver packet from radar_control.
- * @param[in]  pulse_ptrs       Pointer for each channel in the pulse buffer.
+ * @param[in]  total_tx_channels  Number of tx channels.
+ * @param[in]  driver_packet      A received driver packet from radar_control.
+ * @param[in]  pulse_ptrs         Pointer for each channel in the pulse buffer.
  *
  * @return     A set of vectors of TX samples for each USRP channel.
  */
