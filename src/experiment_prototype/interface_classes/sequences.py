@@ -119,6 +119,8 @@ class Sequence(InterfaceClassBase):
         for slice_id in self.slice_ids:
             if self.slice_dict[slice_id].freq is None:  # cfs slices have freq == None
                 continue
+            if self.slice_dict[slice_id].rxonly:
+                continue
             pulse_width_khz = int(
                 round(1e3 / (2 * self.slice_dict[slice_id].pulse_len))
             )
@@ -132,8 +134,8 @@ class Sequence(InterfaceClassBase):
                 if lower_bound or upper_bound:
                     errmsg = (
                         f"Slice {slice_id} frequency {self.slice_dict[slice_id].freq} "
-                        f"it too close to CONCURRENT slice frequency {int((freq_range[0] + freq_range[1]) / 2)}. "
-                        f"Adjust slice frequencies to have at least {pulse_width_khz} khz separation. "
+                        f"is too close to CONCURRENT slice frequency {int((freq_range[0] + freq_range[1]) / 2)}. "
+                        f"Adjust slice frequencies to have at least {pulse_width_khz} kHz separation. "
                     )
                     raise ExperimentException(errmsg)
             slice_freq_ranges.append(check_freq)
@@ -173,7 +175,6 @@ class Sequence(InterfaceClassBase):
         intf_antenna_locations = self.transmit_metadata["intf_antenna_locations"]
         max_usrp_dac_amplitude = self.transmit_metadata["max_usrp_dac_amplitude"]
         tr_window_time = self.transmit_metadata["tr_window_time"]
-        intf_offset = self.transmit_metadata["intf_offset"]
 
         single_pulse_timing = []
 
@@ -195,19 +196,17 @@ class Sequence(InterfaceClassBase):
                     exp_slice.beam_angle,
                     freq_khz,
                     intf_antenna_locations[self.rx_intf_antennas],
-                    intf_offset,
                 )
             else:
                 rx_main_phase_shift = get_phase_shift(
                     exp_slice.beam_angle,
                     freq_khz,
-                    main_antenna_locations[self.rx_main_antennas],
+                    main_antenna_locations[self.rx_main_antennas, 0],
                 )
                 rx_intf_phase_shift = get_phase_shift(
                     exp_slice.beam_angle,
                     freq_khz,
-                    intf_antenna_locations[self.rx_intf_antennas],
-                    intf_offset,
+                    intf_antenna_locations[self.rx_intf_antennas, 0],
                 )
 
             # The antenna indices for receiving by this slice
@@ -430,7 +429,7 @@ class Sequence(InterfaceClassBase):
         # number ranges to the first range for all slice ids
         num_ranges_to_first_range = {
             slice_id: int(
-                math.ceil(
+                round(
                     self.slice_dict[slice_id].first_range
                     / self.slice_dict[slice_id].range_sep
                 )
@@ -497,7 +496,6 @@ class Sequence(InterfaceClassBase):
     def build_tx_phases(self, slice_id, exp_slice, freq_khz):
         txrate = self.transmit_metadata["txrate"]
         main_antenna_locations = self.transmit_metadata["main_antenna_locations"]
-        main_antenna_spacing = self.transmit_metadata["main_antenna_spacing"]
 
         pulse_ramp_time = self.transmit_metadata["pulse_ramp_time"]
         wave_freq_hz = (freq_khz - self.txctrfreq) * 1000
@@ -514,13 +512,15 @@ class Sequence(InterfaceClassBase):
             if exp_slice.tx_antenna_pattern is not None:
                 # Returns an array of size [tx_antennas] of complex numbers of magnitude <= 1
                 tx_main_phase_shift = exp_slice.tx_antenna_pattern(
-                    freq_khz, exp_slice.tx_antennas, main_antenna_spacing
+                    freq_khz,
+                    exp_slice.tx_antennas,
+                    main_antenna_locations[self.tx_main_antennas],
                 )
             else:
                 tx_main_phase_shift = get_phase_shift(
                     exp_slice.beam_angle,
                     freq_khz,
-                    main_antenna_locations[self.tx_main_antennas],
+                    main_antenna_locations[self.tx_main_antennas, 0],
                 )
 
             # The antennas used for transmitting this slice
