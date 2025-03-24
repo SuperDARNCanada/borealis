@@ -29,7 +29,7 @@ antennas. Define a function with the following signature
 
 .. code-block:: python
 
-    def fn_name(frequency_khz, tx_antennas, antenna_spacing_m):
+    def fn_name(frequency_khz, tx_antennas, antenna_locations):
         """Defines the power and phase modulation for each transmitting antenna.
 
         Parameters
@@ -38,8 +38,8 @@ antennas. Define a function with the following signature
             Frequency in kHz.
         tx_antennas: list
             List of transmitting antennas for the slice.
-        antenna_spacing_m: float
-            Spacing between adjacent antennas in the main array, in meters.
+        antenna_locations: np.ndarray
+            Location of each antenna, in [x, y, z] coordinates. Shape [num_antennas, 3]
 
         Returns
         -------
@@ -56,17 +56,16 @@ Custom beamforming of the results measured during a full field of view experimen
 through defining the ``rx_antenna_pattern`` field in the full field of view
 experiment. A custom function can be written in the experiment and passed to borealis ::
 
-    beamforming_function(beam_angle, freq, antenna_count, antenna_spacing, offset=0.0):
+    beamforming_function(beam_angle, freq, antenna_locations):
 
     ...
 
     slice_dict['tx_antenna_pattern'] = beamforming_function
 
-The function should expect to receive beam angles, operating frequencies, number of antennas,
-antenna spacing, and an offset. This function will be called for both the rx signals from the main
-array and the interferometer array. The return is expected to be the desired phase for beamforming
-each antenna, and should be of size [beam_angle, antenna_count]. The magnitude of each entry should
-be less than or equal to 1.
+The function should expect to receive beam angles, operating frequencies, and antenna locations,
+This function will be called for both the rx signals from the main array and the interferometer array.
+The return is expected to be the desired phase for beamforming each antenna, and should be of size
+[beam_angle, antenna_count]. The magnitude of each entry should be less than or equal to 1.
 
 .. _bistatic experiments:
 
