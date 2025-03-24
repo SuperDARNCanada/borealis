@@ -171,13 +171,13 @@ if args.run_mode == "release":
 elif args.run_mode == "debug":
     # run all modules in debug with regular operations data outputs, for testing modules
     python_opts = "-u"
-    c_debug_opts = "/usr/local/cuda/bin/cuda-gdb -ex start"
+    c_debug_opts = "gdb -ex start"
     mode = "debug"
     data_write_args = f"--enable-raw-acfs --enable-antenna-iq {rawacf_format}"
 elif args.run_mode == "pythonprofiling":
     # run all modules in debug with python profiling, for optimizing python modules
     python_opts = "-O -u -m cProfile -o testing/python_testing/{module}.cprof"
-    c_debug_opts = "/usr/local/cuda/bin/cuda-gdb -ex start"
+    c_debug_opts = "gdb -ex start"
     mode = "debug"
     data_write_args = f"--enable-raw-acfs --enable-antenna-iq {rawacf_format}"
 elif args.run_mode == "testdata":
@@ -186,16 +186,10 @@ elif args.run_mode == "testdata":
     c_debug_opts = ""
     mode = "release"
     data_write_args = "--enable-raw-rf"
-elif args.run_mode == "engineeringdebug":
-    # run all modules in debug with rawrf data - this mode is very slow
-    python_opts = "-u"
-    c_debug_opts = "/usr/local/cuda/bin/cuda-gdb -ex start"
-    mode = "debug"
-    data_write_args = "--enable-bfiq --enable-antenna-iq --enable-raw-rf"
-elif args.run_mode == "filterdata":
+elif args.run_mode in ["engineeringdebug", "filterdata"]:
     # run all modules in debug with rawrf, antennas_iq, and filter stage data.
     python_opts = "-u"
-    c_debug_opts = "/usr/local/cuda/bin/cuda-gdb -ex start"
+    c_debug_opts = "gdb -ex start"
     mode = "debug"
     data_write_args = "--enable-raw-rf --enable-antenna-iq"
 else:
