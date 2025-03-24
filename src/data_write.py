@@ -256,7 +256,8 @@ class DataWrite:
                         aveperiod_meta.cfs_masks[np.uint32(rx_channel.slice_id)]
                     )
 
-                parameters.coordinates = ["lat", "lon", "alt"]
+                parameters.global_coord = ["lat", "lon", "alt"]
+                parameters.local_coord = ["x", "y", "z"]
                 parameters.data_normalization_factor = (
                     aveperiod_meta.data_normalization_factor
                 )
