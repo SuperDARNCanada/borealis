@@ -387,9 +387,11 @@ class DSP:
                 np.arange(slice_info["num_range_gates"], dtype=np.int32)
                 + slice_info["first_range_off"]
             )
-            tau_in_samples = slice_info["tau_spacing"] * 1e-6 * output_sample_rate
-            lag_pulses_as_samples = np.array(slice_info["lags"], np.int32) * np.int32(
-                tau_in_samples
+            tau_in_samples = np.int32(
+                round(slice_info["tau_spacing"] * 1e-6 * output_sample_rate)
+            )
+            lag_pulses_as_samples = (
+                np.array(slice_info["lags"], np.int32) * tau_in_samples
             )
 
             # [num_range_gates, 1, 1]
