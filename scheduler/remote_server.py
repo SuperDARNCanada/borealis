@@ -136,8 +136,7 @@ def convert_scd_to_timeline(scd_lines, time_of_interest):
         the infinite duration line can be set to run again at that point.
         """
         last_queued = queue[-1]
-        queued_dur_td = dt.timedelta(minutes=int(last_queued.duration))
-        queued_finish_time = last_queued.timestamp + queued_dur_td
+        queued_finish_time = last_queued.timestamp + last_queued.duration
         return last_queued, queued_finish_time
 
     warnings = []
@@ -161,10 +160,7 @@ def convert_scd_to_timeline(scd_lines, time_of_interest):
                     inf_dur_line.duration = time_diff.total_seconds() // 60
                     queued_lines.append(inf_dur_line)
                 else:
-                    duration = int(last_queued_line.duration)
-                    new_time = last_queued_line.timestamp + dt.timedelta(
-                        minutes=duration
-                    )
+                    new_time = last_queued_line.timestamp + last_queued_line.duration
                     if scd_line.timestamp > new_time:
                         inf_dur_line.timestamp = new_time
                         time_diff = scd_line.timestamp - new_time
@@ -173,8 +169,7 @@ def convert_scd_to_timeline(scd_lines, time_of_interest):
                 inf_dur_line = scd_line
 
         else:  # line has a set duration
-            duration_td = dt.timedelta(minutes=int(scd_line.duration))
-            finish_time = scd_line.timestamp + duration_td
+            finish_time = scd_line.timestamp + scd_line.duration
 
             if finish_time < time_of_interest:
                 continue
@@ -192,7 +187,7 @@ def convert_scd_to_timeline(scd_lines, time_of_interest):
                         queued_lines.append(new_line)
                     queued_lines.append(scd_line)
 
-                    finish_time = scd_line.timestamp + duration_td
+                    finish_time = scd_line.timestamp + scd_line.duration
                     inf_dur_line.timestamp = finish_time
             else:  # some lines are already queued
                 # loop to find where to insert this line. Hold all following lines.
@@ -211,9 +206,7 @@ def convert_scd_to_timeline(scd_lines, time_of_interest):
                 while holder:  # or first_time:
                     item_to_add = holder.pop()
                     if item_to_add.duration != "-":
-                        finish_time = item_to_add.timestamp + dt.timedelta(
-                            minutes=item_to_add.duration.total_seconds() // 60
-                        )
+                        finish_time = item_to_add.timestamp + item_to_add.duration
                     else:
                         pass  # todo: handle infinite lines here
 
