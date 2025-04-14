@@ -1103,7 +1103,7 @@ class ExperimentSlice:
     @classmethod
     def check_lag_table(cls, lag_table, info):
         if info.data["acf"]:
-            if lag_table is not None:
+            if lag_table is not None and len(lag_table) > 0:
                 # Check that lags are valid
                 for lag in lag_table:
                     if not set(np.array(lag).flatten()).issubset(
