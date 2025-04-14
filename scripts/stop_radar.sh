@@ -1,6 +1,6 @@
 #!/bin/bash
 source "/home/radar/.profile"
-LOGFILE="/home/radar/logs/start_stop.log"
+LOGFILE="/home/radar/logs/stop_radar.log"
 
 NOW=$(date +'%Y-%m-%d %H:%M:%S')
 

@@ -9,7 +9,7 @@ LOGFILE="/home/radar/logs/start_stop.log"
 # Start new remote_server.py process
 nohup python3 $BOREALISPATH/scheduler/remote_server.py \
 		--scd-dir=/home/radar/borealis_schedules \
-		>> /home/radar/logs/scd.out 2>&1 &
+		>> /home/radar/logs/remote_server.log 2>&1 &
 
 PID=$!	# Get pid of remote_server.py process
 sleep 1

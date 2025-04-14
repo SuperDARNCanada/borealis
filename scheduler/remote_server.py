@@ -362,7 +362,7 @@ def timeline_to_atq(timeline, scd_dir, time_of_interest, site_id):
                     True,
                     event.kwargs,
                     event.embargo,
-                    event.rawacf_format
+                    event.rawacf_format,
                 )
             )
             first_event = False
@@ -375,7 +375,7 @@ def timeline_to_atq(timeline, scd_dir, time_of_interest, site_id):
                     False,
                     event.kwargs,
                     event.embargo,
-                    event.rawacf_format
+                    event.rawacf_format,
                 )
             )
     for cmd in atq:
@@ -426,7 +426,7 @@ def _main():
         try:
             i = 0
             for i, line in enumerate(relevant_lines):
-                line.test()
+                line.test(site_id)
         except (IndexError, ValueError) as e:
             logtime = time_of_interest.strftime("%c")
             error_msg = f"{logtime}: Unable to make schedule\n\t Exception thrown:\n\t\t {str(e)}\n"
