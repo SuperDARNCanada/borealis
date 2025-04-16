@@ -17,6 +17,8 @@ in borealis_schedules/logs/ and are emailed to verify if any issues occur.
 :copyright: 2019 SuperDARN Canada
 """
 
+import bisect
+import datetime
 import inotify.adapters
 import os
 import datetime as dt
@@ -24,7 +26,6 @@ import argparse
 import copy
 import subprocess as sp
 import sys
-from typing_extensions import Union
 
 import scd_utils
 from scd_utils import ScheduleLine
@@ -34,266 +35,145 @@ from utils.options import Options
 
 
 def format_to_atq(
-    dt,
-    experiment,
-    scheduling_mode,
+    event: ScheduleLine,
     first_event_flag=False,
-    kwargs="",
-    embargo=False,
-    rawacf_format=None,
 ):
     """
     Turns an experiment line from the scd into a formatted atq command.
 
-    :param  dt:                 Datetime of the experiment
-    :type   dt:                 datetime
-    :param  experiment:         The experiment to run
-    :type   experiment:         str
-    :param  scheduling_mode:    The scheduling mode to run
-    :type   scheduling_mode:    str
+    :param  event:              Schedule entry
+    :type   event:              ScheduleLine
     :param  first_event_flag:   Flag to signal whether the experiment is the first to run (Default value = False)
     :type   first_event_flag:   bool
-    :param  kwargs:             String of keyword arguments to run steamed hams (Default value = '')
-    :type   kwargs:             str
-    :param  embargo:            Option to embargo the data (makes the CPID negative)
-    :type   embargo:            bool
-    :param  rawacf_format:      File format to use when writing rawacf files.
-    :param  rawacf_format:      str
 
     :returns:   Formatted atq str.
     :rtype:     str
     """
     borealis_path = os.environ["BOREALISPATH"]
 
-    start_cmd = f"echo 'screen -d -m -S starter {borealis_path}/scripts/steamed_hams.py {experiment} release {scheduling_mode}"
-    if embargo:
+    start_cmd = f"echo 'screen -d -m -S starter {borealis_path}/scripts/steamed_hams.py {event.experiment} release {event.scheduling_mode}"
+    if event.embargo:
         start_cmd += " --embargo"
-    if rawacf_format is not None:
-        start_cmd += f" --rawacf-format {rawacf_format}"
-    if kwargs:
-        start_cmd += f" --kwargs {kwargs}"
+    if event.rawacf_format is not None:
+        start_cmd += f" --rawacf-format {event.rawacf_format}"
+    if event.kwargs:
+        start_cmd += f" --kwargs {event.kwargs}"
     start_cmd += "'"  # Terminate the echo string
 
     if first_event_flag:
         cmd_str = start_cmd + " | at now + 1 minute"
     else:
         cmd_str = start_cmd + " | at -t %Y%m%d%H%M"
-    cmd_str = dt.strftime(cmd_str)
+    cmd_str = event.timestamp.strftime(cmd_str)
     return cmd_str
 
 
-def convert_scd_to_timeline(scd_lines, time_of_interest):
+def resolve_schedule(scd_lines):
     """
     Creates a true timeline from the scd lines, accounting for priority and duration of each line.
     Will reorder and add breaks to lines to account for differing priorities and durations. Keep the
     same line format.
 
-    Line dict keys are:
-        - timestamp
-        - duration (rounded down to minutes)
-        - priority
-        - experiment
-        - scheduling_mode
-
-    The true timeline queued_lines dictionary differs from the scd_lines list by the following:
-
-        - duration is parsed, adding in events so that all event durations are equal to the next
-          event's start time, subtract the current event's start time.
-        - priority is parsed so that there is only ever one event at any time (no overlap)
-        - therefore the only event in the true timeline with infinite duration is the last event.
-        - the keys of the true timeline dict are the original scd_lines order of the lines
-          (integer). This allows the preservation of which events in the true timeline were
-          scheduled in the same original line. This can be useful for plotting (same color = same
-          scd scheduled line). The items in queued_lines dict are lists of all of the events
-          corresponding to that original line's order. These events have the same keys as the lines
-          in scd_lines.
-
-    :param  scd_lines:          List of sorted lines by timestamp and priority, scd lines to try
-                                convert to a timeline.
+    :param  scd_lines:          List of all lines to schedule
     :type   scd_lines:          list
-    :param  time_of_interest:   The datetime holding the time of scheduling.
-    :type   time_of_interest:   Datetime
 
-    :returns:   Tuple containing the following items:
-
-            - queued_lines: Groups of entries belonging to the same experiment.
-            - warnings: List of warnings produced by the function
-    :rtype:     tuple(list, list)
+    :returns: All distinct scheduling events, in chronological order
+    :rtype: list
 
     """
 
-    inf_dur_line: Union[ScheduleLine, None] = None
-    queued_lines: list[ScheduleLine] = []
-
-    # Add the ordering of the lines to each line. This is so we can group entries that get split
-    # up as the same originally scheduled experiment line in the plot.
-    for i, line in enumerate(scd_lines):
-        line.order = i
-
-    def calculate_new_last_line_params(queue: list[ScheduleLine]):
+    def reduce_intervals(current_list: list[tuple], value: tuple):
         """
-        when the last line is of set duration, find its finish time so that
-        the infinite duration line can be set to run again at that point.
-        """
-        last_queued = queue[-1]
-        queued_finish_time = last_queued.timestamp + last_queued.duration
-        return last_queued, queued_finish_time
+        current_list: (start, end) tuples that are sorted, with no overlaps (i.e. start[k] > end[k-1])
+        value: (start, end) tuple
+        Finds the new master list of (start, end) tuples with inclusion of value, and the list of (start, end) times
+        that value filled in.
 
-    warnings = []
-    last_queued_line = {}
-    for idx, scd_line in enumerate(scd_lines):
-        # if we have lines queued up, grab the last one to compare to.
-        if queued_lines:
-            last_queued_line, queued_finish = calculate_new_last_line_params(
-                queued_lines
+        E.g. current_list = [(0, 1), (2, 3), (5, 6)], value = (1, 2), output = [(0, 3), (5, 6)] and [(1, 2)]
+        e.g. current_list = [(0, 1), (2, 3), (5, 6)], value = (0, 7), output = [(0, 7)] and [(1, 2), (3, 5), (6, 7)]
+        """
+        start_times = [x[0] for x in current_list]
+        end_times = [x[1] for x in current_list]
+        # finds index such that all items <= are to the left
+        start_idx = bisect.bisect(start_times, value[0])
+        end_idx = bisect.bisect(end_times, value[1])
+        if end_idx < start_idx:
+            # occurs if value is completely contained by an element of current_list
+            # e.g. current_list = [(1, 4)], value = (2, 3), start_idx = 1, end_idx = 0
+            return current_list, []
+
+        item_idx = bisect.bisect_left(start_times, value[0])
+        reduced_list = current_list[:item_idx] + current_list[end_idx:]
+        enclosed_times = current_list[item_idx:end_idx]  # rest of current_list
+
+        # e.g. current_list = [(0, 1), (2, 3), (5, 6)] and value = (1, 2) so item_idx = 1, end_idx = 1
+        # then reduced_list = [(0, 1), (5, 6)] and enclosed_times = [(2, 3)]
+        reduced_list.insert(item_idx, value)  # now [(0, 1), (1, 2), (5, 6)]
+        times_for_value = [value]
+        if item_idx > 0 and reduced_list[item_idx - 1][1] >= reduced_list[item_idx][0]:
+            # have to combine elements (0, 1) and (1, 2) into (0, 2), so reduced_list = [(0, 2), (2, 3), (5, 6)]
+            val = reduced_list.pop(item_idx)
+            times_for_value[0] = (
+                reduced_list[item_idx - 1][1],
+                val[1],
+            )  # truncate the start
+            reduced_list[item_idx - 1] = (
+                reduced_list[item_idx - 1][0],
+                times_for_value[0][1],
             )
-        # handling infinite duration lines
-        if scd_line.duration == "-":
-            # if no line set, just assign it
-            if inf_dur_line is None:
-                inf_dur_line = scd_line
-            else:
-                # if no queued lines yet, just take the time up to the new line and add it,
-                # else check against the last line to see if it comes before or after.
-                if not queued_lines:
-                    time_diff = scd_line.timestamp - inf_dur_line.timestamp
-                    inf_dur_line.duration = time_diff.total_seconds() // 60
-                    queued_lines.append(inf_dur_line)
-                else:
-                    new_time = last_queued_line.timestamp + last_queued_line.duration
-                    if scd_line.timestamp > new_time:
-                        inf_dur_line.timestamp = new_time
-                        time_diff = scd_line.timestamp - new_time
-                        inf_dur_line.duration = time_diff.total_seconds() // 60
-                        queued_lines.append(copy.deepcopy(inf_dur_line))
-                inf_dur_line = scd_line
+            item_idx -= 1
+        if (
+            item_idx < len(reduced_list) - 1
+            and reduced_list[item_idx + 1][0] <= value[1]
+        ):
+            # e.g. reduced_list = [(0, 1), (1, 2)] with item_idx = 0, want result of [(0, 2)]
+            val = reduced_list.pop(item_idx + 1)
+            times_for_value[0] = (times_for_value[0][0], val[0])  # truncate at the end
+            reduced_list[item_idx] = (reduced_list[item_idx][0], val[1])
 
-        else:  # line has a set duration
-            finish_time = scd_line.timestamp + scd_line.duration
+        # now have to split times_for_value with all the items that were fully enclosed by it
+        for x in enclosed_times:
+            if x[0] <= times_for_value[-1][1]:
+                # block starts before values run ends
+                end_val = times_for_value.pop()
+                if end_val[0] < x[0]:
+                    # Add in the first bit of end_val before this enclosed block starts
+                    times_for_value.append((end_val[0], x[0]))
+                times_for_value.append((x[0], end_val[1]))
+                # add back in the bit between x starting and end_val ending, which will be truncated in the next if statement as required.
+            if x[1] <= times_for_value[-1][1]:
+                end_val = times_for_value.pop()
+            if end_val[1] > x[1]:
+                times_for_value.append((x[1], end_val[1]))
 
-            if finish_time < time_of_interest:
-                continue
+        return reduced_list, times_for_value
 
-            # if no lines added yet, just add the line to the queue. Check if an inf dur line is
-            # running.
-            if not queued_lines:
-                if not inf_dur_line:
-                    queued_lines.append(scd_line)
-                else:
-                    if scd_line.timestamp > time_of_interest:
-                        time_diff = scd_line.timestamp - inf_dur_line.timestamp
-                        new_line = copy.deepcopy(inf_dur_line)
-                        new_line.duration = time_diff.total_seconds() // 60
-                        queued_lines.append(new_line)
-                    queued_lines.append(scd_line)
+    sorted_lines = sorted(scd_lines, key=lambda x: x.timestamp)
+    sorted_lines.reverse()
+    sorted_lines = sorted(key=lambda x: x.priority, reverse=True)
+    # at this stage, lines are sorted by priority, then by reverse timestamp for equal priority,
+    # then for two lines with equal priority and timestamp, by reverse order in the schedule file.
 
-                    finish_time = scd_line.timestamp + scd_line.duration
-                    inf_dur_line.timestamp = finish_time
-            else:  # some lines are already queued
-                # loop to find where to insert this line. Hold all following lines.
-                holder = []
-                while scd_line.timestamp < queued_lines[-1].timestamp:
-                    holder.append(queued_lines.pop())
+    scheduled = []  # list of ScheduleLine objects, with no overlap between them
+    scheduled_times = []  # complete list of (start, end) times that have an experiment scheduled
+    for line in sorted_lines:
+        start = line.timestamp
+        if line.duration == "-":
+            end = datetime.datetime.max
+        else:
+            end = start + line.duration
 
-                last_queued_line, queued_finish = calculate_new_last_line_params(
-                    queued_lines
-                )
-                holder.append(scd_line)
+        scheduled_times, times_for_line = reduce_intervals(
+            scheduled_times, (start, end)
+        )
+        for block in times_for_line:
+            new_line = copy.deepcopy(line)
+            new_line.duration = block[1] - block[0]
+            new_line.timestamp = block[0]
+            scheduled.append(new_line)
+    scheduled.sort(key=lambda x: x.timestamp)
 
-                # Durations and priorities change when lines can run and sometimes lines get
-                # broken up. We continually loop to readjust the timeline to account for the
-                # priorities and durations of new lines added.
-                while holder:  # or first_time:
-                    item_to_add = holder.pop()
-                    if item_to_add.duration != "-":
-                        finish_time = item_to_add.timestamp + item_to_add.duration
-                    else:
-                        pass  # todo: handle infinite lines here
-
-                    while item_to_add.timestamp < queued_lines[-1].timestamp:
-                        holder.append(queued_lines.pop())
-
-                    last_queued_line, queued_finish = calculate_new_last_line_params(
-                        queued_lines
-                    )
-
-                    # if the line comes directly after the last line, we can add it.
-                    if item_to_add.timestamp == queued_finish:
-                        queued_lines.append(item_to_add)
-                    # if the time of the line starts before the last line ends, we need to may need
-                    # to make adjustments.
-                    elif item_to_add.timestamp < queued_finish:
-                        # if the line finishes before the last line and is a higher priority,
-                        # we split the last line and insert the new line.
-                        if finish_time < queued_finish:
-                            if item_to_add.priority > last_queued_line.priority:
-                                queued_copy = copy.deepcopy(last_queued_line)
-
-                                # if time is >, then we can split the first part and insert
-                                # the line is. Otherwise, we can directly overwrite the first
-                                # part.
-                                if item_to_add.timestamp > last_queued_line.timestamp:
-                                    first_dur = (
-                                        item_to_add.timestamp
-                                        - last_queued_line.timestamp
-                                    )
-                                    last_queued_line.duration = (
-                                        first_dur.total_seconds() // 60
-                                    )
-                                    queued_lines.append(item_to_add)
-                                else:
-                                    queued_lines.append(item_to_add)
-
-                                remaining_duration = queued_finish - finish_time
-
-                                queued_copy.timestamp = finish_time
-                                queued_copy.duration = (
-                                    remaining_duration.total_seconds() // 60
-                                )
-                                queued_lines.append(queued_copy)
-
-                        else:
-                            # if the finish time is > than the last line and the priority is higher,
-                            # we can overwrite the last piece, otherwise we directly overwrite the
-                            # whole line.
-                            if item_to_add.priority > last_queued_line.priority:
-                                if item_to_add.timestamp > last_queued_line.timestamp:
-                                    new_duration = (
-                                        item_to_add.timestamp
-                                        - last_queued_line.timestamp
-                                    )
-                                    last_queued_line.duration = (
-                                        new_duration.total_seconds() // 60
-                                    )
-                                    queued_lines.append(item_to_add)
-                                else:
-                                    queued_lines.append(item_to_add)
-                            else:
-                                # if the priority is lower, then we only the schedule the piece that
-                                # doesn't overlap.
-                                item_to_add.timestamp = queued_finish
-                                new_duration = finish_time - queued_finish
-                                item_to_add.duration = (
-                                    new_duration.total_seconds() // 60
-                                )
-                                queued_lines.append(item_to_add)
-                    else:
-                        time_diff = item_to_add.timestamp - queued_finish
-                        new_line = copy.deepcopy(inf_dur_line)
-                        new_line.duration = time_diff.total_seconds() // 60
-                        new_line.timestamp = queued_finish
-                        queued_lines.append(new_line)
-                        queued_lines.append(item_to_add)
-
-        if idx == len(scd_lines) - 1:
-            if queued_lines:  # infinite duration line starts after the last queued line
-                last_queued_line, queued_finish = calculate_new_last_line_params(
-                    queued_lines
-                )
-                inf_dur_line.timestamp = queued_finish
-            queued_lines.append(inf_dur_line)
-
-    return queued_lines, warnings
+    return scheduled
 
 
 def timeline_to_atq(timeline, scd_dir, time_of_interest, site_id):
@@ -346,31 +226,13 @@ def timeline_to_atq(timeline, scd_dir, time_of_interest, site_id):
     atq = []
     first_event = True
     for event in timeline:
-        if first_event:
-            atq.append(
-                format_to_atq(
-                    event.timestamp,
-                    event.experiment,
-                    event.scheduling_mode,
-                    True,
-                    event.kwargs,
-                    event.embargo,
-                    event.rawacf_format,
-                )
+        atq.append(
+            format_to_atq(
+                event,
+                first_event,
             )
-            first_event = False
-        else:
-            atq.append(
-                format_to_atq(
-                    event.timestamp,
-                    event.experiment,
-                    event.scheduling_mode,
-                    False,
-                    event.kwargs,
-                    event.embargo,
-                    event.rawacf_format,
-                )
-            )
+        )
+        first_event = False
     for cmd in atq:
         sp.call(cmd, shell=True)
 
@@ -431,9 +293,7 @@ def _main():
             sp.call(command.split(), shell=True)
 
         else:
-            timeline, warnings = convert_scd_to_timeline(
-                relevant_lines, time_of_interest
-            )
+            timeline = resolve_schedule(relevant_lines)
             new_atq_str = timeline_to_atq(timeline, scd_dir, time_of_interest, site_id)
 
             with open(log_file, "wb") as f:
@@ -441,8 +301,6 @@ def _main():
                 f.write(new_atq_str)
 
                 f.write("\n".encode())
-                for warning in warnings:
-                    f.write(f"\n{warning}".encode())
 
     start_time = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     print(f"\n{start_time} - Scheduler booted")
