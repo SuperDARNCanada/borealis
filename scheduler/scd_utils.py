@@ -62,6 +62,17 @@ class ScheduleLine:
         )
         return line
 
+    def format_to_atq(self):
+        call = (
+            f"{self.experiment}"
+            f" release"
+            f" {self.scheduling_mode}"
+            f"{' --embargo' if self.embargo else ''}"
+            f"{' --rawacf-format=' + self.rawacf_format if self.rawacf_format is not None else ''}"
+            f"{' --kwargs ' + ' '.join(self.kwargs) if len(self.kwargs) > 0 else ''}"
+        )
+        return call
+
     @field_validator("duration")
     @classmethod
     def check_duration(cls, v: Union[str, dt.timedelta]) -> Union[str, dt.timedelta]:

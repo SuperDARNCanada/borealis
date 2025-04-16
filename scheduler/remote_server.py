@@ -51,14 +51,7 @@ def format_to_atq(
     """
     borealis_path = os.environ["BOREALISPATH"]
 
-    start_cmd = f"echo 'screen -d -m -S starter {borealis_path}/scripts/steamed_hams.py {event.experiment} release {event.scheduling_mode}"
-    if event.embargo:
-        start_cmd += " --embargo"
-    if event.rawacf_format is not None:
-        start_cmd += f" --rawacf-format {event.rawacf_format}"
-    if event.kwargs:
-        start_cmd += f" --kwargs {event.kwargs}"
-    start_cmd += "'"  # Terminate the echo string
+    start_cmd = f"echo 'screen -d -m -S starter {borealis_path}/scripts/steamed_hams.py {event.format_to_atq()}'"
 
     if first_event_flag:
         cmd_str = start_cmd + " | at now + 1 minute"
@@ -150,7 +143,7 @@ def resolve_schedule(scd_lines):
 
     sorted_lines = sorted(scd_lines, key=lambda x: x.timestamp)
     sorted_lines.reverse()
-    sorted_lines = sorted(key=lambda x: x.priority, reverse=True)
+    sorted_lines.sort(key=lambda x: x.priority, reverse=True)
     # at this stage, lines are sorted by priority, then by reverse timestamp for equal priority,
     # then for two lines with equal priority and timestamp, by reverse order in the schedule file.
 
