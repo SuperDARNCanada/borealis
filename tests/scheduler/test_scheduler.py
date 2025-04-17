@@ -1271,6 +1271,17 @@ class TestRemoteServer(unittest.TestCase):
             len([x for x in scd if x.experiment == "F"]), 0
         )  # experiment F missing, superseded by D
 
+        line7 = scd_utils.ScheduleLine(
+            timestamp=datetime.datetime(2000, 1, 1),
+            duration=datetime.timedelta(days=1),
+            experiment="G",
+            priority=10,
+            scheduling_mode="common",
+        )
+        scd = remote_server.resolve_schedule([line, line7])
+        self.assertEqual(len(scd), 1)
+        self.assertEqual(scd[0], line7)
+
     # format_to_atq tests
     def test_make_atq_commands(self):
         """

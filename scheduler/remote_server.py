@@ -102,17 +102,17 @@ def resolve_schedule(scd_lines):
         # e.g. current_list = [(0, 1), (2, 3), (5, 6)] and value = (1, 2) so item_idx = 1, end_idx = 1
         # then reduced_list = [(0, 1), (5, 6)] and enclosed_times = [(2, 3)]
         reduced_list.insert(item_idx, value)  # now [(0, 1), (1, 2), (5, 6)]
-        times_for_value = [value]
+        times_filled = [value]
         if item_idx > 0 and reduced_list[item_idx - 1][1] >= reduced_list[item_idx][0]:
             # have to combine elements (0, 1) and (1, 2) into (0, 2), so reduced_list = [(0, 2), (2, 3), (5, 6)]
             val = reduced_list.pop(item_idx)
-            times_for_value[0] = (
+            times_filled[0] = (
                 reduced_list[item_idx - 1][1],
                 val[1],
             )  # truncate the start
             reduced_list[item_idx - 1] = (
                 reduced_list[item_idx - 1][0],
-                times_for_value[0][1],
+                times_filled[0][1],
             )
             item_idx -= 1
         if (
@@ -121,25 +121,22 @@ def resolve_schedule(scd_lines):
         ):
             # e.g. reduced_list = [(0, 1), (1, 2)] with item_idx = 0, want result of [(0, 2)]
             val = reduced_list.pop(item_idx + 1)
-            times_for_value[0] = (times_for_value[0][0], val[0])  # truncate at the end
+            times_filled[0] = (times_filled[0][0], val[0])  # truncate at the end
             reduced_list[item_idx] = (reduced_list[item_idx][0], val[1])
 
-        # now have to split times_for_value with all the items that were fully enclosed by it
+        # now have to split times_filled with all the items that were fully enclosed by it
         for x in enclosed_times:
-            if x[0] <= times_for_value[-1][1]:
+            if x[0] < times_filled[-1][1]:
                 # block starts before values run ends
-                end_val = times_for_value.pop()
+                end_val = times_filled.pop()
                 if end_val[0] < x[0]:
                     # Add in the first bit of end_val before this enclosed block starts
-                    times_for_value.append((end_val[0], x[0]))
-                times_for_value.append((x[0], end_val[1]))
-                # add back in the bit between x starting and end_val ending, which will be truncated in the next if statement as required.
-            if x[1] <= times_for_value[-1][1]:
-                end_val = times_for_value.pop()
-            if end_val[1] > x[1]:
-                times_for_value.append((x[1], end_val[1]))
+                    times_filled.append((end_val[0], x[0]))
+                if end_val[1] > x[1]:
+                    # Add in the rest of end_val after this enclosed block ends
+                    times_filled.append((x[1], end_val[1]))
 
-        return reduced_list, times_for_value
+        return reduced_list, times_filled
 
     sorted_lines = sorted(scd_lines, key=lambda x: x.timestamp)
     sorted_lines.reverse()
