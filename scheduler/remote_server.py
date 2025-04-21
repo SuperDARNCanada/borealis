@@ -82,7 +82,7 @@ def resolve_schedule(scd_lines):
         Finds the new master list of (start, end) tuples with inclusion of value, and the list of (start, end) times
         that value filled in.
 
-        E.g. current_list = [(0, 1), (2, 3), (5, 6)], value = (1, 2), output = [(0, 3), (5, 6)] and [(1, 2)]
+        E.g. current_list = [(0, 1), (2, 3), (5, 6)], value = (1, 3), output = [(0, 3), (5, 6)] and [(1, 2)]
         e.g. current_list = [(0, 1), (2, 3), (5, 6)], value = (0, 7), output = [(0, 7)] and [(1, 2), (3, 5), (6, 7)]
         """
         start_times = [x[0] for x in current_list]
@@ -95,16 +95,17 @@ def resolve_schedule(scd_lines):
             # e.g. current_list = [(1, 4)], value = (2, 3), start_idx = 1, end_idx = 0
             return current_list, []
 
+        # bisect_left() finds the index such that all items < are to the left (equal values to the right)
         item_idx = bisect.bisect_left(start_times, value[0])
         reduced_list = current_list[:item_idx] + current_list[end_idx:]
         enclosed_times = current_list[item_idx:end_idx]  # rest of current_list
 
-        # e.g. current_list = [(0, 1), (2, 3), (5, 6)] and value = (1, 2) so item_idx = 1, end_idx = 1
+        # e.g. current_list = [(0, 1), (2, 3), (5, 6)] and value = (1, 3) so item_idx = 1, end_idx = 2
         # then reduced_list = [(0, 1), (5, 6)] and enclosed_times = [(2, 3)]
-        reduced_list.insert(item_idx, value)  # now [(0, 1), (1, 2), (5, 6)]
+        reduced_list.insert(item_idx, value)  # now [(0, 1), (1, 3), (5, 6)]
         times_filled = [value]
         if item_idx > 0 and reduced_list[item_idx - 1][1] >= reduced_list[item_idx][0]:
-            # have to combine elements (0, 1) and (1, 2) into (0, 2), so reduced_list = [(0, 2), (2, 3), (5, 6)]
+            # have to combine elements (0, 1) and (1, 3) into (0, 3), so reduced_list = [(0, 3), (5, 6)]
             val = reduced_list.pop(item_idx)
             times_filled[0] = (
                 reduced_list[item_idx - 1][1],
@@ -125,6 +126,8 @@ def resolve_schedule(scd_lines):
             reduced_list[item_idx] = (reduced_list[item_idx][0], val[1])
 
         # now have to split times_filled with all the items that were fully enclosed by it
+        # e.g. enclosed_times = [(2, 3)], times_filled starts as [(1, 3)], we want to remove
+        # enclosed_times from times_filled. Thus, a result of [(1, 2)]
         for x in enclosed_times:
             if x[0] < times_filled[-1][1]:
                 # block starts before values run ends
