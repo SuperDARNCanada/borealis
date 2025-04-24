@@ -88,10 +88,13 @@ def main():
                 # Split result by enclosed brackets [...] to get log level and device
                 # Example: "[INFO] [GPS] No gps lock..." becomes ["", "INFO", " ", "GPS", "No gps lock..."]
                 result = re.split("\[|\]", result)
+                # Remove "" and whitespace
+                result = [x for x in result if x.strip() != ""]
                 if len(result) > 1:
                     # Log UHD logs with correct level
-                    log_func = uhd_log_level[result[1]]
-                    log_func(result[3] + result[4], device=result[3])
+                    # Fallback on INFO if the key is mangled
+                    log_func = uhd_log_level.get(result[0], log.info)
+                    log_func(" ".join(result[1:]), device=result[1])
                 else:
                     # Log our messages and the UHD firmware messages (L, U, D, S, etc)
                     # Some further parsing may be needed in the future to handle our debugs
