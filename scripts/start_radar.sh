@@ -12,7 +12,7 @@ nohup python3 $BOREALISPATH/scheduler/remote_server.py \
 		>> /home/radar/logs/remote_server.log 2>&1 &
 
 PID=$!	# Get pid of remote_server.py process
-sleep 1
+sleep 3
 
 NOW=$(date +'%Y-%m-%d %H:%M:%S')
 if ! ps -p $PID &> /dev/null; then	 # Check if remote_server.py process still running
