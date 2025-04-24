@@ -90,11 +90,16 @@ def main():
                 result = re.split("\[|\]", result)
                 # Remove "" and whitespace
                 result = [x for x in result if x.strip() != ""]
+                if len(result) == 0:
+                    continue
                 if len(result) > 1:
                     # Log UHD logs with correct level
                     # Fallback on INFO if the key is mangled
-                    log_func = uhd_log_level.get(result[0], log.info)
-                    log_func(" ".join(result[1:]), device=result[1])
+                    if result[0] in uhd_log_level.keys():
+                        log_func = uhd_log_level[result[0]]
+                        log_func(" ".join(result[1:]), device=result[1])
+                    else:
+                        log.info(" ".join(result))
                 else:
                     # Log our messages and the UHD firmware messages (L, U, D, S, etc)
                     # Some further parsing may be needed in the future to handle our debugs
