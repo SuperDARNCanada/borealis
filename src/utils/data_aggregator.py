@@ -25,14 +25,14 @@ class Aggregator:
     antenna_iq_available: bool = False
     bfiq_accumulator: dict = field(default_factory=dict)
     bfiq_available: bool = False
-    intfacfs_available: bool = False
+    intfacfs_available: set = field(default_factory=set)
     # init True so that logical AND works properly in update() method
     gps_locked: bool = True
     gps_to_system_time_diff: float = 0.0
     intfacfs_accumulator: dict = field(default_factory=dict)
     lp_status_word: int = 0b0
     mainacfs_accumulator: dict = field(default_factory=dict)
-    mainacfs_available: bool = False
+    mainacfs_available: set = field(default_factory=set)
     options: Options = None
     processed_data: ProcessedSequenceMessage = field(init=False)
     rawrf_available: bool = False
@@ -42,7 +42,7 @@ class Aggregator:
     slice_ids: set = field(default_factory=set)
     timestamps: list[float] = field(default_factory=list)
     xcfs_accumulator: dict = field(default_factory=dict)
-    xcfs_available: bool = False
+    xcfs_available: set = field(default_factory=set)
 
     def _get_accumulators(self):
         """Returns a list of all accumulator dictionaries in this object."""
@@ -85,16 +85,16 @@ class Aggregator:
                 shm.close()
                 shm.unlink()
 
-            if data_set.main_acf_shm:
-                self.mainacfs_available = True
+            if data_set.main_acf_shm is not None:
+                self.mainacfs_available.update(slice_id)
                 accumulate_data(self.mainacfs_accumulator, data_set.main_acf_shm)
 
-            if data_set.xcf_shm:
-                self.xcfs_available = True
+            if data_set.xcf_shm is not None:
+                self.xcfs_available.update(slice_id)
                 accumulate_data(self.xcfs_accumulator, data_set.xcf_shm)
 
-            if data_set.intf_acf_shm:
-                self.intfacfs_available = True
+            if data_set.intf_acf_shm is not None:
+                self.intfacfs_available.update(slice_id)
                 accumulate_data(self.intfacfs_accumulator, data_set.intf_acf_shm)
 
     def parse_bfiq(self):

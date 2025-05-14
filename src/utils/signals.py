@@ -1,6 +1,6 @@
 """
 signals
-~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~
 This file contains the digital signal processing functionality of Borealis. This includes generation of pulses,
 determination of antenna phases for beamforming, filtering and downsampling of received signals, beamforming of
 filtered signals, and extraction of lag profiles from beamformed samples.
@@ -379,7 +379,7 @@ class DSP:
         """
         values = []
         for s, slice_info in enumerate(slice_index_details):
-            if slice_info["lags"].size == 0:
+            if slice_info.get('skip', False) or slice_info["lags"].size == 0:
                 values.append(np.array([]))
                 continue
 

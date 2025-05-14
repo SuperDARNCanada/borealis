@@ -276,6 +276,10 @@ def create_dsp_message(radctrl_params):
     message.output_sample_rate = radctrl_params.sequence.output_rx_rate
     message.rx_ctr_freq = radctrl_params.sequence.rxctrfreq * 1.0e3
     message.cfs_scan_flag = radctrl_params.cfs_scan_flag
+    message.acf = radctrl_params.sequence.acf
+    message.xcf = radctrl_params.sequence.xcf
+    message.acfint = radctrl_params.sequence.acfint
+
     if radctrl_params.cfs_scan_flag:
         message.cfs_fft_n = radctrl_params.aveperiod.cfs_fft_n
 
@@ -322,6 +326,9 @@ def create_dsp_message(radctrl_params):
         chan_add.range_sep = slice_dict[slice_id].range_sep
         chan_add.rx_intf_antennas = slice_dict[slice_id].rx_intf_antennas
         chan_add.pulses = slice_dict[slice_id].pulse_sequence
+        chan_add.acf = slice_dict[slice_id].acf
+        chan_add.xcf = slice_dict[slice_id].xcf
+        chan_add.acfint = slice_dict[slice_id].acfint
 
         main_bms = beam_dict[slice_id]["main"]
         intf_bms = beam_dict[slice_id]["intf"]

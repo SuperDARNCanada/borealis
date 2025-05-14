@@ -110,6 +110,9 @@ class RxChannel:
     beam_phases: np.ndarray = None
     lags: list[Lag] = field(default_factory=list)
     pulses: list = field(default_factory=list)
+    acf: bool = False
+    xcf: bool = False
+    acfint: bool = False
 
     def add_lag(self, lag: Lag):
         """Add a Lag dataclass to the message."""
@@ -132,6 +135,9 @@ class SequenceMetadataMessage:
     rx_ctr_freq: float = None
     decimation_stages: list[DecimationStageMessage] = field(default_factory=list)
     rx_channels: list[RxChannel] = field(default_factory=list)
+    acf: bool = False
+    xcf: bool = False
+    acfint: bool = False
     cfs_scan_flag: bool = False
     cfs_fft_n: int = None
 

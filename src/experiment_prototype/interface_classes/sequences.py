@@ -155,10 +155,12 @@ class Sequence(InterfaceClassBase):
         self.rxctrfreq = self.slice_dict[self.slice_ids[0]].rxctrfreq
 
         # if any slice has cfs flag set, set the sequence cfs_flag to true
-        self.cfs_flag = False
-        for slice_id in self.slice_ids:
-            if self.slice_dict[slice_id].cfs_flag:
-                self.cfs_flag = True
+        self.cfs_flag = any([self.slice_dict[x].cfs_flag for x in self.slice_ids])
+
+        # Determine whether correlations are needed for this sequence
+        self.acf = any([self.slice_dict[x].acf for x in self.slice_ids])
+        self.xcf = any([self.slice_dict[x].xcf for x in self.slice_ids])
+        self.acfint = any([self.slice_dict[x].acfint for x in self.slice_ids])
 
         if not self.cfs_flag:
             self.build_sequence_pulses()
