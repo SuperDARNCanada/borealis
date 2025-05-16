@@ -418,12 +418,10 @@ class DataWrite:
             slice_data = aveperiod_data[slice_num]
             if slice_num in parsed_data.mainacfs_available:
                 slice_data.main_acfs = find_expectation_value(main_acfs[slice_num]["data"])
-
         for slice_num in xcfs:
             slice_data = aveperiod_data[slice_num]
             if slice_num in parsed_data.xcfs_available:
                 slice_data.xcfs = find_expectation_value(xcfs[slice_num]["data"])
-
         for slice_num in intf_acfs:
             slice_data = aveperiod_data[slice_num]
             if slice_num in parsed_data.intfacfs_available:
@@ -433,6 +431,8 @@ class DataWrite:
 
         all_slice_data = {}
         for slice_num, slice_data in aveperiod_data.items():
+            if getattr(slice_data, "main_acfs", None) is None:
+                continue
             two_hr_file_with_type = self.slice_filenames[slice_num].format(ext="rawacf")
             self._write_file(slice_data, two_hr_file_with_type, "rawacf")
 

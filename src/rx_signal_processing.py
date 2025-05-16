@@ -253,8 +253,8 @@ def sequence_worker(options, ringbuffer):
             main_processor.move_filter_results()
             main_processor.beamform(rx_params.main_beam_angles)
             if rx_params.acf:
-                for slice_info in rx_params.slice_details.values():
-                    slice_info['skip'] = slice_info['acf']
+                for slice_info in rx_params.slice_details:
+                    slice_info['skip'] = not slice_info['acf']
                 main_corrs = DSP.correlations_from_samples(
                     main_processor.beamformed_samples,
                     main_processor.beamformed_samples,
@@ -282,8 +282,8 @@ def sequence_worker(options, ringbuffer):
                 intf_processor.move_filter_results()
                 intf_processor.beamform(rx_params.intf_beam_angles)
                 if rx_params.acfint:
-                    for slice_info in rx_params.slice_details.values():
-                        slice_info['skip'] = slice_info['acfint']
+                    for slice_info in rx_params.slice_details:
+                        slice_info['skip'] = not slice_info['acfint']
                     intf_corrs = DSP.correlations_from_samples(
                         intf_processor.beamformed_samples,
                         intf_processor.beamformed_samples,
@@ -291,8 +291,8 @@ def sequence_worker(options, ringbuffer):
                         rx_params.slice_details,
                     )
                 if rx_params.xcf:
-                    for slice_info in rx_params.slice_details.values():
-                        slice_info['skip'] = slice_info['xcf']
+                    for slice_info in rx_params.slice_details:
+                        slice_info['skip'] = not slice_info['xcf']
                     cross_corrs = DSP.correlations_from_samples(
                         intf_processor.beamformed_samples,
                         main_processor.beamformed_samples,

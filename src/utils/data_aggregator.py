@@ -86,15 +86,15 @@ class Aggregator:
                 shm.unlink()
 
             if data_set.main_acf_shm is not None:
-                self.mainacfs_available.update(slice_id)
+                self.mainacfs_available.add(slice_id)
                 accumulate_data(self.mainacfs_accumulator, data_set.main_acf_shm)
 
             if data_set.xcf_shm is not None:
-                self.xcfs_available.update(slice_id)
+                self.xcfs_available.add(slice_id)
                 accumulate_data(self.xcfs_accumulator, data_set.xcf_shm)
 
             if data_set.intf_acf_shm is not None:
-                self.intfacfs_available.update(slice_id)
+                self.intfacfs_available.add(slice_id)
                 accumulate_data(self.intfacfs_accumulator, data_set.intf_acf_shm)
 
     def parse_bfiq(self):
