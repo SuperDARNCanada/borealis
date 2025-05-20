@@ -61,6 +61,9 @@ class RxProcessingParameters:
     intf_antennas: list
     filter_taps: list
     downsample_rates: list
+    acf: bool
+    xcf: bool
+    acfint: bool
     cfs_scan_flag: bool
     samples_needed: int
     rx_rate: float
@@ -114,19 +117,16 @@ def fill_datawrite_message(processed_data, slice_details, data_outputs, cfs_scan
             processed_data.add_output_dataset(output_dataset)
             # if a clear frequency search was performed, add cfs data to message
         else:
-            main_corrs = data_outputs["main_corrs"][sd["slice_num"]]
-            output_dataset.main_acf_shm = add_array(main_corrs)
+            if "main_corrs" in data_outputs:
+                main_corrs = data_outputs["main_corrs"][sd["slice_num"]]
+                output_dataset.main_acf_shm = add_array(main_corrs)
 
-            intf_available = True
-            try:
+            if "intf_corrs" in data_outputs:
                 intf_corrs = data_outputs["intf_corrs"][sd["slice_num"]]
-                cross_corrs = data_outputs["cross_corrs"][sd["slice_num"]]
-            except KeyError:
-                # No interferometer data
-                intf_available = False
-
-            if intf_available:
                 output_dataset.intf_acf_shm = add_array(intf_corrs)
+
+            if "cross_corrs" in data_outputs:
+                cross_corrs = data_outputs["cross_corrs"][sd["slice_num"]]
                 output_dataset.xcf_shm = add_array(cross_corrs)
 
             processed_data.add_output_dataset(output_dataset)
@@ -182,14 +182,14 @@ def sequence_worker(options, ringbuffer):
         # of existing data without making a copy.
         if cupy_available:
             if rx_params.end_sample > ringbuffer.shape[1]:
-                piece1 = ringbuffer[:, rx_params.start_sample :]
+                piece1 = ringbuffer[:, rx_params.start_sample:]
                 piece2 = ringbuffer[:, : rx_params.end_sample - ringbuffer.shape[1]]
                 tmp1 = xp.array(piece1)
                 tmp2 = xp.array(piece2)
                 sequence_samples = xp.concatenate((tmp1, tmp2), axis=1)
             else:
                 sequence_samples = xp.array(
-                    ringbuffer[:, rx_params.start_sample : rx_params.end_sample]
+                    ringbuffer[:, rx_params.start_sample:rx_params.end_sample]
                 )
         else:
             sequence_samples = ringbuffer.take(indices, axis=1, mode="wrap")
@@ -252,12 +252,15 @@ def sequence_worker(options, ringbuffer):
             main_processor.apply_filters(main_sequence_samples)
             main_processor.move_filter_results()
             main_processor.beamform(rx_params.main_beam_angles)
-            main_corrs = DSP.correlations_from_samples(
-                main_processor.beamformed_samples,
-                main_processor.beamformed_samples,
-                rx_params.output_sample_rate,
-                rx_params.slice_details,
-            )
+            if rx_params.acf:
+                for slice_info in rx_params.slice_details:
+                    slice_info['skip'] = not slice_info['acf']
+                main_corrs = DSP.correlations_from_samples(
+                    main_processor.beamformed_samples,
+                    main_processor.beamformed_samples,
+                    rx_params.output_sample_rate,
+                    rx_params.slice_details,
+                )
             log_dict["main_dsp_time"] = (time.perf_counter() - mark_timer) * 1e3
 
             # Process intf samples if intf exists
@@ -266,7 +269,7 @@ def sequence_worker(options, ringbuffer):
             log_dict["intf antennas"] = rx_params.intf_antennas
             if len(rx_params.intf_antennas) > 0:
                 intf_sequence_samples = sequence_samples[
-                    len(options.rx_main_antennas) :, :
+                    len(options.rx_main_antennas):, :
                 ]
                 intf_sequence_samples_shape = intf_sequence_samples.shape
                 intf_processor = DSP(
@@ -278,18 +281,24 @@ def sequence_worker(options, ringbuffer):
                 intf_processor.apply_filters(intf_sequence_samples)
                 intf_processor.move_filter_results()
                 intf_processor.beamform(rx_params.intf_beam_angles)
-                intf_corrs = DSP.correlations_from_samples(
-                    intf_processor.beamformed_samples,
-                    intf_processor.beamformed_samples,
-                    rx_params.output_sample_rate,
-                    rx_params.slice_details,
-                )
-                cross_corrs = DSP.correlations_from_samples(
-                    intf_processor.beamformed_samples,
-                    main_processor.beamformed_samples,
-                    rx_params.output_sample_rate,
-                    rx_params.slice_details,
-                )
+                if rx_params.acfint:
+                    for slice_info in rx_params.slice_details:
+                        slice_info['skip'] = not slice_info['acfint']
+                    intf_corrs = DSP.correlations_from_samples(
+                        intf_processor.beamformed_samples,
+                        intf_processor.beamformed_samples,
+                        rx_params.output_sample_rate,
+                        rx_params.slice_details,
+                    )
+                if rx_params.xcf:
+                    for slice_info in rx_params.slice_details:
+                        slice_info['skip'] = not slice_info['xcf']
+                    cross_corrs = DSP.correlations_from_samples(
+                        intf_processor.beamformed_samples,
+                        main_processor.beamformed_samples,
+                        rx_params.output_sample_rate,
+                        rx_params.slice_details,
+                    )
             log_dict["intf_dsp_time"] = (time.perf_counter() - mark_timer) * 1e3
 
         # Tell brian DSP how long it took
@@ -442,11 +451,14 @@ def sequence_worker(options, ringbuffer):
             rx_params.processed_data.num_samps = beamformed_m.shape[-1]
             main_processor.shared_mem["bfiq"].close()
 
-            data_outputs["main_corrs"] = main_corrs
+            if rx_params.acf:
+                data_outputs["main_corrs"] = main_corrs
 
             if len(rx_params.intf_antennas) > 0:
-                data_outputs["cross_corrs"] = cross_corrs
-                data_outputs["intf_corrs"] = intf_corrs
+                if rx_params.xcf:
+                    data_outputs["cross_corrs"] = cross_corrs
+                if rx_params.acfint:
+                    data_outputs["intf_corrs"] = intf_corrs
                 rx_params.processed_data.bfiq_intf_shm = intf_processor.shared_mem[
                     "bfiq"
                 ].name
@@ -559,6 +571,9 @@ def main():
             detail["first_range_off"] = np.uint32(
                 round(chan.first_range / chan.range_sep)
             )
+            detail["acf"] = chan.acf
+            detail["xcf"] = chan.xcf
+            detail["acfint"] = chan.acfint
 
             lag_phase_offsets = []
 
@@ -711,6 +726,9 @@ def main():
             intf_antennas,
             dm_scheme_taps,
             dm_rates,
+            sqn_meta_message.acf,
+            sqn_meta_message.xcf,
+            sqn_meta_message.acfint,
             cfs_scan_flag,
             samples_needed,
             rx_rate,
