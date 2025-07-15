@@ -15,6 +15,7 @@ import datetime
 
 # built-in
 import inspect
+import itertools
 from pathlib import Path
 import copy
 
@@ -219,7 +220,6 @@ class CFSAveragingPeriod(AveragingPeriod):
         self.cfs_always_run = False
         self.cfs_sequence = None
         self.cfs_slice_ids = []
-        self.cfs_scan_order = []
         self.cfs_stable_time = 0
         self.cfs_pwr_threshold = 0
         self.cfs_fft_n = 0
@@ -505,26 +505,23 @@ class CFSAveragingPeriod(AveragingPeriod):
         }
 
         cfs_slices = {}
-        seq_keys = []
-        slice_counter = 0
-        self.cfs_scan_order = []
         for cfs_id in self.cfs_slice_ids:
             listening_slice = copy.deepcopy(default_slice)
             slice_range = self.slice_dict[cfs_id].cfs_range
             listening_slice["freq"] = int((slice_range[0] + slice_range[1]) / 2)
-            listening_slice["slice_id"] = slice_counter
-            self.cfs_scan_order.append(cfs_id)
+            listening_slice["slice_id"] = cfs_id
+            listening_slice["beam_angle"] = self.slice_dict[cfs_id].beam_angle
+            listening_slice["rx_beam_order"] = self.slice_dict[cfs_id].rx_beam_order
 
-            cfs_slices[slice_counter] = ExperimentSlice(**listening_slice)
-            seq_keys.append(slice_counter)
-            slice_counter += 1
+            cfs_slices[cfs_id] = ExperimentSlice(**listening_slice)
 
         # Build interface dictionary
         interface_dict = {}
-        for i in range(slice_counter):
-            for j in range(i + 1, slice_counter):
-                interface_dict[(i, j)] = "CONCURRENT"
+        for i in itertools.combinations(self.cfs_slice_ids, 2):
+            # `self.cfs_slice_ids` is sorted so this should have the following effect:
+            # combinations([1, 3, 5], 2) --> [1,3], [1,5], [3,5]
+            interface_dict[tuple(i)] = "CONCURRENT"
 
         self.cfs_sequence = Sequence(
-            seq_keys, cfs_slices, interface_dict, self.transmit_metadata
+            self.cfs_slice_ids, cfs_slices, interface_dict, self.transmit_metadata
         )

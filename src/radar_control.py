@@ -293,27 +293,41 @@ def create_dsp_message(radctrl_params):
     slice_dict = radctrl_params.slice_dict
     if radctrl_params.cfs_scan_flag:
         beam_dict = dict()
+
         for slice_id in radctrl_params.aveperiod.cfs_slice_ids:
-            tx_phases = radctrl_params.sequence.build_tx_phases(
-                slice_id,
-                slice_dict[slice_id],
-                np.average(slice_dict[slice_id].cfs_range),
-            )
+            # `slice_id` will correspond to a special CFS Sequence object in a CFSAveragingPeriod.
+            # Likewise with `radctrl_params.sequence`
+            if slice_dict[slice_id].rxonly:
+                # No TX - use RX phases instead for CFS beamforming
+                phase_dict = radctrl_params.sequence.get_rx_phases(
+                    radctrl_params.aveperiod.beam_iter
+                )
+                main_phases = phase_dict[slice_id]["main"][0]
+            else:
+                # Use TX phases for CFS beamforming
+                beam_num = slice_dict[slice_id].tx_beam_order[
+                    radctrl_params.aveperiod.beam_iter
+                ]
+                tx_phases = radctrl_params.sequence.build_tx_phases(
+                    slice_id,
+                    slice_dict[slice_id],
+                    np.average(slice_dict[slice_id].cfs_range),
+                )
+                main_phases = tx_phases[beam_num]
+
             intf_phases = np.zeros(
                 len(slice_dict[slice_id].rx_intf_antennas), dtype=np.complex64
             )
-            beam_num = slice_dict[slice_id].tx_beam_order[
-                radctrl_params.aveperiod.beam_iter
-            ]
-            scan_id = radctrl_params.aveperiod.cfs_scan_order.index(slice_id)
-            beam_dict[scan_id] = {
-                "main": np.array([tx_phases[beam_num]]),
+            beam_dict[slice_id] = {
+                "main": np.array([main_phases]),
                 "intf": np.array([intf_phases]),
             }
+
     else:
         beam_dict = radctrl_params.sequence.get_rx_phases(
             radctrl_params.aveperiod.beam_iter
         )
+
     slice_dict = radctrl_params.sequence.slice_dict
     for slice_id in radctrl_params.sequence.slice_ids:
         chan_add = messages.RxChannel(slice_id)
