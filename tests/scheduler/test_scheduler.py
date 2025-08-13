@@ -65,8 +65,12 @@ class TestSchedulerUtils(unittest.TestCase):
         self.no_perms_file = self.no_perms.name
         os.chmod(self.no_perms_file, 0o000)
         self.no_perms.close()
-        time_of_interest = datetime.datetime(2000, 1, 1, 6, 30)
-        time_of_interest2 = datetime.datetime(2022, 4, 5, 16, 56)
+        time_of_interest = datetime.datetime(
+            2000, 1, 1, 6, 30, tzinfo=datetime.timezone.utc
+        )
+        time_of_interest2 = datetime.datetime(
+            2022, 4, 5, 16, 56, tzinfo=datetime.timezone.utc
+        )
         self.linedict = {
             "timestamp": time_of_interest,
             "priority": 0,
@@ -1187,24 +1191,27 @@ class TestRemoteServer(unittest.TestCase):
         """
         Test that overlapping schedule lines are properly resolved.
         """
+        time_of_interest = datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc)
         line = scd_utils.ScheduleLine(
             experiment="A",
             scheduling_mode="common",
-            timestamp=datetime.datetime(2000, 1, 1),
+            timestamp=datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc),
             duration=datetime.timedelta(days=1),
             priority=10,
         )
-        scd = remote_server.resolve_schedule([line])
+        scd = remote_server.resolve_schedule([line], time_of_interest)
         self.assertEqual(scd[0], line)
 
         line2 = scd_utils.ScheduleLine(
             experiment="B",
             scheduling_mode="common",
-            timestamp=datetime.datetime(2000, 1, 1),  # same timestamp
+            timestamp=datetime.datetime(
+                2000, 1, 1, tzinfo=datetime.timezone.utc
+            ),  # same timestamp
             duration=datetime.timedelta(days=2),
             priority=5,
         )
-        scd = remote_server.resolve_schedule([line, line2])
+        scd = remote_server.resolve_schedule([line, line2], time_of_interest)
         self.assertEqual(scd[0], line)
         self.assertEqual(scd[1].experiment, line2.experiment)
         self.assertEqual(scd[1].duration, datetime.timedelta(days=1))
@@ -1212,11 +1219,13 @@ class TestRemoteServer(unittest.TestCase):
         line3 = scd_utils.ScheduleLine(
             experiment="C",
             scheduling_mode="common",
-            timestamp=datetime.datetime(2000, 2, 1),  # one month later
+            timestamp=datetime.datetime(
+                2000, 2, 1, tzinfo=datetime.timezone.utc
+            ),  # one month later
             duration=datetime.timedelta(days=1),
             priority=5,
         )
-        scd = remote_server.resolve_schedule([line, line2, line3])
+        scd = remote_server.resolve_schedule([line, line2, line3], time_of_interest)
         self.assertEqual(scd[0], line)
         self.assertEqual(scd[1].experiment, "B")
         self.assertEqual(scd[2], line3)
@@ -1224,11 +1233,15 @@ class TestRemoteServer(unittest.TestCase):
         line4 = scd_utils.ScheduleLine(
             experiment="D",
             scheduling_mode="common",
-            timestamp=datetime.datetime(1999, 12, 31),  # one day early
+            timestamp=datetime.datetime(
+                1999, 12, 31, tzinfo=datetime.timezone.utc
+            ),  # one day early
             duration="-",  # infinite
             priority=0,
         )
-        scd = remote_server.resolve_schedule([line, line2, line3, line4])
+        scd = remote_server.resolve_schedule(
+            [line, line2, line3, line4], time_of_interest
+        )
         self.assertEqual(len(scd), 6)
         self.assertEqual(scd[0].experiment, line4.experiment)
         self.assertEqual(scd[0].duration, datetime.timedelta(days=1))
@@ -1239,17 +1252,36 @@ class TestRemoteServer(unittest.TestCase):
         )  # line4 infinite so it fills in the gaps
         self.assertEqual(scd[4], line3)
         self.assertEqual(scd[5].experiment, line4.experiment)
-        scd2 = remote_server.resolve_schedule([line4, line2, line, line3])
+        scd2 = remote_server.resolve_schedule(
+            [line4, line2, line, line3], time_of_interest
+        )
         self.assertEqual(scd, scd2)  # ensure order of input list doesn't matter
+
+        # Check that the schedule resolves correctly even if we are in the middle of a finite line
+        # Should chop out line4 being scheduled before `new_time_of_interest`
+        new_time_of_interest = datetime.datetime(
+            2000, 1, 1, 12, tzinfo=datetime.timezone.utc
+        )
+        scd3 = remote_server.resolve_schedule(
+            [line4, line2, line, line3], new_time_of_interest
+        )
+        self.assertEqual(len(scd3), 5)
+        self.assertEqual(scd3[0].experiment, line.experiment)
+        self.assertEqual(scd3[0].duration, datetime.timedelta(days=1))
+        self.assertEqual(scd3[1].experiment, line2.experiment)
 
         line5 = scd_utils.ScheduleLine(
             experiment="E",
             scheduling_mode="common",
-            timestamp=datetime.datetime(2000, 1, 1, 12),  # noon
+            timestamp=datetime.datetime(
+                2000, 1, 1, 12, tzinfo=datetime.timezone.utc
+            ),  # noon
             priority=5,
             duration=datetime.timedelta(hours=6),  # entirely during experiment A
         )
-        scd = remote_server.resolve_schedule([line, line2, line3, line4, line5])
+        scd = remote_server.resolve_schedule(
+            [line, line2, line3, line4, line5], time_of_interest
+        )
         self.assertEqual(
             scd, scd2
         )  # line5 ignored as it is lower priority than others scheduled
@@ -1257,28 +1289,32 @@ class TestRemoteServer(unittest.TestCase):
         line6 = scd_utils.ScheduleLine(
             experiment="F",
             scheduling_mode="common",
-            timestamp=datetime.datetime(1999, 12, 31),
+            timestamp=datetime.datetime(1999, 12, 31, tzinfo=datetime.timezone.utc),
             duration="-",
             priority=0,
         )
         # Test that for equal lines, the one later in the schedule list is kept
-        scd = remote_server.resolve_schedule([line, line2, line3, line4, line5, line6])
+        scd = remote_server.resolve_schedule(
+            [line, line2, line3, line4, line5, line6], time_of_interest
+        )
         self.assertEqual(
             len([x for x in scd if x.experiment == "D"]), 0
         )  # experiment D missing, superseded by F
-        scd = remote_server.resolve_schedule([line, line2, line3, line5, line6, line4])
+        scd = remote_server.resolve_schedule(
+            [line, line2, line3, line5, line6, line4], time_of_interest
+        )
         self.assertEqual(
             len([x for x in scd if x.experiment == "F"]), 0
         )  # experiment F missing, superseded by D
 
         line7 = scd_utils.ScheduleLine(
-            timestamp=datetime.datetime(2000, 1, 1),
+            timestamp=datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc),
             duration=datetime.timedelta(days=1),
             experiment="G",
             priority=10,
             scheduling_mode="common",
         )
-        scd = remote_server.resolve_schedule([line, line7])
+        scd = remote_server.resolve_schedule([line, line7], time_of_interest)
         self.assertEqual(len(scd), 1)
         self.assertEqual(scd[0], line7)
 
@@ -1288,7 +1324,9 @@ class TestRemoteServer(unittest.TestCase):
         Test creating atq commands from scd lines
         """
         # Atq commands are: [command to run] | at [now+ x minute | -t %Y%m%d%H%M]
-        time_of_interest = datetime.datetime(2022, 9, 8, 12, 34)
+        time_of_interest = datetime.datetime(
+            2022, 9, 8, 12, 34, tzinfo=datetime.timezone.utc
+        )
 
         scd_line = scd_utils.ScheduleLine(
             timestamp=time_of_interest,
@@ -1312,7 +1350,9 @@ class TestRemoteServer(unittest.TestCase):
             "exp release common' | "
             "at now + 1 minute",
         )
-        time_of_interest = datetime.datetime(2019, 4, 3, 9, 56)
+        time_of_interest = datetime.datetime(
+            2019, 4, 3, 9, 56, tzinfo=datetime.timezone.utc
+        )
         scd_line.timestamp = time_of_interest
         scd_line.kwargs = ["this", "is", "the", "kwargs"]
         atq_str = remote_server.format_to_atq(scd_line)

@@ -87,6 +87,15 @@ class ScheduleLine:
                 raise ValueError("must be greater than one minute")
         return v
 
+    @field_validator("timestamp")
+    @classmethod
+    def check_timestamp(cls, v: dt.datetime) -> dt.datetime:
+        """Verifies v is a time-aware datetime object"""
+        if v.tzinfo != dt.timezone.utc:
+            raise ValueError("timestamp must have UTC timezone")
+
+        return v
+
     @model_validator(mode="after")
     def check_inf_line_priority(self) -> Self:
         if self.duration == "-" and self.priority > 0:
@@ -153,8 +162,12 @@ class ScheduleLine:
                 # supplied as --rawacf_format=<format>
                 raw_format = kwargs.pop(idx).split("=")[1]
 
+        line_timestamp = dt.datetime.strptime(
+            f"{fields[0]} {fields[1]}", "%Y%m%d %H:%M"
+        )
+        line_timestamp = line_timestamp.replace(tzinfo=dt.timezone.utc)
         scd_line = ScheduleLine(
-            timestamp=dt.datetime.strptime(f"{fields[0]} {fields[1]}", "%Y%m%d %H:%M"),
+            timestamp=line_timestamp,
             duration=duration,
             priority=int(fields[3]),
             experiment=fields[4],
@@ -248,7 +261,9 @@ class SCDUtils:
         :rtype:     ScheduleLine
         """
         # create datetime from args to see if valid. Value error for incorrect format
-        time = dt.datetime.strptime(yyyymmdd + " " + hhmm, self.scd_dt_fmt)
+        time = dt.datetime.strptime(yyyymmdd + " " + hhmm, self.scd_dt_fmt).replace(
+            tzinfo=dt.timezone.utc
+        )
 
         return ScheduleLine(
             timestamp=time,
@@ -461,7 +476,9 @@ class SCDUtils:
 
         try:
             # create datetime from args to see if valid
-            time = dt.datetime.strptime(yyyymmdd + " " + hhmm, self.scd_dt_fmt)
+            time = dt.datetime.strptime(yyyymmdd + " " + hhmm, self.scd_dt_fmt).replace(
+                tzinfo=dt.timezone.utc
+            )
         except ValueError:
             raise ValueError("Can not create datetime from supplied formats")
 

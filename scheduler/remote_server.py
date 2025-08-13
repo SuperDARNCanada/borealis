@@ -61,7 +61,7 @@ def format_to_atq(
     return cmd_str
 
 
-def resolve_schedule(scd_lines):
+def resolve_schedule(scd_lines, time_of_interest):
     """
     Creates a true timeline from the scd lines, accounting for priority and duration of each line.
     Will reorder and add breaks to lines to account for differing priorities and durations. Keep the
@@ -152,7 +152,7 @@ def resolve_schedule(scd_lines):
     for line in sorted_lines:
         start = line.timestamp
         if line.duration == "-":
-            end = datetime.datetime.max
+            end = datetime.datetime.max.replace(tzinfo=datetime.timezone.utc)
         else:
             end = start + line.duration
 
@@ -165,6 +165,14 @@ def resolve_schedule(scd_lines):
             new_line.timestamp = block[0]
             scheduled.append(new_line)
     scheduled.sort(key=lambda x: x.timestamp)
+
+    # If there are multiple events scheduled that start in the past, then remove all but the most recent one.
+    # E.g. there's a past infinite line, and you're in the middle of a finite experiment line. This would have
+    # both the infinite and finite lines starting in the past, so we want to throw out the infinite one since the
+    # finite one supersedes it
+    in_past = [x for x in scheduled if x.timestamp < time_of_interest]
+    if len(in_past) > 1:
+        scheduled = scheduled[len(in_past) - 1 :]
 
     return scheduled
 
@@ -219,12 +227,8 @@ def timeline_to_atq(timeline, scd_dir, time_of_interest, site_id):
     atq = []
     first_event = True
     for event in timeline:
-        atq.append(
-            format_to_atq(
-                event,
-                first_event,
-            )
-        )
+        atq_call = format_to_atq(event, first_event)
+        atq.append(atq_call)
         first_event = False
     for cmd in atq:
         sp.call(cmd, shell=True)
@@ -233,7 +237,6 @@ def timeline_to_atq(timeline, scd_dir, time_of_interest, site_id):
 
 
 def _main():
-    """ """
     parser = argparse.ArgumentParser(
         description="Automatically schedules new SCD file entries"
     )
@@ -261,7 +264,7 @@ def _main():
     def make_schedule():
         print("Making schedule...")
 
-        time_of_interest = dt.datetime.utcnow()
+        time_of_interest = dt.datetime.now(dt.timezone.utc)
 
         log_time_str = time_of_interest.strftime("%Y.%m.%d.%H.%M")
         log_file = f"{log_dir}/{site_id}_remote_server.{log_time_str}.log"
@@ -271,6 +274,7 @@ def _main():
         yyyymmdd = time_of_interest.strftime("%Y%m%d")
         hhmm = time_of_interest.strftime("%H:%M")
         relevant_lines = scd_util.get_relevant_lines(yyyymmdd, hhmm)
+
         try:
             i = 0
             for i, line in enumerate(relevant_lines):
@@ -286,7 +290,7 @@ def _main():
             sp.call(command.split(), shell=True)
 
         else:
-            timeline = resolve_schedule(relevant_lines)
+            timeline = resolve_schedule(relevant_lines, time_of_interest)
             new_atq_str = timeline_to_atq(timeline, scd_dir, time_of_interest, site_id)
 
             with open(log_file, "wb") as f:
