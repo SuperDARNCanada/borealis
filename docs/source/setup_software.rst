@@ -169,7 +169,7 @@ the note when running ``install_radar_deps.py``.
 
     @users - rtprio 99
 
-#. Once all dependencies are resolved, use ``scons`` to build the system. 
+#. Once all dependencies are resolved, use ``scons`` to build the system.
    ``SCONSFLAGS`` variable can be added to ``.profile`` to hold any flags such
    as ``-j`` for parallel builds. ::
 

@@ -182,14 +182,14 @@ def sequence_worker(options, ringbuffer):
         # of existing data without making a copy.
         if cupy_available:
             if rx_params.end_sample > ringbuffer.shape[1]:
-                piece1 = ringbuffer[:, rx_params.start_sample:]
+                piece1 = ringbuffer[:, rx_params.start_sample :]
                 piece2 = ringbuffer[:, : rx_params.end_sample - ringbuffer.shape[1]]
                 tmp1 = xp.array(piece1)
                 tmp2 = xp.array(piece2)
                 sequence_samples = xp.concatenate((tmp1, tmp2), axis=1)
             else:
                 sequence_samples = xp.array(
-                    ringbuffer[:, rx_params.start_sample:rx_params.end_sample]
+                    ringbuffer[:, rx_params.start_sample : rx_params.end_sample]
                 )
         else:
             sequence_samples = ringbuffer.take(indices, axis=1, mode="wrap")
@@ -254,7 +254,7 @@ def sequence_worker(options, ringbuffer):
             main_processor.beamform(rx_params.main_beam_angles)
             if rx_params.acf:
                 for slice_info in rx_params.slice_details:
-                    slice_info['skip'] = not slice_info['acf']
+                    slice_info["skip"] = not slice_info["acf"]
                 main_corrs = DSP.correlations_from_samples(
                     main_processor.beamformed_samples,
                     main_processor.beamformed_samples,
@@ -269,7 +269,7 @@ def sequence_worker(options, ringbuffer):
             log_dict["intf antennas"] = rx_params.intf_antennas
             if len(rx_params.intf_antennas) > 0:
                 intf_sequence_samples = sequence_samples[
-                    len(options.rx_main_antennas):, :
+                    len(options.rx_main_antennas) :, :
                 ]
                 intf_sequence_samples_shape = intf_sequence_samples.shape
                 intf_processor = DSP(
@@ -283,7 +283,7 @@ def sequence_worker(options, ringbuffer):
                 intf_processor.beamform(rx_params.intf_beam_angles)
                 if rx_params.acfint:
                     for slice_info in rx_params.slice_details:
-                        slice_info['skip'] = not slice_info['acfint']
+                        slice_info["skip"] = not slice_info["acfint"]
                     intf_corrs = DSP.correlations_from_samples(
                         intf_processor.beamformed_samples,
                         intf_processor.beamformed_samples,
@@ -292,7 +292,7 @@ def sequence_worker(options, ringbuffer):
                     )
                 if rx_params.xcf:
                     for slice_info in rx_params.slice_details:
-                        slice_info['skip'] = not slice_info['xcf']
+                        slice_info["skip"] = not slice_info["xcf"]
                     cross_corrs = DSP.correlations_from_samples(
                         intf_processor.beamformed_samples,
                         main_processor.beamformed_samples,

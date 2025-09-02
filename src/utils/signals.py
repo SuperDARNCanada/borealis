@@ -379,7 +379,7 @@ class DSP:
         """
         values = []
         for slc, slice_info in enumerate(slice_index_details):
-            if slice_info.get('skip', False) or slice_info["lags"].size == 0:
+            if slice_info.get("skip", False) or slice_info["lags"].size == 0:
                 values.append(np.array([]))
                 continue
 

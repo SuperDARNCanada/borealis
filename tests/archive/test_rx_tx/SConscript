@@ -29,5 +29,10 @@ import os
 
 Import('*')
 
+<<<<<<<< HEAD:tests/archive/test_rx_tx/SConscript
 Prog('test_rx_tx', Glob("./test_rx_tx.cpp"), with_libs=['utils', 'messages'],
      LIBS=['protobuf', 'pthread', 'boost_system', 'uhd', 'zmq', 'rt'])
+========
+Prog('usrp_driver', Glob("./*.c*"), with_libs=['utils', 'messages'],
+     LIBS=['protobuf', 'pthread','boost_system','uhd','zmq','rt'])
+>>>>>>>> main:src/usrp_drivers/SConscript

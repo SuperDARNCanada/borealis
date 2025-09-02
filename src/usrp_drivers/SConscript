@@ -24,10 +24,15 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-""""""
-import os
 
 Import('*')
+import os
 
+<<<<<<<< HEAD:src/usrp_drivers/SConscript
 Prog('usrp_driver', Glob("./*.c*"), with_libs=['utils'],
      LIBS=['pthread','boost_system','uhd','zmq','rt'])
+========
+RadarProtos = ['driverpacket','rxsamplesmetadata']
+Proto(RadarProtos)
+Lib('messages', protos=RadarProtos)
+>>>>>>>> main:src/utils/protobuf/SConscript

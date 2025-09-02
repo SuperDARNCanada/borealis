@@ -1,7 +1,8 @@
 ==========
-rawrf v0.5
+rawrf v0.7
 ==========
 
+<<<<<<<< HEAD:docs/source/archive/rawrf-v05.rst
 The pyDARNio format class for this format is BorealisRawrfv0_5 found in the `borealis_formats
 <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`_.
 
@@ -10,6 +11,19 @@ Borealis software version 0.5 is out of date, see the current format of the rawr
 
 This format is intended to hold high bandwidth, non-filtered raw data from every antenna.
 
+========
+This is the most up to date version of this file format produced by Borealis version 0.7, the
+current version.
+
+For data files from previous Borealis software versions, see `here
+<https://borealis.readthedocs.io/en/latest/borealis_data.html#previous-versions>`_.
+
+The pyDARNio format class for this format is BorealisRawrf found in the `borealis_formats
+<https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`_.
+
+The rawrf format is intended to hold high bandwidth, non-filtered raw data from every antenna.
+
+>>>>>>>> main:docs/source/rawrf.rst
 This format is only produced in a site-style, record by record format and is only available to be
 produced on request. Please note that this format can cause radar operating delays and may reduce
 number of averages in an integration, for example.
@@ -45,6 +59,11 @@ The file fields under the record name in rawrf site files are:
 | | **Field name**                 | **description**                             |
 | | *type*                         |                                             |
 +==================================+=============================================+
+| | **agc_status_word**            | | AGC status word. Bit position             |
+| | *uint32*                       | | corresponds to the USRP motherboard/      |
+| |                                | | transmitter. A '1' indicates an agc fault |
+| |                                | | occurred at least once during integration |
++----------------------------------+---------------------------------------------+
 | | **blanked_samples**            | | Samples that should be blanked because    |
 | | *uint32*                       | | they occurred during transmission times,  |
 | | [number of blanked             | | given by sample number (index into        |
@@ -63,28 +82,60 @@ The file fields under the record name in rawrf site files are:
 | |                                | | correctly read.                           |
 +----------------------------------+---------------------------------------------+
 | | **data_descriptors**           | | Denotes what each data dimension          |
+<<<<<<<< HEAD:docs/source/archive/rawrf-v05.rst
 | | *[unicode, ]*                  | | represents. = ‘num_sequences’,            |
 | |                                | | ‘num_antennas’, ‘num_samps’ for           |
 | |                                | | rawrf                                     |
 +----------------------------------+---------------------------------------------+
 | | **data_dimensions**            | | The dimensions in which to reshape the    |
 | | *[uint32, ]*                   | | data. Dimensions correspond to            |
+========
+| | *[bytes, ]*                    | | represents. = ‘num_sequences’,            |
+| |                                | | ‘num_antennas’, ‘num_samps’ for           |
+| |                                | | rawrf                                     |
++----------------------------------+---------------------------------------------+
+| | **data_dimensions**            | | The dimensions of the data.               |
+| | *[uint32, ]*                   | | Dimensions correspond to                  |
+>>>>>>>> main:docs/source/rawrf.rst
 | |                                | | data_descriptors.                         |
 +----------------------------------+---------------------------------------------+
 | | **experiment_comment**         | | Comment provided in experiment about the  |
 | | *unicode*                      | | experiment as a whole.                    |
 +----------------------------------+---------------------------------------------+
 | | **experiment_id**              | | Number used to identify the experiment.   |
+<<<<<<<< HEAD:docs/source/archive/rawrf-v05.rst
 | | *int64*                        | |                                           |
 +----------------------------------+---------------------------------------------+
 | | **experiment_name**            | | Name of the experiment file.              |
 | | *unicode*                      | |                                           |
+========
+| | *int16*                        | |                                           |
++----------------------------------+---------------------------------------------+
+| | **experiment_name**            | | Name of the experiment file.              |
+| | *unicode*                      | |                                           |
++----------------------------------+---------------------------------------------+
+| | **gps_locked**                 | | Designates if the local GPS had a lock    |
+| | *bool*                         | | during the entire integration period.     |
++----------------------------------+---------------------------------------------+
+| | **gps_to_system_time_diff**    | | The max time difference between box_time  |
+| | *float32*                      | | GPS time) and system time (NTP) during the|
+| |                                | | integration. Negative when GPS time is    |
+| |                                | | ahead of system time.                     |
+>>>>>>>> main:docs/source/rawrf.rst
 +----------------------------------+---------------------------------------------+
 | | **int_time**                   | | Integration time in seconds.              |
 | | *float32*                      | |                                           |
 +----------------------------------+---------------------------------------------+
 | | **intf_antenna_count**         | | Number of interferometer array antennas   |
 | | *uint32*                       | |                                           |
+<<<<<<<< HEAD:docs/source/archive/rawrf-v05.rst
+========
++----------------------------------+---------------------------------------------+
+| | **lp_status_word**             | | Low power status word. Bit position       |
+| | *uint32*                       | | corresponds to the USRP motherboard/      |
+| |                                | | transmitter. A '1' indicates low power    |
+| |                                | | occurred at least once during integration |
+>>>>>>>> main:docs/source/rawrf.rst
 +----------------------------------+---------------------------------------------+
 | | **main_antenna_count**         | | Number of main array antennas             |
 | | *uint32*                       | |                                           |
@@ -130,6 +181,13 @@ The file fields under the record name in rawrf site files are:
 +----------------------------------+---------------------------------------------+
 | | **station**                    | | Three-letter radar identifier.            |
 | | *unicode*                      | |                                           |
+<<<<<<<< HEAD:docs/source/archive/rawrf-v05.rst
+========
++----------------------------------+---------------------------------------------+
+| | **tx_antenna_phases**          | | The complex phase for each antenna for    |
+| | *[complex64, ]*                | | transmission, normalized such that full-  |
+| |                                | | power has magnitude 1.                    |
+>>>>>>>> main:docs/source/rawrf.rst
 +----------------------------------+---------------------------------------------+
 
 ------------------------

@@ -1,12 +1,26 @@
 =========
-bfiq v0.5
+bfiq v0.7
 =========
 
+<<<<<<<< HEAD:docs/source/archive/bfiq-v05.rst
 The pyDARNio format class for this format is BorealisBfiqv0_5 found in the `borealis_formats <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`_.
 
 Borealis software version 0.5 is out of date, see the current format of the bfiq files `here <https://borealis.readthedocs.io/en/latest/borealis_data.html#borealis-current-version>`__.
 
 The bfiq format is intended to hold beamformed I and Q data for the main and interferometer arrays. The data is not averaged.
+========
+This is the most up to date version of this file format produced by Borealis version 0.7, the
+current version.
+
+For data files from previous Borealis software versions, see `here
+<https://borealis.readthedocs.io/en/latest/borealis_data.html#previous-versions>`__.
+
+The pyDARNio format class for this format is BorealisBfiq found in the `borealis_formats
+<https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`_.
+
+The bfiq format is intended to hold beamformed I and Q data for the main and interferometer arrays.
+The data is not averaged.
+>>>>>>>> main:docs/source/bfiq.rst
 
 Both site files and array-restructured files exist for this file type. Both are described below.
 
@@ -14,19 +28,37 @@ Both site files and array-restructured files exist for this file type. Both are 
 bfiq array files
 ----------------
 
+<<<<<<<< HEAD:docs/source/archive/bfiq-v05.rst
 Array restructured files are produced after the radar has finished writing a file and contain record data in multi-dimensional arrays so as to avoid repeated values, shorten the read time, and improve human readability. Fields that are unique to the record are written as arrays where the first dimension is equal to the number of records recorded. Other fields that are unique to the slice or experiment (and are therefore repeated for all records) are written only once.
+========
+Array restructured files are produced after the radar has finished writing a file and contain record
+data in multi-dimensional arrays so as to avoid repeated values, shorten the read time, and improve
+human readability. Fields that are unique to the record are written as arrays where the first
+dimension is equal to the number of records recorded. Other fields that are unique to the slice or
+experiment (and are therefore repeated for all records) are written only once.
+>>>>>>>> main:docs/source/bfiq.rst
 
-The group names in these files are the field names themselves, greatly reducing the number of group names in the file when compared to site files and making the file much more human readable.
+The group names in these files are the field names themselves, greatly reducing the number of group
+names in the file when compared to site files and making the file much more human readable.
 
-The naming convention of the bfiq array-structured files are:
+The naming convention of the bfiq array-structured files are: ::
 
-[YYYYmmDD].[HHMM].[SS].[station_id].[slice_id].bfiq.hdf5
+    [YYYYmmDD].[HHMM].[SS].[station_id].[slice_id].bfiq.hdf5
 
-For example: 20191105.1400.02.sas.0.bfiq.hdf5
+For example: ::
 
-This is the file that began writing at 14:00:02 UT on November 5 2019 at the Saskatoon site, and it provides data for slice 0 of the experiment that ran at that time. It has been array restructured because it does not have a .site designation at the end of the filename.
+    20191105.1400.02.sas.0.bfiq.hdf5
 
+<<<<<<<< HEAD:docs/source/archive/bfiq-v05.rst
 These files are zlib compressed which is native to hdf5 and no decompression is necessary before reading using your hdf5 library.
+========
+This is the file that began writing at 14:00:02 UT on November 5 2019 at the Saskatoon site, and it
+provides data for slice 0 of the experiment that ran at that time. It has been array restructured
+because it does not have a .site designation at the end of the filename.
+
+These files are zlib compressed which is native to hdf5 and no decompression is necessary before
+reading using your hdf5 library.
+>>>>>>>> main:docs/source/bfiq.rst
 
 The file fields in the bfiq array files are:
 
@@ -35,8 +67,13 @@ The file fields in the bfiq array files are:
 | | *type*                          |                                             |
 | | [dimensions]                    |                                             |
 +===================================+=============================================+
+| | **agc_status_word**             | | AGC status word. Bit position             |
+| | *uint32*                        | | corresponds to the USRP motherboard/      |
+| | [num_records]                   | | transmitter. A '1' indicates an agc fault |
+| |                                 | | occurred at least once during integration |
++-----------------------------------+---------------------------------------------+
 | | **antenna_arrays_order**        | | States what order the data is in and      |
-| | *unicode*                       | | describes the data layout for the         |
+| | *bytes*                         | | describes the data layout for the         |
 | | [num_antenna_arrays]            | | num_antenna_arrays data dimension         |
 +-----------------------------------+---------------------------------------------+
 | | **beam_azms**                   | | A list of the beam azimuths for each beam |
@@ -78,7 +115,7 @@ The file fields in the bfiq array files are:
 | |                                 | | and beams to read for the record.         |
 +-----------------------------------+---------------------------------------------+
 | | **data_descriptors**            | | Denotes what each data dimension          |
-| | *unicode*                       | | represents. = 'num_records',              |
+| | *bytes*                         | | represents. = 'num_records',              |
 | | [5]                             | | ‘num_antenna_arrays’,                     |
 | |                                 | | ‘max_num_sequences’, ‘max_num_beams’,     |
 | |                                 | | ‘num_samps’                               |
@@ -91,7 +128,11 @@ The file fields in the bfiq array files are:
 | | *unicode*                       | | experiment as a whole.                    |
 +-----------------------------------+---------------------------------------------+
 | | **experiment_id**               | | Number used to identify the experiment.   |
+<<<<<<<< HEAD:docs/source/archive/bfiq-v05.rst
 | | *int64*                         | |                                           |
+========
+| | *int16*                         | |                                           |
+>>>>>>>> main:docs/source/bfiq.rst
 +-----------------------------------+---------------------------------------------+
 | | **experiment_name**             | | Name of the experiment file.              |
 | | *unicode*                       | |                                           |
@@ -106,6 +147,15 @@ The file fields in the bfiq array files are:
 | | *uint32*                        | | in kHz. This is the frequency the data    |
 | |                                 | | has been filtered to.                     |
 +-----------------------------------+---------------------------------------------+
+| | **gps_locked**                  | | Designates if the local GPS had a lock    |
+| | *bool*                          | | during the entire integration period.     |
+| | [num_records]                   | | False if it unlocked at least once.       |
++-----------------------------------+---------------------------------------------+
+| | **gps_to_system_time_diff**     | | The max time difference between box_time  |
+| | *float32*                       | | GPS time) and system time (NTP) during the|
+| | [num_records]                   | | integration. Negative when GPS time is    |
+| |                                 | | ahead of system time.                     |
++-----------------------------------+---------------------------------------------+
 | | **int_time**                    | | Integration time in seconds.              |
 | | *float32*                       | |                                           |
 | | [num_records]                   | |                                           |
@@ -117,6 +167,11 @@ The file fields in the bfiq array files are:
 | | *uint32*                        | | pulses array. Values have to be from      |
 | | [number of lags, 2]             | | pulses array. The lag number is lag[1] -  |
 | |                                 | | lag[0] for each lag pair.                 |
++-----------------------------------+---------------------------------------------+
+| | **lp_status_word**              | | Low power status word. Bit position       |
+| | *uint32*                        | | corresponds to the USRP motherboard/      |
+| | [num_records]                   | | transmitter. A '1' indicates low power    |
+| |                                 | | occurred at least once during integration |
 +-----------------------------------+---------------------------------------------+
 | | **main_antenna_count**          | | Number of main array antennas             |
 | | *uint32*                        | |                                           |
@@ -165,7 +220,11 @@ The file fields in the bfiq array files are:
 +-----------------------------------+---------------------------------------------+
 | | **pulse_phase_offset**          | | For pulse encoding phase, in degrees      |
 | | *float32*                       | | offset. Contains one phase offset per     |
+<<<<<<<< HEAD:docs/source/archive/bfiq-v05.rst
 | | [number of pulses]              | | pulse in pulses.                          |
+========
+| | [] or [num pulses x 1]          | | pulse in pulses                           |
+>>>>>>>> main:docs/source/bfiq.rst
 +-----------------------------------+---------------------------------------------+
 | | **pulses**                      | | The pulse sequence in units of the        |
 | | *uint32*                        | | tau_spacing.                              |
@@ -210,7 +269,11 @@ The file fields in the bfiq array files are:
 | |                                 | | driver and the USRPs are GPS disciplined  |
 | |                                 | | and synchronized using the Octoclock.     |
 | |                                 | | Provided in seconds since epoch.          |
+<<<<<<<< HEAD:docs/source/archive/bfiq-v05.rst
 | |                                 | | Note that records that do not have        |
+========
+| |                                 | | Note that records do not have             |
+>>>>>>>> main:docs/source/bfiq.rst
 | |                                 | | num_sequences = max_num_sequences will    |
 | |                                 | | have padded zeros. The num_sequences      |
 | |                                 | | array should be used to determine the     |
@@ -224,6 +287,14 @@ The file fields in the bfiq array files are:
 | | *uint32*                        | | microseconds. Spacing between pulses is   |
 | |                                 | | always a multiple of this.                |
 +-----------------------------------+---------------------------------------------+
+<<<<<<<< HEAD:docs/source/archive/bfiq-v05.rst
+========
+| | **tx_antenna_phases**           | | The complex phase for each antenna for    |
+| | *complex64*                     | | transmission, normalized such that full-  |
+| | [num_records x                  | | power has magnitude 1.                    |
+| | num_main_antennas]              | |                                           |
++-----------------------------------+---------------------------------------------+
+>>>>>>>> main:docs/source/bfiq.rst
 | | **tx_pulse_len**                | | Length of the transmit pulse in           |
 | | *uint32*                        | | microseconds.                             |
 +-----------------------------------+---------------------------------------------+
@@ -255,8 +326,18 @@ The file fields under the record name in bfiq site files are:
 | | **Field name**                 | **description**                             |
 | | *type*                         |                                             |
 +==================================+=============================================+
+<<<<<<<< HEAD:docs/source/archive/bfiq-v05.rst
 | | **antenna_arrays_order**       | | States what order the data is in and      |
 | | *[unicode, ]*                  | | describes the data layout for the         |
+========
+| | **agc_status_word**            | | AGC status word. Bit position             |
+| | *uint32*                       | | corresponds to the USRP motherboard/      |
+| |                                | | transmitter. A '1' indicates an agc fault |
+| |                                | | occurred at least once during integration |
++----------------------------------+---------------------------------------------+
+| | **antenna_arrays_order**       | | States what order the data is in and      |
+| | *[bytes, ]*                    | | describes the data layout for the         |
+>>>>>>>> main:docs/source/bfiq.rst
 | |                                | | num_antenna_arrays data dimension         |
 +----------------------------------+---------------------------------------------+
 | | **beam_azms**                  | | A list of the beam azimuths for each      |
@@ -278,6 +359,7 @@ The file fields under the record name in bfiq site files are:
 | |                                | | latest git tag of the software.           |
 +----------------------------------+---------------------------------------------+
 | | **data**                       | | A contiguous set of samples (complex      |
+<<<<<<<< HEAD:docs/source/archive/bfiq-v05.rst
 | | *[complex64, ]*                | | float) at given sample rate. Needs to be  |
 | |                                | | reshaped by data_dimensions to be         |
 | |                                | | correctly read.                           |
@@ -289,6 +371,18 @@ The file fields under the record name in bfiq site files are:
 +----------------------------------+---------------------------------------------+
 | | **data_dimensions**            | | The dimensions in which to reshape the    |
 | | *[uint32, ]*                   | | data. Dimensions correspond to            |
+========
+| | *[complex64, ]*                | | float) at given sample rate. Dimensions   |
+| |                                | | match that of data_dimensions field.      |
++----------------------------------+---------------------------------------------+
+| | **data_descriptors**           | | Denotes what each data dimension          |
+| | *[bytes, ]*                    | | represents. = ‘num_antenna_arrays’,       |
+| |                                | | ‘num_sequences’, ‘num_beams’, ‘num_samps’ |
+| |                                | | for bfiq                                  |
++----------------------------------+---------------------------------------------+
+| | **data_dimensions**            | | The dimensions of the data.               |
+| | *[uint32, ]*                   | | Dimensions correspond to                  |
+>>>>>>>> main:docs/source/bfiq.rst
 | |                                | | data_descriptors.                         |
 +----------------------------------+---------------------------------------------+
 | | **data_normalization_factor**  | | Scale of all the filters used, multiplied |
@@ -299,7 +393,11 @@ The file fields under the record name in bfiq site files are:
 | | *unicode*                      | | experiment as a whole.                    |
 +----------------------------------+---------------------------------------------+
 | | **experiment_id**              | | Number used to identify the experiment.   |
+<<<<<<<< HEAD:docs/source/archive/bfiq-v05.rst
 | | *int64*                        | |                                           |
+========
+| | *int16*                        | |                                           |
+>>>>>>>> main:docs/source/bfiq.rst
 +----------------------------------+---------------------------------------------+
 | | **experiment_name**            | | Name of the experiment file.              |
 | | *unicode*                      | |                                           |
@@ -314,6 +412,14 @@ The file fields under the record name in bfiq site files are:
 | | *uint32*                       | | in kHz. This is the frequency the data    |
 | |                                | | has been filtered to.                     |
 +----------------------------------+---------------------------------------------+
+| | **gps_locked**                 | | Designates if the local GPS had a lock    |
+| | *bool*                         | | during the entire integration period.     |
++----------------------------------+---------------------------------------------+
+| | **gps_to_system_time_diff**    | | The max time difference between box_time  |
+| | *float32*                      | | GPS time) and system time (NTP) during the|
+| |                                | | integration. Negative when GPS time is    |
+| |                                | | ahead of system time.                     |
++----------------------------------+---------------------------------------------+
 | | **int_time**                   | | Integration time in seconds.              |
 | | *float32*                      | |                                           |
 +----------------------------------+---------------------------------------------+
@@ -326,9 +432,20 @@ The file fields under the record name in bfiq site files are:
 | |                                | | array. The lag number is lag[1] - lag[0]  |
 | |                                | | for each lag pair.                        |
 +----------------------------------+---------------------------------------------+
+<<<<<<<< HEAD:docs/source/archive/bfiq-v05.rst
 | | **main_antenna_count**         | | Number of main array antennas             |
 | | *uint32*                       | |                                           |
 +----------------------------------+---------------------------------------------+
+========
+| | **lp_status_word**             | | Low power status word. Bit position       |
+| | *uint32*                       | | corresponds to the USRP motherboard/      |
+| |                                | | transmitter. A '1' indicates low power    |
+| |                                | | occurred at least once during integration |
++----------------------------------+---------------------------------------------+
+| | **main_antenna_count**         | | Number of main array antennas             |
+| | *uint32*                       | |                                           |
++----------------------------------+---------------------------------------------+
+>>>>>>>> main:docs/source/bfiq.rst
 | | **noise_at_freq**              | | Noise at the receive frequency, with      |
 | | *[float64, ]*                  | | dimension = number of sequences.          |
 | |                                | | 20191114: not currently implemented and   |
@@ -353,7 +470,11 @@ The file fields under the record name in bfiq site files are:
 +----------------------------------+---------------------------------------------+
 | | **pulse_phase_offset**         | | For pulse encoding phase, in degrees      |
 | | *[float32, ]*                  | | offset. Contains one phase offset per     |
+<<<<<<<< HEAD:docs/source/archive/bfiq-v05.rst
 | |                                | | pulse in pulses.                          |
+========
+| |                                | | pulse in pulses, or none.                 |
+>>>>>>>> main:docs/source/bfiq.rst
 +----------------------------------+---------------------------------------------+
 | | **pulses**                     | | The pulse sequence in units of the        |
 | | *[uint32, ]*                   | | tau_spacing.                              |
@@ -402,6 +523,13 @@ The file fields under the record name in bfiq site files are:
 | | *uint32*                       | | microseconds. Spacing between pulses is   |
 | |                                | | always a multiple of this.                |
 +----------------------------------+---------------------------------------------+
+<<<<<<<< HEAD:docs/source/archive/bfiq-v05.rst
+========
+| | **tx_antenna_phases**          | | The complex phase for each antenna for    |
+| | *[complex64, ]*                | | transmission, normalized such that full-  |
+| |                                | | power has magnitude 1.                    |
++----------------------------------+---------------------------------------------+
+>>>>>>>> main:docs/source/bfiq.rst
 | | **tx_pulse_len**               | | Length of the transmit pulse in           |
 | | *uint32*                       | | microseconds.                             |
 +----------------------------------+---------------------------------------------+
@@ -410,12 +538,20 @@ The file fields under the record name in bfiq site files are:
 Site/Array Restructuring
 ------------------------
 
+<<<<<<<< HEAD:docs/source/archive/bfiq-v05.rst
 File restructuring to array files is done using an additional code package. Currently, this code is
 housed within `pyDARNio <https://github.com/SuperDARN/pyDARNio>`_.
 
 The site to array file restructuring occurs in the borealis BaseFormat _site_to_array class method,
 and array to site restructuring is done in the same class _array_to_site method. Both can be found
 `here <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`__.
+========
+File restructuring to and from array files is done using an additional code package. Currently, this
+code is housed within `pyDARNio <https://github.com/SuperDARN/pyDARNio>`_.
+
+Restructuring between site and array formats occur within the BorealisRestructure class, found `here
+<https://github.com/SuperDARN/pyDARNio/blob/main/pydarnio/borealis/borealis_restructure.py>`__.
+>>>>>>>> main:docs/source/bfiq.rst
 
 -------------------------------------
 bfiq to iqdat SDARN (DMap) Conversion
