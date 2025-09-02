@@ -93,14 +93,11 @@ Minimum requirements:
 Networking
 ----------
 
-- 3x Netgear XS708E-200NES (North American model #) 10Gb switches (parent model name is XS708Ev2)
-  (NOTE: These network switches are discontinued as of 2021. See `this page
-  <https://community.netgear.com/t5/Plus-and-Smart-Switches-Forum/XS708T-and-XS716T-discontinued/m-p/2137635>`_)
-- A potential replacement with a fiber optic link (SFP+) is the FS S3900 48 Port 1GbE switch.
-- 1x 5-port network switch that can handle 10Mbps and 100Mbps connection speeds (10BASE-T and 100BASE-T)
-  OR if using the FS S3900 48 port, it supports 10Mbps for the octoclocks.
-- 27x SSTP CAT 6a 7ft cables or better* (16x for the N200s, 2x for daisy-chaining the switches, 3x
-  for the octoclocks, 1x for connecting to the 1GbE network switch, and 5x spares).
+Note that these devices are what we currently use for the 5 SuperDARN Canada sites, and are by no means the only devices
+that would work for a Borealis radar.
+- 1x FS S3900 48 Port 1GbE switch. Supports 10Mbps (for octoclock), 100Mbps, 1Gbps (for N200s), and 10Gbps
+  (for control computer) speeds.
+- 24x SSTP CAT 6a 7ft cables or better* (16x for the N200s, 3x for the octoclocks, and 5x spares).
 - 2x SSTP CAT 6a 15ft cables* (for connecting to the Borealis computer, and one spare)
 - Optional for Fiber: DAC/AOC cables such as the FS SFPP-AO05
 
