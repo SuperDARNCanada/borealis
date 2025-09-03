@@ -1,8 +1,7 @@
 ===========
-rawacf v0.7
+rawacf v0.5
 ===========
 
-<<<<<<<< HEAD:docs/source/archive/rawacf-v05.rst
 The pyDARNio format class for this format is BorealisRawacfv0_5 found in the `borealis_formats
 <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`_.
 
@@ -10,18 +9,6 @@ Borealis software version 0.5 is out of date, see the current format of the rawa
 <https://borealis.readthedocs.io/en/latest/borealis_data.html#borealis-current-version>`__.
 
 This format is intended to hold beamformed, averaged, correlated data.
-========
-This is the most up to date version of this file format produced by Borealis version 0.7, the
-current version.
-
-For data files from previous Borealis software versions, see `here
-<https://borealis.readthedocs.io/en/latest/borealis_data.html#previous-versions>`__.
-
-The pyDARNio format class for this format is BorealisRawacf found in the `borealis_formats
-<https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`_.
-
-The rawacf format is intended to hold beamformed, averaged, correlated data.
->>>>>>>> main:docs/source/rawacf.rst
 
 Both site files and array-restructured files exist for this file type. Both are described below.
 
@@ -60,14 +47,6 @@ The file fields in the rawacf array files are:
 | | *type*                          |                                             |
 | | [dimensions]                    |                                             |
 +===================================+=============================================+
-<<<<<<<< HEAD:docs/source/archive/rawacf-v05.rst
-========
-| | **agc_status_word**             | | AGC status word. Bit position             |
-| | *uint32*                        | | corresponds to the USRP motherboard/      |
-| | [num_records]                   | | transmitter. A '1' indicates an agc fault |
-| |                                 | | occurred at least once during integration |
-+-----------------------------------+---------------------------------------------+
->>>>>>>> main:docs/source/rawacf.rst
 | | **averaging_method**            | | A string describing the averaging method. |
 | | *unicode*                       | | Default is 'mean' but an experiment can   |
 | |                                 | | set this to 'median' to get the median of |
@@ -105,8 +84,8 @@ The file fields in the rawacf array files are:
 | |                                 | | characters. Typically begins with the     |
 | |                                 | | latest git tag of the software.           |
 +-----------------------------------+---------------------------------------------+
-| | **data_descriptors**            | | Denotes what each data dimension          |
-| | *bytes*                         | | (in main_acfs, intf_acfs, xcfs)           |
+| | **correlation_descriptors**     | | Denotes what each correlation dimension   |
+| | *unicode*                       | | (in main_acfs, intf_acfs, xcfs)           |
 | | [4]                             | | represents. = 'num_records',              |
 | |                                 | | ‘max_num_beams’, 'num_ranges', 'num_lags' |
 +-----------------------------------+---------------------------------------------+
@@ -118,11 +97,7 @@ The file fields in the rawacf array files are:
 | | *unicode*                       | | experiment as a whole.                    |
 +-----------------------------------+---------------------------------------------+
 | | **experiment_id**               | | Number used to identify the experiment.   |
-<<<<<<<< HEAD:docs/source/archive/rawacf-v05.rst
 | | *int64*                         | |                                           |
-========
-| | *int16*                         | |                                           |
->>>>>>>> main:docs/source/rawacf.rst
 +-----------------------------------+---------------------------------------------+
 | | **experiment_name**             | | Name of the experiment file.              |
 | | *unicode*                       | |                                           |
@@ -137,26 +112,10 @@ The file fields in the rawacf array files are:
 | | *uint32*                        | | in kHz. This is the frequency the data    |
 | |                                 | | has been filtered to.                     |
 +-----------------------------------+---------------------------------------------+
-<<<<<<<< HEAD:docs/source/archive/rawacf-v05.rst
 | | **int_time**                    | | Integration time in seconds.              |
 | | *float32*                       | |                                           |
 | | [num_records]                   | |                                           |
 +-----------------------------------+---------------------------------------------+
-========
-| | **gps_locked**                  | | Designates if the local GPS had a lock    |
-| | *bool*                          | | during the entire integration period.     |
-| | [num_records]                   | | False if it unlocked at least once.       |
-+-----------------------------------+---------------------------------------------+
-| | **gps_to_system_time_diff**     | | The max time difference between box_time  |
-| | *float32*                       | | GPS time) and system time (NTP) during the|
-| | [num_records]                   | | integration. Negative when GPS time is    |
-| |                                 | | ahead of system time.                     |
-+-----------------------------------+---------------------------------------------+
-| | **int_time**                    | | Integration time in seconds.              |
-| | *float32*                       | |                                           |
-| | [num_records]                   | |                                           |
-+-----------------------------------+---------------------------------------------+
->>>>>>>> main:docs/source/rawacf.rst
 | | **intf_acfs**                   | | Interferometer array correlations. Note   |
 | | *complex64*                     | | that records that do not have num_beams = |
 | | [num_records x                  | | max_num_beams will have padded zeros. The |
@@ -172,14 +131,6 @@ The file fields in the rawacf array files are:
 | | [number of lags, 2]             | | pulses array. The lag number is lag[1] -  |
 | |                                 | | lag[0] for each lag pair.                 |
 +-----------------------------------+---------------------------------------------+
-<<<<<<<< HEAD:docs/source/archive/rawacf-v05.rst
-========
-| | **lp_status_word**              | | Low power status word. Bit position       |
-| | *uint32*                        | | corresponds to the USRP motherboard/      |
-| | [num_records]                   | | transmitter. A '1' indicates low power    |
-| |                                 | | occurred at least once during integration |
-+-----------------------------------+---------------------------------------------+
->>>>>>>> main:docs/source/rawacf.rst
 | | **main_acfs**                   | | Main array correlations. Note             |
 | | *complex64*                     | | that records that do not have num_beams = |
 | | [num_records x                  | | max_num_beams will have padded zeros. The |
@@ -279,14 +230,6 @@ The file fields in the rawacf array files are:
 | | *uint32*                        | | microseconds. Spacing between pulses is   |
 | |                                 | | always a multiple of this.                |
 +-----------------------------------+---------------------------------------------+
-<<<<<<<< HEAD:docs/source/archive/rawacf-v05.rst
-========
-| | **tx_antenna_phases**           | | The complex phase for each antenna for    |
-| | *complex64*                     | | transmission, normalized such that full-  |
-| | [num_records x                  | | power has magnitude 1.                    |
-| | num_main_antennas]              | |                                           |
-+-----------------------------------+---------------------------------------------+
->>>>>>>> main:docs/source/rawacf.rst
 | | **tx_pulse_len**                | | Length of the transmit pulse in           |
 | | *uint32*                        | | microseconds.                             |
 +-----------------------------------+---------------------------------------------+
@@ -326,14 +269,6 @@ The file fields under the record name in rawacf site files are:
 | | **Field name**                 | **description**                             |
 | | *type*                         |                                             |
 +==================================+=============================================+
-<<<<<<<< HEAD:docs/source/archive/rawacf-v05.rst
-========
-| | **agc_status_word**            | | AGC status word. Bit position             |
-| | *uint32*                       | | corresponds to the USRP motherboard/      |
-| |                                | | transmitter. A '1' indicates an agc fault |
-| |                                | | occurred at least once during integration |
-+----------------------------------+---------------------------------------------+
->>>>>>>> main:docs/source/rawacf.rst
 | | **averaging_method**           | | A string describing the averaging method. |
 | | *unicode*                      | | Default is 'mean' but an experiment can   |
 | |                                | | set this to 'median' to get the median of |
@@ -360,7 +295,6 @@ The file fields under the record name in rawacf site files are:
 | |                                | | characters. Typically begins with the     |
 | |                                | | latest git tag of the software.           |
 +----------------------------------+---------------------------------------------+
-<<<<<<<< HEAD:docs/source/archive/rawacf-v05.rst
 | | **correlation_descriptors**    | | Denotes what each correlation dimension   |
 | | *[unicode, ]*                  | | (in main_acfs, intf_acfs, xcfs)           |
 | |                                | | represents. ('num_beams, 'num_ranges',    |
@@ -369,16 +303,6 @@ The file fields under the record name in rawacf site files are:
 | | **correlation_dimensions**     | | The dimensions in which to reshape the    |
 | | *[uint32, ]*                   | | acf or xcf datasets. Dimensions           |
 | |                                | | correspond to correlation_descriptors.    |
-========
-| | **data_descriptors**           | | Denotes what each data dimension          |
-| | *[bytes, ]*                    | | (in main_acfs, intf_acfs, xcfs)           |
-| |                                | | represents. ('num_beams, 'num_ranges',    |
-| |                                | | 'num_lags')                               |
-+----------------------------------+---------------------------------------------+
-| | **data_dimensions**            | | The dimensions of the acf of xcf          |
-| | *[uint32, ]*                   | | datasets. Dimensions correspond to        |
-| |                                | | data_descriptors.                         |
->>>>>>>> main:docs/source/rawacf.rst
 +----------------------------------+---------------------------------------------+
 | | **data_normalization_factor**  | | Scale of all the filters used, multiplied |
 | | *float32*                      | | for a total scale to normalize the data   |
@@ -388,11 +312,7 @@ The file fields under the record name in rawacf site files are:
 | | *unicode*                      | | experiment as a whole.                    |
 +----------------------------------+---------------------------------------------+
 | | **experiment_id**              | | Number used to identify the experiment.   |
-<<<<<<<< HEAD:docs/source/archive/rawacf-v05.rst
 | | *int64*                        | |                                           |
-========
-| | *int16*                        | |                                           |
->>>>>>>> main:docs/source/rawacf.rst
 +----------------------------------+---------------------------------------------+
 | | **experiment_name**            | | Name of the experiment file.              |
 | | *unicode*                      | |                                           |
@@ -406,14 +326,6 @@ The file fields under the record name in rawacf site files are:
 | | **freq**                       | | The frequency used for this experiment,   |
 | | *uint32*                       | | in kHz. This is the frequency the data    |
 | |                                | | has been filtered to.                     |
-+----------------------------------+---------------------------------------------+
-| | **gps_locked**                 | | Designates if the local GPS had a lock    |
-| | *bool*                         | | during the entire integration period.     |
-+----------------------------------+---------------------------------------------+
-| | **gps_to_system_time_diff**    | | The max time difference between box_time  |
-| | *float32*                      | | GPS time) and system time (NTP) during the|
-| |                                | | integration. Negative when GPS time is    |
-| |                                | | ahead of system time.                     |
 +----------------------------------+---------------------------------------------+
 | | **int_time**                   | | Integration time in seconds.              |
 | | *float32*                      | |                                           |
@@ -502,13 +414,6 @@ The file fields under the record name in rawacf site files are:
 | | *uint32*                       | | microseconds. Spacing between pulses is   |
 | |                                | | always a multiple of this.                |
 +----------------------------------+---------------------------------------------+
-<<<<<<<< HEAD:docs/source/archive/rawacf-v05.rst
-========
-| | **tx_antenna_phases**          | | The complex phase for each antenna for    |
-| | *[complex64, ]*                | | transmission, normalized such that full-  |
-| |                                | | power has magnitude 1.                    |
-+----------------------------------+---------------------------------------------+
->>>>>>>> main:docs/source/rawacf.rst
 | | **tx_pulse_len**               | | Length of the transmit pulse in           |
 | | *uint32*                       | | microseconds.                             |
 +----------------------------------+---------------------------------------------+
@@ -520,22 +425,12 @@ The file fields under the record name in rawacf site files are:
 Site/Array Restructuring
 ------------------------
 
-<<<<<<<< HEAD:docs/source/archive/rawacf-v05.rst
 File restructuring to array files is done using an additional code package. Currently, this code is
 housed within `pyDARNio <https://github.com/SuperDARN/pyDARNio>`_.
 
 The site to array file restructuring occurs in the borealis BaseFormat _site_to_array class method,
 and array to site restructuring is done in the same class _array_to_site method. Both can be found
 `here <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`__.
-========
-File restructuring to and from array files is done using an additional code package. Currently, this
-code is housed within `pyDARNio <https://github.com/SuperDARN/pyDARNio>`_.
-
-Restructuring between site and array formats occur within the BorealisRestructure class, found `here
-<https://github.com/SuperDARN/pyDARNio/blob/main/pydarnio/borealis/borealis_restructure.py>`__.
-
-.. _rawacf-sdarn-mapping:
->>>>>>>> main:docs/source/rawacf.rst
 
 ----------------------------------------
 rawacf to rawacf SDARN (DMap) Conversion

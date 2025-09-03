@@ -19,15 +19,8 @@
 #define RXSUBDEV std::string("A:A A:B")
 #define TXSUBDEV std::string("A:A")
 
-<<<<<<<< HEAD:tests/archive/test_rx_tx/test_rx_tx.cpp
 #define TXCHAN {0}
 #define RXCHAN {0, 1}
-========
-#define TXCHAN \
-  { 0 }
-#define RXCHAN \
-  { 0, 1 }
->>>>>>>> main:tests/test_rx_tx/test_rx_tx.cpp
 
 #define TXRATE (250.0e3)
 #define RXRATE (250.0e3)
@@ -36,11 +29,7 @@
 #define DELAY 10e-3
 
 #define PULSETIMES \
-<<<<<<<< HEAD:tests/archive/test_rx_tx/test_rx_tx.cpp
   {0.0, 13500e-6, 18000e-6, 30000e-6, 33000e-6, 39000e-6, 40500e-6}
-========
-  { 0.0, 13500e-6, 18000e-6, 30000e-6, 33000e-6, 39000e-6, 40500e-6 }
->>>>>>>> main:tests/test_rx_tx/test_rx_tx.cpp
 #define SAMPSPERCHAN(x) int(RXRATE * (x.back() + 23.5e-3))
 
 bool start_tx = false;
@@ -79,21 +68,13 @@ std::vector<std::complex<float>> make_ramped_pulse(double tx_rate) {
   auto ramp_size = int(10e-6 * tx_rate);
 
   for (auto j = tr_start_pad, k = 0; j < tr_start_pad + ramp_size; j++, k++) {
-<<<<<<<< HEAD:tests/archive/test_rx_tx/test_rx_tx.cpp
     auto a = ((k) * 1.0) / ramp_size;
-========
-    auto a = ((k)*1.0) / ramp_size;
->>>>>>>> main:tests/test_rx_tx/test_rx_tx.cpp
     samples[j] *= std::complex<float>(a, 0);
   }
 
   for (auto j = num_samps_per_antenna - tr_end_pad - 1, k = 0;
        j > num_samps_per_antenna - tr_end_pad - 1 - ramp_size; j--, k++) {
-<<<<<<<< HEAD:tests/archive/test_rx_tx/test_rx_tx.cpp
     auto a = ((k) * 1.0) / ramp_size;
-========
-    auto a = ((k)*1.0) / ramp_size;
->>>>>>>> main:tests/test_rx_tx/test_rx_tx.cpp
     samples[j] *= std::complex<float>(a, 0);
   }
 
