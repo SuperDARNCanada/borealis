@@ -95,8 +95,7 @@ Networking
 
 Note that these devices are what we currently use for the 5 SuperDARN Canada sites, and are by no means the only devices
 that would work for a Borealis radar.
-- 1x FS S3900 48 Port 1GbE switch. Supports 10Mbps (for octoclock), 100Mbps, 1Gbps (for N200s), and 10Gbps
-  (for control computer) speeds.
+- 1x FS S3900 48 Port 1GbE switch. Supports 10Mbps (for octoclock), 100Mbps, 1Gbps (for N200s), and 10Gbps (for control computer) speeds.
 - 24x SSTP CAT 6a 7ft cables or better* (16x for the N200s, 3x for the octoclocks, and 5x spares).
 - 2x SSTP CAT 6a 15ft cables* (for connecting to the Borealis computer, and one spare)
 - Optional for Fiber: DAC/AOC cables such as the FS SFPP-AO05
