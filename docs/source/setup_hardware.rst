@@ -290,7 +290,7 @@ Installing the Custom-Made TXIO Board
     - Finally, connect the LFRX jumper wires from J1 and LED wires from J3 to complete the
       installation.
 
-    .. image:: img/system_setup/n200_back_labelled.jpg
+    .. image:: img/system_setup/n200_back_labelled.png
        :scale: 80%
        :alt: TXIO rear view
        :align: center
