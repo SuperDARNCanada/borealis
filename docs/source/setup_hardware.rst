@@ -291,7 +291,7 @@ Installing the Custom-Made TXIO Board
       installation.
 
     .. image:: img/system_setup/n200_back_labelled.png
-       :scale: 80%
+       :scale: 50%
        :alt: TXIO rear view
        :align: center
 
