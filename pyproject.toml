@@ -19,7 +19,7 @@ dependencies = [
     "numpy<2",
     "posix_ipc",
     "pydantic>=2",
-    "pyDARNio @ git+https://github.com/SuperDARN/pyDARNio.git@borealis_v1",
+    "pyDARNio @ git+https://github.com/SuperDARN/pyDARNio.git@develop",
     "rich",
     "scipy",
     "structlog==24.1.0",

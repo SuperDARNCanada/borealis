@@ -1102,7 +1102,7 @@ class ExperimentSlice:
     @field_validator("lag_table", mode="after")
     @classmethod
     def check_lag_table(cls, lag_table, info):
-        if info.data["acf"]:
+        if info.data["acf"] and info.data.get("pulse_sequence", None) is not None:
             if lag_table is not None and len(lag_table) > 0:
                 # Check that lags are valid
                 for lag in lag_table:
