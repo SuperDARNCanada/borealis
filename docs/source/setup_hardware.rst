@@ -11,7 +11,7 @@ System Overview and Rack Setup
 Below is a recommended configuration in comparison to a common SuperDARN system, Note that the N200s
 are in custom made shelves, but shelves can also be purchased from National Instruments:
 
-.. figure:: img/Borealis_rack.png
+.. figure:: img/system_setup/USRP-rack-rev6.png
    :scale: 50 %
    :alt: Block diagram of ROS and Borealis racks
    :align: center
@@ -20,7 +20,7 @@ Here is an actual rack configuration as installed by SuperDARN Canada at the Sas
 SuperDARN site. Note that space has been allowed between the rackmount items to allow for cable
 routing. There is a lot of cabling involved at the front of the devices.
 
-.. figure:: img/sas-borealis-rack1.jpg
+.. figure:: img/system_setup/sas_borealis_rack_2023.jpg
    :scale: 25 %
    :alt: Rack photo
    :align: center
@@ -28,25 +28,26 @@ routing. There is a lot of cabling involved at the front of the devices.
 The items installed in the rack at the Saskatoon site are listed below in order from top to bottom
 in the rack:
 
-- Synology Network Attached Storage device
 - USRP rackmount shelf (in-house design) with 4 x N200s
-- Ettus Octoclock
+- Ettus OctoClock
 - USRP rackmount shelf (in-house design) with 4 x N200s
-- FS Dual WAN Gateway
-- FS S3900 48 Port 1GbE switch
-- Ettus Octoclock-G (with GPSDO)
-- USRP rackmount shelf (in-house design) with 4 x N200s
-- Ettus Octoclock
-- USRP rackmount shelf (in-house design) with 4 x N200s
-- Rackmount shelf with 4 x low-noise amplifiers for the interferometer array channels, and a
+- Rackmount shelf with 4 x low-noise amplifiers for the interferometer receive channels, and a
   terminal strip for power (supplied by 15V Acopian power supply)
-- APC Smart UPS
+- FS SG-3110 Dual WAN Security Gateway
+- FS S3900 48 Port 1GbE Switch
+- Ettus OctoClock-G (with GPSDO)
+- USRP rackmount shelf (in-house design) with 4 x N200s
+- Ettus OctoClock
+- USRP rackmount shelf (in-house design) with 4 x N200s
+- APC Smart-UPS X 2200 with AP6941 network card
 
 In addition to these items, there are the following:
 
-- 3 x APC PDUs (AP7900B) are mounted at the back of the rack
+- 3 x AP7900B APC Power Distribution Units (PDUs) mounted at the back of the rack
+- 4 x Tripp Lite power outlet strips mounted at the back of the rack
 - The Borealis computer is not in a rackmount case, instead it is placed to the right of the rack.
 - 16 x Mini-Circuits SLP-21.4 low pass filters on the TX outputs of each N200
+- Synology Network Attached Storage (NAS) device
 
 -----
 USRPs
@@ -192,7 +193,7 @@ Installing the Custom-Made TXIO Board
       :align: center
 
    .. image:: img/txio/txio_lfrx_signals.jpg
-      :scale: 50%
+      :scale: 40%
       :alt: TXIO lrfx signal connections
       :align: center
 
@@ -200,7 +201,7 @@ Installing the Custom-Made TXIO Board
    Orientation of the cables doesn't matter, as they will fit in the N200 case if rotated properly.
 
    .. image:: img/txio/txio_pcb_connections.jpg
-      :scale: 50%
+      :scale: 40%
       :alt: TXIO PCB view
       :align: center
 
@@ -267,12 +268,12 @@ Installing the Custom-Made TXIO Board
 
 
    .. image:: img/txio/txio_lfrx_signals.jpg
-      :scale: 80%
+      :scale: 40%
       :alt: TXIO LFRX signal connections
       :align: center
 
    .. image:: img/txio/txio_lfrx_pwr.jpg
-      :scale: 80%
+      :scale: 40%
       :alt: TXIO LRFX pwr connections
       :align: center
 
@@ -289,7 +290,7 @@ Installing the Custom-Made TXIO Board
     - Finally, connect the LFRX jumper wires from J1 and LED wires from J3 to complete the
       installation.
 
-    .. image:: img/txio/txio_rear.jpg
+    .. image:: img/system_setup/n200_back_labelled.jpg
        :scale: 80%
        :alt: TXIO rear view
        :align: center
@@ -501,15 +502,15 @@ assembly steps, cut it in half and solder the bare wire end to the coaxial cable
 Note that the *centre conductor* is attached to the *DCD* pin and the *braid* is connected to the
 *GND* pin.
 
-.. image:: img/pps_ntp_1.jpg
-   :scale: 80%
+.. image:: img/system_setup/pps_ntp_1.jpg
+   :scale: 20%
    :alt: Modify one SMA coaxial cable to connect to the DCD and GND pins of the motherboard
    :align: center
 
 A typical pinout for COM ports is shown below, but check with your motherboard's user manual to verify
 both the location and pinout:
 
-.. image:: img/typical_com_port.png
+.. image:: img/system_setup/typical_com_port.png
    :scale: 80%
    :alt: Typical motherboard COM port pinout
    :align: center
@@ -518,8 +519,8 @@ both the location and pinout:
 The photo below shows the modified coaxial cable in place. On the motherboard version in the photo,
 the onboard COM port is to the left of the 'AA' shown on the 7-segment display.
 
-.. image:: img/pps_ntp_2.jpg
-   :scale: 80%
+.. image:: img/system_setup/pps_ntp_2.jpg
+   :scale: 50%
    :alt: Modified coaxial cable connected to the COM port DCD and GND pins on the motherboard
    :align: center
 
@@ -529,8 +530,8 @@ use a PCIe serial port card. One such part that is known to work is the Rosewill
 below shows how one of these cards was modified by removing the physical D-Sub connector and using a
 bulkhead SMA connector in place.
 
-.. image:: img/pcie_serialport_pps.jpg
-   :scale: 80%
+.. image:: img/system_setup/pcie_serialport_pps.jpg
+   :scale: 50%
    :alt: Modify one SMA coaxial cable to connect to the DCD and GND pins of the pcie header
    :align: center
 
@@ -540,9 +541,9 @@ Octoclocks and Networking
 
 One issue with the Octoclock units is that they contain a very basic Ethernet controller chip, the
 ENC28J60. This means that the Octoclock units will only operate at 10Mbps link speed (10BASE-T). The
-10Gb network switches specified above (NetGear XS708E-200NES or XS708T) only operate at 100Mbps,
-1000Mbps and 10000Mbps. Therefore, a 5-port unmanaged switch is used to connect all three Octoclocks
-to one of the 10Gbps network switches. The 5-port switch must be capable of operating at both 10Mbps
-and 100Mbps so it can connect to both the Octoclocks as well as the XS708E switch. The network cables
+previously used 10Gb network switches (NetGear XS708E-200NES or XS708T) only operated at 100Mbps,
+1000Mbps and 10000Mbps. Therefore, a 5-port unmanaged switch was required to connect all three Octoclocks
+to one of the 10Gbps network switches. The 5-port switch had to be capable of operating at both 10Mbps
+and 100Mbps so it could connect to both the Octoclocks as well as the XS708E switch. The network cables
 connecting the Octoclocks to the 5-port switch do not need to be dual shielded and any Cat5 cable
 (or better) should work.
