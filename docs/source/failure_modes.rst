@@ -118,8 +118,8 @@ the expected pattern. The symptoms are:
 Here is an example image from a webcam photo of the Saskatoon SuperDARN Borealis rack where the IDLE
 LED on N200 #4 is lit when it shouldn't be:
 
-.. image:: img/n200_LED_fault.jpg
-   :scale: 80%
+.. figure:: img/n200_LED_fault.jpg
+   :width: 30%
    :alt: N200 with IDLE LED incorrectly lit while Borealis operates normally
    :align: center
 

@@ -53,7 +53,7 @@ Power Monitor board via the 4 pin connector J5. See photo below of the Power Mon
 showing IC6 and J5 at the bottom middle and bottom left:
 
 .. figure:: img/transmitter/pwr_mon.jpg
-   :scale: 50 %
+   :width: 50 %
    :alt: Power Monitor board IC6 and J5
    :align: center
 
@@ -70,12 +70,12 @@ and a DE9 style connector on the old control card end carries 4 differential sig
 The pinouts for both ends of this cable are shown below:
 
 .. figure:: img/transmitter/pinout_tx_end.jpg
-   :scale: 50 %
+   :width: 50 %
    :alt: Pinout, TX control cable, TX end
    :align: center
 
 .. figure:: img/transmitter/de9_pinout.jpg
-   :scale: 50 %
+   :width: 50 %
    :alt: Pinout, TX control cable, card end
    :align: center
 
@@ -120,12 +120,12 @@ The pinouts for both ends of this cable are shown below:
 Photos of both ends of the cable are shown below:
 
 .. figure:: img/transmitter/control_cable_tx_end.jpg
-   :scale: 50 %
+   :width: 50 %
    :alt: Control cable TX end
    :align: center
 
 .. figure:: img/transmitter/control_cable_card_end.jpg
-   :scale: 50 %
+   :width: 50 %
    :alt: Control cable card end
    :align: center
 
@@ -141,7 +141,7 @@ signals. J2 is an internal connector on the Control Card and does not reflect th
 connector on the grey TX control cable. An excerpt from the schematic is shown below:
 
 .. figure:: img/transmitter/control_card_interface.jpg
-   :scale: 50 %
+   :width: 80 %
    :alt: Control Card Interface circuitry - differential signals
    :align: center
 

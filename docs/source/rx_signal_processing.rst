@@ -13,7 +13,7 @@ as many decimation stages as are configured in the decimation scheme. This allow
 to have as much control as they want in designing filter characteristics.
 
 .. figure:: img/rx_sig_updated.png
-   :scale: 75 %
+   :width: 100%
    :alt: Block diagram of RX DSP software
    :align: center
 
@@ -58,7 +58,7 @@ grid now adds a third dimension for frequency data set and the block now only ha
 for a single lowpass filter.
 
 .. figure:: img/dsp_data_flow.jpg
-   :scale: 75 %
+   :width: 80 %
    :alt: Diagram of Rx DSP data flow during decimation
    :align: center
 

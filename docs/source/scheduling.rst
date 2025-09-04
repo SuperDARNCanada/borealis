@@ -34,8 +34,8 @@ Here is a simple diagram for how scheduling works. It starts with the DSWG repos
 accessed via a local server, which then uses the scheduler sync daemon to sync with all Borealis
 radars.
 
-.. image:: img/scheduling_diagram.png
-    :scale: 100%%
+.. figure:: img/scheduling_diagram.png
+    :width: 100%%
     :alt:   Simple block diagram of scheduling setup
     :align: center
 
