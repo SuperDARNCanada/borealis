@@ -6,6 +6,7 @@ Run via: 'python3 test_scheduler.py'
 :author: Kevin Krieger
 """
 
+import copy
 import shutil
 import unittest
 import os
@@ -15,6 +16,8 @@ import tempfile
 import datetime
 import subprocess as sp
 import re
+
+from pydantic import ValidationError
 
 if "BOREALISPATH" not in os.environ:
     BOREALISPATH = (
@@ -53,38 +56,42 @@ class TestSchedulerUtils(unittest.TestCase):
         self.yyyymmdd = "20221014"
         self.hhmm = "12:34"
         self.dt = "20221011 00:00"
-        self.dur = 120
+        self.dur = datetime.timedelta(minutes=120)
         self.prio = 10
         self.exp = "normalscan"
         self.mode = "common"
-        self.kwargs = ""
+        self.kwargs = list()
         self.no_perms = tempfile.NamedTemporaryFile(mode="w+t", delete=False)
         self.no_perms_file = self.no_perms.name
         os.chmod(self.no_perms_file, 0o000)
         self.no_perms.close()
-        time_of_interest = datetime.datetime(2000, 1, 1, 6, 30)
-        time_of_interest2 = datetime.datetime(2022, 4, 5, 16, 56)
+        time_of_interest = datetime.datetime(
+            2000, 1, 1, 6, 30, tzinfo=datetime.timezone.utc
+        )
+        time_of_interest2 = datetime.datetime(
+            2022, 4, 5, 16, 56, tzinfo=datetime.timezone.utc
+        )
         self.linedict = {
-            "time": time_of_interest,
-            "prio": 0,
+            "timestamp": time_of_interest,
+            "priority": 0,
             "experiment": "normalscan",
             "scheduling_mode": "common",
-            "duration": 60,
-            "kwargs": "-",
+            "duration": datetime.timedelta(minutes=60),
+            "kwargs": list(),
             "embargo": False,
         }
-        self.linestr = "20000101 06:30 60 0 normalscan common  -\n"
+        self.linestr = "20000101 06:30 60 0 normalscan common\n"
         self.linedict2 = {
-            "time": time_of_interest2,
-            "prio": 15,
+            "timestamp": time_of_interest2,
+            "priority": 15,
             "experiment": "twofsound",
             "scheduling_mode": "discretionary",
-            "duration": 360,
-            "kwargs": "freq1=10500 freq2=13100",
+            "duration": datetime.timedelta(minutes=360),
+            "kwargs": ["freq1=10500", "freq2=13100"],
             "embargo": False,
         }
         self.linestr2 = (
-            "20220405 16:56 360 15 twofsound discretionary  freq1=10500 freq2=13100\n"
+            "20220405 16:56 360 15 twofsound discretionary freq1=10500 freq2=13100\n"
         )
         self.maxDiff = None
 
@@ -252,9 +259,9 @@ class TestSchedulerUtils(unittest.TestCase):
                 self.dur,
                 self.kwargs,
             )
-            scdu.test_line(line)
+            line.test(self.site_id)
         exp = None
-        with self.assertRaises(TypeError):
+        with self.assertRaises(ValidationError):
             line = scdu.create_line(
                 self.yyyymmdd,
                 self.hhmm,
@@ -264,9 +271,9 @@ class TestSchedulerUtils(unittest.TestCase):
                 self.dur,
                 self.kwargs,
             )
-            scdu.test_line(line)
+            line.test(self.site_id)
         exp = 5
-        with self.assertRaises(TypeError):
+        with self.assertRaises(ValidationError):
             line = scdu.create_line(
                 self.yyyymmdd,
                 self.hhmm,
@@ -417,7 +424,7 @@ class TestSchedulerUtils(unittest.TestCase):
             scdu.test_line(line)
         dur = 53.09
         with self.assertRaises(ValueError):
-            line = scdu.create_line(
+            scdu.create_line(
                 self.yyyymmdd,
                 self.hhmm,
                 self.exp,
@@ -426,10 +433,9 @@ class TestSchedulerUtils(unittest.TestCase):
                 dur,
                 self.kwargs,
             )
-            scdu.test_line(line)
         dur = ""
         with self.assertRaises(ValueError):
-            line = scdu.create_line(
+            scdu.create_line(
                 self.yyyymmdd,
                 self.hhmm,
                 self.exp,
@@ -438,10 +444,9 @@ class TestSchedulerUtils(unittest.TestCase):
                 dur,
                 self.kwargs,
             )
-            scdu.test_line(line)
         dur = None
         with self.assertRaises(ValueError):
-            line = scdu.create_line(
+            scdu.create_line(
                 self.yyyymmdd,
                 self.hhmm,
                 self.exp,
@@ -450,7 +455,6 @@ class TestSchedulerUtils(unittest.TestCase):
                 dur,
                 self.kwargs,
             )
-            scdu.test_line(line)
 
     def test_invalid_kwargs_string(self):
         """
@@ -516,7 +520,32 @@ class TestSchedulerUtils(unittest.TestCase):
                 self.dur,
                 kwargs_str,
             )
-            scdu.test_line(line)
+            line.test(self.site_id)
+
+    def test_rawacf_format(self):
+        """
+        Test getting the next month from a given date with wrong type
+        """
+        line_dict = copy.deepcopy(self.linedict)
+        formats = ["hdf5", "dmap", None]
+        lines = [
+            "20000101 06:30 60 0 normalscan common --rawacf_format=hdf5\n",
+            "20000101 06:30 60 0 normalscan common --rawacf_format=dmap\n",
+            "20000101 06:30 60 0 normalscan common\n",
+        ]
+        for fmt, ln in zip(formats, lines):
+            line_dict["rawacf_format"] = fmt
+            line = scd_utils.ScheduleLine.from_str(ln)
+            self.assertEqual(line.rawacf_format, fmt)
+            self.assertEqual(str(line), ln.strip())
+
+        with self.assertRaises(ValidationError):
+            line_dict["rawacf_format"] = "json"
+            scd_utils.ScheduleLine(**line_dict)
+
+        with self.assertRaises(ValidationError):
+            line_dict["rawacf_format"] = 0
+            scd_utils.ScheduleLine(**line_dict)
 
     # read_scd tests
     def test_invalid_num_args(self):
@@ -546,17 +575,24 @@ class TestSchedulerUtils(unittest.TestCase):
         scdfile.close()
         self.assertEqual(
             scdu.read_scd(),
-            [scdu.create_line("20000101", "00:00", "normalscan", "common", "0", "-")],
+            [
+                scdu.create_line(
+                    "20000101", "00:00", "normalscan", "common", 0, "-", list()
+                )
+            ],
         )
 
     # fmt_line tests
-    def test_fmt_line(self):
+    def test_str(self):
         """
         Test that the result from fmt_line agrees with what it should
         """
-        scdu = scd_utils.SCDUtils(self.good_scd_file, self.site_id)
-        self.assertEqual(scdu.fmt_line(self.linedict), self.linestr.strip())
-        self.assertEqual(scdu.fmt_line(self.linedict2), self.linestr2.strip())
+        self.assertEqual(
+            str(scd_utils.ScheduleLine(**self.linedict)), self.linestr.strip()
+        )
+        self.assertEqual(
+            str(scd_utils.ScheduleLine(**self.linedict2)), self.linestr2.strip()
+        )
 
     # write_scd tests
     def test_no_perms(self):
@@ -593,7 +629,10 @@ class TestSchedulerUtils(unittest.TestCase):
         scd_file = tempfile.NamedTemporaryFile(mode="w+t", delete=False)
         scd_file.close()
         scdu = scd_utils.SCDUtils(scd_file.name, self.site_id)
-        lines = [self.linedict, self.linedict2]
+        lines = [
+            str(scd_utils.ScheduleLine(**self.linedict)),
+            str(scd_utils.ScheduleLine(**self.linedict2)),
+        ]
         scdu.write_scd(lines)
 
         # Verify there's a .bak file parallel with the temp file with nothing in it
@@ -603,6 +642,7 @@ class TestSchedulerUtils(unittest.TestCase):
         with open(bak_file, "r") as f, open(scd_file.name, "r") as s:
             bak_lines = f.readlines()
             scd_lines = s.readlines()
+            print(scd_lines)
             self.assertEqual([self.linestr, self.linestr2], scd_lines)
             self.assertEqual(bak_lines, [])
 
@@ -659,7 +699,7 @@ class TestSchedulerUtils(unittest.TestCase):
                 "twofsound",
                 "special",
                 self.prio,
-                "1440",
+                datetime.timedelta(minutes=1440),
                 self.kwargs,
             )
 
@@ -688,7 +728,7 @@ class TestSchedulerUtils(unittest.TestCase):
         line = lines[1].split()  # Get the second line, which is the one we added
         self.assertEqual(line[0], self.yyyymmdd)
         self.assertEqual(line[1], self.hhmm)
-        self.assertEqual(line[2], str(self.dur))
+        self.assertEqual(line[2], str(int(self.dur.total_seconds() // 60)))
         self.assertEqual(line[3], str(self.prio))
         self.assertEqual(line[4], self.exp)
         self.assertEqual(line[5], self.mode)
@@ -765,10 +805,10 @@ class TestSchedulerUtils(unittest.TestCase):
         scd_file = tempfile.NamedTemporaryFile(mode="w+t", delete=False)
         scdu = scd_utils.SCDUtils(scd_file.name, self.site_id)
         scd_lines = [
-            "20200917 00:00 - 0 normalscan common  \n",
-            "20200921 00:00 - 0 normalscan discretionary  \n",
-            "20200924 00:00 - 0 normalscan common  freq1=10500\n",
-            "20200926 00:00 - 0 normalscan common  \n",
+            "20200917 00:00 - 0 normalscan common\n",
+            "20200921 00:00 - 0 normalscan discretionary\n",
+            "20200924 00:00 - 0 normalscan common freq1=10500\n",
+            "20200926 00:00 - 0 normalscan common\n",
         ]
         l0 = scd_lines[0].split()
         l1 = scd_lines[1].split()
@@ -776,7 +816,7 @@ class TestSchedulerUtils(unittest.TestCase):
         l3 = scd_lines[3].split()
 
         for line in scd_lines:
-            scd_file.write(line)
+            scd_file.write(str(line))
         scd_file.close()
 
         # Remove 0th line and test
@@ -818,7 +858,7 @@ class TestSchedulerUtils(unittest.TestCase):
         prio = l2[3]
         exp = l2[4]
         mode = l2[5]
-        kwarg = l2[6]
+        kwarg = l2[6].split(" ")
         scdu.remove_line(yyyymmdd, hhmm, exp, mode, prio, dur, kwarg)
 
         with open(scd_file.name, "r") as f:
@@ -833,7 +873,8 @@ class TestSchedulerUtils(unittest.TestCase):
         prio = l3[3]
         exp = l3[4]
         mode = l3[5]
-        scdu.remove_line(yyyymmdd, hhmm, exp, mode, prio, dur)
+        kwarg = list()
+        scdu.remove_line(yyyymmdd, hhmm, exp, mode, prio, dur, kwarg)
 
         with open(scd_file.name, "r") as f:
             file_lines = f.readlines()
@@ -905,7 +946,11 @@ class TestSchedulerUtils(unittest.TestCase):
         scdu = scd_utils.SCDUtils(scd_file.name, self.site_id)
         self.assertEqual(
             scdu.get_relevant_lines("19991101", "00:00"),
-            [scdu.create_line("20000101", "00:00", "normalscan", "common", "0", "-")],
+            [
+                scdu.create_line(
+                    "20000101", "00:00", "normalscan", "common", 0, "-", list()
+                )
+            ],
         )
 
     def test_no_lines_relevant(self):
@@ -927,10 +972,10 @@ class TestSchedulerUtils(unittest.TestCase):
         scd_file.close()
         lines = scdu.get_relevant_lines("20200916", "23:59")
         self.assertEqual(len(lines), 1)
-        self.assertEqual(lines[0]["prio"], "19")
-        self.assertEqual(lines[0]["duration"], "89")
-        self.assertEqual(lines[0]["experiment"], "ulfscan")
-        self.assertEqual(lines[0]["scheduling_mode"], "common")
+        self.assertEqual(lines[0].priority, 19)
+        self.assertEqual(lines[0].duration, datetime.timedelta(minutes=89))
+        self.assertEqual(lines[0].experiment, "ulfscan")
+        self.assertEqual(lines[0].scheduling_mode, "common")
 
     def test_some_lines_relevant(self):
         """
@@ -951,21 +996,21 @@ class TestSchedulerUtils(unittest.TestCase):
         self.assertEqual(len(lines), 3)
 
         # Should be the second line from test_scd_lines
-        self.assertEqual(lines[0]["duration"], "-")
-        self.assertEqual(lines[0]["prio"], "0")
-        self.assertEqual(lines[0]["experiment"], "normalscan")
-        self.assertEqual(lines[0]["scheduling_mode"], "discretionary")
+        self.assertEqual(lines[0].duration, "-")
+        self.assertEqual(lines[0].priority, 0)
+        self.assertEqual(lines[0].experiment, "normalscan")
+        self.assertEqual(lines[0].scheduling_mode, "discretionary")
 
-        self.assertEqual(lines[1]["duration"], "-")
-        self.assertEqual(lines[1]["prio"], "0")
-        self.assertEqual(lines[1]["experiment"], "twofsound")
-        self.assertEqual(lines[1]["scheduling_mode"], "common")
-        self.assertEqual(lines[1]["kwargs"], "freq=10500")
+        self.assertEqual(lines[1].duration, "-")
+        self.assertEqual(lines[1].priority, 0)
+        self.assertEqual(lines[1].experiment, "twofsound")
+        self.assertEqual(lines[1].scheduling_mode, "common")
+        self.assertEqual(lines[1].kwargs, ["freq=10500"])
 
-        self.assertEqual(lines[2]["duration"], "60")
-        self.assertEqual(lines[2]["prio"], "2")
-        self.assertEqual(lines[2]["experiment"], "politescan")
-        self.assertEqual(lines[2]["scheduling_mode"], "special")
+        self.assertEqual(lines[2].duration, datetime.timedelta(minutes=60))
+        self.assertEqual(lines[2].priority, 2)
+        self.assertEqual(lines[2].experiment, "politescan")
+        self.assertEqual(lines[2].scheduling_mode, "special")
 
     def test_all_lines_relevant_matched(self):
         """
@@ -985,26 +1030,23 @@ class TestSchedulerUtils(unittest.TestCase):
         lines = scdu.get_relevant_lines("20200917", "00:00")
         self.assertEqual(len(lines), 4)
 
-        self.assertEqual(lines[0]["duration"], "-")
-        self.assertEqual(lines[0]["prio"], "0")
-        self.assertEqual(lines[0]["experiment"], "normalscan")
-        self.assertEqual(lines[0]["scheduling_mode"], "common")
-
-        self.assertEqual(lines[1]["duration"], "-")
-        self.assertEqual(lines[1]["prio"], "0")
-        self.assertEqual(lines[1]["experiment"], "normalscan")
-        self.assertEqual(lines[1]["scheduling_mode"], "discretionary")
-
-        self.assertEqual(lines[2]["duration"], "-")
-        self.assertEqual(lines[2]["prio"], "0")
-        self.assertEqual(lines[2]["experiment"], "twofsound")
-        self.assertEqual(lines[2]["scheduling_mode"], "common")
-        self.assertEqual(lines[2]["kwargs"], "freq=10500")
-
-        self.assertEqual(lines[3]["duration"], "60")
-        self.assertEqual(lines[3]["prio"], "2")
-        self.assertEqual(lines[3]["experiment"], "politescan")
-        self.assertEqual(lines[3]["scheduling_mode"], "special")
+        self.assertEqual(lines[0].duration, "-")
+        self.assertEqual(lines[0].priority, 0)
+        self.assertEqual(lines[0].experiment, "normalscan")
+        self.assertEqual(lines[0].scheduling_mode, "common")
+        self.assertEqual(lines[1].duration, "-")
+        self.assertEqual(lines[1].priority, 0)
+        self.assertEqual(lines[1].experiment, "normalscan")
+        self.assertEqual(lines[1].scheduling_mode, "discretionary")
+        self.assertEqual(lines[2].duration, "-")
+        self.assertEqual(lines[2].priority, 0)
+        self.assertEqual(lines[2].experiment, "twofsound")
+        self.assertEqual(lines[2].scheduling_mode, "common")
+        self.assertEqual(lines[2].kwargs, ["freq=10500"])
+        self.assertEqual(lines[3].duration, datetime.timedelta(minutes=60))
+        self.assertEqual(lines[3].priority, 2)
+        self.assertEqual(lines[3].experiment, "politescan")
+        self.assertEqual(lines[3].scheduling_mode, "special")
 
     def test_all_lines_relevant(self):
         """
@@ -1024,26 +1066,23 @@ class TestSchedulerUtils(unittest.TestCase):
         lines = scdu.get_relevant_lines("20200916", "00:00")
         self.assertEqual(len(lines), 4)
 
-        self.assertEqual(lines[0]["duration"], "-")
-        self.assertEqual(lines[0]["prio"], "0")
-        self.assertEqual(lines[0]["experiment"], "normalscan")
-        self.assertEqual(lines[0]["scheduling_mode"], "common")
-
-        self.assertEqual(lines[1]["duration"], "-")
-        self.assertEqual(lines[1]["prio"], "0")
-        self.assertEqual(lines[1]["experiment"], "normalscan")
-        self.assertEqual(lines[1]["scheduling_mode"], "discretionary")
-
-        self.assertEqual(lines[2]["duration"], "-")
-        self.assertEqual(lines[2]["prio"], "0")
-        self.assertEqual(lines[2]["experiment"], "twofsound")
-        self.assertEqual(lines[2]["scheduling_mode"], "common")
-        self.assertEqual(lines[2]["kwargs"], "freq=10500")
-
-        self.assertEqual(lines[3]["duration"], "60")
-        self.assertEqual(lines[3]["prio"], "2")
-        self.assertEqual(lines[3]["experiment"], "politescan")
-        self.assertEqual(lines[3]["scheduling_mode"], "special")
+        self.assertEqual(lines[0].duration, "-")
+        self.assertEqual(lines[0].priority, 0)
+        self.assertEqual(lines[0].experiment, "normalscan")
+        self.assertEqual(lines[0].scheduling_mode, "common")
+        self.assertEqual(lines[1].duration, "-")
+        self.assertEqual(lines[1].priority, 0)
+        self.assertEqual(lines[1].experiment, "normalscan")
+        self.assertEqual(lines[1].scheduling_mode, "discretionary")
+        self.assertEqual(lines[2].duration, "-")
+        self.assertEqual(lines[2].priority, 0)
+        self.assertEqual(lines[2].experiment, "twofsound")
+        self.assertEqual(lines[2].scheduling_mode, "common")
+        self.assertEqual(lines[2].kwargs, ["freq=10500"])
+        self.assertEqual(lines[3].duration, datetime.timedelta(minutes=60))
+        self.assertEqual(lines[3].priority, 2)
+        self.assertEqual(lines[3].experiment, "politescan")
+        self.assertEqual(lines[3].scheduling_mode, "special")
 
     def test_one_relevant_line(self):
         """
@@ -1055,7 +1094,7 @@ class TestSchedulerUtils(unittest.TestCase):
             time_of_interest.strftime("%Y%m%d"), time_of_interest.strftime("%H:%M")
         )
         self.assertEqual(
-            [scdu.fmt_line(line).strip() for line in lines],
+            [str(line).strip() for line in lines],
             ["20220929 12:00 - 0 normalscan common"],
         )
 
@@ -1096,7 +1135,7 @@ class TestSchedulerUtils(unittest.TestCase):
             *time_of_interest.strftime("%Y%m%d %H:%M").split()
         )
         self.assertEqual(
-            [scdu.fmt_line(line).strip() for line in lines],
+            [str(line).strip() for line in lines],
             ["20210903 00:00 - 0 twofsound common"],
         )
 
@@ -1120,7 +1159,7 @@ class TestSchedulerUtils(unittest.TestCase):
             *time_of_interest.strftime("%Y%m%d %H:%M").split()
         )
         self.assertEqual(len(lines), 1)
-        self.assertEqual(scdu.fmt_line(lines[0]).strip(), test_scd_lines[-1].strip())
+        self.assertEqual(str(lines[0]).strip(), test_scd_lines[-1].strip())
 
 
 class TestRemoteServer(unittest.TestCase):
@@ -1148,39 +1187,179 @@ class TestRemoteServer(unittest.TestCase):
         """
         print("Method: ", self._testMethodName)
 
+    def test_schedule_resolution(self):
+        """
+        Test that overlapping schedule lines are properly resolved.
+        """
+        time_of_interest = datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc)
+        line = scd_utils.ScheduleLine(
+            experiment="A",
+            scheduling_mode="common",
+            timestamp=datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc),
+            duration=datetime.timedelta(days=1),
+            priority=10,
+        )
+        scd = remote_server.resolve_schedule([line], time_of_interest)
+        self.assertEqual(scd[0], line)
+
+        line2 = scd_utils.ScheduleLine(
+            experiment="B",
+            scheduling_mode="common",
+            timestamp=datetime.datetime(
+                2000, 1, 1, tzinfo=datetime.timezone.utc
+            ),  # same timestamp
+            duration=datetime.timedelta(days=2),
+            priority=5,
+        )
+        scd = remote_server.resolve_schedule([line, line2], time_of_interest)
+        self.assertEqual(scd[0], line)
+        self.assertEqual(scd[1].experiment, line2.experiment)
+        self.assertEqual(scd[1].duration, datetime.timedelta(days=1))
+
+        line3 = scd_utils.ScheduleLine(
+            experiment="C",
+            scheduling_mode="common",
+            timestamp=datetime.datetime(
+                2000, 2, 1, tzinfo=datetime.timezone.utc
+            ),  # one month later
+            duration=datetime.timedelta(days=1),
+            priority=5,
+        )
+        scd = remote_server.resolve_schedule([line, line2, line3], time_of_interest)
+        self.assertEqual(scd[0], line)
+        self.assertEqual(scd[1].experiment, "B")
+        self.assertEqual(scd[2], line3)
+
+        line4 = scd_utils.ScheduleLine(
+            experiment="D",
+            scheduling_mode="common",
+            timestamp=datetime.datetime(
+                1999, 12, 31, tzinfo=datetime.timezone.utc
+            ),  # one day early
+            duration="-",  # infinite
+            priority=0,
+        )
+        scd = remote_server.resolve_schedule(
+            [line, line2, line3, line4], time_of_interest
+        )
+        self.assertEqual(len(scd), 6)
+        self.assertEqual(scd[0].experiment, line4.experiment)
+        self.assertEqual(scd[0].duration, datetime.timedelta(days=1))
+        self.assertEqual(scd[1], line)
+        self.assertEqual(scd[2].experiment, line2.experiment)
+        self.assertEqual(
+            scd[3].experiment, line4.experiment
+        )  # line4 infinite so it fills in the gaps
+        self.assertEqual(scd[4], line3)
+        self.assertEqual(scd[5].experiment, line4.experiment)
+        scd2 = remote_server.resolve_schedule(
+            [line4, line2, line, line3], time_of_interest
+        )
+        self.assertEqual(scd, scd2)  # ensure order of input list doesn't matter
+
+        # Check that the schedule resolves correctly even if we are in the middle of a finite line
+        # Should chop out line4 being scheduled before `new_time_of_interest`
+        new_time_of_interest = datetime.datetime(
+            2000, 1, 1, 12, tzinfo=datetime.timezone.utc
+        )
+        scd3 = remote_server.resolve_schedule(
+            [line4, line2, line, line3], new_time_of_interest
+        )
+        self.assertEqual(len(scd3), 5)
+        self.assertEqual(scd3[0].experiment, line.experiment)
+        self.assertEqual(scd3[0].duration, datetime.timedelta(days=1))
+        self.assertEqual(scd3[1].experiment, line2.experiment)
+
+        line5 = scd_utils.ScheduleLine(
+            experiment="E",
+            scheduling_mode="common",
+            timestamp=datetime.datetime(
+                2000, 1, 1, 12, tzinfo=datetime.timezone.utc
+            ),  # noon
+            priority=5,
+            duration=datetime.timedelta(hours=6),  # entirely during experiment A
+        )
+        scd = remote_server.resolve_schedule(
+            [line, line2, line3, line4, line5], time_of_interest
+        )
+        self.assertEqual(
+            scd, scd2
+        )  # line5 ignored as it is lower priority than others scheduled
+
+        line6 = scd_utils.ScheduleLine(
+            experiment="F",
+            scheduling_mode="common",
+            timestamp=datetime.datetime(1999, 12, 31, tzinfo=datetime.timezone.utc),
+            duration="-",
+            priority=0,
+        )
+        # Test that for equal lines, the one later in the schedule list is kept
+        scd = remote_server.resolve_schedule(
+            [line, line2, line3, line4, line5, line6], time_of_interest
+        )
+        self.assertEqual(
+            len([x for x in scd if x.experiment == "D"]), 0
+        )  # experiment D missing, superseded by F
+        scd = remote_server.resolve_schedule(
+            [line, line2, line3, line5, line6, line4], time_of_interest
+        )
+        self.assertEqual(
+            len([x for x in scd if x.experiment == "F"]), 0
+        )  # experiment F missing, superseded by D
+
+        line7 = scd_utils.ScheduleLine(
+            timestamp=datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc),
+            duration=datetime.timedelta(days=1),
+            experiment="G",
+            priority=10,
+            scheduling_mode="common",
+        )
+        scd = remote_server.resolve_schedule([line, line7], time_of_interest)
+        self.assertEqual(len(scd), 1)
+        self.assertEqual(scd[0], line7)
+
     # format_to_atq tests
     def test_make_atq_commands(self):
         """
         Test creating atq commands from scd lines
         """
         # Atq commands are: [command to run] | at [now+ x minute | -t %Y%m%d%H%M]
-        time_of_interest = datetime.datetime(2022, 9, 8, 12, 34)
-        atq_str = remote_server.format_to_atq(
-            time_of_interest, "some weird experiment with options", "some mode"
+        time_of_interest = datetime.datetime(
+            2022, 9, 8, 12, 34, tzinfo=datetime.timezone.utc
         )
+
+        scd_line = scd_utils.ScheduleLine(
+            timestamp=time_of_interest,
+            duration="-",
+            experiment="some weird experiment with options",
+            priority=0,
+            scheduling_mode="common",
+        )
+        atq_str = remote_server.format_to_atq(scd_line)
         self.assertEqual(
             atq_str,
             f"echo 'screen -d -m -S starter {os.environ['BOREALISPATH']}/scripts/steamed_hams.py "
-            "some weird experiment with options release some mode' | "
+            "some weird experiment with options release common' | "
             "at -t 202209081234",
         )
-        atq_str = remote_server.format_to_atq(
-            time_of_interest, "exp", "md", first_event_flag=True
-        )
+        scd_line.experiment = "exp"
+        atq_str = remote_server.format_to_atq(scd_line, True)
         self.assertEqual(
             atq_str,
             f"echo 'screen -d -m -S starter {os.environ['BOREALISPATH']}/scripts/steamed_hams.py "
-            "exp release md' | "
+            "exp release common' | "
             "at now + 1 minute",
         )
-        time_of_interest = datetime.datetime(2019, 4, 3, 9, 56)
-        atq_str = remote_server.format_to_atq(
-            time_of_interest, "exp", "md", kwargs="this is the kwargs"
+        time_of_interest = datetime.datetime(
+            2019, 4, 3, 9, 56, tzinfo=datetime.timezone.utc
         )
+        scd_line.timestamp = time_of_interest
+        scd_line.kwargs = ["this", "is", "the", "kwargs"]
+        atq_str = remote_server.format_to_atq(scd_line)
         self.assertEqual(
             atq_str,
             f"echo 'screen -d -m -S starter {os.environ['BOREALISPATH']}/scripts/steamed_hams.py "
-            "exp release md --kwargs this is the kwargs' | "
+            "exp release common --kwargs this is the kwargs' | "
             "at -t 201904030956",
         )
 
@@ -1404,7 +1583,7 @@ class TestLocalServer(unittest.TestCase):
 
         self.assertTrue(os.path.exists(scd_dir))
         with self.assertRaises(FileNotFoundError):
-            params = swg.parse_swg_to_scd(modes, site_id, first_run=True)
+            swg.parse_swg_to_scd(modes, site_id, first_run=True)
 
     @unittest.skip  # TODO: Should the scheduler check for gaps in the schedule?
     def test_missing_hours(self):
@@ -1432,7 +1611,7 @@ class TestLocalServer(unittest.TestCase):
         self.assertTrue(os.path.exists(swg_file))
         self.assertTrue(os.path.exists(new_swg_file))
         with self.assertRaises(ValueError):
-            params = swg.parse_swg_to_scd(modes, site_id, first_run=True)
+            swg.parse_swg_to_scd(modes, site_id, first_run=True)
 
         # Remove the files we wrote
         shutil.rmtree(new_swg_file)
@@ -1467,7 +1646,7 @@ class TestLocalServer(unittest.TestCase):
         self.assertTrue(os.path.exists(swg_file))
         self.assertTrue(os.path.exists(new_swg_file))
         with self.assertRaises(ValueError):
-            params = swg.parse_swg_to_scd(modes, site_id, first_run=True)
+            swg.parse_swg_to_scd(modes, site_id, first_run=True)
 
         # Remove the swg dir again
         shutil.rmtree(swg_dir)

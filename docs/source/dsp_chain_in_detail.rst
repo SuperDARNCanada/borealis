@@ -67,7 +67,7 @@ Figure 1 shows the dataset :math:`x` and the filter taps :math:`h`. For all stag
 :math:`x` is much longer than :math:`h`, by three to four orders of magnitude.
 
 .. figure:: img/convolution_sequences.png
-   :scale: 80 %
+   :width: 80%
    :alt: Sample and filter sequences
    :align: center
 
@@ -90,14 +90,14 @@ by sliding :math:`h` in steps of the downsampling rate, as shown in Figure 3. Th
 equivalent to taking the linear convolution then downsampling, but is computationally faster.
 
 .. figure:: img/windowed_view-convolution.png
-   :scale: 70 %
+   :width: 80 %
    :alt: Convolution of two sequences
    :align: center
 
    Figure 2: Linear convolution of two sequences
 
 .. figure:: img/windowed_view-convolve_decimate.png
-   :scale: 60 %
+   :width: 80 %
    :alt: Downsampled convolution with edge effects discarded
    :align: center
 
@@ -140,7 +140,7 @@ mathematical operations. So, for a downsampling rate of :math:`R`, the phase cor
 :math:`k` after downsampling is :math:`\phi_k = 2\pi\frac{f_o}{F_s}Rk`.
 
 .. figure:: img/oscillator_sequences.png
-   :scale: 80 %
+   :width: 80 %
    :alt: Windowed view of oscillator mixing sequence
    :align: center
 
@@ -163,35 +163,35 @@ shown in Figure 7. Another decimation by a factor of 6, passed through the filte
 a final decimation by a rate of 5 yields the antennas IQ dataset.
 
 .. figure:: img/Bandpass_0-5_MHz.png
-   :scale: 80 %
+   :width: 80 %
    :alt: 0.5 MHz Bandpass Filter
    :align: center
 
    Figure 5: 0.5 MHz Bandpass Filter Frequency Response
 
 .. figure:: img/Lowpass_stage_1.png
-   :scale: 80 %
+   :width: 80 %
    :alt: First Stage of Lowpass Filtering
    :align: center
 
    Figure 6: Stage 1 Lowpass Filter Frequency Response
 
 .. figure:: img/Lowpass_stage_2.png
-   :scale: 80 %
+   :width: 80 %
    :alt: Second Stage of Lowpass Filtering
    :align: center
 
    Figure 7: Stage 2 Lowpass Filter Frequency Response
 
 .. figure:: img/Lowpass_stage_3.png
-   :scale: 80 %
+   :width: 80 %
    :alt: Third Stage of Lowpass Filtering
    :align: center
 
    Figure 8: Stage 3 Lowpass Filter Frequency Response
 
 .. figure:: img/Bandpass_2-0_MHz.png
-   :scale: 80 %
+   :width: 80 %
    :alt: 2.0 MHz Bandpass Filter
    :align: center
 
@@ -206,7 +206,7 @@ the transmitted signal was at 10.5 MHz, we then expect to see it in our received
 MHz - 10.5 MHz) = -1.5 MHz. Figure 10 shows exactly this situation.
 
 .. figure:: img/sequence_22_antenna_16.png
-   :scale: 90 %
+   :width: 100 %
    :alt: Time- and Frequency-domain representations of one sequence of received data at 10.5 MHz
    :align: center
 
@@ -249,7 +249,7 @@ final formula of
 .. math:: \phi_n = \left(\frac{L}{\lambda}(n-\frac{N}{2})\sin(\theta)\right) 2\pi
 
 .. figure:: img/beamforming.png
-   :scale: 90 %
+   :width: 90 %
    :alt: Beamforming with a 1-D phased array
    :align: center
 
@@ -268,7 +268,7 @@ interferometer samples are cross-correlated. The process is the same for all cor
 described with the aid of Figure 12.
 
 .. figure:: img/correlations.png
-   :scale: 90 %
+   :width: 90 %
    :alt: Correlations explained with matrix
    :align: center
 
@@ -296,7 +296,7 @@ SuperDARN 7-pulse sequence, with 75 range gates, a tau spacing of 8 samples, and
 occurring four samples after a pulse.
 
 .. figure:: img/correlation_matrix.png
-   :scale: 90 %
+   :width: 80 %
    :alt: Borealis correlation matrix
    :align: center
 

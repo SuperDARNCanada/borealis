@@ -117,26 +117,6 @@ class TestExperimentEnvSetup(unittest.TestCase):
         os.environ["BOREALISPATH"] = BOREALISPATH
         sys.path.append(BOREALISPATH)
 
-    @unittest.skip("Skip because it is annoying")
-    def test_config_file(self):
-        """
-        Test the code that checks for the config file
-        """
-        # Rename the config file temporarily
-        site_id = scf.options.site_id
-        os.rename(
-            f"{BOREALISPATH}/config/{site_id}/{site_id}_config.ini",
-            f"{BOREALISPATH}/_config.ini",
-        )
-        with self.assertRaisesRegex(ValueError, "Cannot open config file at "):
-            ehmain()
-
-        # Now rename the config file and move on
-        os.rename(
-            f"{BOREALISPATH}/_config.ini",
-            f"{BOREALISPATH}/config/{site_id}/{site_id}_config.ini",
-        )
-
     @unittest.skip("Cannot test this while hdw.dat files are in /usr/local/hdw")
     def test_hdw_file(self):
         """
@@ -356,6 +336,12 @@ def run_tests(raw_args=None, buffer=True, print_results=True):
         help="If calling from another python file, this should be set to "
         "'experiment_unittests' in order to properly work.",
     )
+    parser.add_argument(
+        "--no-tests",
+        required=False,
+        action="store_true",
+        help="Only test the main experiments, not those in testing_archive/",
+    )
     args = parser.parse_args(raw_args)
 
     os.environ["RADAR_ID"] = args.site_id
@@ -390,7 +376,8 @@ def run_tests(raw_args=None, buffer=True, print_results=True):
     experiments = args.experiments
     if experiments is None:  # Run all unit tests and experiment tests
         print("Running tests on all experiments")
-        build_unit_tests()
+        if not args.no_tests:
+            build_unit_tests()
         build_experiment_tests()
         argv = [sys.argv[0]]
     else:  # Only test specified experiments

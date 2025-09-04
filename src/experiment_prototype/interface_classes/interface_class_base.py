@@ -1,15 +1,16 @@
 #!/usr/bin/python
 
 """
-    interface_class_base
-    ~~~~~~~~~~~~~~~~~~~~
-    This is the base module for all InterfaceClassBase types (iterable for an experiment given certain
-    parameters). These types include the Scan class, the AveragingPeriod class, and the Sequence
-    class.
+interface_class_base
+~~~~~~~~~~~~~~~~~~~~
+This is the base module for all InterfaceClassBase types (iterable for an experiment given certain
+parameters). These types include the Scan class, the AveragingPeriod class, and the Sequence
+class.
 
-    :copyright: 2018 SuperDARN Canada
-    :author: Marci Detwiller
+:copyright: 2018 SuperDARN Canada
+:author: Marci Detwiller
 """
+
 # built-in
 import inspect
 import itertools
@@ -51,9 +52,11 @@ class InterfaceClassBase(object):
                                 pulse sequences. The keys of the transmit_metadata are:
 
                                 - 'output_rx_rate' [Hz],
-                                - 'main_antenna_count',
-                                - 'intf_antenna_count',
                                 - 'tr_window_time' [s],
+                                - 'main_antenna_locations',
+                                - 'intf_antenna_locations',
+                                - 'main_antenna_count'
+                                - 'intf_antenna_count'
                                 - 'main_antenna_spacing' [m],
                                 - 'intf_antenna_spacing' [m],
                                 - 'pulse_ramp_time' [s],
@@ -70,7 +73,6 @@ class InterfaceClassBase(object):
     def __init__(
         self, object_keys, object_slice_dict, object_interface, transmit_metadata
     ):
-
         # list of slice_ids included in this interface_class_base
         self.slice_ids = object_keys
 
@@ -236,6 +238,7 @@ class InterfaceClassBase(object):
             "AveragingPeriod": [
                 "CONCURRENT"
             ],  # Combine everything CONCURRENT interfaced
+            "CFSAveragingPeriod": ["CONCURRENT"],  # Same as AveragingPeriod
             "Sequence": [],  # All slices in a Sequence are already CONCURRENT and should be combined already
         }
 

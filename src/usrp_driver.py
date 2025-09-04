@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 
 """
-    usrp_driver
-    ~~~~~~~~~~~
-    A python wrapper which launches the usrp_driver, captures logs into structlog,
-    and enables python controllers and managers to interact with the drivers.
+usrp_driver
+~~~~~~~~~~~
+A python wrapper which launches the usrp_driver, captures logs into structlog,
+and enables python controllers and managers to interact with the drivers.
 
-    :copyright: 2023 SuperDARN Canada
-    :author: Adam Lozinsky
+:copyright: 2023 SuperDARN Canada
+:author: Adam Lozinsky
 """
+
 import os
 import subprocess
 import faulthandler
@@ -87,10 +88,18 @@ def main():
                 # Split result by enclosed brackets [...] to get log level and device
                 # Example: "[INFO] [GPS] No gps lock..." becomes ["", "INFO", " ", "GPS", "No gps lock..."]
                 result = re.split("\[|\]", result)
+                # Remove "" and whitespace
+                result = [x for x in result if x.strip() != ""]
+                if len(result) == 0:
+                    continue
                 if len(result) > 1:
                     # Log UHD logs with correct level
-                    log_func = uhd_log_level[result[1]]
-                    log_func(result[3] + result[4], device=result[3])
+                    # Fallback on INFO if the key is mangled
+                    if result[0] in uhd_log_level.keys():
+                        log_func = uhd_log_level[result[0]]
+                        log_func(" ".join(result[1:]), device=result[1])
+                    else:
+                        log.info(" ".join(result))
                 else:
                     # Log our messages and the UHD firmware messages (L, U, D, S, etc)
                     # Some further parsing may be needed in the future to handle our debugs
@@ -107,10 +116,10 @@ if __name__ == "__main__":
     from utils import log_config
 
     log = log_config.log()
-    log.info(f"USRP_DRIVER BOOTED")
+    log.info("USRP_DRIVER BOOTED")
     try:
         main()
-        log.info(f"USRP_DRIVER EXITED")
+        log.info("USRP_DRIVER EXITED")
     except Exception as main_exception:
         log.critical("USRP_DRIVER CRASHED", error=main_exception)
         log.exception("USRP_DRIVER CRASHED", exception=main_exception)

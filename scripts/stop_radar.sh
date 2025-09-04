@@ -1,9 +1,14 @@
 #!/bin/bash
 source "/home/radar/.profile"
-LOGFILE="/home/radar/logs/start_stop.log"
+LOGFILE="/home/radar/logs/stop_radar.log"
+
+NOW=$(date +'%Y-%m-%d %H:%M:%S')
 
 # Kill remote_server.py process
 PID=$(pgrep -f remote_server.py) # Get PID of remote_server.py process
+if [[ -z $PID ]]; then
+	echo "$NOW STOP: NOTE - remote_server.py is not running"
+fi
 pkill -9 -f remote_server.py
 
 # Remove all scheduled experiments from at queue
@@ -18,16 +23,18 @@ if screen -ls | grep -q borealis; then
 	# Kill Borealis processes
 	screen -X -S borealis quit
 	retVal=$?
+else
+	echo "$NOW STOP: FAIL - Radar not running, no Borealis screens found"
+	exit 1
 fi
 
 sleep 1
-NOW=$(date +'%Y%m%d %H:%M:%S')
-if ps -p $PID &> /dev/null; then	 # Check if remote_server.py process still running
+if ps -p $PID &> /dev/null; then	# Check if remote_server.py process still running
 	echo "${NOW} STOP: FAIL - could not kill remote_server.py process." | tee -a $LOGFILE
 	exit 1
 fi
 
-if [[ -n $(atq) ]]; then		# Check if atq is not empty
+if [[ -n $(atq) ]]; then			# Check if atq is not empty
 	echo "${NOW} STOP: FAIL - could not clear atq. Radar processes still scheduled." | tee -a $LOGFILE
 	exit 1
 fi

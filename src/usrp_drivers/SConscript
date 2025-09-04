@@ -24,10 +24,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-""""""
 import os
-
 Import('*')
 
-Prog('usrp_driver', Glob("./*.c*"), with_libs=['utils', 'messages'],
-     LIBS=['protobuf', 'pthread','boost_system','uhd','zmq','rt'])
+Prog('usrp_driver', Glob("./*.c*"), with_libs=['utils'],
+     LIBS=['pthread','boost_system','uhd','zmq','rt'])

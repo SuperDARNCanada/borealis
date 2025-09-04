@@ -29,7 +29,7 @@ antennas. Define a function with the following signature
 
 .. code-block:: python
 
-    def fn_name(frequency_khz, tx_antennas, antenna_spacing_m):
+    def fn_name(frequency_khz, tx_antennas, antenna_locations):
         """Defines the power and phase modulation for each transmitting antenna.
 
         Parameters
@@ -38,8 +38,8 @@ antennas. Define a function with the following signature
             Frequency in kHz.
         tx_antennas: list
             List of transmitting antennas for the slice.
-        antenna_spacing_m: float
-            Spacing between adjacent antennas in the main array, in meters.
+        antenna_locations: np.ndarray
+            Location of each antenna, in [x, y, z] coordinates. Shape [num_antennas, 3]
 
         Returns
         -------
@@ -56,17 +56,16 @@ Custom beamforming of the results measured during a full field of view experimen
 through defining the ``rx_antenna_pattern`` field in the full field of view
 experiment. A custom function can be written in the experiment and passed to borealis ::
 
-    beamforming_function(beam_angle, freq, antenna_count, antenna_spacing, offset=0.0):
+    beamforming_function(beam_angle, freq, antenna_locations):
 
     ...
 
     slice_dict['tx_antenna_pattern'] = beamforming_function
 
-The function should expect to receive beam angles, operating frequencies, number of antennas,
-antenna spacing, and an offset. This function will be called for both the rx signals from the main
-array and the interferometer array. The return is expected to be the desired phase for beamforming
-each antenna, and should be of size [beam_angle, antenna_count]. The magnitude of each entry should
-be less than or equal to 1.
+The function should expect to receive beam angles, operating frequencies, and antenna locations,
+This function will be called for both the rx signals from the main array and the interferometer array.
+The return is expected to be the desired phase for beamforming each antenna, and should be of size
+[beam_angle, antenna_count]. The magnitude of each entry should be less than or equal to 1.
 
 .. _bistatic experiments:
 
@@ -111,3 +110,84 @@ will make it much easier to compare data from the transmit and recieve sites as 
 periods should line up exactly. Lastly, it is recommended that you check the data files for both
 radars afterwards and ensure that the ``gps_locked`` flag is True for all times. If not, the clock
 may have drifted, and the ``sqn_timestamps`` field may be inaccurate.
+
+.. _clear frequency search:
+
+-------------------------------------
+Clear Frequency Search (Experimental)
+-------------------------------------
+
+An experimental implementation of clear frequency searching is now supported in borealis to determine
+a transmit frequency within a specified band. In an experiment slice, the ``freq`` parameter should be
+unset, and the ``cfs_range`` parameter set to a two element list containing the lower and upper
+frequency limits of the CFS band::
+
+    slice['cfs_range'] = [11000, 11300]  # Lower and upper freq limit in kHz
+
+Multiple experiment slices within an averaging period can be configured to set a transmit frequency
+from the CFS as long as each slice has the ``cfs_range`` set. Each slice can choose any band within the
+transmit and receive bandwidth of the system. Be aware when choosing a ``cfs_range`` that if the range
+has any part within +/- 50kHz around the ``txctrfreq`` or ``rxctrfreq`` a warning will be raised as
+no tx frequency can be chosen that is within 50kHz of the center frequencies. The user should be aware
+of any restricted bands within the desired range, as CFS will exclude restricted bands when selecting
+transmit frequencies.
+
+Additionally, if a ``cfs_range`` with a band greater than 300kHz is desired, the user will need to
+design a custom decimation scheme for the CFS analysis, as the default is designed only for bands of
+300kHz or smaller. All CFS slices with **CONCURRENT** or **SEQUENCE** interfacing must have the same
+decimation scheme, power threshold, stable time, duration, and frequency resolution (parameters
+defined below).
+
+The following parameters can be set for a CFS slice:
+
+.. list-table:: Clear Frequency Search Experiment Parameters
+   :widths: 25 25 50
+   :header-rows: 1
+
+   * - CFS Parameter
+     - Default Value
+     - Description
+   * - ``cfs_range``
+     - ``None``
+     - Sets the band to search. Must be set to perform CFS
+   * - ``cfs_duration``
+     - 90 ms
+     - Determines how long the CFS sequence will listen for
+   * - ``cfs_scheme``
+     - ``create_default_cfs_scheme()``
+     - Decimation scheme used in analyzing the CFS data. The default scheme is designed for bands
+       of 300kHz or less
+   * - ``cfs_stable_time``
+     - 0 s
+     - Sets a minimum amount of time during which CFS will not change the frequency of a CFS slice
+       after it has been set. By default the CFS measurements will only be made once the stable
+       time has elapsed.
+   * - ``cfs_always_run``
+     - False
+     - When true, CFS measurements will be taken every averaging period even if the ``cfs_stable_time``
+       has not elapsed. Measurements taken before the stable time has elapsed will not be used to set
+       new transmit frequencies but the measurements will still be written to file.
+   * - ``cfs_pwr_threshold``
+     - ``None`` (dB)
+     - Sets a threshold power difference that a CFS scan must exceed before a frequency is switched.
+       If another frequency is lower in power than the current frequency was when set by the
+       threshold or if the current frequency power has increased by more than the threshold, then
+       CFS will set a new frequency for the CFS slices. When set the threshold value must be greater
+       than zero.
+   * - ``cfs_fft_n``
+     - 512
+     - Sets the number of samples used in the FFT during CFS processing. Determines the frequency
+       resolution of the CFS, where the resolution is ``res = (rx_rate / total decimation rate) / N``
+   * - ``cfs_freq_res``
+     - ``None`` (Hz)
+     - Cannot be set if ``cfs_fft_n`` is set. Defines the desired frequency resolution of CFS in Hz.
+       The ``cfs_fft_n`` parameter is then set to the nearest integer value of ``N`` calculated as
+       ``N = (rx_rate / total decimation rate) / res``
+
+When a CFS slice is to be run during an averaging period, the first sequence of the averaging period
+is used to listen for the length of time specified by ``cfs_duration``. The data from this measurement
+is beamformed based on the beam transmit direction and the center frequency of the ``cfs_range``.The
+beamformed results are processed to evaluate the frequency spectrum of the collected data and select
+the least noisy frequencies for transmission in that beam direction. The analysis results are also
+recorded to any generated rawacf, antennas_iq, and/or bfiq files. The frequency of each beam is set
+and tracked by the CFS independently.

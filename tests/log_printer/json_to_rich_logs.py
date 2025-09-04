@@ -1,8 +1,8 @@
 """
-    json_to_rich_logs
-    ~~~~~~~~~~~~~~~~~
-    A script for converting JSON-rendered Borealis logfiles to console-rendered logfiles.
-    This script will replicate the logs that display in screens when steamed_hams.py is run.
+json_to_rich_logs
+~~~~~~~~~~~~~~~~~
+A script for converting JSON-rendered Borealis logfiles to console-rendered logfiles.
+This script will replicate the logs that display in screens when steamed_hams.py is run.
 """
 
 import argparse
@@ -66,6 +66,11 @@ if __name__ == "__main__":
                         log.warning(msg, **current_entry)
                     elif level == "critical":
                         log.critical(msg, **current_entry)
+                    elif level == "error":
+                        log.error(
+                            "json_to_rich_logs.py is currently unable to "
+                            "properly build tracebacks on errors, skipping"
+                        )
                     else:
                         raise ValueError(f"Unknown log level: {level}")
             elif event == "start_array":

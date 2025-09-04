@@ -4,21 +4,21 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "borealis"
-version = "0.7"
+version = "1.0"
 description = "SuperDARN Digital Radar System"
 readme = "README.md"
 authors = [{name = "SuperDARN Canada"}]
 license = {file = "LICENSE"}
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 dependencies = [
     "backscatter @ git+https://github.com/SuperDARNCanada/backscatter.git",
+    "darn-dmap>=0.1.6",
     "graypy",
     "h5py>=3.3.0",
     "inotify",
-    "numpy",
+    "numpy<2",
     "posix_ipc",
-    "protobuf==3.19.5",
-    "pydantic<2",
+    "pydantic>=2",
     "pyDARNio @ git+https://github.com/SuperDARN/pyDARNio.git@develop",
     "rich",
     "scipy",
@@ -29,7 +29,7 @@ dependencies = [
 [project.optional-dependencies]
 gpu = ["cupy"]
 dev = [
-    "black ~= 24.0",
+    "ruff",
     "pre-commit",
     "jupyter"
 ]
@@ -44,3 +44,20 @@ restart_borealis = "scripts.restart_borealis:main"
 [tool.setuptools.packages.find]
 where = ["borealis", "build"]
 exclude = ["usrp_drivers", "src.borealis_experiments.testing_archive*"]
+
+[tool.ruff]
+include = [
+    "scheduler/**/*.py",
+    "scripts/**/*.py",
+    "src/**/*.py",
+    "tests/**/*.ipynb",
+    "tests/**/*.py",
+    "**/pyproject.toml"
+]
+extend-exclude = [
+    "src/borealis_experiments/**/*.py",
+    "tests/archive/**/*",
+]
+
+[tool.ruff.lint]
+ignore = ["E402"]   # Module level import not at top of file (required for sys.path.append() before import)

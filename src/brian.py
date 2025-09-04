@@ -1,11 +1,11 @@
 #!/usr/bin/python
 
 """
-    brian process
-    ~~~~~~~~~~~~~
-    This program communicates with all processes to administrate the Borealis software
+brian process
+~~~~~~~~~~~~~
+This program communicates with all processes to administrate the Borealis software
 
-    :copyright: 2017 SuperDARN Canada
+:copyright: 2017 SuperDARN Canada
 """
 
 import os
@@ -17,12 +17,10 @@ import zmq
 import pickle
 from utils import socket_operations as so
 from utils.options import Options
+from utils.message_formats import SequenceMetadataMessage
 
 sys.path.append(os.environ["BOREALISPATH"])
-if __debug__:
-    from build.debug.src.utils.protobuf import rxsamplesmetadata_pb2
-else:
-    from build.release.src.utils.protobuf import rxsamplesmetadata_pb2
+from utils.message_formats import RxSamplesMetadata
 
 TIME_PROFILE = True
 
@@ -51,12 +49,12 @@ def router(options, realtime_off):
             dd = router.recv_multipart()
             sender, receiver, empty, data = dd
             log.debug(
-                f"router input: sender->receiver", sender=sender, receiver=receiver
+                "router input: sender->receiver", sender=sender, receiver=receiver
             )
             frames_received = [receiver, sender, empty, data]
             frames_to_send.append(frames_received)
             log.debug(
-                f"router output: receiver->sender", sender=sender, receiver=receiver
+                "router output: receiver->sender", sender=sender, receiver=receiver
             )
 
         non_sent = []
@@ -106,7 +104,7 @@ def sequence_timing(options):
         options.brian_to_dspend_identity,
     ]
 
-    sockets_list = so.create_sockets(ids, options.router_address)
+    sockets_list = so.create_sockets(options.router_address, *ids)
 
     brian_to_radar_control = sockets_list[0]
     brian_to_driver = sockets_list[1]
@@ -122,71 +120,51 @@ def sequence_timing(options):
     context = zmq.Context().instance()
 
     start_new_sock = context.socket(zmq.PAIR)
-    start_new_sock.bind("inproc://start_new")
+    start_new_sock.bind("inproc://rate_limiter")
 
-    def start_new():
+    def rate_limiter():
         """
         This function serves to rate control the system. If processing is faster than the
         sequence time then the speed of the driver is the limiting factor. If processing takes
         longer than sequence time, then the dsp unit limits the speed of the system.
+
+        To ensure that the system does not overallocate resources, some checks are conducted.
+        We keep track of the state of the worker (the driver module) and resource (ringbuffer)
+        that are critical. When the ringbuffer is emptied, the driver module can start filling it.
         """
 
-        start_new = context.socket(zmq.PAIR)
-        start_new.connect("inproc://start_new")
+        rate_limiter_socket = context.socket(zmq.PAIR)
+        rate_limiter_socket.connect("inproc://rate_limiter")
 
-        want_to_start = False
-        good_to_start = True
-        dsp_finish_counter = 2
+        driver_busy = True
+        ringbuffer_filled = False
+        time_now = time.perf_counter()
 
-        # starting a new sequence and keeping the system correctly pipelined is dependent on 3
-        # conditions. We trigger a 'want_to_start' when the samples have been collected from the
-        # driver and dsp is ready to do its job. This signals that the driver is capable of
-        # collecting new data. 'good_to_start' is triggered once the samples have been copied to
-        # the GPU and the filtering begins. 'extra_good_to_start' is needed to make sure the
-        # system can keep up with the demand if the gpu is working hard. Without this flag its
-        # possible to overload the gpu and crash the system with overallocation of memory. This
-        # is set once the filtering is complete.
-        #
-        # The last flag is actually a counter because on the first run it is 2 sequences
-        # behind the current sequence and then after that its only 1 sequence behind. The dsp
-        # is always processing the work while a new sequence is being collected.
-        if TIME_PROFILE:
-            time_now = time.perf_counter()
         while True:
-            if want_to_start and good_to_start and dsp_finish_counter:
+            if not driver_busy and not ringbuffer_filled:
                 # Acknowledge new sequence can begin to Radar Control by requesting new sequence metadata
                 log.debug("requesting metadata from radar_control")
-                so.send_request(
+                so.send_string(
                     brian_to_radar_control,
                     options.radctrl_to_brian_identity,
                     "Requesting metadata",
                 )
-                want_to_start = good_to_start = False
-                dsp_finish_counter -= 1
+                driver_busy = True
 
-            message = start_new.recv_string()
-            if message == "want_to_start":
-                if TIME_PROFILE:
-                    time_mark = time.perf_counter() - time_now
-                    time_now = time.perf_counter()
-                    log.verbose(f"driver ready", driver_time=time_mark)
-                want_to_start = True
+            message = rate_limiter_socket.recv_string()
 
-            if message == "good_to_start":
-                if TIME_PROFILE:
-                    time_mark = time.perf_counter() - time_now
-                    time_now = time.perf_counter()
-                    log.verbose(f"copied to gpu", copy2gpu_time=time_mark)
-                good_to_start = True
+            if TIME_PROFILE:
+                time_mark = time.perf_counter() - time_now
+                time_now = time.perf_counter()
+                log.verbose(message, time=time_mark)
 
-            if message == "extra_good_to_start":
-                if TIME_PROFILE:
-                    time_mark = time.perf_counter() - time_now
-                    time_now = time.perf_counter()
-                    log.verbose(f"dsp done with data", dsp_time=time_mark)
-                dsp_finish_counter = 1
+            if message == "driver collected sequence, ready for another":
+                ringbuffer_filled = True
+                driver_busy = False
+            if message == "ringbuffer free":
+                ringbuffer_filled = False
 
-    thread = threading.Thread(target=start_new)
+    thread = threading.Thread(target=rate_limiter)
     thread.daemon = True
     thread.start()
 
@@ -200,7 +178,7 @@ def sequence_timing(options):
         if first_time:
             # Request new sequence metadata
             log.debug("requesting metadata from radar control")
-            so.send_request(
+            so.send_string(
                 brian_to_radar_control,
                 options.radctrl_to_brian_identity,
                 "Requesting metadata",
@@ -210,14 +188,14 @@ def sequence_timing(options):
         socks = dict(sequence_poller.poll())
 
         if brian_to_driver in socks and socks[brian_to_driver] == zmq.POLLIN:
-
             # Receive metadata of completed sequence from driver such as timing
-            reply = so.recv_obj(brian_to_driver, options.driver_to_brian_identity, log)
-            meta = rxsamplesmetadata_pb2.RxSamplesMetadata()
-            meta.ParseFromString(reply)
+            reply = so.recv_bytes(
+                brian_to_driver, options.driver_to_brian_identity, log
+            )
+            meta = RxSamplesMetadata.parse(reply.decode("utf-8"))
 
             log.debug(
-                f"driver sent",
+                "driver sent",
                 sequence_time=meta.sequence_time * 1e3,
                 sequence_time_unit="ms",
                 sequence_num=meta.sequence_num,
@@ -226,21 +204,21 @@ def sequence_timing(options):
             # Requesting acknowledgement of work begins from DSP
             log.debug("requesting work begins from dsp")
             iden = options.dspbegin_to_brian_identity + str(meta.sequence_num)
-            so.send_request(brian_to_dsp_begin, iden, "Requesting work begins")
+            so.send_string(brian_to_dsp_begin, iden, "Requesting work begins")
 
-            start_new_sock.send_string("want_to_start")
+            start_new_sock.send_string("driver collected sequence, ready for another")
 
         if (
             brian_to_radar_control in socks
             and socks[brian_to_radar_control] == zmq.POLLIN
         ):
-
             # Get new sequence metadata from radar control
-            reply = so.recv_obj(
-                brian_to_radar_control, options.radctrl_to_brian_identity, log
+            sigp = so.recv_pyobj(
+                brian_to_radar_control,
+                options.radctrl_to_brian_identity,
+                log,
+                expected_type=SequenceMetadataMessage,
             )
-
-            sigp = pickle.loads(reply)
 
             log.debug(
                 "radar control sent",
@@ -251,33 +229,27 @@ def sequence_timing(options):
 
             # Request acknowledgement of sequence from driver
             log.debug("requesting ack from driver")
-            so.send_request(
+            so.send_string(
                 brian_to_driver, options.driver_to_brian_identity, "Requesting ack"
             )
 
         if brian_to_dsp_begin in socks and socks[brian_to_dsp_begin] == zmq.POLLIN:
-
             # Get acknowledgement that work began in processing.
             reply = so.recv_bytes_from_any_iden(brian_to_dsp_begin)
-
             sig_p = pickle.loads(reply)
-
             log.debug("dsp began", sequence_num=sig_p["sequence_num"])
 
             # Requesting acknowledgement of work ends from DSP
-
             log.debug("requesting work end from dsp")
             iden = options.dspend_to_brian_identity + str(sig_p["sequence_num"])
-            so.send_request(brian_to_dsp_end, iden, "Requesting work ends")
+            so.send_string(brian_to_dsp_end, iden, "Requesting work ends")
 
             # Acknowledge we want to start something new.
-            start_new_sock.send_string("good_to_start")
+            start_new_sock.send_string("ringbuffer free")
 
         if brian_to_dsp_end in socks and socks[brian_to_dsp_end] == zmq.POLLIN:
-
             # Receive ack that work finished on previous sequence.
             reply = so.recv_bytes_from_any_iden(brian_to_dsp_end)
-
             sig_p = pickle.loads(reply)
 
             if sig_p["sequence_num"] != 0:
@@ -294,9 +266,6 @@ def sequence_timing(options):
                 sequence_num=sig_p["sequence_num"],
                 late_counter=late_counter,
             )
-
-            # Acknowledge that we are good and able to start something new.
-            start_new_sock.send_string("extra_good_to_start")
 
 
 def main():
@@ -330,10 +299,10 @@ if __name__ == "__main__":
     from utils import log_config
 
     log = log_config.log()
-    log.info(f"BRIAN BOOTED")
+    log.info("BRIAN BOOTED")
     try:
         main()
-        log.info(f"BRIAN EXITED")
+        log.info("BRIAN EXITED")
     except Exception as main_exception:
         log.critical("BRIAN CRASHED", error=main_exception)
         log.exception("BRIAN CRASHED", exception=main_exception)

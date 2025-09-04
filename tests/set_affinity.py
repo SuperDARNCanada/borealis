@@ -16,7 +16,6 @@ from src.utils.options import Options
 
 
 def get_tids(process_name):
-
     bash_cmd = "for i in $(pgrep {0}); do ps -mo pid,tid,fname,user,psr -p $i;done"
     bash_cmd = bash_cmd.format((process_name))
     p1 = sp.Popen(bash_cmd, stdout=sp.PIPE, shell=True)
@@ -82,7 +81,7 @@ if __name__ == "__main__":
         options.rxaffinity_to_driver_identity,
     ]
 
-    sockets_list = so.create_sockets(ids, options.router_address)
+    sockets_list = so.create_sockets(options.router_address, *ids)
     mainaffinity_to_driver = sockets_list[0]
 
     set_main_uhd = so.recv_data(

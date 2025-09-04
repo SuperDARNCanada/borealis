@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 
 """
-    experiment_prototype
-    ~~~~~~~~~~~~~~~~~~~~
-    This is the base module for all experiments. An experiment will only run if it inherits from
-    this class.
+experiment_prototype
+~~~~~~~~~~~~~~~~~~~~
+This is the base module for all experiments. An experiment will only run if it inherits from
+this class.
 
-    :copyright: 2018 SuperDARN Canada
-    :author: Marci Detwiller
+:copyright: 2018 SuperDARN Canada
+:author: Marci Detwiller
 """
+
 # built-in
 import copy
 import inspect
@@ -260,11 +261,13 @@ class ExperimentPrototype:
             "tx_main_antennas": self.options.tx_main_antennas,
             "rx_main_antennas": self.options.rx_main_antennas,
             "rx_intf_antennas": self.options.rx_intf_antennas,
+            "main_antenna_locations": self.options.main_antenna_locations,
+            "intf_antenna_locations": self.options.intf_antenna_locations,
             "main_antenna_count": self.options.main_antenna_count,
             "intf_antenna_count": self.options.intf_antenna_count,
-            "tr_window_time": self.options.tr_window_time,
             "main_antenna_spacing": self.options.main_antenna_spacing,
             "intf_antenna_spacing": self.options.intf_antenna_spacing,
+            "tr_window_time": self.options.tr_window_time,
             "pulse_ramp_time": self.options.pulse_ramp_time,
             "max_usrp_dac_amplitude": self.options.max_usrp_dac_amplitude,
             "rx_sample_rate": self.rxrate,
@@ -828,7 +831,7 @@ class ExperimentPrototype:
             # reset all slice_interfacing back
             self.__update_slice_interfacing()
 
-            log.error(f"Slice has errors, unable to add to experiment", errors=err)
+            log.error("Slice has errors, unable to add to experiment", errors=err)
 
             return edit_slice_id
 
@@ -858,6 +861,9 @@ class ExperimentPrototype:
 
         # TODO: investigating how I might go about using this base class - maybe make a new IterableExperiment class
         #  to inherit
+
+        # Set any unset center frequencies in the experiment
+        self.set_center_frequencies()
 
         # TODO consider removing scan_objects from init and making a new Experiment class to inherit
         # from InterfaceClassBase and having all of this included in there. Then would only need to
@@ -939,14 +945,255 @@ class ExperimentPrototype:
         # TODO: check if self.cpid is not unique - incorporate known cpids from git repo
         # TODO: use pygit2 for this
 
-        # run check_slice on all slices. Check_slice is a full check and can be done on a slice at
-        # any time after setup. We run it now in case the user has changed something
-        # inappropriately (ie, any way other than using edit_slice, add_slice, or del_slice).
-        # "Private" instance variables with leading underscores are not actually private in
-        # python they just have a bit of a mangled name so they are not readily available but give
-        # the user notice that they should be left alone. If the __slice_dict has been changed
-        # improperly, we should check it for problems here.
-        for exp_slice in self.slice_dict.values():
-            exp_slice.check_slice()
-
         log.info("No Self Check Errors. Continuing...")
+
+    @staticmethod
+    def compare_freq_to_band(freq_list, center_freq_band, valid=True, down_shift=False):
+        """
+        Checks if a list of frequencies fall within a frequency band and returns a boolean
+        indicating the result. Since the radar should not operate in a 50 kHz band centered
+        around the center frequency, the center band is split into two bands above and below
+        the center frequency. If the frequency list under test is a range (eg: cfs_range)
+        then the function will also check if the frequency range overlaps with the 50kHz
+        band around the center freq that should not be used.
+
+        :param  freq_list:      List of frequencies to check
+        :type   freq_list:      list, 1 or 2 elements long
+        :param  center_freq_band:   The frequency bands a corresponding to a particular
+                                    center frequency. Split into and upper and lower band
+                                    because of the 50kHZ band around the center frequency
+                                    that should not be used for operation.
+        :type   center_freq_band:   list of lists [[band 1], [band 2]]
+        :param  valid:          Tracks if the frequencies meet the conditions
+        :type   valid:          boolean
+        :param  down_shift:     Indicates if the freq_list encompasses a null in center_freq_band
+        :type   down_shift:     boolean
+
+        :return: valid, down_shift
+        :rtype:  boolean, boolean
+        """
+
+        for freq in freq_list:
+            if not (
+                center_freq_band[0][0] <= freq <= center_freq_band[0][1]
+                or center_freq_band[1][0] <= freq <= center_freq_band[1][1]
+            ):
+                valid = False
+        if len(freq_list) == 2:
+            if valid:
+                if (
+                    freq_list[0] <= center_freq_band[0][1]
+                    and freq_list[1] >= center_freq_band[1][0]
+                ):
+                    down_shift = True
+                    valid = False
+        return valid, down_shift
+
+    def calculate_center_freq(self, chosen_freq):
+        """
+        Calculates the closest actual center frequency based on the USRP
+        device clock and the desired center frequency.
+
+        :param  chosen_freq: the center frequency desired
+        :type   chosen_freq: float
+
+        :return actual_center_freq: valid center frequency for USRP device
+        :rtype  actual_center_freq: float
+        """
+        clock_multiples = self.options.usrp_master_clock_rate / 2**32
+        clock_divider = np.ceil(chosen_freq * 1e3 / clock_multiples)
+        return (clock_divider * clock_multiples) / 1e3
+
+    def set_center_frequencies(self):
+        """
+        Determines and sets a tx and rx center frequency for any slices the user did not set manually.
+        First the slices with unset center frequencies will be determined and compiled. Then a while loop
+        will be entered. It also creates a list of all CONCURRENT and SEQUENCE interfaces slices that must
+        have the same center frequencies.
+
+        While not all the slices in the experiment have center frequencies, the lowest
+        unset slice frequency will be selected and a center frequency that just satisfies that slice will
+        be picked. The loop then goes through all the other unset slices to find which other slices are also
+        satisfied by the center frequency. In the event that a slice has a frequency range that overlaps
+        with the band around the center frequency that should not be used for operation, instead of setting
+        the center frequency for all slices, the loop will shift the center frequency down a bit and then
+        go back through the loop again. Once no frequency ranges overlap with the center frequency, then
+        all slices that are satisfied by the current selected center frequency will have the tx and rx
+        center frequencies set.
+
+        :raises ExperimentException:    if while loop continues for too long (10000 iterations)
+        """
+        # Initialize parameters
+        slice_freq, slice_ctr_freq = dict(), dict()
+        accounted_for, strict_slices = set(), set()
+
+        tx_null_band = 50  # kHz
+        lowest_freq_slice, counter, center_freq = 0, 0, 0  # initial value unused
+        tune_bandwidth = (self.tx_bandwidth - transition_bandwidth * 2) / 1000  # kHz
+
+        down_shift = False
+
+        # Create list of slices that need center frequencies and the freq used by the slice
+        for slice_id in self.slice_ids:
+            if (
+                self.slice_dict[slice_id].txctrfreq is None
+                and self.slice_dict[slice_id].rxctrfreq is not None
+            ):
+                self.slice_dict[slice_id].txctrfreq = self.slice_dict[
+                    slice_id
+                ].rxctrfreq
+                accounted_for.union({slice_id})
+            elif (
+                self.slice_dict[slice_id].txctrfreq is not None
+                and self.slice_dict[slice_id].rxctrfreq is None
+            ):
+                self.slice_dict[slice_id].rxctrfreq = self.slice_dict[
+                    slice_id
+                ].txctrfreq
+                accounted_for.union({slice_id})
+            elif (
+                self.slice_dict[slice_id].txctrfreq is None
+                and self.slice_dict[slice_id].rxctrfreq is None
+            ):
+                if self.slice_dict[slice_id].freq is None:
+                    slice_freq[slice_id] = self.slice_dict[slice_id].cfs_range
+                else:
+                    slice_freq[slice_id] = [self.slice_dict[slice_id].freq]
+            else:
+                # Both tx and rx center frequency are already set
+                accounted_for.union({slice_id})
+
+        # If no frequencies need to be set
+        if len(slice_freq) == 0:
+            return
+
+        # determine which slices must have the same center frequencies
+        for slice_id in self.slice_ids:
+            interfacing_dict = self.get_slice_interfacing(slice_id)
+            interfacing_dict[slice_id] = (
+                "CONCURRENT"  # add current slice to interfacing dict
+            )
+            keys = list(interfacing_dict.keys())
+            keys.append(slice_id)
+            strict_slices.add(
+                frozenset(
+                    [
+                        x
+                        for x in keys
+                        if interfacing_dict[x] == "CONCURRENT"
+                        or interfacing_dict[x] == "SEQUENCE"
+                    ]
+                )
+            )
+
+        # Begin calculating the center frequencies
+        while not len(self.slice_ids) == len(accounted_for):
+            # if a new slice should be picked, pick the lowest freq slice that
+            # has not had a center freq determined yet.
+            down_shifting_slice = set()
+            if not down_shift:
+                unset_slices = {
+                    k: slice_freq[k]
+                    for k in slice_freq.keys()
+                    if k not in accounted_for
+                }
+                lowest_freq_slice = min(unset_slices, key=unset_slices.get)
+
+                # determine center freq using selected slice id freq
+                center_freq = slice_freq[lowest_freq_slice][0] + tune_bandwidth / 2
+
+            # track which slices work with chosen center freq
+            current_attempt = {lowest_freq_slice}
+            center_freq_band = [
+                [center_freq - tune_bandwidth / 2, center_freq - tx_null_band / 2],
+                [center_freq + tx_null_band / 2, center_freq + tune_bandwidth / 2],
+            ]
+
+            for slice_id in slice_freq.keys():
+                # only test slices not already matched to a center freq
+                if slice_id not in current_attempt:
+                    concurrent = False
+                    concurrent_set = []
+                    for strict_set in strict_slices:
+                        if slice_id in strict_set:
+                            # If the slice id must have the same center freq as another slice
+                            concurrent = True
+                            concurrent_set = strict_set
+                            break
+
+                    # check if slice is satisfied by current proposed center freq band
+                    # If a freq was in the 50 kHz null in the middle of the band, attempt downshifting
+                    # the center freq
+                    valid = True
+                    down_shift_trigger = False
+                    if not concurrent:
+                        valid, down_shift_trigger = self.compare_freq_to_band(
+                            slice_freq[slice_id], center_freq_band, valid
+                        )
+                        if valid:
+                            current_attempt.add(slice_id)
+                        if down_shift_trigger:
+                            # Store slices that have freq range crossing over the
+                            # 50 kHz band around the center freq.
+                            down_shifting_slice.add(slice_id)
+                            down_shift = True
+                    else:
+                        for con_slice in concurrent_set:
+                            valid, down_shift_trigger = self.compare_freq_to_band(
+                                slice_freq[con_slice],
+                                center_freq_band,
+                                valid,
+                                down_shift,
+                            )
+                            if down_shift_trigger:
+                                down_shifting_slice.add(slice_id)
+                                down_shift = True
+                        if valid:
+                            for con_slice in concurrent_set:
+                                current_attempt.add(con_slice)
+
+            # Now that all slices have been checked for this lowest freq slice, set center freqs and then
+            # continue the loop if not all slices have been accounted for
+            if down_shifting_slice.issubset(current_attempt):
+                # Stop downshifting the center freq if all down_shifting slices are in current attempt
+                down_shift = False
+
+            if (
+                down_shift
+                and center_freq <= slice_freq[lowest_freq_slice][0] - tune_bandwidth / 2
+            ):
+                # if downshifting has taken the band below the starting slice freq, stop shifting
+                center_freq += tx_null_band * 2
+                down_shift = False
+                current_attempt = {lowest_freq_slice}
+
+            if down_shift:
+                # if a frequency range was found to overlap with the 50kHz band around the
+                # center frequency, trying shifting the center freq down by the band and repeat
+                # the while loop until the down_shift condition is no longer triggered.
+                center_freq = center_freq - tx_null_band
+            else:
+                # update slices accounted for and assign center freq to slices in current attempt
+                accounted_for = accounted_for.union(current_attempt)
+                for slice_id in current_attempt:
+                    if slice_id not in slice_ctr_freq.keys():
+                        slice_ctr_freq[slice_id] = center_freq
+                down_shift = False
+
+            counter += 1
+            if counter > 10000:
+                # Abort if while loop goes for too long
+                raise ExperimentException(
+                    "Experiment handler failed to find valid center frequencies for "
+                    "experiment. Consider changing operating frequencies or setting "
+                    "center frequencies manually."
+                )
+
+        for slice_id in self.slice_ids:
+            # set the center frequencies
+            self.slice_dict[slice_id].txctrfreq = self.calculate_center_freq(
+                slice_ctr_freq[slice_id]
+            )
+            self.slice_dict[slice_id].rxctrfreq = self.calculate_center_freq(
+                slice_ctr_freq[slice_id]
+            )

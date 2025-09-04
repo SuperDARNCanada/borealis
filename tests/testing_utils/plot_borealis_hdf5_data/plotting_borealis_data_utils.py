@@ -95,35 +95,33 @@ def reshape_txdata(record_dict):
     return record_dict
 
 
-def plot_bf_iq_data(record_dict, record_info_string, beam=0, sequence=0):
+def plot_bf_iq_data(record_dict, metadata, record_info_string, beam=0, sequence=0):
     """
     :param record_dict: dict of the hdf5 data of a given record of bfiq, ie deepdish.io.load(filename)[record_name]
+    :param metadata: dict of parameters constant across all records
     :param record_info_string: a string indicating the type of data being plotted (to be used on the plot legend). Should
      be bf_iq type, but there might be multiple slices or you may wish to otherwise identify
     :param beam: The beam number, indexed from 0. Assumed only one beam and plotting the first.
     """
 
-    record_dict = reshape_bfiq_data(record_dict)
-    # new data dimensions are num_antenna_arrays, num_sequences, num_beams, num_samps
-
     fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
     print("Sequence number: {}".format(sequence))
     print("Beam number: {}".format(beam))
-    for index in range(0, record_dict["data"].shape[0]):
-        antenna_array = record_dict["antenna_arrays_order"][index]
+    for index in range(0, record_dict["bfiq_data"].shape[0]):
+        antenna_array = metadata["antenna_arrays"][index]
 
-        if antenna_array == "main":
+        if antenna_array == b"main":
             ax1.set_title(
                 "Main Array {} sequence {}".format(record_info_string, sequence)
             )
             ax1.plot(
-                np.arange(record_dict["num_samps"]),
-                record_dict["data"][index, sequence, beam, :].real,
+                metadata["sample_time"],
+                record_dict["bfiq_data"][index, sequence, beam, :].real,
                 label="Real {}".format(antenna_array),
             )
             ax1.plot(
-                np.arange(record_dict["num_samps"]),
-                record_dict["data"][index, sequence, beam, :].imag,
+                metadata["sample_time"],
+                record_dict["bfiq_data"][index, sequence, beam, :].imag,
                 label="Imag {}".format(antenna_array),
             )
             ax1.legend()
@@ -132,13 +130,13 @@ def plot_bf_iq_data(record_dict, record_info_string, beam=0, sequence=0):
                 "Intf Array {} sequence {}".format(record_info_string, sequence)
             )
             ax2.plot(
-                np.arange(record_dict["num_samps"]),
-                record_dict["data"][index, sequence, beam, :].real,
+                metadata["sample_time"],
+                record_dict["bfiq_data"][index, sequence, beam, :].real,
                 label="Real {}".format(antenna_array),
             )
             ax2.plot(
-                np.arange(record_dict["num_samps"]),
-                record_dict["data"][index, sequence, beam, :].imag,
+                metadata["sample_time"],
+                record_dict["bfiq_data"][index, sequence, beam, :].imag,
                 label="Imag {}".format(antenna_array),
             )
             ax2.legend()
@@ -146,61 +144,60 @@ def plot_bf_iq_data(record_dict, record_info_string, beam=0, sequence=0):
 
 
 def plot_antennas_iq_data(
-    record_dict, record_info_string, sequence=0, real_only=True, antenna_indices=None
+    record_dict, metadata, record_info_string, sequence=0, real_only=True
 ):
     """
     :param record_dict: dict of the hdf5 data of a given record of antennas_iq, ie deepdish.io.load(filename)[record_name]
+    :param metadata: dict of metadata constant across all records of the datafiles
     :param record_info_string: a string indicating the type of data being plotted (to be used on the plot legend). Should
      be antennas_iq type, but there might be multiple slices.
     """
 
-    record_dict = reshape_antennas_iq(record_dict)
     # new data dimensions are num_antennas, num_sequences, num_samps
-    antennas_present = [
-        int(i.split("_")[-1]) for i in record_dict["antenna_arrays_order"]
-    ]
+    antennas_present = metadata["antennas"]
 
-    if antenna_indices is None:
-        indices = range(0, record_dict["data"].shape[0])
-    else:
-        indices = antenna_indices
-
-    print("Sequence number: {}".format(sequence))
-    print(
-        "Antennas: {}".format([record_dict["antenna_arrays_order"][i] for i in indices])
-    )
+    print(f"Sequence number: {sequence}")
+    print(f"Antennas: {antennas_present}")
 
     fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
-    for index in indices:
-        antenna = antennas_present[index]
-        ax1.set_title("Main Antennas {}".format(record_info_string))
-        ax2.set_title("Intf Antennas {}".format(record_info_string))
-        if antenna < record_dict["main_antenna_count"]:
+    for antenna in antennas_present:
+        ax1.set_title(
+            "Main Antennas {} @ beam dir {}".format(
+                record_info_string, record_dict["beam_azms"]
+            )
+        )
+        ax2.set_title(
+            "Intf Antennas {} @ beam dir {}".format(
+                record_info_string, record_dict["beam_azms"]
+            )
+        )
+        if antenna in metadata["rx_main_antennas"]:
             ax1.plot(
-                np.arange(record_dict["num_samps"]),
-                record_dict["data"][index, sequence, :].real,
+                metadata["sample_time"],
+                record_dict["antennas_iq_data"][antenna, sequence, :].real,
                 label="Real {}".format(antenna),
             )
             if not real_only:
                 ax1.plot(
-                    np.arange(record_dict["num_samps"]),
-                    record_dict["data"][index, sequence, :].imag,
+                    metadata["sample_time"],
+                    record_dict["antennas_iq_data"][antenna, sequence, :].imag,
                     label="Imag {}".format(antenna),
                 )
-            ax1.legend()
+            ax1.legend(fancybox=True)
         else:
             ax2.plot(
-                np.arange(record_dict["num_samps"]),
-                record_dict["data"][index, sequence, :].real,
+                metadata["sample_time"],
+                record_dict["antennas_iq_data"][antenna, sequence, :].real,
                 label="Real {}".format(antenna),
             )
             if not real_only:
                 ax2.plot(
-                    np.arange(record_dict["num_samps"]),
-                    record_dict["data"][index, sequence, :].imag,
+                    metadata["sample_time"],
+                    record_dict["antennas_iq_data"][antenna, sequence, :].imag,
                     label="Imag {}".format(antenna),
                 )
             ax2.legend()
+
     plt.show()
 
 
@@ -309,32 +306,29 @@ def plot_output_tx_data(
 
 
 def fft_and_plot_bfiq_data(
-    record_dict, record_info_string, beam=0, sequence=0, plot_width=None
+    record_dict, metadata, record_info_string, beam=0, sequence=0, plot_width=None
 ):
     """
     :param plot_width: frequency bandwidth to plot fft (for higher resolution)
     """
 
-    record_dict = reshape_bfiq_data(record_dict)
-    # new data dimensions are num_antenna_arrays, num_sequences, num_beams, num_samps
-
     fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
     print("Sequence number: {}".format(sequence))
     print("Beam number: {}".format(beam))
-    for index in range(0, record_dict["data"].shape[0]):
-        antenna_array = record_dict["antenna_arrays_order"][index]
+    for index in range(0, record_dict["bfiq_data"].shape[0]):
+        antenna_array = metadata["antenna_arrays"][index].decode("utf-8")
+
         if not plot_width:
             fft_samps, xf = fft_to_plot(
-                record_dict["data"][index, sequence, beam, :],
-                record_dict["rx_sample_rate"],
+                record_dict["bfiq_data"][index, sequence, beam, :],
+                metadata["rx_sample_rate"],
             )
         else:
             fft_samps, xf = fft_to_plot(
-                record_dict["data"][index, sequence, beam, :],
-                record_dict["rx_sample_rate"],
+                record_dict["bfiq_data"][index, sequence, beam, :],
+                metadata["rx_sample_rate"],
                 plot_width=plot_width,
             )
-        len_samples = len(record_dict["data"][index, sequence, beam, :])
         if antenna_array == "main":
             ax1.set_title(
                 "FFT Main Array {} sequence {}".format(record_info_string, sequence)
@@ -359,6 +353,7 @@ def fft_and_plot_bfiq_data(
 
 def fft_and_plot_antennas_iq(
     record_dict,
+    metadata,
     record_info_string,
     sequence=0,
     real_only=True,
@@ -367,6 +362,7 @@ def fft_and_plot_antennas_iq(
 ):
     """
     :param record_dict: dict of the hdf5 data of a given record of antennas_iq, ie deepdish.io.load(filename)[record_name]
+    :param metadata: dict of parameters common to all records
     :param record_info_string: a string indicating the type of data being plotted (to be used on the plot legend). Should
      be antennas_iq type, but there might be multiple slices.
     :param plot_width: frequency bandwidth to plot fft (for higher resolution)
@@ -374,26 +370,13 @@ def fft_and_plot_antennas_iq(
     plot_individual = True
     plt.rcParams.update({"figure.max_open_warning": 0})
 
-    record_dict = reshape_antennas_iq(record_dict)
-    # new data dimensions are num_antennas, num_sequences, num_samps
-    antennas_present = [
-        int(i.split("_")[-1]) for i in record_dict["antenna_arrays_order"]
-    ]
+    antennas_present = metadata["antennas"]
 
-    if antenna_indices is None:
-        indices = range(0, record_dict["data"].shape[0])
-    else:
-        indices = antenna_indices
-
-    print("Sequence number: {}".format(sequence))
-    print(
-        "Antennas: {}".format([record_dict["antenna_arrays_order"][i] for i in indices])
-    )
+    print(f"Sequence number: {sequence}")
+    print(f"Antennas: {antennas_present}")
 
     fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
-    for index in indices:
-        antenna = antennas_present[index]
-        plt.figure(0)
+    for antenna in antennas_present:
         ax1.set_title(
             "FFT Main Antennas {}".format(record_info_string) + ": All antennas"
         )
@@ -402,16 +385,17 @@ def fft_and_plot_antennas_iq(
         )
         if not plot_width:
             fft_samps, xf = fft_to_plot(
-                record_dict["data"][index, sequence, :], record_dict["rx_sample_rate"]
+                record_dict["antennas_iq_data"][antenna, sequence, :],
+                metadata["rx_sample_rate"],
             )
         else:
             fft_samps, xf = fft_to_plot(
-                record_dict["data"][index, sequence, :],
-                record_dict["rx_sample_rate"],
+                record_dict["antennas_iq_data"][antenna, sequence, :],
+                metadata["rx_sample_rate"],
                 plot_width=plot_width,
             )
-        len_samples = len(record_dict["data"][index, sequence, :])
-        if antenna < record_dict["main_antenna_count"]:
+        len_samples = len(record_dict["antennas_iq_data"][antenna, sequence, :])
+        if antenna in metadata["rx_main_antennas"]:
             ax1.plot(
                 xf, 1.0 / len_samples * np.abs(fft_samps), label="{}".format(antenna)
             )
@@ -422,18 +406,18 @@ def fft_and_plot_antennas_iq(
 
         # Plot individual antenna on separate plot
         if plot_individual:
-            plt.figure(index + 2, figsize=((6, 2)))
+            plt.figure(antenna + 2, figsize=((6, 2)))
             plt.plot(
                 xf, 1.0 / len_samples * np.abs(fft_samps), label="{}".format(antenna)
             )
-            plt.title("Antenna " + str(index))
+            plt.title("Antenna " + str(antenna))
     ax2.set_xlabel("Hz")
     return fft_samps, xf, fig
 
 
 def fft_and_plot_rawrf_data(
     record_dict,
-    record_info_string,
+    metadata,
     sequence=0,
     real_only=True,
     start_sample=18000,
@@ -446,14 +430,14 @@ def fft_and_plot_rawrf_data(
     :param plot_width: frequency bandwidth to plot fft (for higher resolution)
     """
 
-    record_dict = reshape_rawrf_data(record_dict)
+    # record_dict = reshape_rawrf_data(record_dict)
     # new data dimensions are num_sequences, num_antennas, num_samps
     fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
-    ax1.set_title("Main Antennas {}".format(record_info_string))
-    ax2.set_title("Intf Antennas {}".format(record_info_string))
+    ax1.set_title("Main Antennas {}".format(metadata["rx_main_antennas"]))
+    ax2.set_title("Intf Antennas {}".format(metadata["rx_intf_antennas"]))
 
     if antenna_indices is None:
-        indices = range(0, record_dict["data"].shape[1])
+        indices = range(0, record_dict["rawrf_data"].shape[1])
     else:
         indices = antenna_indices
 
@@ -466,21 +450,25 @@ def fft_and_plot_rawrf_data(
         # if max(abs(record_dict['data'][index,antenna,18000:20000])) < 0.05:
         #    continue
         fft_samps, xf = fft_to_plot(
-            record_dict["data"][sequence, antenna, start_sample:end_sample],
-            record_dict["rx_sample_rate"],
+            record_dict["rawrf_data"][sequence, antenna, start_sample:end_sample],
+            metadata["rx_sample_rate"],
             plot_width=plot_width,
             center=center,
         )
         len_samples = len(
-            record_dict["data"][sequence, antenna, start_sample:end_sample]
+            record_dict["rawrf_data"][sequence, antenna, start_sample:end_sample]
         )
-        if antenna < record_dict["main_antenna_count"]:
+        if antenna < len(metadata["rx_main_antennas"]):
             ax1.plot(
-                xf, 1.0 / len_samples * np.abs(fft_samps), label="{}".format(antenna)
+                xf,
+                10 * np.log10(1.0 / len_samples * np.abs(fft_samps)),
+                label="{}".format(antenna),
             )
         else:
             ax2.plot(
-                xf, 1.0 / len_samples * np.abs(fft_samps), label="{}".format(antenna)
+                xf,
+                10 * np.log10(1.0 / len_samples * np.abs(fft_samps)),
+                label="{}".format(antenna),
             )
     ax1.legend()
     ax2.legend()
@@ -496,7 +484,6 @@ def fft_and_plot_txdata(
     antenna_indices=None,
     plot_width=None,
 ):
-
     record_dict = reshape_txdata(record_dict)
     # new data dimensions are num_sequences, num_antennas, num_samps
 
@@ -535,10 +522,8 @@ def fft_to_plot(samples, rate, plot_width=None, center=0):
     num_samps = len(samples)
     xf = np.linspace(-1.0 / (2.0 * T), 1.0 / (2.0 * T), num_samps)  # Hz
 
-    fft_to_plot = np.empty([num_samps], dtype=np.complex64)
     halfway = int(math.ceil(float(num_samps) / 2))
     fft_to_plot = np.concatenate([fft_samps[halfway:], fft_samps[:halfway]])
-    # xf = xf[halfway-200:halfway+200]
     if not plot_width:
         return fft_to_plot, xf
     else:

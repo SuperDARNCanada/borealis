@@ -43,6 +43,11 @@ def main():
         help="Flag to embargo the files (makes the CPID negative)",
     )
     parser.add_argument(
+        "--rawacf-format",
+        choices=["hdf5", "dmap"],
+        help="File format to use when writing rawacf files",
+    )
+    parser.add_argument(
         "--kwargs", nargs="+", help="Keyword arguments for the experiment"
     )
 
@@ -68,6 +73,7 @@ def main():
             args.duration,
             kwargs,
             args.embargo,
+            args.rawacf_format,
         )
 
     if args.remove:
@@ -80,6 +86,7 @@ def main():
             args.duration,
             kwargs,
             args.embargo,
+            args.rawacf_format,
         )
 
 

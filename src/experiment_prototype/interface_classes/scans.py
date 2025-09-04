@@ -1,17 +1,18 @@
 #!/usr/bin/python
 
 """
-    scans
-    ~~~~~
-    This is the module containing the Scan class. The Scan class contains the InterfaceClassBase members,
-    as well as a scanbound (to be implemented), a beamdir dictionary and scan_beams dictionary which
-    specify beam direction angle and beam order in a scan, respectively, for individual slices that
-    are to be combined in this scan. Beam direction information gets passed on to the
-    AveragingPeriod.
+scans
+~~~~~
+This is the module containing the Scan class. The Scan class contains the InterfaceClassBase members,
+as well as a scanbound (to be implemented), a beamdir dictionary and scan_beams dictionary which
+specify beam direction angle and beam order in a scan, respectively, for individual slices that
+are to be combined in this scan. Beam direction information gets passed on to the
+AveragingPeriod.
 
-    :copyright: 2018 SuperDARN Canada
-    :author: Marci Detwiller
+:copyright: 2018 SuperDARN Canada
+:author: Marci Detwiller
 """
+
 # built-in
 import inspect
 from pathlib import Path
@@ -20,7 +21,10 @@ from pathlib import Path
 import structlog
 
 # local
-from experiment_prototype.interface_classes.averaging_periods import AveragingPeriod
+from experiment_prototype.interface_classes.averaging_periods import (
+    AveragingPeriod,
+    CFSAveragingPeriod,
+)
 from experiment_prototype.interface_classes.interface_class_base import (
     InterfaceClassBase,
 )
@@ -47,7 +51,6 @@ class Scan(InterfaceClassBase):
     """
 
     def __init__(self, scan_keys, scan_slice_dict, scan_interface, transmit_metadata):
-
         InterfaceClassBase.__init__(
             self, scan_keys, scan_slice_dict, scan_interface, transmit_metadata
         )
@@ -76,7 +79,10 @@ class Scan(InterfaceClassBase):
         self.nested_slice_list = self.get_nested_slice_ids()
 
         for params in self.prep_for_nested_interface_class():
-            self.aveperiods.append(AveragingPeriod(*params))
+            if any([s.cfs_flag for s in params[1].values()]):
+                self.aveperiods.append(CFSAveragingPeriod(*params))
+            else:
+                self.aveperiods.append(AveragingPeriod(*params))
 
         # determine how many beams in scan:
         num_unique_aveperiods = 0

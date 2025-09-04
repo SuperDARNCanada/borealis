@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 
 """
-    decimation_scheme
-    ~~~~~~~~~~~~~~~~~
-    This file contains classes and functions for building decimation schemes
+decimation_scheme
+~~~~~~~~~~~~~~~~~
+This file contains classes and functions for building decimation schemes
 
-    :copyright: 2018 SuperDARN Canada
+:copyright: 2018 SuperDARN Canada
 """
+
 # built-in
 import math
 
@@ -15,7 +16,6 @@ from scipy.signal import firwin, remez, kaiserord
 
 
 class DecimationStage(object):
-
     def __init__(self, stage_num, input_rate, dm_rate, filter_taps):
         """
         Create a decimation stage with given decimation rate, input sample rate, and filter taps.
@@ -126,6 +126,22 @@ class DecimationScheme(object):
                 )
                 raise ValueError(errmsg)
 
+            # TODO: Enable checking of if decimation scheme will alias.
+            #  Code below needs the passband width, not output rate
+            # if (
+            #     self.input_rates[stage_num]
+            #     > self.dm_rates[stage_num] * self.output_rates[stage_num]
+            # ) and not math.isclose(
+            #     self.input_rates[stage_num],
+            #     self.dm_rates[stage_num] * self.output_rates[stage_num],
+            # ):
+            #     errmsg = (
+            #         f"Experiment decimation stage {stage_num} is aliasing. Ensure that "
+            #         f"input_rate/output_rate ({self.input_rates[stage_num]}/{self.output_rates[stage_num]}) is "
+            #         f"greater than the decimation rate ({self.dm_rates[stage_num]})."
+            #     )
+            #     raise ValueError(errmsg)
+
         if not math.isclose(
             self.output_rates[-1], self.output_sample_rate, abs_tol=0.001
         ):
@@ -153,7 +169,40 @@ class DecimationScheme(object):
         return True
 
 
-def create_default_scheme():
+def two_stage_filter():
+    """
+    Two-stage kaiser window scheme.
+
+    Works well with the following parameters:
+    sample_rate = 5e6
+    dm_rate = [30, 50]
+    transition_width = [150e3, 25e3]
+    cutoff_hz = [10e3, 5e3]
+    ripple_db = [115, 50]
+    """
+    sample_rate = 5e6  # 5 MHz
+    dm_rate = [30, 50]  # downsampling rates after filters
+    transition_width = [150e3, 30e3]  # transition from passband to stopband
+    cutoff_hz = [10e3, 5e3]  # bandwidth for output of filter
+    ripple_db = [115, 50]  # dB between passband and stopband
+    scaling_factors = [1000.0, 10000.0]  # multiplicative factors for each filter stage
+
+    dm_rate_so_far = 1
+    stages = []
+    for i in range(2):
+        rate = sample_rate / dm_rate_so_far
+        taps = scaling_factors[i] * create_firwin_filter_by_attenuation(
+            rate, transition_width[i], cutoff_hz[i], ripple_db[i]
+        )
+        stages.append(DecimationStage(i, rate, dm_rate[i], taps.tolist()))
+        dm_rate_so_far *= dm_rate[i]
+
+    scheme = DecimationScheme(sample_rate, sample_rate / dm_rate_so_far, stages=stages)
+
+    return scheme
+
+
+def default_scheme():
     """
     Previously known as create_test_scheme_9 until July 23/2019!
     Create four stages of FIR filters and a decimation scheme. Returns a decimation scheme of type DecimationScheme.
@@ -188,6 +237,38 @@ def create_default_scheme():
         )
 
     return DecimationScheme(5.0e6, 10.0e3 / 3, stages=all_stages)
+
+
+def create_default_scheme():
+    """Creates a default DecimationScheme with 5 MHz input, 3.333 kHz output"""
+    # return default_scheme()
+    return two_stage_filter()
+
+
+def create_default_cfs_scheme():
+    """
+    Wide passband decimation scheme for listening only (high output sample rate, beware!)
+    This default clear frequency search scheme is designed for a 300kHz range.
+    """
+    sample_rate = 5e6  # 5 MHz
+    dm_rate = [15]  # downsampling rates after filters
+    transition_width = [100e3]  # transition from passband to stopband
+    cutoff_hz = [165e3]  # bandwidth for output of filter
+    ripple_db = [200]  # Stopband suppression in dB
+
+    dm_rate_so_far = 1
+    stages = []
+    for i in range(len(ripple_db)):
+        rate = sample_rate / dm_rate_so_far
+        taps = create_firwin_filter_by_attenuation(
+            rate, transition_width[i], cutoff_hz[i], ripple_db[i]
+        )
+        stages.append(DecimationStage(i, rate, dm_rate[i], taps.tolist()))
+        dm_rate_so_far *= dm_rate[i]
+
+    scheme = DecimationScheme(sample_rate, sample_rate / dm_rate_so_far, stages=stages)
+
+    return scheme
 
 
 def calculate_num_filter_taps(sampling_freq, trans_width, k):

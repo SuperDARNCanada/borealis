@@ -227,10 +227,8 @@ class gpio_testing(object):
                 # State name of current test
                 if pin == self.signal_pins["TR"]:
                     print("Testing TR, AGC Loopback")
-                    read_mask = agc_mask
                 else:
                     print("Testing TM, LP Loopback")
-                    read_mask = lp_mask
 
                 # make sure that we are starting in an all pins 0 state
                 while True:

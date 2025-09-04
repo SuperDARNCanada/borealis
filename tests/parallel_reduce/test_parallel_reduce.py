@@ -59,7 +59,6 @@ def reduce3(data_list):
 
 
 def reduce4(data_list):
-
     data = data_list[:]
     num_elements = len(data)
 
@@ -98,7 +97,6 @@ def reduce4(data_list):
 
 
 def reduce5(data_list):
-
     data = data_list[:]
     num_elements = len(data)
 

@@ -17,7 +17,7 @@ Experiment Prototype Package
     :show-inheritance:
 
 .. autoclass:: src.experiment_prototype.experiment_slice.ExperimentSlice()
-    :members: check_slice
+    :members:
 
 .. automodule:: src.experiment_prototype.experiment_exception
     :members:

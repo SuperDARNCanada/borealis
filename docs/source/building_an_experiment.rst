@@ -66,6 +66,14 @@ Interfacing Types Between Slices
 .. autodata:: src.experiment_prototype.experiment_prototype.interface_types
     :noindex:
 
+If the ``txctrfreq`` and ``rxctrfreq`` parameters are not set by the user, then borealis will attempt
+to calculate centre frequencies for each slice of the experiment. It will aim to have as many slices
+on the same centre frequency as possible, and will ensure that any SEQUENCE or CONCURRENT interfaced
+slices have the same centre frequencies. It is not guaranteed that borealis will pick the best
+centre frequencies for the experiment and users should set these parameters manually if the
+experiment does not perform as expected or if they have performance concerns due to the tuning time
+required to switch between slices with different centre frequencies.
+
 --------------------------
 Slice Interfacing Examples
 --------------------------
@@ -81,8 +89,8 @@ interfaced. The pulses from both slices are combined into a single set of transm
 that sequence and samples received from those sequences are used for both slices (filtering the raw
 data separates the frequencies).
 
-.. image:: img/cutlass.png
-   :width: 800px
+.. figure:: img/cutlass.png
+   :width: 100%
    :alt: CUTLASS-style experiment slice interfacing
    :align: center
 
@@ -92,8 +100,8 @@ beam data from the full scan, if desired. With AVEPERIOD interfacing, one averag
 slice will be followed by an averaging period of another, and so on. The averaging periods are
 interleaved. The resulting experiment runs beams 0, 7, 1, 7, etc.
 
-.. image:: img/themisscan.png
-   :width: 800px
+.. figure:: img/themisscan.png
+   :width: 100%
    :alt: THEMISSCAN slice interfacing
    :align: center
 
@@ -102,8 +110,8 @@ frequency. The txfreq are unique between the slices. In this experiment, the sli
 interfaced. A full scan of slice 0 runs followed by a full scan of slice 1, and then the process
 repeats.
 
-.. image:: img/twofsound.png
-   :width: 800px
+.. figure:: img/twofsound.png
+   :width: 100%
    :alt: TWOFSOUND slice interfacing
    :align: center
 
@@ -116,8 +124,8 @@ AVEPERIOD interfaced, additionally that slices 2 and 3 are AVEPERIOD interfaced)
 SCAN interfaced (finally, to really drive home this point, this implies that slices 1 and 4 are SCAN
 interfaced, slices 2 and 4 are SCAN interfaced, and slices 3 and 4 are SCAN interfaced).
 
-.. image:: img/one-experiment-all-interfacing-types.png
-   :width: 800px
+.. figure:: img/one-experiment-all-interfacing-types.png
+   :width: 100%
    :alt: An example showing all types of slice interfacing
    :align: center
 

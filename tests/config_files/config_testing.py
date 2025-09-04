@@ -19,6 +19,7 @@ in the Borealis config file directory::
 import argparse
 import copy
 import json
+import numpy as np
 import os
 from pathlib import Path
 import sys
@@ -180,9 +181,7 @@ class TestConfig(unittest.TestCase):
         ) as f:
             json.dump(config, f)
 
-        with self.assertRaisesRegex(
-            ValueError, "rx_main_antennas and main_antenna_count are not consistent"
-        ):
+        with self.assertRaisesRegex(ValueError, "channel 100 not in main antenna list"):
             MockOptions()
 
     def testSingleN200BadIntf(self):
@@ -199,9 +198,7 @@ class TestConfig(unittest.TestCase):
         ) as f:
             json.dump(config, f)
 
-        with self.assertRaisesRegex(
-            ValueError, "rx_intf_antennas and intf_antenna_count are not consistent"
-        ):
+        with self.assertRaisesRegex(ValueError, "channel 4 not in intf antenna list"):
             MockOptions()
 
     def testSingleN200BadTxMain(self):
@@ -218,9 +215,7 @@ class TestConfig(unittest.TestCase):
         ) as f:
             json.dump(config, f)
 
-        with self.assertRaisesRegex(
-            ValueError, "tx_main_antennas and main_antenna_count are not consistent"
-        ):
+        with self.assertRaisesRegex(ValueError, "channel 100 not in main antenna list"):
             MockOptions()
 
     def testSingleN200TxIntf(self):
@@ -314,9 +309,7 @@ class TestConfig(unittest.TestCase):
         ) as f:
             json.dump(config, f)
 
-        with self.assertRaisesRegex(
-            ValueError, "rx_intf_antennas and intf_antenna_count are not consistent"
-        ):
+        with self.assertRaisesRegex(ValueError, "channel 4 not in intf antenna list"):
             MockOptions()
 
     def testTooManyMainAntennas(self):
@@ -331,9 +324,7 @@ class TestConfig(unittest.TestCase):
         ) as f:
             json.dump(config, f)
 
-        with self.assertRaisesRegex(
-            ValueError, "rx_main_antennas and main_antenna_count are not consistent"
-        ):
+        with self.assertRaisesRegex(ValueError, "channel 16 not in main antenna list"):
             MockOptions()
 
     def testDuplicateMainAntennaRx(self):
@@ -535,7 +526,7 @@ class TestConfig(unittest.TestCase):
         # Do this to avoid logging from ExperimentSlice
         from utils import log_config
 
-        log = log_config.log(console=False, logfile=False, aggregator=False)
+        log_config.log(console=False, logfile=False, aggregator=False)
 
         # Set up a slice to test with ExperimentSlice
         from borealis_experiments import superdarn_common_fields as scf
@@ -545,7 +536,6 @@ class TestConfig(unittest.TestCase):
             "cpid": 0,  # arbitrary
             "tx_bandwidth": 5e6,  # default
             "rx_bandwidth": 5e6,  # default
-            "output_rx_rate": 10e3 / 3,  # default
             "transition_bandwidth": 750e3,  # default
             "pulse_sequence": scf.SEQUENCE_7P,  # default
             "tau_spacing": scf.TAU_SPACING_7P,  # default
@@ -590,7 +580,7 @@ class TestConfig(unittest.TestCase):
         # Do this to avoid logging from ExperimentSlice
         from utils import log_config
 
-        log = log_config.log(console=False, logfile=False, aggregator=False)
+        log_config.log(console=False, logfile=False, aggregator=False)
 
         # Set up a slice to test with ExperimentSlice
         from borealis_experiments import superdarn_common_fields as scf
@@ -600,7 +590,6 @@ class TestConfig(unittest.TestCase):
             "cpid": 0,  # arbitrary
             "tx_bandwidth": 5e6,  # default
             "rx_bandwidth": 5e6,  # default
-            "output_rx_rate": 10e3 / 3,  # default
             "transition_bandwidth": 750e3,  # default
             "pulse_sequence": scf.SEQUENCE_7P,  # default
             "tau_spacing": scf.TAU_SPACING_7P,  # default
@@ -645,7 +634,7 @@ class TestConfig(unittest.TestCase):
         # Do this to avoid logging from ExperimentSlice
         from utils import log_config
 
-        log = log_config.log(console=False, logfile=False, aggregator=False)
+        log_config.log(console=False, logfile=False, aggregator=False)
 
         # Set up a slice to test with ExperimentSlice
         from borealis_experiments import superdarn_common_fields as scf
@@ -655,7 +644,6 @@ class TestConfig(unittest.TestCase):
             "cpid": 0,  # arbitrary
             "tx_bandwidth": 5e6,  # default
             "rx_bandwidth": 5e6,  # default
-            "output_rx_rate": 10e3 / 3,  # default
             "transition_bandwidth": 750e3,  # default
             "pulse_sequence": scf.SEQUENCE_7P,  # default
             "tau_spacing": scf.TAU_SPACING_7P,  # default
@@ -681,6 +669,232 @@ class TestConfig(unittest.TestCase):
             ValueError, "TX antenna 1 not specified in config file"
         ):
             experiment_slice.ExperimentSlice(**slice_dict)
+
+    def testSingleAntennaConnected(self):
+        """Single antenna, connected to N200"""
+        with open(Path(__file__).with_name("base_config.ini"), "r") as f:
+            config = json.load(f)
+        config["antennas"]["main_locations"] = {
+            "0": config["antennas"]["main_locations"]["0"],
+        }
+        config["antennas"]["main_antenna_count"] = 1
+
+        config["n200s"] = [config["n200s"][0]]  # Only keep the first
+        n200 = config["n200s"][0]
+        n200["rx_channel_0"] = "m0"
+        n200["rx_channel_1"] = ""
+        n200["tx_channel_0"] = "m0"
+        with open(
+            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
+        ) as f:
+            json.dump(config, f)
+
+        options = MockOptions()
+        self.assertEqual(options.main_antenna_locations.shape, (1, 3))
+
+    def testAntennaDims2D(self):
+        """Single antenna has only 2D location specifier"""
+        with open(Path(__file__).with_name("base_config.ini"), "r") as f:
+            config = json.load(f)
+        config["antennas"]["main_locations"]["13"] = config["antennas"][
+            "main_locations"
+        ]["13"][:-1]
+
+        with open(
+            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
+        ) as f:
+            json.dump(config, f)
+
+        with self.assertRaisesRegex(ValueError, "Antenna 13 has invalid location"):
+            MockOptions()
+
+    def testTooManyAntennas(self):
+        """Number of antennas too large based on main_antenna_count"""
+        with open(Path(__file__).with_name("base_config.ini"), "r") as f:
+            config = json.load(f)
+        config["antennas"]["main_locations"]["17"] = config["antennas"][
+            "main_locations"
+        ]["13"]
+
+        with open(
+            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
+        ) as f:
+            json.dump(config, f)
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "Number of specified antenna locations != main_antenna_count \(17 != 16\)",
+        ):
+            MockOptions()
+
+    def testAntennaNameTooLarge(self):
+        """Antenna index too large based on main_antenna_count"""
+        with open(Path(__file__).with_name("base_config.ini"), "r") as f:
+            config = json.load(f)
+        config["antennas"]["main_locations"]["16"] = config["antennas"][
+            "main_locations"
+        ]["13"]
+        del config["antennas"]["main_locations"]["13"]
+
+        config["n200s"] = [config["n200s"][0]]  # Only keep the first
+        n200 = config["n200s"][0]
+        n200["rx_channel_0"] = "m0"
+        n200["rx_channel_1"] = ""
+        n200["tx_channel_0"] = "m0"
+
+        with open(
+            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
+        ) as f:
+            json.dump(config, f)
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "Antenna 16 lies outside range \[0, main_antenna_count\) => \[0, 16\)",
+        ):
+            MockOptions()
+
+    def testAntennaNameTooSmall(self):
+        """Antenna index too large based on main_antenna_count"""
+        with open(Path(__file__).with_name("base_config.ini"), "r") as f:
+            config = json.load(f)
+        config["antennas"]["main_locations"]["-1"] = config["antennas"][
+            "main_locations"
+        ]["13"]
+        del config["antennas"]["main_locations"]["13"]
+
+        config["n200s"] = [config["n200s"][0]]  # Only keep the first
+        n200 = config["n200s"][0]
+        n200["rx_channel_0"] = "m0"
+        n200["rx_channel_1"] = ""
+        n200["tx_channel_0"] = "m0"
+
+        with open(
+            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
+        ) as f:
+            json.dump(config, f)
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "Antenna -1 lies outside range \[0, main_antenna_count\) => \[0, 16\)",
+        ):
+            MockOptions()
+
+    def testTwoAntennasUnordered(self):
+        """Two antennas, specified out of order but otherwise valid (which is fine)"""
+        with open(Path(__file__).with_name("base_config.ini"), "r") as f:
+            config = json.load(f)
+
+        config["antennas"]["main_locations"] = {
+            "1": config["antennas"]["main_locations"]["1"],
+            "0": config["antennas"]["main_locations"]["0"],
+        }
+        config["antennas"]["main_antenna_count"] = 2
+
+        config["n200s"] = [config["n200s"][0]]  # Only keep the first
+        n200 = config["n200s"][0]
+        n200["rx_channel_0"] = "m0"
+        n200["rx_channel_1"] = "m1"
+        n200["tx_channel_0"] = ""
+        with open(
+            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
+        ) as f:
+            json.dump(config, f)
+
+        options = MockOptions()
+        self.assertEqual(options.main_antenna_locations.shape, (2, 3))
+        self.assertTrue(
+            np.allclose(
+                options.main_antenna_locations[0],
+                config["antennas"]["main_locations"]["0"],
+            )
+        )
+        self.assertTrue(
+            np.allclose(
+                options.main_antenna_locations[1],
+                config["antennas"]["main_locations"]["1"],
+            )
+        )
+
+    def testTwoAntennasMisaligned(self):
+        """Two antennas, with spacing mismatch compared to main_antenna_spacing field"""
+        with open(Path(__file__).with_name("base_config.ini"), "r") as f:
+            config = json.load(f)
+
+        config["antennas"]["main_locations"] = {
+            "1": config["antennas"]["main_locations"]["1"],
+            "0": config["antennas"]["main_locations"]["0"],
+        }
+        config["antennas"]["main_antenna_count"] = 2
+        config["antennas"]["main_antenna_spacing"] = 15.3
+
+        config["n200s"] = [config["n200s"][0]]  # Only keep the first
+        n200 = config["n200s"][0]
+        n200["rx_channel_0"] = "m0"
+        n200["rx_channel_1"] = "m1"
+        n200["tx_channel_0"] = ""
+        with open(
+            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
+        ) as f:
+            json.dump(config, f)
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "main locations not in line parallel to x-axis and equally spaced by 15.3 m",
+        ):
+            MockOptions()
+
+    def testTwoAntennasMisalignedY(self):
+        """Two antennas, with spacing mismatch compared to main_antenna_spacing field"""
+        with open(Path(__file__).with_name("base_config.ini"), "r") as f:
+            config = json.load(f)
+
+        config["antennas"]["main_locations"] = {
+            "1": config["antennas"]["main_locations"]["1"],
+            "0": config["antennas"]["main_locations"]["0"],
+        }
+        config["antennas"]["main_locations"]["1"][1] += 0.5  # offset in y-direction
+        config["antennas"]["main_antenna_count"] = 2
+
+        config["n200s"] = [config["n200s"][0]]  # Only keep the first
+        n200 = config["n200s"][0]
+        n200["rx_channel_0"] = "m0"
+        n200["rx_channel_1"] = "m1"
+        n200["tx_channel_0"] = ""
+        with open(
+            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
+        ) as f:
+            json.dump(config, f)
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "main locations not in line parallel to x-axis and equally spaced by 15.24 m",
+        ):
+            MockOptions()
+
+    def testTwoAntennasMisalignedNonstandard(self):
+        """Two antennas misaligned but non-standard positions specified"""
+        with open(Path(__file__).with_name("base_config.ini"), "r") as f:
+            config = json.load(f)
+
+        config["antennas"]["main_locations"] = {
+            "1": config["antennas"]["main_locations"]["1"],
+            "0": config["antennas"]["main_locations"]["0"],
+        }
+        config["antennas"]["main_locations"]["1"][1] += 0.5  # offset in y-direction
+        config["antennas"]["main_antenna_count"] = 2
+        config["antennas"]["standard_positions"] = False
+
+        config["n200s"] = [config["n200s"][0]]  # Only keep the first
+        n200 = config["n200s"][0]
+        n200["rx_channel_0"] = "m0"
+        n200["rx_channel_1"] = "m1"
+        n200["tx_channel_0"] = ""
+        with open(
+            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
+        ) as f:
+            json.dump(config, f)
+
+        MockOptions()  # should run without issue
 
 
 if __name__ == "__main__":

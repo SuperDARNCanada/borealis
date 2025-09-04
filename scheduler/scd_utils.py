@@ -1,19 +1,182 @@
 #!/usr/bin/python3
 """
-    scd_utils.py
-    ~~~~~~~~~~~~
-    Utilities for working with scd files
+scd_utils.py
+~~~~~~~~~~~~
+Utilities for working with scd files
 
-    :copyright: 2019 SuperDARN Canada
+:copyright: 2019 SuperDARN Canada
 """
+
 import os
 import datetime as dt
 import shutil
 import sys
+from typing_extensions import Annotated, Union, Literal, Self, Optional
+
+from pydantic.dataclasses import dataclass
+from pydantic import field_validator, Field, model_validator
 
 borealis_path = os.environ["BOREALISPATH"]
 sys.path.append(f"{borealis_path}/tests/experiments")
 import experiment_unittests
+
+
+class LineConfig:
+    """
+    This class configures pydantic options for ScheduleLine.
+
+    validate_assignment: Whether to run all validators for a field whenever field is changed (init or after init)
+    extra: Whether to allow extra fields not defined when instantiating
+    arbitrary_types_allowed: Whether to allow arbitrary types like user-defined classes (e.g. Options, DecimationScheme)
+    """
+
+    validate_assignment = True
+    extra = "allow"
+    arbitrary_types_allowed = False
+
+
+@dataclass(config=LineConfig)
+class ScheduleLine:
+    timestamp: dt.datetime
+    duration: Union[str, dt.timedelta]
+    experiment: str
+    priority: Annotated[int, Field(ge=0, le=20)]
+    scheduling_mode: Literal["common", "discretionary", "special"]
+    kwargs: list[str] = Field(default_factory=list)
+    embargo: bool = False
+    rawacf_format: Optional[Literal["dmap", "hdf5"]] = None
+
+    def __str__(self):
+        dur = self.duration
+        if isinstance(dur, dt.timedelta):
+            dur = int(round(dur.total_seconds() / 60))
+        line = (
+            f"{self.timestamp.strftime('%Y%m%d %H:%M')}"
+            f" {dur}"
+            f" {self.priority}"
+            f" {self.experiment}"
+            f" {self.scheduling_mode}"
+            f"{' --embargo' if self.embargo else ''}"
+            f"{' --rawacf_format=' + self.rawacf_format if self.rawacf_format is not None else ''}"
+            f"{' ' + ' '.join(self.kwargs) if len(self.kwargs) > 0 else ''}"
+        )
+        return line
+
+    def format_to_atq(self):
+        call = (
+            f"{self.experiment}"
+            f" release"
+            f" {self.scheduling_mode}"
+            f"{' --embargo' if self.embargo else ''}"
+            f"{' --rawacf-format=' + self.rawacf_format if self.rawacf_format is not None else ''}"
+            f"{' --kwargs ' + ' '.join(self.kwargs) if len(self.kwargs) > 0 else ''}"
+        )
+        return call
+
+    @field_validator("duration")
+    @classmethod
+    def check_duration(cls, v: Union[str, dt.timedelta]) -> Union[str, dt.timedelta]:
+        """Verifies duration is either `'-'`, or a positive timedelta"""
+        if isinstance(v, str) and v != "-":
+            raise ValueError("only '-' supported for string-type duration")
+        elif isinstance(v, dt.timedelta):
+            if v.total_seconds() <= 0.0:
+                raise ValueError("must be positive")
+            v = dt.timedelta(minutes=int(v.total_seconds() // 60))
+            if v.total_seconds() <= 60.0:
+                raise ValueError("must be greater than one minute")
+        return v
+
+    @field_validator("timestamp")
+    @classmethod
+    def check_timestamp(cls, v: dt.datetime) -> dt.datetime:
+        """Verifies v is a time-aware datetime object"""
+        if v.tzinfo != dt.timezone.utc:
+            raise ValueError("timestamp must have UTC timezone")
+
+        return v
+
+    @model_validator(mode="after")
+    def check_inf_line_priority(self) -> Self:
+        if self.duration == "-" and self.priority > 0:
+            raise ValueError("infinite duration lines must have priority = 0")
+        return self
+
+    def test(self, site_id: str):
+        """
+        Check validity of fields and run the line through experiment unit tests to check that the experiment will run.
+
+        :param   site_id: Three-letter site code
+        :type    site_id: str
+        """
+
+        args = [
+            "--site_id",
+            site_id,
+            "--experiments",
+            self.experiment,
+            "--kwargs",
+            " ".join(self.kwargs),
+            "--module",
+            "experiment_unittests",
+        ]
+        test_program = experiment_unittests.run_tests(
+            args, buffer=True, print_results=False
+        )
+        if (
+            len(test_program.result.failures) != 0
+            or len(test_program.result.errors) != 0
+        ):
+            raise ValueError(
+                "Experiment could not be scheduled due to errors in experiment.\n"
+                f"Errors: {test_program.result.errors}\n"
+                f"Failures: {test_program.result.failures}"
+            )
+
+    @classmethod
+    def from_str(cls, line: str) -> Self:
+        """
+        Parses a line from the schedule file
+        """
+        fields = line.split()
+
+        if fields[2] == "-":
+            duration = "-"
+        else:
+            duration = dt.timedelta(minutes=int(fields[2]))
+
+        kwargs = fields[6:]
+        embargo = "--embargo" in kwargs
+        if embargo:
+            kwargs.remove("--embargo")
+
+        raw_format = None
+        raw_format_flag = ["rawacf_format" in x for x in kwargs]
+        if any(raw_format_flag):
+            idx = raw_format_flag.index(True)
+            if len(kwargs[idx].split("=")) == 1:
+                # supplied as --rawacf_format <format>
+                raw_format = kwargs.pop(idx + 1)
+                kwargs.pop(idx)
+            else:
+                # supplied as --rawacf_format=<format>
+                raw_format = kwargs.pop(idx).split("=")[1]
+
+        line_timestamp = dt.datetime.strptime(
+            f"{fields[0]} {fields[1]}", "%Y%m%d %H:%M"
+        )
+        line_timestamp = line_timestamp.replace(tzinfo=dt.timezone.utc)
+        scd_line = ScheduleLine(
+            timestamp=line_timestamp,
+            duration=duration,
+            priority=int(fields[3]),
+            experiment=fields[4],
+            scheduling_mode=fields[5],
+            embargo=embargo,
+            kwargs=kwargs,
+            rawacf_format=raw_format,
+        )
+        return scd_line
 
 
 def get_next_month_from_date(date=None):
@@ -45,11 +208,6 @@ class SCDUtils:
     """String format for parsing and writing datetimes"""
     scd_dt_fmt = "%Y%m%d %H:%M"
 
-    """String format for scd line"""
-    line_fmt = (
-        "{datetime} {duration} {prio} {experiment} {scheduling_mode} {embargo} {kwargs}"
-    )
-
     def __init__(self, scd_filename, site_id):
         """
         :param  scd_filename:   Schedule file name
@@ -62,7 +220,7 @@ class SCDUtils:
 
         """Default event to run if no other infinite duration line is scheduled"""
         self.scd_default = self.create_line(
-            "20000101", "00:00", "normalscan", "common", "0", "-"
+            "20000101", "00:00", "normalscan", "common", 0, "-", []
         )
 
     def create_line(
@@ -73,9 +231,10 @@ class SCDUtils:
         scheduling_mode,
         prio,
         duration,
-        kwargs="",
+        kwargs,
         embargo=False,
-    ):
+        rawacf_format=None,
+    ) -> ScheduleLine:
         """
         Creates a line dictionary from inputs, turning the date and time into a timestamp since epoch.
 
@@ -89,86 +248,33 @@ class SCDUtils:
         :type   scheduling_mode:    str
         :param  prio:               priority value.
         :type   prio:               str or int
-        :param  duration:           an optional duration to run for.
-        :type   duration:           str
-        :param  kwargs:             kwargs for the experiment instantiation. Default None
-        :type   kwargs:             str
+        :param  duration:           a duration to run for.
+        :type   duration:           Union[str, dt.timedelta]
+        :param  kwargs:             kwargs for the experiment instantiation.
+        :type   kwargs:             list[str]
         :param  embargo:            flag for embargoing files. (Default value = False)
         :type   embargo:            bool
+        :param  rawacf_format:      The file format to save rawacf files in.
+        :type   rawacf_format:      str
 
-        :returns:   Dict of line params.
-        :rtype:     dict
+        :returns:   Line details
+        :rtype:     ScheduleLine
         """
         # create datetime from args to see if valid. Value error for incorrect format
-        time = dt.datetime.strptime(yyyymmdd + " " + hhmm, self.scd_dt_fmt)
-        epoch = dt.datetime.utcfromtimestamp(0)
-        epoch_milliseconds = int((time - epoch).total_seconds() * 1000)
-
-        return {
-            "timestamp": epoch_milliseconds,
-            "time": time,
-            "duration": str(duration),
-            "prio": str(prio),
-            "experiment": experiment,
-            "scheduling_mode": scheduling_mode,
-            "kwargs": kwargs,
-            "embargo": embargo,
-        }
-
-    def test_line(self, line_dict):
-        """
-        Check validity of fields and run the line through experiment unit tests to check that the experiment will run.
-
-        :param   line_dict: Dictionary of parameters for the line (as returned from `create_line()`)
-        :type    line_dict: dict
-        """
-
-        if not isinstance(line_dict["kwargs"], str):
-            raise ValueError("kwargs should be a string")
-
-        if not (0 <= int(line_dict["prio"]) <= 20):
-            raise ValueError("Priority is out of bounds. 0 <= prio <= 20.")
-
-        if line_dict["duration"] != "-":
-            if (
-                isinstance(line_dict["duration"], float)
-                or int(line_dict["duration"]) < 1
-            ):
-                raise ValueError("Duration should be an integer > 0, or '-'")
-            line_dict["duration"] = int(line_dict["duration"])
-        else:
-            if int(line_dict["prio"]) > 0:
-                raise ValueError("Infinite duration lines must have priority 0")
-
-        possible_scheduling_modes = ["common", "special", "discretionary"]
-        if line_dict["scheduling_mode"] not in possible_scheduling_modes:
-            raise ValueError(
-                f"Unknown scheduling mode type {line_dict['scheduling_mode']} not in "
-                f"{possible_scheduling_modes}"
-            )
-
-        args = [
-            "--site_id",
-            self.site_id,
-            "--experiments",
-            line_dict["experiment"],
-            "--kwargs",
-            line_dict["kwargs"],
-            "--module",
-            "experiment_unittests",
-        ]
-        test_program = experiment_unittests.run_tests(
-            args, buffer=True, print_results=False
+        time = dt.datetime.strptime(yyyymmdd + " " + hhmm, self.scd_dt_fmt).replace(
+            tzinfo=dt.timezone.utc
         )
-        if (
-            len(test_program.result.failures) != 0
-            or len(test_program.result.errors) != 0
-        ):
-            raise ValueError(
-                "Experiment could not be scheduled due to errors in experiment.\n"
-                f"Errors: {test_program.result.errors}\n"
-                f"Failures: {test_program.result.failures}"
-            )
+
+        return ScheduleLine(
+            timestamp=time,
+            duration=duration,
+            priority=prio,
+            experiment=experiment,
+            scheduling_mode=scheduling_mode,
+            kwargs=kwargs,
+            embargo=embargo,
+            rawacf_format=rawacf_format,
+        )
 
     def read_scd(self):
         """
@@ -183,30 +289,7 @@ class SCDUtils:
         with open(self.scd_filename, "r") as f:
             raw_scd = f.readlines()
 
-        raw_scd = [line.split() for line in raw_scd]
-
-        scd_lines = []
-
-        for num, line in enumerate(raw_scd):
-            kwarg_entries = line[6:]
-            embargo_flag = "--embargo" in kwarg_entries
-            if embargo_flag:
-                kwarg_entries.remove("--embargo")
-            kwargs = " ".join(kwarg_entries)
-
-            # date time experiment mode priority duration [kwargs]
-            scd_lines.append(
-                self.create_line(
-                    line[0],
-                    line[1],
-                    line[4],
-                    line[5],
-                    line[3],
-                    line[2],
-                    kwargs,
-                    embargo=embargo_flag,
-                )
-            )
+        scd_lines = [ScheduleLine.from_str(line.strip()) for line in raw_scd]
 
         if len(scd_lines) == 0:
             print("WARNING: SCD file empty; default normalscan will run")
@@ -214,28 +297,6 @@ class SCDUtils:
             scd_lines.append(self.scd_default)
 
         return scd_lines
-
-    @classmethod
-    def fmt_line(cls, line_dict):
-        """
-        Formats a dictionary with line info into a text line for file.
-
-        :param  line_dict: A dict that holds all the line info.
-        :type   line_dict: dict
-
-        :returns:   Formatted string.
-        :rtype:     str
-        """
-        line_str = cls.line_fmt.format(
-            datetime=line_dict["time"].strftime(cls.scd_dt_fmt),
-            prio=line_dict["prio"],
-            experiment=line_dict["experiment"],
-            scheduling_mode=line_dict["scheduling_mode"],
-            duration=line_dict["duration"],
-            embargo="--embargo" if line_dict["embargo"] else "",
-            kwargs=line_dict["kwargs"],
-        )
-        return line_str
 
     def write_scd(self, scd_lines):
         """
@@ -250,7 +311,7 @@ class SCDUtils:
         :param  scd_lines: A list of dicts that contain the schedule line info.
         :type   scd_lines: list(dict)
         """
-        text_lines = [self.fmt_line(x) for x in scd_lines]
+        text_lines = [str(x) for x in scd_lines]
 
         shutil.copy(self.scd_filename, self.scd_filename + ".bak")
 
@@ -266,8 +327,9 @@ class SCDUtils:
         scheduling_mode,
         prio=0,
         duration="-",
-        kwargs="",
+        kwargs=None,
         embargo=False,
+        rawacf_format=None,
     ):
         """
         Adds a new line to the schedule.
@@ -284,10 +346,12 @@ class SCDUtils:
         :type   prio:               int or str
         :param  duration:           duration to run for. (Default value = '-')
         :type   duration:           str
-        :param  kwargs:      kwargs for the experiment instantiation. (Default value = '')
-        :type   kwargs:      str
+        :param  kwargs:             kwargs for the experiment instantiation. (Default value = '')
+        :type   kwargs:             list[str]
         :param  embargo:            flag for embargoing files. (Default value = False)
         :type   embargo:            bool
+        :param  rawacf_format:      File format to use when writing rawacf files.
+        :type   rawacf_format:      str
 
         :raises ValueError: If line parameters are invalid or if line is a duplicate.
         """
@@ -300,6 +364,7 @@ class SCDUtils:
             duration,
             kwargs,
             embargo=embargo,
+            rawacf_format=rawacf_format,
         )
 
         scd_lines = self.read_scd()
@@ -310,8 +375,8 @@ class SCDUtils:
         if any(
             [
                 (
-                    new_line["timestamp"] == line["timestamp"]
-                    and new_line["prio"] == line["prio"]
+                    new_line.timestamp == line.timestamp
+                    and new_line.priority == line.priority
                 )
                 for line in scd_lines
             ]
@@ -319,16 +384,15 @@ class SCDUtils:
             raise ValueError("Priority already exists at this time")
 
         try:
-            self.test_line(new_line)
+            new_line.test(self.site_id)
         except ValueError as e:
             raise ValueError("Unable to add line:\n", str(e))
 
         scd_lines.append(new_line)
 
-        # sort priorities in reverse so that they are descending order. Then sort everything by
-        # timestamp
-        new_scd = sorted(scd_lines, key=lambda x: x["prio"], reverse=True)
-        new_scd = sorted(new_scd, key=lambda x: x["timestamp"])
+        # sort priorities in reverse so that they are descending order. Then sort everything by timestamp
+        new_scd = sorted(scd_lines, key=lambda x: x.priority, reverse=True)
+        new_scd = sorted(new_scd, key=lambda x: x.timestamp)
 
         self.write_scd(new_scd)
 
@@ -340,8 +404,9 @@ class SCDUtils:
         scheduling_mode,
         prio=0,
         duration="-",
-        kwargs="",
+        kwargs=None,
         embargo=False,
+        rawacf_format=None,
     ):
         """
         Removes a line from the schedule
@@ -358,14 +423,17 @@ class SCDUtils:
         :type   prio:               int or str
         :param  duration:           an optional duration to run for. (Default value = '-')
         :type   duration:           str
-        :param  kwargs:      kwargs for the experiment instantiation. (Default value = '')
-        :type   kwargs:      str
+        :param  kwargs:             kwargs for the experiment instantiation. (Default value = '')
+        :type   kwargs:             list[str]
         :param  embargo:            flag for embargoing files. (Default value = False)
         :type   embargo:            bool
+        :param  rawacf_format:      File format to use when writing rawacf files.
+        :type   rawacf_format:      str
 
         :raises ValueError: If line parameters are invalid or if line does not exist.
         """
-
+        if kwargs is None:
+            kwargs = list()
         line_to_rm = self.create_line(
             yyyymmdd,
             hhmm,
@@ -375,12 +443,13 @@ class SCDUtils:
             duration,
             kwargs,
             embargo=embargo,
+            rawacf_format=rawacf_format,
         )
 
         scd_lines = self.read_scd()
-        try:
+        if line_to_rm in scd_lines:
             scd_lines.remove(line_to_rm)
-        except ValueError:
+        else:
             raise ValueError("Line does not exist in SCD")
 
         self.write_scd(scd_lines)
@@ -407,46 +476,37 @@ class SCDUtils:
 
         try:
             # create datetime from args to see if valid
-            time = dt.datetime.strptime(yyyymmdd + " " + hhmm, self.scd_dt_fmt)
+            time = dt.datetime.strptime(yyyymmdd + " " + hhmm, self.scd_dt_fmt).replace(
+                tzinfo=dt.timezone.utc
+            )
         except ValueError:
             raise ValueError("Can not create datetime from supplied formats")
 
         scd_lines = self.read_scd()
 
         # Sort the lines by timestamp, and for equal times, in reverse priority
-        scd_lines = sorted(scd_lines, key=lambda x: x["prio"], reverse=True)
-        scd_lines = sorted(scd_lines, key=lambda x: x["timestamp"])
+        scd_lines = sorted(scd_lines, key=lambda x: x.priority, reverse=True)
+        scd_lines = sorted(scd_lines, key=lambda x: x.timestamp)
 
         if not scd_lines:
             raise IndexError("Schedule file is empty. No lines can be returned")
 
-        epoch = dt.datetime.utcfromtimestamp(0)
-        epoch_milliseconds = int((time - epoch).total_seconds() * 1000)
-
         relevant_lines = []
         past_infinite_line_added = False
         for line in reversed(scd_lines):
-            if line["timestamp"] >= epoch_milliseconds:
+            if line.timestamp >= time:
                 relevant_lines.append(line)
             else:
                 # Include the most recent infinite line
-                if line["duration"] == "-":
+                if line.duration == "-":
                     if not past_infinite_line_added:
                         relevant_lines.append(line)
                         past_infinite_line_added = True
                 else:
                     # If the line ends after the current time, include the line
-                    duration_ms = int(line["duration"]) * 60 * 1000
-                    line_end = line["timestamp"] + duration_ms
-                    if line_end >= epoch_milliseconds:
+                    if line.timestamp + line.duration >= time:
                         relevant_lines.append(line)
 
         # Put the lines into chronological order (oldest to newest)
         relevant_lines.reverse()
         return relevant_lines
-
-
-if __name__ == "__main__":
-    filename = sys.argv[1]
-
-    scd_util = SCDUtils(filename)

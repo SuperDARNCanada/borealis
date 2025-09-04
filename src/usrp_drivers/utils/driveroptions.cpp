@@ -82,11 +82,13 @@ DriverOptions::DriverOptions() {
       tx_main_antenna_to_channel_map;  // Maps tx main antenna number to channel
                                        // number
 
+  auto antennas_info = config_pt.get_child("antennas");
+
   // Get number of physical antennas
   auto main_antenna_count = boost::lexical_cast<uint32_t>(
-      config_pt.get<std::string>("main_antenna_count"));
+      antennas_info.get<std::string>("main_antenna_count"));
   auto intf_antenna_count = boost::lexical_cast<uint32_t>(
-      config_pt.get<std::string>("intf_antenna_count"));
+      antennas_info.get<std::string>("intf_antenna_count"));
 
   uint32_t device_num = 0;  // Active device counter
 
@@ -256,6 +258,9 @@ DriverOptions::DriverOptions() {
   ringbuffer_name_ = config_pt.get<std::string>("ringbuffer_name");
   ringbuffer_size_bytes_ = boost::lexical_cast<double>(
       config_pt.get<std::string>("ringbuffer_size_bytes"));
+  pulse_buffer_name_ = config_pt.get<std::string>("pulse_buffer_name");
+  pulse_buffer_size_ = boost::lexical_cast<uint32_t>(
+      config_pt.get<std::string>("pulse_buffer_size"));
 
   driver_to_radctrl_identity_ = "DRIVER_RADCTRL_IDEN";
   driver_to_dsp_identity_ = "DRIVER_DSP_IDEN";
@@ -423,6 +428,15 @@ double DriverOptions::get_ringbuffer_size() const {
 }
 
 /**
+ * @brief      Gets the pulse buffer size.
+ *
+ * @return     The pulse buffer size.
+ */
+uint32_t DriverOptions::get_pulse_buffer_size() const {
+  return pulse_buffer_size_;
+}
+
+/**
  * @brief      Gets the all USRP receive channels.
  *
  * @return     The USRP receive channels.
@@ -510,4 +524,13 @@ std::string DriverOptions::get_brian_to_driver_identity() const {
  */
 std::string DriverOptions::get_ringbuffer_name() const {
   return ringbuffer_name_;
+}
+
+/**
+ * @brief      Gets the pulse buffer name.
+ *
+ * @return     The pulse buffer name.
+ */
+std::string DriverOptions::get_pulse_buffer_name() const {
+  return pulse_buffer_name_;
 }

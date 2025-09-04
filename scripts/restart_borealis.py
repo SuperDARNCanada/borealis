@@ -1,13 +1,13 @@
 #!/usr/bin/python
 
 """
-    restart_borealis
-    ~~~~~~~~~~~~~~~~
+restart_borealis
+~~~~~~~~~~~~~~~~
 
-    Python script to check data being written and restart Borealis in case it's not
+Python script to check data being written and restart Borealis in case it's not
 
-    :copyright: 2020 SuperDARN Canada
-    :author: Kevin Krieger
+:copyright: 2020 SuperDARN Canada
+:author: Kevin Krieger
 """
 
 import argparse

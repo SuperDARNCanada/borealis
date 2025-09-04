@@ -1,31 +1,31 @@
 """
-    This config script sets up the `logging` and `structlog` modules for message logging to
-    console and file. It simply needs to be imported into any module where logging is needed.
-    In order to capture exceptions and crashes main() should be in a try/except block.
-    See example.
+This config script sets up the `logging` and `structlog` modules for message logging to
+console and file. It simply needs to be imported into any module where logging is needed.
+In order to capture exceptions and crashes main() should be in a try/except block.
+See example.
 
-    :copyright: 2023 SuperDARN Canada
-    :author: Adam Lozinsky
+:copyright: 2023 SuperDARN Canada
+:author: Adam Lozinsky
 
-    :example:
-        if __name__ == '__main__':
-            from utils import log_config
-            log = log_config.log(log_level='INFO')
-            log.info(f"Example info text {[1, 2, 3]}", example_key=[1, 2, 3])
-            try:
-                main()
-            except Exception as exec:
-                log.exception("Example crashed", exception=exec)
+:example:
+    if __name__ == '__main__':
+        from utils import log_config
+        log = log_config.log(log_level='INFO')
+        log.info(f"Example info text {[1, 2, 3]}", example_key=[1, 2, 3])
+        try:
+            main()
+        except Exception as exec:
+            log.exception("Example crashed", exception=exec)
 
-    :notes:
-        Setting up structlog is very tricky, but after it is done it should just work
-        (or so they promise). Regardless, the comments herein should help explain how this
-        works should we ever need to update it.
+:notes:
+    Setting up structlog is very tricky, but after it is done it should just work
+    (or so they promise). Regardless, the comments herein should help explain how this
+    works should we ever need to update it.
 
-        See documentation.
-        https://docs.python.org/3/library/logging.handlers.html#timedrotatingfilehandler
-        https://www.structlog.org/en/stable/standard-library.html
-        https://www.structlog.org/en/stable/processors.html#chains
+    See documentation.
+    https://docs.python.org/3/library/logging.handlers.html#timedrotatingfilehandler
+    https://www.structlog.org/en/stable/standard-library.html
+    https://www.structlog.org/en/stable/processors.html#chains
 """
 
 import inspect

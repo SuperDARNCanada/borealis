@@ -19,7 +19,7 @@ std::vector<zmq::socket_t> create_sockets(zmq::context_t &context,
   return new_sockets;
 }
 
-std::string recv_data(zmq::socket_t &socket, std::string sender_iden) {
+std::string recv_string(zmq::socket_t &socket, std::string sender_iden) {
   zmq::multipart_t receiver;
   ERR_CHK_ZMQ(receiver.recv(socket));
   auto sender = receiver.popstr();
@@ -33,8 +33,8 @@ std::string recv_data(zmq::socket_t &socket, std::string sender_iden) {
   return data_msg;
 }
 
-void send_data(zmq::socket_t &socket, std::string recv_iden,
-               std::string &data_msg) {
+void send_string(zmq::socket_t &socket, std::string recv_iden,
+                 std::string &data_msg) {
   zmq::multipart_t sender;
   sender.addstr(recv_iden);
   sender.addstr("");
