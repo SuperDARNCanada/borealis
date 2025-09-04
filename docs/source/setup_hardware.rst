@@ -12,7 +12,7 @@ Below is a recommended configuration in comparison to a common SuperDARN system,
 are in custom made shelves, but shelves can also be purchased from National Instruments:
 
 .. figure:: img/system_setup/USRP-rack-rev6.png
-   :scale: 50 %
+   :width: 100%
    :alt: Block diagram of ROS and Borealis racks
    :align: center
 
@@ -21,7 +21,7 @@ SuperDARN site. Note that space has been allowed between the rackmount items to 
 routing. There is a lot of cabling involved at the front of the devices.
 
 .. figure:: img/system_setup/sas_borealis_rack_2023.jpg
-   :scale: 25 %
+   :width: 100%
    :alt: Rack photo
    :align: center
 
@@ -144,14 +144,14 @@ Installing the Custom-Made TXIO Board
     #. Optional: add labels to each LED.
 
     .. image:: img/txio/txio_leds.jpg
-       :scale: 50%
+       :width: 50%
        :alt: LEDs installed with spacers
        :align: center
 
 #. Install the fan, making sure to re-install it the same way it was originally installed.
 
     .. image:: img/txio/txio_fan_direction.jpg
-       :scale: 50%
+       :width: 50%
        :alt: Arrows indicate fan rotation and air flow direction
        :align: center
 
@@ -188,12 +188,14 @@ Installing the Custom-Made TXIO Board
    +---------+-----------+-------------+----------+
 
    .. image:: img/txio/txio_dsub_fanpwr.jpg
-      :scale: 50%
+      :width: 50%
       :alt: TXIO dsub wire connections
       :align: center
 
+|
+
    .. image:: img/txio/txio_lfrx_signals.jpg
-      :scale: 40%
+      :width: 50%
       :alt: TXIO lrfx signal connections
       :align: center
 
@@ -201,7 +203,7 @@ Installing the Custom-Made TXIO Board
    Orientation of the cables doesn't matter, as they will fit in the N200 case if rotated properly.
 
    .. image:: img/txio/txio_pcb_connections.jpg
-      :scale: 40%
+      :width: 50%
       :alt: TXIO PCB view
       :align: center
 
@@ -268,12 +270,14 @@ Installing the Custom-Made TXIO Board
 
 
    .. image:: img/txio/txio_lfrx_signals.jpg
-      :scale: 40%
+      :width: 50%
       :alt: TXIO LFRX signal connections
       :align: center
 
+|
+
    .. image:: img/txio/txio_lfrx_pwr.jpg
-      :scale: 40%
+      :width: 50%
       :alt: TXIO LRFX pwr connections
       :align: center
 
@@ -290,10 +294,10 @@ Installing the Custom-Made TXIO Board
     - Finally, connect the LFRX jumper wires from J1 and LED wires from J3 to complete the
       installation.
 
-    .. image:: img/system_setup/n200_back_labelled.png
-       :width: 90%
-       :alt: TXIO rear view
-       :align: center
+   .. image:: img/system_setup/n200_back_labelled.png
+      :width: 100%
+      :alt: TXIO rear view
+      :align: center
 
 
 TXIO OUTPUT TESTS
@@ -503,7 +507,7 @@ Note that the *centre conductor* is attached to the *DCD* pin and the *braid* is
 *GND* pin.
 
 .. image:: img/system_setup/pps_ntp_1.jpg
-   :scale: 20%
+   :width: 40%
    :alt: Modify one SMA coaxial cable to connect to the DCD and GND pins of the motherboard
    :align: center
 
@@ -511,7 +515,7 @@ A typical pinout for COM ports is shown below, but check with your motherboard's
 both the location and pinout:
 
 .. image:: img/system_setup/typical_com_port.png
-   :scale: 80%
+   :width: 50%
    :alt: Typical motherboard COM port pinout
    :align: center
 
@@ -520,7 +524,7 @@ The photo below shows the modified coaxial cable in place. On the motherboard ve
 the onboard COM port is to the left of the 'AA' shown on the 7-segment display.
 
 .. image:: img/system_setup/pps_ntp_2.jpg
-   :scale: 50%
+   :width: 50%
    :alt: Modified coaxial cable connected to the COM port DCD and GND pins on the motherboard
    :align: center
 
@@ -531,7 +535,7 @@ below shows how one of these cards was modified by removing the physical D-Sub c
 bulkhead SMA connector in place.
 
 .. image:: img/system_setup/pcie_serialport_pps.jpg
-   :scale: 50%
+   :width: 50%
    :alt: Modify one SMA coaxial cable to connect to the DCD and GND pins of the pcie header
    :align: center
 
