@@ -342,6 +342,11 @@ The file fields under the record name in rawacf site files are:
 | |                                | | array. The lag number is lag[1] - lag[0]  |
 | |                                | | for each lag pair.                        |
 +----------------------------------+---------------------------------------------+
+| | **lp_status_word**             | | Low power status word. Bit position       |
+| | *uint32*                       | | corresponds to the USRP motherboard/      |
+| |                                | | transmitter. A '1' indicates low power    |
+| |                                | | occurred at least once during integration |
++----------------------------------+---------------------------------------------+
 | | **main_acfs**                  | | Main array correlations.                  |
 | | *[complex64, ]*                | |                                           |
 +----------------------------------+---------------------------------------------+

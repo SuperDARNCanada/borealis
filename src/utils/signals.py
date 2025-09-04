@@ -1,6 +1,6 @@
 """
 signals
-~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~
 This file contains the digital signal processing functionality of Borealis. This includes generation of pulses,
 determination of antenna phases for beamforming, filtering and downsampling of received signals, beamforming of
 filtered signals, and extraction of lag profiles from beamformed samples.
@@ -378,8 +378,8 @@ class DSP:
         :rtype:     list[ndarray]
         """
         values = []
-        for s, slice_info in enumerate(slice_index_details):
-            if slice_info["lags"].size == 0:
+        for slc, slice_info in enumerate(slice_index_details):
+            if slice_info.get("skip", False) or slice_info["lags"].size == 0:
                 values.append(np.array([]))
                 continue
 
@@ -415,8 +415,8 @@ class DSP:
             for lag in range(row.shape[1]):
                 values_for_slice[:, :, lag] = np.einsum(
                     "ij,ij->ji",
-                    beamformed_samples_1[s, :, row[:, lag]],
-                    beamformed_samples_2[s, :, col[:, lag]].conj(),
+                    beamformed_samples_1[slc, :, row[:, lag]],
+                    beamformed_samples_2[slc, :, col[:, lag]].conj(),
                 )
 
             # [num_beams, num_range_gates, num_lags]

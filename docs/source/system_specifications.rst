@@ -34,16 +34,18 @@ Digital Radio Equipment
 Control Computer
 ----------------
 
-Current control computer hardware (1 January 2022):
+Current control computer hardware (as of September 2025):
 
-- 1x CPU: Intel Core i9-12900K 3.2 GHz 16-Core Processor
-- 1x CPU Cooler: Asus ROG RYUJIN II 360 71.6 CFM Liquid CPU Cooler
-- 1x Motherboard: Asus ROG MAXIMUS Z690 EXTREME EATX LGA1700 Motherboard
-- 1x Memory: G.Skill Trident Z5 32 GB (2 x 16 GB) DDR5-6000 CL36 Memory
-- 2x Storage: Seagate FireCuda 530 2 TB M.2-2280 NVME Solid State Drive
-- 1x Video Card: EVGA GeForce RTX 3080 Ti 12 GB FTW3 ULTRA GAMING LE iCX3 Video Card
-- 1x Power Supply: SeaSonic PRIME Platinum 1300 W 80+ Platinum Certified Fully Modular ATX Power Supply
-- 1x PCIe Serial Card: Rosewill RC-301EU (modified to replace dsub with sma conn)
+- Case: Rosewill 4U Server Chassis Case
+- Motherboard: GIGABYTE Z790 AORUS ELITE AX LGA 1700 Intel Z790 ATX Motherboard
+- CPU: Intel Core i9-12900K
+- CPU Cooler: ASUS ROG Strix LC II 360
+- GPU: ASUS GeForce RTX 4070 Ti
+- Memory: 2x 16GB DDR5 6000
+- SSD Storage: 2x 2TB NVMe SSD combined in RAID 1
+- HDD Storage: 2x 18TB 3.5" NAS HDD combined in RAID 1
+- Power Supply: 1000W
+- Network Card: Intel X550-AT2 PCIe 2x 10G ports
 
 **NOTE:** Always update the BIOS before installing the computer in the field.
 
@@ -93,14 +95,12 @@ Minimum requirements:
 Networking
 ----------
 
-- 3x Netgear XS708E-200NES (North American model #) 10Gb switches (parent model name is XS708Ev2)
-  (NOTE: These network switches are discontinued as of 2021. See `this page
-  <https://community.netgear.com/t5/Plus-and-Smart-Switches-Forum/XS708T-and-XS716T-discontinued/m-p/2137635>`_)
-- A potential replacement with a fiber optic link (SFP+) is the FS S3900 48 Port 1GbE switch.
-- 1x 5-port network switch that can handle 10Mbps and 100Mbps connection speeds (10BASE-T and 100BASE-T)
-  OR if using the FS S3900 48 port, it supports 10Mbps for the octoclocks.
-- 27x SSTP CAT 6a 7ft cables or better* (16x for the N200s, 2x for daisy-chaining the switches, 3x
-  for the octoclocks, 1x for connecting to the 1GbE network switch, and 5x spares).
+Note that these devices are what we currently use for the 5 SuperDARN Canada sites, and are by no
+means the only devices that would work for a Borealis radar.
+
+- 1x FS S3900 48 Port 1GbE switch. Supports 10Mbps (for octoclock), 100Mbps, 1Gbps (for N200s), and
+  10Gbps (for control computer) speeds.
+- 24x SSTP CAT 6a 7ft cables or better* (16x for the N200s, 3x for the octoclocks, and 5x spares).
 - 2x SSTP CAT 6a 15ft cables* (for connecting to the Borealis computer, and one spare)
 - Optional for Fiber: DAC/AOC cables such as the FS SFPP-AO05
 
@@ -123,7 +123,7 @@ reliably.
 Rack and Cabling
 ----------------
 
-- 4x 8 outlet rackmount PDU
+- 4x 8 outlet rackmount power strip
 - 2x APC AP7900B rackmount PDU (minimum, a third would be useful)
 - 1x 4 post 42U rack
 - 4x custom-made USRP N200 rackmount shelves (or Ettus ones)

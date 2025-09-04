@@ -62,6 +62,17 @@ class ScheduleLine:
         )
         return line
 
+    def format_to_atq(self):
+        call = (
+            f"{self.experiment}"
+            f" release"
+            f" {self.scheduling_mode}"
+            f"{' --embargo' if self.embargo else ''}"
+            f"{' --rawacf-format=' + self.rawacf_format if self.rawacf_format is not None else ''}"
+            f"{' --kwargs ' + ' '.join(self.kwargs) if len(self.kwargs) > 0 else ''}"
+        )
+        return call
+
     @field_validator("duration")
     @classmethod
     def check_duration(cls, v: Union[str, dt.timedelta]) -> Union[str, dt.timedelta]:
@@ -74,6 +85,15 @@ class ScheduleLine:
             v = dt.timedelta(minutes=int(v.total_seconds() // 60))
             if v.total_seconds() <= 60.0:
                 raise ValueError("must be greater than one minute")
+        return v
+
+    @field_validator("timestamp")
+    @classmethod
+    def check_timestamp(cls, v: dt.datetime) -> dt.datetime:
+        """Verifies v is a time-aware datetime object"""
+        if v.tzinfo != dt.timezone.utc:
+            raise ValueError("timestamp must have UTC timezone")
+
         return v
 
     @model_validator(mode="after")
@@ -142,8 +162,12 @@ class ScheduleLine:
                 # supplied as --rawacf_format=<format>
                 raw_format = kwargs.pop(idx).split("=")[1]
 
+        line_timestamp = dt.datetime.strptime(
+            f"{fields[0]} {fields[1]}", "%Y%m%d %H:%M"
+        )
+        line_timestamp = line_timestamp.replace(tzinfo=dt.timezone.utc)
         scd_line = ScheduleLine(
-            timestamp=dt.datetime.strptime(f"{fields[0]} {fields[1]}", "%Y%m%d %H:%M"),
+            timestamp=line_timestamp,
             duration=duration,
             priority=int(fields[3]),
             experiment=fields[4],
@@ -237,7 +261,9 @@ class SCDUtils:
         :rtype:     ScheduleLine
         """
         # create datetime from args to see if valid. Value error for incorrect format
-        time = dt.datetime.strptime(yyyymmdd + " " + hhmm, self.scd_dt_fmt)
+        time = dt.datetime.strptime(yyyymmdd + " " + hhmm, self.scd_dt_fmt).replace(
+            tzinfo=dt.timezone.utc
+        )
 
         return ScheduleLine(
             timestamp=time,
@@ -450,7 +476,9 @@ class SCDUtils:
 
         try:
             # create datetime from args to see if valid
-            time = dt.datetime.strptime(yyyymmdd + " " + hhmm, self.scd_dt_fmt)
+            time = dt.datetime.strptime(yyyymmdd + " " + hhmm, self.scd_dt_fmt).replace(
+                tzinfo=dt.timezone.utc
+            )
         except ValueError:
             raise ValueError("Can not create datetime from supplied formats")
 

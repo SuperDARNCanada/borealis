@@ -29,6 +29,7 @@ import structlog
 from experiment_prototype.interface_classes.interface_class_base import (
     InterfaceClassBase,
 )
+from experiment_prototype.experiment_slice import ExperimentSlice
 from experiment_prototype.experiment_exception import ExperimentException
 from utils.signals import get_samples, get_phase_shift, basic_pulse_phase_offset
 
@@ -155,10 +156,12 @@ class Sequence(InterfaceClassBase):
         self.rxctrfreq = self.slice_dict[self.slice_ids[0]].rxctrfreq
 
         # if any slice has cfs flag set, set the sequence cfs_flag to true
-        self.cfs_flag = False
-        for slice_id in self.slice_ids:
-            if self.slice_dict[slice_id].cfs_flag:
-                self.cfs_flag = True
+        self.cfs_flag = any([self.slice_dict[x].cfs_flag for x in self.slice_ids])
+
+        # Determine whether correlations are needed for this sequence
+        self.acf = any([self.slice_dict[x].acf for x in self.slice_ids])
+        self.xcf = any([self.slice_dict[x].xcf for x in self.slice_ids])
+        self.acfint = any([self.slice_dict[x].acfint for x in self.slice_ids])
 
         if not self.cfs_flag:
             self.build_sequence_pulses()
@@ -166,13 +169,15 @@ class Sequence(InterfaceClassBase):
             # search, pulses can only be built after cfs slices are assigned frequencies
 
     def build_sequence_pulses(self):
+        """
+        Builds the complex voltage samples for sending to the USRPs, based on the operating
+        parameters of `self`.
+        """
         dm_rate = 1
         for stage in self.decimation_scheme.stages:
             dm_rate *= stage.dm_rate
 
         txrate = self.transmit_metadata["txrate"]
-        main_antenna_locations = self.transmit_metadata["main_antenna_locations"]
-        intf_antenna_locations = self.transmit_metadata["intf_antenna_locations"]
         max_usrp_dac_amplitude = self.transmit_metadata["max_usrp_dac_amplitude"]
         tr_window_time = self.transmit_metadata["tr_window_time"]
 
@@ -185,61 +190,9 @@ class Sequence(InterfaceClassBase):
             freq_khz = float(exp_slice.freq)
 
             # Now we set up the phases for receive side
-            if exp_slice.rx_antenna_pattern is not None:
-                # Returns an array of size [beam_angle] of complex numbers of magnitude <= 1
-                rx_main_phase_shift = exp_slice.rx_antenna_pattern(
-                    exp_slice.beam_angle,
-                    freq_khz,
-                    main_antenna_locations[self.rx_main_antennas],
-                )
-                rx_intf_phase_shift = exp_slice.rx_antenna_pattern(
-                    exp_slice.beam_angle,
-                    freq_khz,
-                    intf_antenna_locations[self.rx_intf_antennas],
-                )
-            else:
-                rx_main_phase_shift = get_phase_shift(
-                    exp_slice.beam_angle,
-                    freq_khz,
-                    main_antenna_locations[self.rx_main_antennas, 0],
-                )
-                rx_intf_phase_shift = get_phase_shift(
-                    exp_slice.beam_angle,
-                    freq_khz,
-                    intf_antenna_locations[self.rx_intf_antennas, 0],
-                )
-
-            # The antenna indices for receiving by this slice
-            slice_rx_main_antennas = exp_slice.rx_main_antennas
-            slice_rx_intf_antennas = exp_slice.rx_intf_antennas
-
-            # The index of the antennas for this slice, within the list of all antennas from the config file
-            main_indices = [
-                self.rx_main_antennas.index(ant) for ant in slice_rx_main_antennas
-            ]
-            intf_indices = [
-                self.rx_intf_antennas.index(ant) for ant in slice_rx_intf_antennas
-            ]
-            self.rx_main_antenna_indices[slice_id] = main_indices
-            self.rx_intf_antenna_indices[slice_id] = intf_indices
-
-            # Zero out the complex phase for any antenna that isn't used in this slice
-            main_phases = np.zeros(
-                (rx_main_phase_shift.shape[0], len(self.rx_main_antennas)),
-                dtype=rx_main_phase_shift.dtype,
+            self.rx_beam_phases[slice_id] = self.build_rx_phases(
+                slice_id, exp_slice, freq_khz
             )
-            intf_phases = np.zeros(
-                (rx_intf_phase_shift.shape[0], len(self.rx_intf_antennas)),
-                dtype=rx_intf_phase_shift.dtype,
-            )
-            main_phases[:, main_indices] = rx_main_phase_shift[
-                :, slice_rx_main_antennas
-            ]
-            intf_phases[:, intf_indices] = rx_intf_phase_shift[
-                :, slice_rx_intf_antennas
-            ]
-
-            self.rx_beam_phases[slice_id] = {"main": main_phases, "intf": intf_phases}
 
             # Set up the tx pulses if transmitting
             self.tx_main_phase_shifts[slice_id] = self.build_tx_phases(
@@ -493,14 +446,122 @@ class Sequence(InterfaceClassBase):
         if self.align_sequences:
             log.info("aligning sequences to 0.1 s boundaries.")
 
-    def build_tx_phases(self, slice_id, exp_slice, freq_khz):
+    def build_rx_phases(
+        self, slice_id: int, exp_slice: ExperimentSlice, freq_khz: float
+    ):
+        """
+        Builds the phase shifts for each antenna, for each beam.
+
+        Modifies `self.rx_main_antenna_indices` and `self.rx_intf_antenna_indices`, adding
+        the antenna indices for the given slice.
+
+        :param  slice_id: Unique identifier for the slice
+        :type   slice_id: int
+        :param exp_slice: ExperimentSlice object
+        :type  exp_slice: ExperimentSlice
+        :param  freq_khz: Operating frequency, in kHz.
+        :type   freq_khz: float
+
+        :returns: Phase shifts as complex numbers with magnitude <= 1 and shape [num_beams, num_antennas].
+                  Contained in a dictionary, keyed by the array names "main" and "intf".
+        :rtype:   dict[str, np.ndarray]
+        """
+        main_phases, main_indices = self.build_array_rx_phase(
+            slice_id, exp_slice, freq_khz, "main"
+        )
+        intf_phases, intf_indices = self.build_array_rx_phase(
+            slice_id, exp_slice, freq_khz, "intf"
+        )
+
+        self.rx_main_antenna_indices[slice_id] = main_indices
+        self.rx_intf_antenna_indices[slice_id] = intf_indices
+
+        return {"main": main_phases, "intf": intf_phases}
+
+    def build_array_rx_phase(
+        self, slice_id: int, exp_slice: ExperimentSlice, freq_khz: float, array: str
+    ):
+        """
+        Builds the RX phase shift for each antenna in `array`, for each beam.
+
+        :param  slice_id: Unique identifier for the slice
+        :type   slice_id: int
+        :param exp_slice: ExperimentSlice object
+        :type  exp_slice: ExperimentSlice
+        :param  freq_khz: Operating frequency, in kHz.
+        :type   freq_khz: float
+        :param     array: Name of the antenna array. One of `['main', 'intf']`.
+        :type      array: str
+
+        :returns: Phase shifts as complex number with magnitude <= 1. Shape [num_beams, num_antennas], and
+                  Index into list of all `array` antennas, for each antenna in `array` used in this slice.
+        :rtype:   tuple (np.ndarray, list)
+        """
+        antenna_locations = self.transmit_metadata[f"{array}_antenna_locations"]
+        all_antennas = getattr(self, f"rx_{array}_antennas")
+        slice_antennas = getattr(exp_slice, f"rx_{array}_antennas")
+
+        if exp_slice.rx_antenna_pattern is not None:
+            # Returns an array of size [beam_angle] of complex numbers of magnitude <= 1
+            rx_phase_shift = exp_slice.rx_antenna_pattern(
+                exp_slice.beam_angle,
+                freq_khz,
+                antenna_locations[all_antennas],
+            )
+        else:
+            rx_phase_shift = get_phase_shift(
+                exp_slice.beam_angle,
+                freq_khz,
+                antenna_locations[all_antennas, 0],
+            )
+
+        # The index of the antennas for this slice, within the list of all antennas from the config file
+        antenna_indices = [all_antennas.index(ant) for ant in slice_antennas]
+        antenna_idx_dict = getattr(self, f"rx_{array}_antenna_indices")
+        antenna_idx_dict[slice_id] = antenna_indices
+
+        # Zero out the complex phase for any antenna that isn't used in this slice
+        phases = np.zeros(
+            (rx_phase_shift.shape[0], len(all_antennas)),
+            dtype=rx_phase_shift.dtype,
+        )
+        phases[:, antenna_indices] = rx_phase_shift[:, slice_antennas]
+
+        return phases, antenna_indices
+
+    def build_tx_phases(
+        self, slice_id: int, exp_slice: ExperimentSlice, freq_khz: float
+    ):
+        """
+        Builds the basic pulse IQ samples for this slice, and the complex phases
+        for each beam and antenna.
+
+        :param  slice_id: Unique identifier for the slice
+        :type   slice_id: int
+        :param exp_slice: ExperimentSlice object
+        :type  exp_slice: ExperimentSlice
+        :param  freq_khz: Operating frequency, in kHz.
+        :type   freq_khz: float
+
+        :returns: Phase shifts as complex numbers with magnitude <= 1, with shape [num_beams, num_antennas]
+        :rtype:   np.ndarray
+        """
         txrate = self.transmit_metadata["txrate"]
         main_antenna_locations = self.transmit_metadata["main_antenna_locations"]
 
         pulse_ramp_time = self.transmit_metadata["pulse_ramp_time"]
         wave_freq_hz = (freq_khz - self.txctrfreq) * 1000
 
-        if not exp_slice.rxonly:
+        if exp_slice.rxonly:
+            self.basic_slice_pulses[slice_id] = []
+            tx_phases = np.zeros(
+                (
+                    self.rx_beam_phases[slice_id]["main"].shape[0],
+                    len(self.tx_main_antennas),
+                ),
+                dtype=np.complex64,
+            )
+        else:
             basic_samples = get_samples(
                 txrate,
                 wave_freq_hz,
@@ -549,15 +610,7 @@ class Sequence(InterfaceClassBase):
             )
             phased_samps_for_beams = np.einsum("ij,k->ijk", tx_phases, basic_samples)
             self.basic_slice_pulses[slice_id] = phased_samps_for_beams
-        else:
-            self.basic_slice_pulses[slice_id] = []
-            tx_phases = np.zeros(
-                (
-                    self.rx_beam_phases[slice_id]["main"].shape[0],
-                    len(self.tx_main_antennas),
-                ),
-                dtype=np.complex64,
-            )
+
         return tx_phases
 
     def make_sequence(self, beam_iter, sequence_num):

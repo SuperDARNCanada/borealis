@@ -245,16 +245,13 @@ class DataWrite:
                 parameters.borealis_git_hash = self.git_hash.decode("utf-8")
 
                 if np.uint32(rx_channel.slice_id) in aveperiod_meta.cfs_slice_ids:
+                    cfs_idx = aveperiod_meta.cfs_slice_ids.index(rx_channel.slice_id)
                     parameters.cfs_freqs = np.array(aveperiod_meta.cfs_freqs)
-                    parameters.cfs_noise = np.array(
-                        aveperiod_meta.cfs_noise[np.uint32(rx_channel.slice_id)]
-                    )
+                    parameters.cfs_noise = np.array(aveperiod_meta.cfs_noise[cfs_idx])
                     parameters.cfs_range = np.array(
                         aveperiod_meta.cfs_range[np.uint32(rx_channel.slice_id)]
                     )
-                    parameters.cfs_masks = np.array(
-                        aveperiod_meta.cfs_masks[np.uint32(rx_channel.slice_id)]
-                    )
+                    parameters.cfs_masks = np.array(aveperiod_meta.cfs_masks[cfs_idx])
 
                 parameters.global_coord = ["lat", "lon", "alt"]
                 parameters.local_coord = ["x", "y", "z"]
@@ -326,7 +323,7 @@ class DataWrite:
 
                 all_slice_data[rx_channel.slice_id] = parameters
 
-        if write_rawacf and data_parsing.mainacfs_available:
+        if write_rawacf and len(data_parsing.mainacfs_available) > 0:
             self._write_correlations(all_slice_data, data_parsing)
         if write_bfiq and data_parsing.bfiq_available:
             self._write_bfiq_params(all_slice_data, data_parsing)
@@ -416,22 +413,25 @@ class DataWrite:
 
         for slice_num in main_acfs:
             slice_data = aveperiod_data[slice_num]
-            slice_data.main_acfs = find_expectation_value(main_acfs[slice_num]["data"])
-
+            if slice_num in parsed_data.mainacfs_available:
+                slice_data.main_acfs = find_expectation_value(
+                    main_acfs[slice_num]["data"]
+                )
         for slice_num in xcfs:
             slice_data = aveperiod_data[slice_num]
-            if parsed_data.xcfs_available:
+            if slice_num in parsed_data.xcfs_available:
                 slice_data.xcfs = find_expectation_value(xcfs[slice_num]["data"])
-
         for slice_num in intf_acfs:
             slice_data = aveperiod_data[slice_num]
-            if parsed_data.intfacfs_available:
+            if slice_num in parsed_data.intfacfs_available:
                 slice_data.intf_acfs = find_expectation_value(
                     intf_acfs[slice_num]["data"]
                 )
 
         all_slice_data = {}
         for slice_num, slice_data in aveperiod_data.items():
+            if getattr(slice_data, "main_acfs", None) is None:
+                continue
             two_hr_file_with_type = self.slice_filenames[slice_num].format(ext="rawacf")
             self._write_file(slice_data, two_hr_file_with_type, "rawacf")
 

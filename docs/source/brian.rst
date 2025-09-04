@@ -17,7 +17,7 @@ correct order, and if not it is a helpful tool in debugging.
 
 
 .. figure:: img/brian_zmq.png
-   :scale: 100 %
+   :width: 70 %
    :alt: Block diagram of ZMQ connections
    :align: center
 

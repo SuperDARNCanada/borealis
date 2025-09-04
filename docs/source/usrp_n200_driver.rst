@@ -57,7 +57,7 @@ receive event, we start sampling continuously at a specific time. We then use th
 transmit pulse sequence to calculate where in the ringbuffer the pulse sequence samples are located.
 
 .. figure:: img/ringbuffer.png
-   :scale: 100%
+   :width: 80%
    :alt: Ringbuffer Visualization
    :align: center
 

@@ -76,7 +76,7 @@ way, they are a direct connection from the Xilinx FPGA pins, which have LVCMOS s
 datasheet, the absolute maximum voltage on any pin is 4.6V:
 
 .. figure:: img/txio/n200_gpio_logic.jpg
-   :scale: 50 %
+   :width: 100%
    :alt: N200 FPGA Absolute Maximum Ratings. Input Voltage Max 4.6V
    :align: center
 
@@ -117,12 +117,12 @@ Renders
 The PCB renders are shown here for the latest version, revision 5.
 
 .. figure:: img/txio/txio_rev5_top_render.jpg
-   :scale: 50 %
+   :width: 70 %
    :alt: TXIO Rev 5 Top Render
    :align: center
 
 .. figure:: img/txio/txio_rev5_bot_render.jpg
-   :scale: 50 %
+   :width: 70 %
    :alt: TXIO Rev 5 Bottom Render
    :align: center
 
@@ -139,7 +139,7 @@ The RTC capacitor is used to prevent noise spikes on the input from changing the
 be selected by looking at the datasheet typical characteristics chart, shown below:
 
 .. figure:: img/txio/txio_sn75182_cap.jpg
-   :scale: 50 %
+   :width: 50 %
    :alt: Typical Characteristics of SN75182, Max Noise Pulse vs RTC Capacitance
    :align: center
 
@@ -249,7 +249,7 @@ stencil:
 
 
 .. figure:: img/txio/txio_rev5_stencil.jpg
-   :scale: 50 %
+   :width: 50 %
    :alt: Borealis N200 TXIO Rev 5 Stencil
    :align: center
 
@@ -302,7 +302,7 @@ timed GPIO commands. This rendered the delay-line type design obsolete.
 See photos below of a populated and an unpopulated board both front and back:
 
 .. figure:: img/txio/txio_delay_line.jpg
-   :scale: 50 %
+   :width: 80 %
    :alt: Rev1 back and front
    :align: center
 
@@ -337,12 +337,12 @@ refers to the first version of this type of design without the delay lines.
 See renderings below of an unpopulated board:
 
 .. figure:: img/txio/txio_rev2_back_render.jpg
-   :scale: 50 %
+   :width: 70 %
    :alt: Rev 2 Back Rendering
    :align: center
 
 .. figure:: img/txio/txio_rev2_front_render.jpg
-   :scale: 50 %
+   :width: 70 %
    :alt: Rev 2 Front Rendering
    :align: center
 
@@ -365,38 +365,38 @@ N200, the front panel LEDS, the back panel SMAs, the back panel DSUB, and photos
 and ATR connections:
 
 .. figure:: img/txio/txio_rev3_front_render.jpg
-   :scale: 50 %
+   :width: 70 %
    :alt: Rev 3 Front Rendering
    :align: center
 
 .. figure:: img/txio/txio_rev3_back_render.jpg
-   :scale: 50 %
+   :width: 70 %
    :alt: Rev 3 Back Rendering
    :align: center
 
 .. figure:: img/txio/txio_rev3_install.jpg
-   :scale: 50 %
+   :width: 50 %
    :alt: Rev 3 Installed in Ettus N200
    :align: center
 
 .. figure:: img/txio/txio_front_panel_leds.jpg
-   :scale: 50 %
+   :width: 50 %
    :alt: N200 Front Panel LEDs
    :align: center
 
 .. figure:: img/txio/txio_rear.jpg
-   :scale: 50 %
+   :width: 70 %
    :alt: N200 Rear Panel DSUB and SMAs
    :align: center
 
 .. figure:: img/txio/txio_lfrx_pwr.jpg
-   :scale: 50 %
+   :width: 50 %
    :alt: LFRX Power Connection
    :align: center
 
 
 .. figure:: img/txio/txio_lfrx_atr_j15.jpg
-   :scale: 50 %
+   :width: 50 %
    :alt: LFRX ATR Connection
    :align: center
 
@@ -412,13 +412,13 @@ designed to be soldered in a reflow oven which was purchased by ISAS.
 The LED patterns are shown below in an excerpt from Adam Lozinsky’s notes for the rev 4 version.
 
 .. figure:: img/txio/txio_led_pattern_notes.jpg
-   :scale: 50 %
+   :width: 80 %
    :alt: N200 Front Panel LED Order and Colours
    :align: center
 
 
 .. figure:: img/txio/txio_led_patterns.jpg
-   :scale: 50 %
+   :width: 80 %
    :alt: N200 Front Panel LED Order and Colours
    :align: center
 
@@ -446,11 +446,11 @@ The front panel LEDs have been simplified after experience with the old rev3 des
 - Txonly – RED – This should not come on, if it is on, there is a problem.
 
 .. figure:: img/txio/txio_rev4_top_render.jpg
-   :scale: 50 %
+   :width: 70 %
    :alt: TXIO Rev 4 Top Render
    :align: center
 
 .. figure:: img/txio/txio_rev4_bot_render.jpg
-   :scale: 50 %
+   :width: 70 %
    :alt: TXIO Rev 4 Bottom Render
    :align: center

@@ -171,13 +171,13 @@ if args.run_mode == "release":
 elif args.run_mode == "debug":
     # run all modules in debug with regular operations data outputs, for testing modules
     python_opts = "-u"
-    c_debug_opts = "gdb -ex start"
+    c_debug_opts = "gdb -ex start -quiet"
     mode = "debug"
     data_write_args = f"--enable-raw-acfs --enable-antenna-iq {rawacf_format}"
 elif args.run_mode == "pythonprofiling":
     # run all modules in debug with python profiling, for optimizing python modules
     python_opts = "-O -u -m cProfile -o testing/python_testing/{module}.cprof"
-    c_debug_opts = "gdb -ex start"
+    c_debug_opts = "gdb -ex start -quiet"
     mode = "debug"
     data_write_args = f"--enable-raw-acfs --enable-antenna-iq {rawacf_format}"
 elif args.run_mode == "testdata":
@@ -189,7 +189,7 @@ elif args.run_mode == "testdata":
 elif args.run_mode in ["engineeringdebug", "filterdata"]:
     # run all modules in debug with rawrf, antennas_iq, and filter stage data.
     python_opts = "-u"
-    c_debug_opts = "gdb -ex start"
+    c_debug_opts = "gdb -ex start -quiet"
     mode = "debug"
     data_write_args = "--enable-raw-rf --enable-antenna-iq"
 else:
@@ -246,7 +246,10 @@ with open(screenrc_file, "w") as f:
 # When using OpenSUSE 15.5, there is a file generated on boot in shared memory that must be kept
 sp.call("find /dev/shm/* -type f -not -name 'sem.haveged_sem' -delete", shell=True)
 # Clean up any residuals in shared memory and dead screens
-sp.call("screen -X -S borealis quit", shell=True)
+sp.call(
+    "screen -ls | grep borealis | awk '{print $1}' | xargs -I{} screen -S {} -X quit",
+    shell=True,
+)
 
 # Give the os a chance to free all previously used sockets, etc.
 time.sleep(1)

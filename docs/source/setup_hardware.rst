@@ -11,47 +11,43 @@ System Overview and Rack Setup
 Below is a recommended configuration in comparison to a common SuperDARN system, Note that the N200s
 are in custom made shelves, but shelves can also be purchased from National Instruments:
 
-.. figure:: img/USRP-rack-rev5.png
-   :scale: 50 %
-   :alt: Block diagram of RX DSP software
+.. figure:: img/system_setup/USRP-rack-rev6.png
+   :width: 100%
+   :alt: Block diagram of ROS and Borealis racks
    :align: center
 
 Here is an actual rack configuration as installed by SuperDARN Canada at the Saskatoon (SAS)
 SuperDARN site. Note that space has been allowed between the rackmount items to allow for cable
 routing. There is a lot of cabling involved at the front of the devices.
 
-.. figure:: img/sas-borealis-rack1.jpg
-   :scale: 25 %
+.. figure:: img/system_setup/sas_borealis_rack_2023.jpg
+   :width: 80%
    :alt: Rack photo
    :align: center
 
 The items installed in the rack at the Saskatoon site are listed below in order from top to bottom
 in the rack:
 
-- Netgear XS708E 10Gb switch **NOTE these are deprecated, new switches are in testing**
 - USRP rackmount shelf (in-house design) with 4 x N200s
-- Ettus Octoclock
+- Ettus OctoClock
 - USRP rackmount shelf (in-house design) with 4 x N200s
-- Netgear XS708E 10Gb switch
-- Rackmount shelf with 4 x low-noise amplifiers for the interferometer array channels, and a
-  terminal strip for power (supplied by 15V Acopian)
-- Ettus Octoclock-G (with GPSDO)
+- Rackmount shelf with 4 x low-noise amplifiers for the interferometer receive channels, and a
+  terminal strip for power (supplied by 15V Acopian power supply)
+- FS SG-3110 Dual WAN Security Gateway
+- FS S3900 48 Port 1GbE Switch
+- Ettus OctoClock-G (with GPSDO)
 - USRP rackmount shelf (in-house design) with 4 x N200s
-- Ettus Octoclock
+- Ettus OctoClock
 - USRP rackmount shelf (in-house design) with 4 x N200s
-- Netgear XS708E 10Gb switch
-- Synology Network Attached Storage device
-- APC Smart UPS
-- 15V Acopian power supply **(For the pre-amplifiers on the interferometer)**
+- APC Smart-UPS X 2200 with AP6941 network card
 
 In addition to these items, there are the following:
 
-- 3 x APC PDUs (AP7900B) are mounted at the back of the rack
-- 1x 5-port unmanaged network switch that can handle at minimum 10Mbps, 100Mbps link speeds
-  (10BASE-T and 100BASE-T) for Octoclock networking **(This is only required if the network switches
-  in use for the N200s do not support 10BASE-T)**
+- 3 x AP7900B APC Power Distribution Units (PDUs) mounted at the back of the rack
+- 4 x Tripp Lite power outlet strips mounted at the back of the rack
 - The Borealis computer is not in a rackmount case, instead it is placed to the right of the rack.
 - 16 x Mini-Circuits SLP-21.4 low pass filters on the TX outputs of each N200
+- Synology Network Attached Storage (NAS) device
 
 -----
 USRPs
@@ -99,19 +95,19 @@ Initial Test of the Unit
 
 *Test the USRP*
 
-	Use the UHD utilities ``rx_samples_to_file``, ``tx_bursts`` and ``txrx_loopback_to_file`` to
-	verify the USRP works. Use the scope to see the transmit signal. The RX samples will be a binary
-	file that can be quickly read in a plotted with Numpy/Matplotlib. While testing, watch the front
-	panel LEDs to see that they work as expected.
+   Use the UHD utilities ``rx_samples_to_file``, ``tx_bursts`` and ``txrx_loopback_to_file`` to
+   verify the USRP works. Use the scope to see the transmit signal. The RX samples will be a binary
+   file that can be quickly read in a plotted with Numpy/Matplotlib. While testing, watch the front
+   panel LEDs to see that they work as expected.
 
 *Disassembly for Enclosure Modifications*
 
-	If the USRP is working correctly, the inner motherboard, fan, daughtercards and RF cables can
-	all be removed from the unit. Carefully peel the product sticker and store with the motherboard,
-	this contains the MAC address, SN and PN of the unit. All removed components and the sticker can
-	be stored in the anti-static bags that were supplied with the unit. The enclosure is ready for
-	machining the additional holes. Ensure that you note which way the fan was installed for
-	reinstallation later.
+   If the USRP is working correctly, the inner motherboard, fan, daughtercards and RF cables can
+   all be removed from the unit. Carefully peel the product sticker and store with the motherboard,
+   this contains the MAC address, SN and PN of the unit. All removed components and the sticker can
+   be stored in the anti-static bags that were supplied with the unit. The enclosure is ready for
+   machining the additional holes. Ensure that you note which way the fan was installed for
+   reinstallation later.
 
 Custom Enclosure Modifications
 ------------------------------
@@ -147,15 +143,15 @@ Installing the Custom-Made TXIO Board
        punch using a 1/4" washer after warming up the spacer with a heat gun.
     #. Optional: add labels to each LED.
 
-    .. image:: img/txio/txio_leds.jpg
-       :scale: 50%
+    .. figure:: img/txio/txio_leds.jpg
+       :width: 50%
        :alt: LEDs installed with spacers
        :align: center
 
 #. Install the fan, making sure to re-install it the same way it was originally installed.
 
-    .. image:: img/txio/txio_fan_direction.jpg
-       :scale: 50%
+    .. figure:: img/txio/txio_fan_direction.jpg
+       :width: 50%
        :alt: Arrows indicate fan rotation and air flow direction
        :align: center
 
@@ -165,49 +161,49 @@ Installing the Custom-Made TXIO Board
 #. Begin by connecting eight 0.1" female-female jumper cables to pins 1-4 and 6-9 of the D-sub
    connector. The other ends of these wires connects to header J2 on the TXIO board
 
-	+---------+-----------+-------------+----------+
-	| J2 Pin  | Pin label | Wire colour | DSUB Pin |
-	+=========+===========+=============+==========+
-	| 1       | LP-       | Grey        | 4        |
-	+---------+-----------+-------------+----------+
-	| 2       | TM-       | Blue        | 3        |
-	+---------+-----------+-------------+----------+
-	| 3       | LP+       | Purple      | 9        |
-	+---------+-----------+-------------+----------+
-	| 4       | TM+       | Green       | 8        |
-	+---------+-----------+-------------+----------+
-	| 5       | GND       | [NC]        | [NC]     |
-	+---------+-----------+-------------+----------+
-	| 6       | GND       | [NC]        | [NC]     |
-	+---------+-----------+-------------+----------+
-	| 7       | AGC-      | Brown       | 1        |
-	+---------+-----------+-------------+----------+
-	| 8       | TR-       | Orange      | 2        |
-	+---------+-----------+-------------+----------+
-	| 9       | AGC+      | Red         | 6        |
-	+---------+-----------+-------------+----------+
-	| 10      | TR+       | Yellow      | 7        |
-	+---------+-----------+-------------+----------+
-	| [NC]    | [NC]      | [NC]        | 5        |
-	+---------+-----------+-------------+----------+
+   +---------+-----------+-------------+----------+
+   | J2 Pin  | Pin label | Wire colour | DSUB Pin |
+   +=========+===========+=============+==========+
+   | 1       | LP-       | Grey        | 4        |
+   +---------+-----------+-------------+----------+
+   | 2       | TM-       | Blue        | 3        |
+   +---------+-----------+-------------+----------+
+   | 3       | LP+       | Purple      | 9        |
+   +---------+-----------+-------------+----------+
+   | 4       | TM+       | Green       | 8        |
+   +---------+-----------+-------------+----------+
+   | 5       | GND       | [NC]        | [NC]     |
+   +---------+-----------+-------------+----------+
+   | 6       | GND       | [NC]        | [NC]     |
+   +---------+-----------+-------------+----------+
+   | 7       | AGC-      | Brown       | 1        |
+   +---------+-----------+-------------+----------+
+   | 8       | TR-       | Orange      | 2        |
+   +---------+-----------+-------------+----------+
+   | 9       | AGC+      | Red         | 6        |
+   +---------+-----------+-------------+----------+
+   | 10      | TR+       | Yellow      | 7        |
+   +---------+-----------+-------------+----------+
+   | [NC]    | [NC]      | [NC]        | 5        |
+   +---------+-----------+-------------+----------+
 
-    .. image:: img/txio/txio_dsub_fanpwr.jpg
-       :scale: 50%
-       :alt: TXIO dsub wire connections
-       :align: center
+   .. figure:: img/txio/txio_dsub_fanpwr.jpg
+      :width: 50%
+      :alt: TXIO dsub wire connections
+      :align: center
 
-    .. image:: img/txio/txio_lfrx_signals.jpg
-       :scale: 50%
-       :alt: TXIO lrfx signal connections
-       :align: center
+   .. figure:: img/txio/txio_lfrx_signals.jpg
+      :width: 50%
+      :alt: TXIO lrfx signal connections
+      :align: center
 
 #. Connect the four U.Fl to SMA female bulkhead cables to J4, J5, J6 and J7 of the TXIO board.
    Orientation of the cables doesn't matter, as they will fit in the N200 case if rotated properly.
 
-    .. image:: img/txio/txio_pcb_connections.jpg
-       :scale: 50%
-       :alt: TXIO PCB view
-       :align: center
+   .. figure:: img/txio/txio_pcb_connections.jpg
+      :width: 50%
+      :alt: TXIO PCB view
+      :align: center
 
 #. Connect 4 pairs of 0.1" female to female jumper wires to header J3 on the TXIO board. THe other
    ends will connect to the LEDs already installed in the N200 case. There is no need to connect
@@ -217,69 +213,69 @@ Installing the Custom-Made TXIO Board
    you use your own voltage supply with the open-collector outputs, be aware that the maximum
    voltage is 30V, and the maximum current sink is 40mA. See the SN7406D datasheet for more details.
 
-        +--------------+-------------+----------------+
-	| J3 Pin label | Wire Colour | LED Connection |
-	+==============+=============+================+
-	| TXo          | Brown       | RED-           |
-	+--------------+-------------+----------------+
-	| RED          | Red         | RED+           |
-	+--------------+-------------+----------------+
-	| IDLE         | Orange      | Yellow-        |
-	+--------------+-------------+----------------+
-	| YLW          | Yellow      | Yellow+        |
-	+--------------+-------------+----------------+
-	| RX           | Blue        | Green-         |
-	+--------------+-------------+----------------+
-	| GRN          | Green       | Green+         |
-	+--------------+-------------+----------------+
-	| TX           | Grey        | Blue-          |
-	+--------------+-------------+----------------+
-	| BLU          | Purple      | Blue+          |
-	+--------------+-------------+----------------+
+   +--------------+-------------+----------------+
+   | J3 Pin label | Wire Colour | LED Connection |
+   +==============+=============+================+
+   | TXo          | Brown       | RED-           |
+   +--------------+-------------+----------------+
+   | RED          | Red         | RED+           |
+   +--------------+-------------+----------------+
+   | IDLE         | Orange      | Yellow-        |
+   +--------------+-------------+----------------+
+   | YLW          | Yellow      | Yellow+        |
+   +--------------+-------------+----------------+
+   | RX           | Blue        | Green-         |
+   +--------------+-------------+----------------+
+   | GRN          | Green       | Green+         |
+   +--------------+-------------+----------------+
+   | TX           | Grey        | Blue-          |
+   +--------------+-------------+----------------+
+   | BLU          | Purple      | Blue+          |
+   +--------------+-------------+----------------+
 
     **NOTE** '-' means cathode, '+' means anode
 
 #. Connect 10 0.1" female to female jumper wires to J1, the other ends will connect to the LFRX
    daughterboard pin headers.
 
-	+---------+-----------+-------------+-------------+-----------+
-	| J1 Pin  | Pin label | Wire colour | LFRX header | LFRX Pin  |
-	+=========+===========+=============+=============+===========+
-	| 1       | OUT_0     | [NC]        | [NC]        | [NC]      |
-	+---------+-----------+-------------+-------------+-----------+
-	| 2       | OUT_1     | [NC]        | [NC]        | [NC]      |
-	+---------+-----------+-------------+-------------+-----------+
-	| 3       | GND       | Brown       | J16         | 'DGND'    |
-	+---------+-----------+-------------+-------------+-----------+
-	| 4       | +6V       | Red         | J16         | '6V'      |
-	+---------+-----------+-------------+-------------+-----------+
-	| 5       | RXo       | Orange      | J15         | io_rx[1]  |
-	+---------+-----------+-------------+-------------+-----------+
-	| 6       | Txo       | Yellow      | J15         | io_rx[3]  |
-	+---------+-----------+-------------+-------------+-----------+
-	| 7       | TR        | Green       | J15         | io_rx[5]  |
-	+---------+-----------+-------------+-------------+-----------+
-	| 8       | IDLE      | Blue        | J15         | io_rx[7]  |
-	+---------+-----------+-------------+-------------+-----------+
-	| 9       | LP        | Purple      | J15         | io_rx[9]  |
-	+---------+-----------+-------------+-------------+-----------+
-	| 10      | AGC       | Grey        | J15         | io_rx[11] |
-	+---------+-----------+-------------+-------------+-----------+
-	| 11      | TM        | White       | J15         | io_rx[13] |
-	+---------+-----------+-------------+-------------+-----------+
-	| 12      | GND       | Black       | J16         | 'DGND'    |
-	+---------+-----------+-------------+-------------+-----------+
+   +---------+-----------+-------------+-------------+-----------+
+   | J1 Pin  | Pin label | Wire colour | LFRX header | LFRX Pin  |
+   +=========+===========+=============+=============+===========+
+   | 1       | OUT_0     | [NC]        | [NC]        | [NC]      |
+   +---------+-----------+-------------+-------------+-----------+
+   | 2       | OUT_1     | [NC]        | [NC]        | [NC]      |
+   +---------+-----------+-------------+-------------+-----------+
+   | 3       | GND       | Brown       | J16         | 'DGND'    |
+   +---------+-----------+-------------+-------------+-----------+
+   | 4       | +6V       | Red         | J16         | '6V'      |
+   +---------+-----------+-------------+-------------+-----------+
+   | 5       | RXo       | Orange      | J15         | io_rx[1]  |
+   +---------+-----------+-------------+-------------+-----------+
+   | 6       | Txo       | Yellow      | J15         | io_rx[3]  |
+   +---------+-----------+-------------+-------------+-----------+
+   | 7       | TR        | Green       | J15         | io_rx[5]  |
+   +---------+-----------+-------------+-------------+-----------+
+   | 8       | IDLE      | Blue        | J15         | io_rx[7]  |
+   +---------+-----------+-------------+-------------+-----------+
+   | 9       | LP        | Purple      | J15         | io_rx[9]  |
+   +---------+-----------+-------------+-------------+-----------+
+   | 10      | AGC       | Grey        | J15         | io_rx[11] |
+   +---------+-----------+-------------+-------------+-----------+
+   | 11      | TM        | White       | J15         | io_rx[13] |
+   +---------+-----------+-------------+-------------+-----------+
+   | 12      | GND       | Black       | J16         | 'DGND'    |
+   +---------+-----------+-------------+-------------+-----------+
 
 
-    .. image:: img/txio/txio_lfrx_signals.jpg
-       :scale: 80%
-       :alt: TXIO LFRX signal connections
-       :align: center
+   .. figure:: img/txio/txio_lfrx_signals.jpg
+      :width: 50%
+      :alt: TXIO LFRX signal connections
+      :align: center
 
-    .. image:: img/txio/txio_lfrx_pwr.jpg
-       :scale: 80%
-       :alt: TXIO LRFX pwr connections
-       :align: center
+   .. figure:: img/txio/txio_lfrx_pwr.jpg
+      :width: 50%
+      :alt: TXIO LRFX pwr connections
+      :align: center
 
 #. Install the TXIO board by screwing it into place on the USRP housing with the two provided holes.
    The TXIO board uses the same size and style of screw that the N200 motherboard and daughtercards
@@ -294,10 +290,10 @@ Installing the Custom-Made TXIO Board
     - Finally, connect the LFRX jumper wires from J1 and LED wires from J3 to complete the
       installation.
 
-    .. image:: img/txio/txio_rear.jpg
-       :scale: 80%
-       :alt: TXIO rear view
-       :align: center
+   .. figure:: img/system_setup/n200_back_labelled.png
+      :width: 100%
+      :alt: TXIO rear view
+      :align: center
 
 
 TXIO OUTPUT TESTS
@@ -506,16 +502,16 @@ assembly steps, cut it in half and solder the bare wire end to the coaxial cable
 Note that the *centre conductor* is attached to the *DCD* pin and the *braid* is connected to the
 *GND* pin.
 
-.. image:: img/pps_ntp_1.jpg
-   :scale: 80%
+.. figure:: img/system_setup/pps_ntp_1.jpg
+   :width: 40%
    :alt: Modify one SMA coaxial cable to connect to the DCD and GND pins of the motherboard
    :align: center
 
 A typical pinout for COM ports is shown below, but check with your motherboard's user manual to verify
 both the location and pinout:
 
-.. image:: img/typical_com_port.png
-   :scale: 80%
+.. figure:: img/system_setup/typical_com_port.png
+   :width: 50%
    :alt: Typical motherboard COM port pinout
    :align: center
 
@@ -523,8 +519,8 @@ both the location and pinout:
 The photo below shows the modified coaxial cable in place. On the motherboard version in the photo,
 the onboard COM port is to the left of the 'AA' shown on the 7-segment display.
 
-.. image:: img/pps_ntp_2.jpg
-   :scale: 80%
+.. figure:: img/system_setup/pps_ntp_2.jpg
+   :width: 50%
    :alt: Modified coaxial cable connected to the COM port DCD and GND pins on the motherboard
    :align: center
 
@@ -534,8 +530,8 @@ use a PCIe serial port card. One such part that is known to work is the Rosewill
 below shows how one of these cards was modified by removing the physical D-Sub connector and using a
 bulkhead SMA connector in place.
 
-.. image:: img/pcie_serialport_pps.jpg
-   :scale: 80%
+.. figure:: img/system_setup/pcie_serialport_pps.jpg
+   :width: 50%
    :alt: Modify one SMA coaxial cable to connect to the DCD and GND pins of the pcie header
    :align: center
 
@@ -545,9 +541,9 @@ Octoclocks and Networking
 
 One issue with the Octoclock units is that they contain a very basic Ethernet controller chip, the
 ENC28J60. This means that the Octoclock units will only operate at 10Mbps link speed (10BASE-T). The
-10Gb network switches specified above (NetGear XS708E-200NES or XS708T) only operate at 100Mbps,
-1000Mbps and 10000Mbps. Therefore, a 5-port unmanaged switch is used to connect all three Octoclocks
-to one of the 10Gbps network switches. The 5-port switch must be capable of operating at both 10Mbps
-and 100Mbps so it can connect to both the Octoclocks as well as the XS708E switch. The network cables
+previously used 10Gb network switches (NetGear XS708E-200NES or XS708T) only operated at 100Mbps,
+1000Mbps and 10000Mbps. Therefore, a 5-port unmanaged switch was required to connect all three Octoclocks
+to one of the 10Gbps network switches. The 5-port switch had to be capable of operating at both 10Mbps
+and 100Mbps so it could connect to both the Octoclocks as well as the XS708E switch. The network cables
 connecting the Octoclocks to the 5-port switch do not need to be dual shielded and any Cat5 cable
 (or better) should work.

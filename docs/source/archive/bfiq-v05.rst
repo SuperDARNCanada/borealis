@@ -16,15 +16,16 @@ bfiq array files
 
 Array restructured files are produced after the radar has finished writing a file and contain record data in multi-dimensional arrays so as to avoid repeated values, shorten the read time, and improve human readability. Fields that are unique to the record are written as arrays where the first dimension is equal to the number of records recorded. Other fields that are unique to the slice or experiment (and are therefore repeated for all records) are written only once.
 
-The group names in these files are the field names themselves, greatly reducing the number of group names in the file when compared to site files and making the file much more human readable.
+The group names in these files are the field names themselves, greatly reducing the number of group
+names in the file when compared to site files and making the file much more human readable.
 
-The naming convention of the bfiq array-structured files are:
+The naming convention of the bfiq array-structured files are: ::
 
-[YYYYmmDD].[HHMM].[SS].[station_id].[slice_id].bfiq.hdf5
+    [YYYYmmDD].[HHMM].[SS].[station_id].[slice_id].bfiq.hdf5
 
-For example: 20191105.1400.02.sas.0.bfiq.hdf5
+For example: ::
 
-This is the file that began writing at 14:00:02 UT on November 5 2019 at the Saskatoon site, and it provides data for slice 0 of the experiment that ran at that time. It has been array restructured because it does not have a .site designation at the end of the filename.
+    20191105.1400.02.sas.0.bfiq.hdf5
 
 These files are zlib compressed which is native to hdf5 and no decompression is necessary before reading using your hdf5 library.
 
