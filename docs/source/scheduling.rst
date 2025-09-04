@@ -35,7 +35,7 @@ accessed via a local server, which then uses the scheduler sync daemon to sync w
 radars.
 
 .. figure:: img/scheduling_diagram.png
-    :width: 100%%
+    :width: 100%
     :alt:   Simple block diagram of scheduling setup
     :align: center
 
