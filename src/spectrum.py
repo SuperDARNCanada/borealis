@@ -7,10 +7,12 @@ This process handles realtime spectrum measurement.
 :author: Remington Rohel
 """
 
+import datetime as dt
 import math
 import mmap
 import os
 import sys
+import time
 from dataclasses import dataclass
 
 import numpy as np
@@ -49,6 +51,7 @@ class SpectrumParams:
     init_time: float = 0.0
     last_sqn_start_time: float = 0.0
     start_idx: int = 0
+    rxrate: float = 0.0
     end_idx: int = 0
 
 
@@ -60,9 +63,9 @@ def compute_spectrum(processor: DSP, samples: xp.ndarray, num_bins: int):
     processor.move_filter_results()
     num_intervals = int((processor.antennas_iq_samples.shape[-1]) / num_bins)
     data = processor.antennas_iq_samples[..., : num_intervals * num_bins]
-    data_chunks = xp.reshape(data, data.shape[:-1] + (num_intervals, num_bins))
+    data_chunks = np.reshape(data, data.shape[:-1] + (num_intervals, num_bins))
 
-    fft_data = xp.fft.fftshift(xp.fft.fft(data_chunks, axis=-1), axes=-1)
+    fft_data = np.fft.fftshift(np.fft.fft(data_chunks, axis=-1), axes=-1)
     processor.clear_results()
 
     return fft_data
@@ -72,20 +75,31 @@ def extract_samples(params: SpectrumParams):
     """
     Grabs the applicable samples from the ringbuffer.
     """
-    num_samples = params.end_idx - params.start_idx
+    start_idx = params.start_idx
+    end_idx = params.end_idx
+    num_samples = end_idx - start_idx
+    max_num_samps = int(0.1 * params.rxrate)
     if num_samples <= 0:
         num_samples += params.ringbuffer.shape[1]
+    if num_samples > max_num_samps:
+        num_samples = max_num_samps
+        end_idx = (start_idx + num_samples) % params.ringbuffer.shape[1]
 
-    if params.start_idx > params.end_idx:
-        piece1 = params.ringbuffer[:, params.start_idx :]
-        piece2 = params.ringbuffer[:, : params.end_idx]
+    log.info(
+        "extracting...",
+        start_idx=start_idx,
+        end_idx=end_idx,
+        num_samples=num_samples,
+        ringbuffer_len=params.ringbuffer.shape[1],
+    )
+    if start_idx > end_idx:
+        piece1 = params.ringbuffer[:, start_idx:]
+        piece2 = params.ringbuffer[:, :end_idx]
         tmp1 = xp.array(piece1)
         tmp2 = xp.array(piece2)
         sequence_samples = xp.concatenate((tmp1, tmp2), axis=1)
     else:
-        sequence_samples = xp.array(
-            params.ringbuffer[:, params.start_idx : params.end_idx]
-        )
+        sequence_samples = xp.array(params.ringbuffer[:, start_idx:end_idx])
 
     return sequence_samples
 
@@ -118,11 +132,12 @@ def spectral_analysis(params: SpectrumParams, processor: DSP, num_bins: int):
     log.info("Conducting spectral analysis")
     # Conduct spectral analysis
     sequence_samples = extract_samples(params)
+    log.info("sqn_samples", shape=sequence_samples.shape)
     fft_data = compute_spectrum(processor, sequence_samples, num_bins)
     cfs_data = 20 * np.log10(np.sum(np.abs(np.average(fft_data, axis=2)), axis=1))
-
+    cfs_data = np.nan_to_num(cfs_data, nan=-60)
     fs = processor.rx_rate / np.prod(processor.dm_rates)  # Sampling frequency in Hz
-    cfs_freqs = xp.fft.fftshift(xp.fft.fftfreq(num_bins, d=1 / fs))
+    cfs_freqs = np.fft.fftshift(np.fft.fftfreq(num_bins, d=1 / fs))
 
     log.info("Shapes", data=fft_data.shape, freqs=cfs_freqs.shape)
 
@@ -170,7 +185,12 @@ def main():
     driver_started_msg = so.recv_bytes(
         spectrum_to_driverrx, options.driverrx_to_spectrum_identity, log
     )
-    params.start_idx = parse_msg(driver_started_msg.decode("utf-8"), SpectrumStart).idx
+    log.info("Driver RX message", message=driver_started_msg.decode("utf-8"))
+    msg = parse_msg(driver_started_msg.decode("utf-8"), SpectrumStart)
+    params.start_idx = msg.idx
+    params.rxrate = msg.rxrate
+    params.end_idx = params.start_idx + int(0.08 * params.rxrate)
+    start_time = dt.datetime.now(dt.timezone.utc)
 
     ############################ Set up ringbuffer ##################################
     # usrp_driver creates the shared memory, so we must wait for the previous message before attaching to it
@@ -186,13 +206,6 @@ def main():
         )
         xp.cuda.runtime.setDevice(0)
 
-    ########################### Get second message from driver ######################
-    # Now we get the second index, so we have a small period of listening time to use for spectral analysis
-    driver_second_msg = so.recv_bytes(
-        spectrum_to_driverrx, options.driverrx_to_spectrum_identity, log
-    )
-    params.end_idx = parse_msg(driver_second_msg.decode("utf-8"), SpectrumStart).idx
-
     ########################### Set up the DSP object ###############################
     cfs_processor = DSP(
         dec_scheme.rxrate,
@@ -204,6 +217,13 @@ def main():
     n = 512  # TODO: get this from somewhere
     first_rx_sample_off = 1050  # TODO: Get from radar_control
 
+    ################# Sleep until enough samples have been connected ################
+    end_time = dt.datetime.now(dt.timezone.utc)
+    to_sleep = dt.timedelta(milliseconds=80) - (end_time - start_time)
+    if to_sleep > dt.timedelta(0):
+        time.sleep(to_sleep.total_seconds())
+
+    #################################################################################
     # Run an initial spectral analysis before Tx starts
     cfs_data, cfs_freqs = spectral_analysis(params, cfs_processor, n)
 

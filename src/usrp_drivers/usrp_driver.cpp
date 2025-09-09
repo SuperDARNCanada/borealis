@@ -294,6 +294,8 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
   memcpy(&initialization_time, static_cast<uhd::time_spec_t *>(request.data()),
          request.size());
 
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
   auto driver_ready_msg = std::string("DRIVER_READY");
   SEND_REPLY(driver_to_radar_control,
              driver_options.get_radctrl_to_driver_identity(), driver_ready_msg);
@@ -739,15 +741,12 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d,
 
   // This loop receives 1 pulse sequence worth of samples.
   auto first_time = true;
-  auto second_time = false;
   while (1) {
     // 3.0 is the timeout in seconds for the recv call, arbitrary number
     rx_stream->recv(buffer_ptrs, usrp_buffer_size, meta, 3.0, true);
     if (first_time) {
-      zmq::message_t start_time(sizeof(meta.time_spec));
+      zmq::message_t start_time(sizeof(uhd::time_spec_t));
       memcpy(start_time.data(), &meta.time_spec, sizeof(meta.time_spec));
-    }
-    if (second_time) {
       start_trigger.send(start_time, zmq::send_flags::none);
     }
     borealis_clocks.system_time = std::chrono::system_clock::now();
@@ -802,19 +801,15 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d,
       buffer_ptrs[buffer_idx] = buffer_ptrs_start[buffer_idx] + ringbuffer_idx;
     }
 
-    if (first_time || second_time) {
+    if (first_time) {
       // Send a message to spectrum with ringbuffer index where samples start.
       std::ostringstream buffer;
-      buffer << "idx=" << ringbuffer_idx;
+      buffer << "idx=" << ringbuffer_idx << " rxrate=" << rx_rate;
       std::string msg = buffer.str();
       send_string(driverrx_to_spectrum,
                   driver_options.get_spectrum_to_driverrx_identity(), msg);
 
-      if (second_time) second_time = false;
-      if (first_time) {
-        first_time = false;
-        second_time = true;
-      }
+      first_time = true;
     }
   }
 }

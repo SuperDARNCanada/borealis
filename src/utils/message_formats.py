@@ -299,6 +299,7 @@ class SpectrumStart:
     """Message from usrp_driver's RX thread to spectrum"""
 
     idx: int = 0
+    rxrate: float = 0.0
 
 
 def parse_msg(message: str, msg_type):

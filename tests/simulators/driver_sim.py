@@ -88,20 +88,15 @@ def driver_thread():
     driver_packet = parse_msg(radctrl_msg.decode("utf-8"), DriverPacket)
     rx_rate = driver_packet.rxrate
 
-    # let radar_control know that driver is good to start
-    so.send_string(radctrl_socket, options.radctrl_to_driver_identity, "DRIVER_READY")
-
     # let spectrum know where to start pulling samples from
     so.send_bytes(
         spectrum_rx_socket,
         options.spectrum_to_driverrx_identity,
-        "idx=0".encode("utf-8"),
+        f"idx=0 rxrate={rx_rate}".encode("utf-8"),
     )
-    so.send_bytes(
-        spectrum_rx_socket,
-        options.spectrum_to_driverrx_identity,
-        "idx=500000".encode("utf-8"),
-    )
+
+    # let radar_control know that driver is good to start
+    so.send_string(radctrl_socket, options.radctrl_to_driver_identity, "DRIVER_READY")
 
     seed_mod = 0
     while True:
