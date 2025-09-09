@@ -56,7 +56,6 @@ class DSP:
         :param      use_shared_mem: Flag to use shared memory for CPU arrays
         :type       use_shared_mem: bool
         """
-        self.filters = None
         self.filter_outputs = []
         self.beamformed_samples = None
         self.antennas_iq_samples = None
@@ -66,6 +65,24 @@ class DSP:
         self.mixing_freqs = mixing_freqs
         self.dm_rates = dm_rates
         self.filters = self.create_filters(filter_taps, mixing_freqs, rx_rate)
+
+    def clear_results(self):
+        """
+        Removes all filter results.
+        """
+        self.filter_outputs = []
+
+    def set_filters(self, filter_taps, dm_rates):
+        """
+        Saves a new set of filters to `self`.
+
+        :param filter_taps: list of filter taps to use at each stage
+        :type  filter_taps: list[ndarray]
+        :param    dm_rates: The decimation rates for each stage
+        :type     dm_rates: list[int]
+        """
+        self.dm_rates = dm_rates
+        self.filters = self.create_filters(filter_taps, self.mixing_freqs, self.rx_rate)
 
     def apply_filters(self, input_samples):
         """
@@ -183,7 +200,7 @@ class DSP:
         data_chunks = np.reshape(data, data.shape[:-1] + (num_intervals, n))
 
         fft_data = fft.fftshift(fft.fft(data_chunks, axis=-1), axes=-1)
-        cfs_data = 20 * np.log(np.sum(np.abs(np.average(fft_data, axis=2)), axis=1))
+        cfs_data = 20 * np.log10(np.sum(np.abs(np.average(fft_data, axis=2)), axis=1))
         cfs_freqs = fft.fftshift(fft.fftfreq(n, d=1 / fs))
 
         return cfs_data, cfs_freqs

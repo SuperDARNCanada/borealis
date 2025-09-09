@@ -35,7 +35,7 @@ class OutputDataset:
 
 
 @dataclass
-class ProcessedSequenceMessage:
+class ProcessedSequence:
     """
     Defines a message containing metadata about a processed sequence of data.
     This message format is for communication from rx_signal_processing to data_write.
@@ -75,7 +75,7 @@ class ProcessedSequenceMessage:
 
 
 @dataclass
-class DecimationStageMessage:
+class DecimationStageMsg:
     """Defines a decimation_stage structure within a SequenceMetadataMessage"""
 
     stage_num: int = None
@@ -120,7 +120,7 @@ class RxChannel:
 
 
 @dataclass
-class SequenceMetadataMessage:
+class SequenceMetadataMsg:
     """
     Defines a message containing metadata about a sequence of data.
     This message format is for communication from radar_control to
@@ -133,7 +133,7 @@ class SequenceMetadataMessage:
     rx_rate: float = None
     output_sample_rate: float = None
     rx_ctr_freq: float = None
-    decimation_stages: list[DecimationStageMessage] = field(default_factory=list)
+    decimation_stages: list[DecimationStageMsg] = field(default_factory=list)
     rx_channels: list[RxChannel] = field(default_factory=list)
     acf: bool = False
     xcf: bool = False
@@ -141,7 +141,7 @@ class SequenceMetadataMessage:
     cfs_scan_flag: bool = False
     cfs_fft_n: int = None
 
-    def add_decimation_stage(self, stage: DecimationStageMessage):
+    def add_decimation_stage(self, stage: DecimationStageMsg):
         """Add a decimation stage to the message."""
         self.decimation_stages.append(stage)
 
@@ -253,7 +253,7 @@ class AveperiodMetadataMessage:
 
 
 @dataclass
-class RxSamplesMetadata:
+class DriverRxMetadata:
     """
     Message from usrp_driver to rx_signal_processing.
     """
@@ -272,36 +272,13 @@ class RxSamplesMetadata:
     gps_locked: bool = False
     gps_to_system_time_diff: float = 0.0
 
-    @staticmethod
-    def parse(message: str):
-        """Parses a string of `k1=v1 k2=v2` into RxSamplesMetadata"""
-        rx_metadata = RxSamplesMetadata()
-        split_reply = message.split(" ")  # expect "k1=v1 k2=v2 k3=v3"
-        for token in split_reply:
-            split_token = token.split("=")
-            k = split_token[0]
-            v = split_token[1]
-            var_type = getattr(rx_metadata, k)
-            if isinstance(var_type, bool):
-                v = bool(int(v))  # bool("0") -> True, bool(int("0")) -> False
-            else:
-                v = type(var_type)(v)
-            setattr(rx_metadata, k, v)
-        return rx_metadata
-
-    def format_for_ipc(self):
-        str_list = list()
-        for f in fields(self):
-            v = getattr(self, f.name)
-            if isinstance(v, bool):
-                v = int(v)
-            str_list.append(f"{f.name}={v}")
-        msg_str = " ".join(str_list)
-        return msg_str.encode("utf-8")
-
 
 @dataclass
 class DriverPacket:
+    """
+    Message from radar_control to usrp_driver.
+    """
+
     sequence_num: int = 0
     rxrate: float = 0.0
     txrate: float = 0.0
@@ -316,29 +293,38 @@ class DriverPacket:
     align_sequences: bool = False
     buffer_offset: int = 0
 
-    @staticmethod
-    def parse(message: str):
-        """Parses a string of `k1=v1 k2=v2` into DriverPacket"""
-        packet = DriverPacket()
-        split_reply = message.split(" ")  # expect "k1=v1 k2=v2 k3=v3"
-        for token in split_reply:
-            split_token = token.split("=")
-            k = split_token[0]
-            v = split_token[1]
-            var_type = type(getattr(packet, k))
-            if var_type is bool:
-                v = bool(int(v))  # bool("0") -> True, bool(int("0")) -> False
-            else:
-                v = var_type(v)
-            setattr(packet, k, v)
-        return packet
 
-    def format_for_ipc(self):
-        str_list = list()
-        for f in fields(self):
-            v = getattr(self, f.name)
-            if isinstance(v, bool):
-                v = int(v)
-            str_list.append(f"{f.name}={v}")
-        msg_str = " ".join(str_list)
-        return msg_str.encode("utf-8")
+@dataclass
+class SpectrumStart:
+    """Message from usrp_driver's RX thread to spectrum"""
+
+    idx: int = 0
+
+
+def parse_msg(message: str, msg_type):
+    """Parses a string of `k1=v1 k2=v2` into `msg_type`"""
+    packet = msg_type()
+    split_reply = message.split(" ")  # expect "k1=v1 k2=v2 k3=v3"
+    for token in split_reply:
+        split_token = token.split("=")
+        k = split_token[0]
+        v = split_token[1]
+        var_type = type(getattr(packet, k))
+        if var_type is bool:
+            v = bool(int(v))  # bool("0") -> True, bool(int("0")) -> False
+        else:
+            v = var_type(v)
+        setattr(packet, k, v)
+    return packet
+
+
+def format_for_ipc(msg):
+    """Formats `msg` into a string `k1=v1, k2=v2, ...`"""
+    str_list = list()
+    for f in fields(msg):
+        v = getattr(msg, f.name)
+        if isinstance(v, bool):
+            v = int(v)
+        str_list.append(f"{f.name}={v}")
+    msg_str = " ".join(str_list)
+    return msg_str.encode("utf-8")

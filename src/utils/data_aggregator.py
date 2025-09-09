@@ -11,7 +11,7 @@ from multiprocessing import shared_memory
 import numpy as np
 
 from utils.options import Options
-from utils.message_formats import ProcessedSequenceMessage
+from utils.message_formats import ProcessedSequence
 
 
 @dataclass
@@ -34,7 +34,7 @@ class Aggregator:
     mainacfs_accumulator: dict = field(default_factory=dict)
     mainacfs_available: set = field(default_factory=set)
     options: Options = None
-    processed_data: ProcessedSequenceMessage = field(init=False)
+    processed_data: ProcessedSequence = field(init=False)
     rawrf_available: bool = False
     rawrf_locations: list[str] = field(default_factory=list)
     rawrf_num_samps: int = 0

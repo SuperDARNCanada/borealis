@@ -81,23 +81,34 @@ bindkey ^[[1;5A focus up
 bindkey ^[[1;5B focus down
 
 screen -t "N200 Driver" bash -c "{usrp_driver}"                 # Top left
-split -v
-split -v
-split
-focus
-screen -t "Signal Processing" bash -c "{rx_signal_processing}"  # Bottom left
-focus
+split -v       # make new column
+split -v       # make new column
+
+# Left column
+split          # split this column
+focus          # move to the next window (i.e. left column, move to bottom)
+screen -t "Signal Processing" bash -c "{rx_signal_processing}"  # Middle left
+split          # split this column (now left column is three tall)
+focus          # move to next window (i.e. move down to bottom of left column)
+screen -t "Data Write" bash -c "{data_write}"                   # Bottom left
+
+focus          # move to next window (middle column)
+
+# Middle column
 screen -t "Radar Control" bash -c "{radar_control}"             # Top middle
-split
-focus
-screen -t "Data Write" bash -c "{data_write}"                   # Bottom middle
-focus
+split          # split column into two rows
+focus          # move to bottom of middle column
+screen -t "Spectrum" bash -c "{spectrum}"                       # Bottom middle
+
+focus          # move to next window (right column)
+
+# Right column
 screen -t "Experiment Handler" bash -c "{experiment_handler}"   # Right top
-split
-{realtime}      # extra screen created here if realtime enabled
-focus
+{realtime}     # extra screen created here if realtime enabled
+split          # add extra row to this column
+focus          # move to new window
 screen -t "Brian" bash -c "{brian}"                             # Right bottom
-focus
+focus          # cycle back to first screen (usrp_driver)
 
 detach
 """
@@ -105,6 +116,7 @@ detach
 realtime_window = """
 split
 focus
+height -w 8
 screen -t "Realtime" bash -c "{realtime}"                   # Right middle
 """
 
@@ -215,6 +227,7 @@ options = {
     "realtime": "",
     "rx_signal_processing": "",
     "usrp_driver": "",
+    "spectrum": "",
 }
 
 if args.embargo:

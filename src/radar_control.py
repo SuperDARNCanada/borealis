@@ -188,7 +188,7 @@ def create_driver_message(radctrl_params, pulse_transmit_data, pulse_buffer):
 
     # If this is the first time the driver is being set-up, only send tx and rx rates and center frequencies
     if radctrl_params.startup_flag:
-        return message.format_for_ipc()
+        return messages.format_for_ipc(message)
 
     message.sample_timing = pulse_transmit_data["timing"]
     message.burst_start = int(pulse_transmit_data["startofburst"])
@@ -210,7 +210,7 @@ def create_driver_message(radctrl_params, pulse_transmit_data, pulse_buffer):
     radctrl_params.pulse_buffer_offset = offset + num_samps
     message.num_rx_samps = radctrl_params.sequence.numberofreceivesamples
 
-    return message.format_for_ipc()
+    return messages.format_for_ipc(message)
 
 
 def dsp_comms_thread(radctrl_dsp_iden, dsp_socket_iden, router_addr):
@@ -268,7 +268,7 @@ def create_dsp_message(radctrl_params):
     :rtype: dataclass
     """
 
-    message = messages.SequenceMetadataMessage()
+    message = messages.SequenceMetadataMsg()
     message.sequence_time = radctrl_params.sequence.seqtime
     message.sequence_num = radctrl_params.seqnum_start + radctrl_params.num_sequences
     message.offset_to_first_rx_sample = radctrl_params.sequence.first_rx_sample_start
@@ -280,12 +280,16 @@ def create_dsp_message(radctrl_params):
     message.xcf = radctrl_params.sequence.xcf
     message.acfint = radctrl_params.sequence.acfint
 
+    log.info(
+        "offset_to_first_rx_sample",
+        offset=radctrl_params.sequence.first_rx_sample_start,
+    )
     if radctrl_params.cfs_scan_flag:
         message.cfs_fft_n = radctrl_params.aveperiod.cfs_fft_n
 
     if radctrl_params.decimation_scheme is not None:
         for stage in radctrl_params.decimation_scheme.stages:
-            dm_stage_add = messages.DecimationStageMessage(
+            dm_stage_add = messages.DecimationStageMsg(
                 stage.stage_num, stage.input_rate, stage.dm_rate, stage.filter_taps
             )
             message.add_decimation_stage(dm_stage_add)
@@ -661,7 +665,7 @@ def run_cfs_scan(radctrl_params, sockets, pulse_buffer):
         cfs_socket,
         dsp_socket_iden,
         log,
-        expected_type=messages.ProcessedSequenceMessage,
+        expected_type=messages.ProcessedSequence,
     )
 
     radctrl_process_socket.recv_string()

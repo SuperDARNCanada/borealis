@@ -264,9 +264,13 @@ DriverOptions::DriverOptions() {
 
   driver_to_radctrl_identity_ = "DRIVER_RADCTRL_IDEN";
   driver_to_dsp_identity_ = "DRIVER_DSP_IDEN";
+  driver_to_spectrum_identity_ = "DRIVER_SPECTRUM_IDEN";
+  driverrx_to_spectrum_identity_ = "DRIVERRX_SPECTRUM_IDEN";
   driver_to_brian_identity_ = "DRIVER_BRIAN_IDEN";
   radctrl_to_driver_identity_ = "RADCTRL_DRIVER_IDEN";
   dsp_to_driver_identity_ = "DSP_DRIVER_IDEN";
+  spectrum_to_driver_identity_ = "SPECTRUM_DRIVER_IDEN";
+  spectrum_to_driverrx_identity_ = "SPECTRUM_DRIVERRX_IDEN";
   brian_to_driver_identity_ = "BRIAN_DRIVER_IDEN";
 }
 
@@ -473,6 +477,24 @@ std::string DriverOptions::get_driver_to_dsp_identity() const {
 }
 
 /**
+ * @brief      Gets the driver to spectrum identity.
+ *
+ * @return     The driver to spectrum identity.
+ */
+std::string DriverOptions::get_driver_to_spectrum_identity() const {
+  return driver_to_spectrum_identity_;
+}
+
+/**
+ * @brief      Gets the driver RX thread to spectrum identity.
+ *
+ * @return     The driver RX thread to spectrum identity.
+ */
+std::string DriverOptions::get_driverrx_to_spectrum_identity() const {
+  return driverrx_to_spectrum_identity_;
+}
+
+/**
  * @brief      Gets the driver to brian identity.
  *
  * @return     The driver to brian identity.
@@ -506,6 +528,24 @@ std::string DriverOptions::get_radctrl_to_driver_identity() const {
  */
 std::string DriverOptions::get_dsp_to_driver_identity() const {
   return dsp_to_driver_identity_;
+}
+
+/**
+ * @brief      Gets the spectrum to driver identity.
+ *
+ * @return     The spectrum to driver identity.
+ */
+std::string DriverOptions::get_spectrum_to_driver_identity() const {
+  return spectrum_to_driver_identity_;
+}
+
+/**
+ * @brief      Gets the spectrum to driver RX thread identity.
+ *
+ * @return     The spectrum to driver RX thread identity.
+ */
+std::string DriverOptions::get_spectrum_to_driverrx_identity() const {
+  return spectrum_to_driverrx_identity_;
 }
 
 /**

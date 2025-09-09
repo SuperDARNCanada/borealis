@@ -17,10 +17,10 @@ import zmq
 import pickle
 from utils import socket_operations as so
 from utils.options import Options
-from utils.message_formats import SequenceMetadataMessage
+from utils.message_formats import SequenceMetadataMsg
 
 sys.path.append(os.environ["BOREALISPATH"])
-from utils.message_formats import RxSamplesMetadata
+from utils.message_formats import DriverRxMetadata, parse_msg
 
 TIME_PROFILE = True
 
@@ -192,7 +192,7 @@ def sequence_timing(options):
             reply = so.recv_bytes(
                 brian_to_driver, options.driver_to_brian_identity, log
             )
-            meta = RxSamplesMetadata.parse(reply.decode("utf-8"))
+            meta = parse_msg(reply.decode("utf-8"), DriverRxMetadata)
 
             log.debug(
                 "driver sent",
@@ -217,7 +217,7 @@ def sequence_timing(options):
                 brian_to_radar_control,
                 options.radctrl_to_brian_identity,
                 log,
-                expected_type=SequenceMetadataMessage,
+                expected_type=SequenceMetadataMsg,
             )
 
             log.debug(

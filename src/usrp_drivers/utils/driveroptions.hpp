@@ -47,10 +47,14 @@ class DriverOptions : public Options {
   std::vector<size_t> get_transmit_channels() const;
   std::string get_driver_to_radctrl_identity() const;
   std::string get_driver_to_dsp_identity() const;
+  std::string get_driver_to_spectrum_identity() const;
+  std::string get_driverrx_to_spectrum_identity() const;
   std::string get_driver_to_brian_identity() const;
   std::string get_router_address() const;
   std::string get_radctrl_to_driver_identity() const;
   std::string get_dsp_to_driver_identity() const;
+  std::string get_spectrum_to_driver_identity() const;
+  std::string get_spectrum_to_driverrx_identity() const;
   std::string get_brian_to_driver_identity() const;
   std::string get_ringbuffer_name() const;
   std::string get_pulse_buffer_name() const;
@@ -83,9 +87,13 @@ class DriverOptions : public Options {
   std::string router_address_;
   std::string driver_to_radctrl_identity_;
   std::string driver_to_dsp_identity_;
+  std::string driver_to_spectrum_identity_;
+  std::string driverrx_to_spectrum_identity_;
   std::string driver_to_brian_identity_;
   std::string radctrl_to_driver_identity_;
   std::string dsp_to_driver_identity_;
+  std::string spectrum_to_driver_identity_;
+  std::string spectrum_to_driverrx_identity_;
   std::string brian_to_driver_identity_;
   std::string ringbuffer_name_;
   std::string pulse_buffer_name_;

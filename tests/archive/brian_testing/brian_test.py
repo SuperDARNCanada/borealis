@@ -298,7 +298,7 @@ def driver(context=None):
         time.sleep(TIME)
         end = time.time()
 
-        samps_meta = rxsamplesmetadata_pb2.RxSamplesMetadata()
+        samps_meta = rxsamplesmetadata_pb2.DriverRxMetadata()
         samps_meta.sequence_time = end - start
         samps_meta.sequence_num = sq
         sq += 1
@@ -371,7 +371,7 @@ def dsp(context=None):
         send_request(dsp_to_driver, DRIVER_DSP_IDEN, "Need data to process")
         reply = recv_reply(dsp_to_driver, DRIVER_DSP_IDEN, printing)
 
-        meta = rxsamplesmetadata_pb2.RxSamplesMetadata()
+        meta = rxsamplesmetadata_pb2.DriverRxMetadata()
         meta.ParseFromString(reply)
         reply_output = "Driver sent -> time {}".format(meta.sequence_time)
         printing(reply_output)
@@ -568,7 +568,7 @@ def sequence_timing():
 
             # Receive metadata of completed sequence from driver such as timing
             reply = recv_reply(brian_to_driver, DRIVER_BRIAN_IDEN, printing)
-            meta = rxsamplesmetadata_pb2.RxSamplesMetadata()
+            meta = rxsamplesmetadata_pb2.DriverRxMetadata()
             meta.ParseFromString(reply)
             reply_output = "Driver sent -> time {}, sqnum {}".format(
                 meta.sequence_time, meta.sequence_num

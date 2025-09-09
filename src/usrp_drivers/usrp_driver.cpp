@@ -166,9 +166,6 @@ std::string format_rxpacket(RxPacket packet) {
   buffer.precision(10);
   buffer.setf(std::ios::fixed);
 
-  std::string field_name;
-  std::string token;
-
   buffer << "sequence_num=" << packet.sequence_num << " ";
   buffer << "num_rx_samps=" << packet.num_rx_samps << " ";
   buffer << "ringbuffer_size=" << packet.ringbuffer_size << " ";
@@ -218,7 +215,8 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
 
   auto identities = {driver_options.get_driver_to_radctrl_identity(),
                      driver_options.get_driver_to_dsp_identity(),
-                     driver_options.get_driver_to_brian_identity()};
+                     driver_options.get_driver_to_brian_identity(),
+                     driver_options.get_driver_to_spectrum_identity()};
 
   auto sockets_vector =
       create_sockets(driver_c, identities, driver_options.get_router_address());
@@ -228,6 +226,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
   zmq::socket_t &driver_to_radar_control = sockets_vector[0];
   zmq::socket_t &driver_to_dsp = sockets_vector[1];
   zmq::socket_t &driver_to_brian = sockets_vector[2];
+  zmq::socket_t &driver_to_spectrum = sockets_vector[3];
 
   RadctrlPacket driver_packet;
 
@@ -642,6 +641,11 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
 
     DEBUG_MSG("Message for rx_signal_processing: " << samples_metadata_str);
 
+    // Send to the spectrum module
+    send_string(driver_to_spectrum,
+                driver_options.get_spectrum_to_driver_identity(),
+                samples_metadata_str);
+
     // Here we wait for a request from dsp for the samples metadata, then send
     // it, bro! https://www.youtube.com/watch?v=WIrWyr3HgXI
     auto request = RECV_REQUEST(driver_to_dsp,
@@ -674,6 +678,11 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d,
 
   zmq::socket_t start_trigger(driver_c, ZMQ_PAIR);
   ERR_CHK_ZMQ(start_trigger.bind("inproc://thread"));
+
+  auto identities = {driver_options.get_driverrx_to_spectrum_identity()};
+  auto sockets_vector =
+      create_sockets(driver_c, identities, driver_options.get_router_address());
+  zmq::socket_t &driverrx_to_spectrum = sockets_vector[0];
 
   auto receive_channels = driver_options.get_receive_channels();
   uhd::rx_streamer::sptr rx_stream = usrp_d.get_usrp_rx_stream();
@@ -730,14 +739,16 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d,
 
   // This loop receives 1 pulse sequence worth of samples.
   auto first_time = true;
+  auto second_time = false;
   while (1) {
     // 3.0 is the timeout in seconds for the recv call, arbitrary number
     rx_stream->recv(buffer_ptrs, usrp_buffer_size, meta, 3.0, true);
     if (first_time) {
       zmq::message_t start_time(sizeof(meta.time_spec));
       memcpy(start_time.data(), &meta.time_spec, sizeof(meta.time_spec));
+    }
+    if (second_time) {
       start_trigger.send(start_time, zmq::send_flags::none);
-      first_time = false;
     }
     borealis_clocks.system_time = std::chrono::system_clock::now();
     borealis_clocks.usrp_time = meta.time_spec;
@@ -789,6 +800,21 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d,
     for (size_t buffer_idx = 0; buffer_idx < buffer_ptrs_start.size();
          buffer_idx++) {
       buffer_ptrs[buffer_idx] = buffer_ptrs_start[buffer_idx] + ringbuffer_idx;
+    }
+
+    if (first_time || second_time) {
+      // Send a message to spectrum with ringbuffer index where samples start.
+      std::ostringstream buffer;
+      buffer << "idx=" << ringbuffer_idx;
+      std::string msg = buffer.str();
+      send_string(driverrx_to_spectrum,
+                  driver_options.get_spectrum_to_driverrx_identity(), msg);
+
+      if (second_time) second_time = false;
+      if (first_time) {
+        first_time = false;
+        second_time = true;
+      }
     }
   }
 }

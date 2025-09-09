@@ -15,7 +15,12 @@ sys.path.append(os.environ["BOREALISPATH"])
 
 from src.utils import socket_operations as so
 from src.utils.options import Options
-from src.utils.message_formats import DriverPacket, RxSamplesMetadata
+from src.utils.message_formats import (
+    DriverPacket,
+    DriverRxMetadata,
+    format_for_ipc,
+    parse_msg,
+)
 
 
 def driver_thread():
@@ -24,10 +29,14 @@ def driver_thread():
         options.driver_to_radctrl_identity,
         options.driver_to_dsp_identity,
         options.driver_to_brian_identity,
+        options.driver_to_spectrum_identity,
+        options.driverrx_to_spectrum_identity,
     )
-    radctrl_socket, dsp_socket, brian_socket = so.create_sockets(
-        options.router_address,
-        *identities,
+    (radctrl_socket, dsp_socket, brian_socket, spectrum_socket, spectrum_rx_socket) = (
+        so.create_sockets(
+            options.router_address,
+            *identities,
+        )
     )
 
     expected_sqn_num = 0
@@ -76,14 +85,23 @@ def driver_thread():
 
     # On startup, radar_control sends some preliminary data to help the driver set up
     radctrl_msg = so.recv_bytes(radctrl_socket, options.radctrl_to_driver_identity, log)
-    driver_packet = DriverPacket.parse(radctrl_msg.decode("utf-8"))
+    driver_packet = parse_msg(radctrl_msg.decode("utf-8"), DriverPacket)
     rx_rate = driver_packet.rxrate
-    # tx_rate = driver_packet.txrate
-    # tx_ctr_freq = driver_packet.txcenterfreq
-    # rx_ctr_freq = driver_packet.rxcenterfreq
 
     # let radar_control know that driver is good to start
     so.send_string(radctrl_socket, options.radctrl_to_driver_identity, "DRIVER_READY")
+
+    # let spectrum know where to start pulling samples from
+    so.send_bytes(
+        spectrum_rx_socket,
+        options.spectrum_to_driverrx_identity,
+        "idx=0".encode("utf-8"),
+    )
+    so.send_bytes(
+        spectrum_rx_socket,
+        options.spectrum_to_driverrx_identity,
+        "idx=500000".encode("utf-8"),
+    )
 
     seed_mod = 0
     while True:
@@ -99,16 +117,13 @@ def driver_thread():
             radctrl_msg = so.recv_bytes(
                 radctrl_socket, options.radctrl_to_driver_identity, log
             )
-            driver_packet = DriverPacket.parse(radctrl_msg.decode("utf-8"))
+            driver_packet = parse_msg(radctrl_msg.decode("utf-8"), DriverPacket)
             sqn_num = driver_packet.sequence_num
             if sqn_num != expected_sqn_num:
                 raise ValueError(
                     f"Sequence number received {sqn_num} did not match expected {expected_sqn_num}"
                 )
             rx_rate = driver_packet.rxrate
-            # tx_rate = driver_packet.txrate
-            # tx_ctr_freq = driver_packet.txcenterfreq
-            # rx_ctr_freq = driver_packet.txcenterfreq
             pulse_durations.append(driver_packet.seqtime)
             pulse_starts.append(driver_packet.sample_timing)
             burst_start = driver_packet.burst_start
@@ -184,7 +199,7 @@ def driver_thread():
             ringbuffer[:, start_idx:end_idx] = mock_samples
 
         # create metadata message for other modules
-        rx_metadata = RxSamplesMetadata()
+        rx_metadata = DriverRxMetadata()
         rx_metadata.rx_rate = rx_rate
         rx_metadata.initialization_time = initialization_time.timestamp()
         rx_metadata.sequence_start_time = sqn_start_time.timestamp()
@@ -200,7 +215,12 @@ def driver_thread():
         rx_metadata.lp_status_bank_l = np.int16(0)
         rx_metadata.gps_locked = True
         rx_metadata.gps_to_system_time_diff = 2.0e-8
-        metadata_msg = rx_metadata.format_for_ipc()
+        metadata_msg = format_for_ipc(rx_metadata)
+
+        # Send the metadata to spectrum
+        so.send_bytes(
+            spectrum_socket, options.spectrum_to_driver_identity, metadata_msg
+        )
 
         # Wait for request for metadata from rx_signal_processing
         so.recv_string(dsp_socket, options.dsp_to_driver_identity, log)

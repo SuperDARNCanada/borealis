@@ -35,11 +35,12 @@ else:
 sys.path.append(os.environ["BOREALISPATH"])
 
 from utils.message_formats import (
-    ProcessedSequenceMessage,
+    ProcessedSequence,
     DebugDataStage,
     OutputDataset,
-    SequenceMetadataMessage,
-    RxSamplesMetadata,
+    SequenceMetadataMsg,
+    DriverRxMetadata,
+    parse_msg,
 )
 from utils.signals import DSP
 
@@ -76,7 +77,7 @@ def fill_datawrite_message(processed_data, slice_details, data_outputs, cfs_scan
     Fills the datawrite message with processed data.
 
     :param      processed_data:  The processed data message
-    :type       processed_data:  ProcessedSequenceMessage
+    :type       processed_data:  ProcessedSequence
     :param      slice_details:   The details for each slice that was processed.
     :type       slice_details:   list
     :param      data_outputs:    The processed data outputs.
@@ -526,7 +527,7 @@ def main():
             dsp_to_radar_control,
             options.radctrl_to_dsp_identity,
             log,
-            expected_type=SequenceMetadataMessage,
+            expected_type=SequenceMetadataMsg,
         )
 
         log.debug("Sending ACK to radctrl")
@@ -543,7 +544,7 @@ def main():
         cfs_scan_flag = sqn_meta_message.cfs_scan_flag
         cfs_fft_n = sqn_meta_message.cfs_fft_n
 
-        processed_data = ProcessedSequenceMessage()
+        processed_data = ProcessedSequence()
 
         processed_data.sequence_num = sqn_meta_message.sequence_num
         processed_data.rx_sample_rate = rx_rate
@@ -641,7 +642,7 @@ def main():
         log.debug("Received data from driver")
 
         # parse the message from usrp_driver into a dataclass
-        rx_metadata = RxSamplesMetadata.parse(reply.decode("utf-8"))
+        rx_metadata = parse_msg(reply.decode("utf-8"), DriverRxMetadata)
 
         if sqn_meta_message.sequence_num != rx_metadata.sequence_num:
             log.error(
