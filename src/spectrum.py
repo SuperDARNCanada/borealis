@@ -13,11 +13,13 @@ import mmap
 import os
 import sys
 import time
-from dataclasses import dataclass
+from typing import Optional
 
 import numpy as np
 import plotille
 import posix_ipc as ipc
+from pydantic import ConfigDict, model_validator, NonNegativeInt
+from pydantic.dataclasses import dataclass
 
 try:
     import cupy as xp
@@ -45,14 +47,27 @@ from utils.options import Options
 import utils.socket_operations as so
 
 
-@dataclass
+@dataclass(config=ConfigDict(validate_assignment=True, arbitrary_types_allowed=True))
 class SpectrumParams:
-    ringbuffer = None
+    ringbuffer: Optional[xp.ndarray] = None
     init_time: float = 0.0
     last_sqn_start_time: float = 0.0
-    start_idx: int = 0
+    start_idx: NonNegativeInt = 0
     rxrate: float = 0.0
-    end_idx: int = 0
+    end_idx: NonNegativeInt = 0
+
+    @model_validator(mode="after")
+    def wrap_idx(self):
+        """
+        Ensure the indices are between 0 and the size of the buffer.
+        """
+        if self.ringbuffer is not None:
+            ringbuffer_size = self.ringbuffer.shape[1]
+            if self.start_idx > ringbuffer_size:
+                self.start_idx -= ringbuffer_size
+            if self.end_idx > ringbuffer_size:
+                self.end_idx -= ringbuffer_size
+        return self
 
 
 def compute_spectrum(processor: DSP, samples: xp.ndarray, num_bins: int):
@@ -73,33 +88,31 @@ def compute_spectrum(processor: DSP, samples: xp.ndarray, num_bins: int):
 
 def extract_samples(params: SpectrumParams):
     """
-    Grabs the applicable samples from the ringbuffer.
+    Grabs the applicable samples from the ringbuffer. Will adjust `params.start_idx` to
+    limit the number of extracted samples to a reasonable amount (0.1 seconds worth).
     """
-    start_idx = params.start_idx
-    end_idx = params.end_idx
-    num_samples = end_idx - start_idx
+    ringbuffer_size = params.ringbuffer.shape[1]
+    num_samples = params.end_idx - params.start_idx
     max_num_samps = int(0.1 * params.rxrate)
     if num_samples <= 0:
-        num_samples += params.ringbuffer.shape[1]
+        num_samples += ringbuffer_size
     if num_samples > max_num_samps:
         num_samples = max_num_samps
-        end_idx = (start_idx + num_samples) % params.ringbuffer.shape[1]
+        start_idx = params.end_idx - num_samples
+        if start_idx < 0:
+            start_idx += ringbuffer_size
+        params.start_idx = start_idx
 
-    log.info(
-        "extracting...",
-        start_idx=start_idx,
-        end_idx=end_idx,
-        num_samples=num_samples,
-        ringbuffer_len=params.ringbuffer.shape[1],
-    )
-    if start_idx > end_idx:
-        piece1 = params.ringbuffer[:, start_idx:]
-        piece2 = params.ringbuffer[:, :end_idx]
+    if params.start_idx > params.end_idx:
+        piece1 = params.ringbuffer[:, params.start_idx :]
+        piece2 = params.ringbuffer[:, : params.end_idx]
         tmp1 = xp.array(piece1)
         tmp2 = xp.array(piece2)
         sequence_samples = xp.concatenate((tmp1, tmp2), axis=1)
     else:
-        sequence_samples = xp.array(params.ringbuffer[:, start_idx:end_idx])
+        sequence_samples = xp.array(
+            params.ringbuffer[:, params.start_idx : params.end_idx]
+        )
 
     return sequence_samples
 
@@ -129,17 +142,14 @@ def spectral_analysis(params: SpectrumParams, processor: DSP, num_bins: int):
     """
     Extract samples, compute spectrum, and plot in the terminal.
     """
-    log.info("Conducting spectral analysis")
+    log.verbose("Conducting spectral analysis")
     # Conduct spectral analysis
     sequence_samples = extract_samples(params)
-    log.info("sqn_samples", shape=sequence_samples.shape)
     fft_data = compute_spectrum(processor, sequence_samples, num_bins)
     cfs_data = 20 * np.log10(np.sum(np.abs(np.average(fft_data, axis=2)), axis=1))
     cfs_data = np.nan_to_num(cfs_data, nan=-60)
     fs = processor.rx_rate / np.prod(processor.dm_rates)  # Sampling frequency in Hz
     cfs_freqs = np.fft.fftshift(np.fft.fftfreq(num_bins, d=1 / fs))
-
-    log.info("Shapes", data=fft_data.shape, freqs=cfs_freqs.shape)
 
     plot_spectrum(cfs_freqs, cfs_data[0])
 
@@ -185,7 +195,7 @@ def main():
     driver_started_msg = so.recv_bytes(
         spectrum_to_driverrx, options.driverrx_to_spectrum_identity, log
     )
-    log.info("Driver RX message", message=driver_started_msg.decode("utf-8"))
+    log.verbose("Driver RX message", message=driver_started_msg.decode("utf-8"))
     msg = parse_msg(driver_started_msg.decode("utf-8"), SpectrumStart)
     params.start_idx = msg.idx
     params.rxrate = msg.rxrate
@@ -232,7 +242,7 @@ def main():
             spectrum_to_driver, options.driver_to_spectrum_identity, log
         )
         rx_metadata = parse_msg(msg.decode("utf-8"), DriverRxMetadata)
-        log.info("rx_metadata", metadata=rx_metadata)
+        log.verbose("rx_metadata", metadata=rx_metadata)
 
         sample_time_diff = (
             rx_metadata.sequence_start_time - rx_metadata.initialization_time
