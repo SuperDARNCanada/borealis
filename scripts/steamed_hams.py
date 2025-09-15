@@ -154,6 +154,17 @@ def steamed_hams_parser():
     return parser
 
 
+# Check if steamed_hams.py is already running
+try:
+    output = sp.check_output(["pgrep", "-f", "steamed_hams.py"])
+    # Steamed_hams.py is already running, so the script must stop
+    print("Script steamed_hams.py is already running. Exiting...")
+    sys.exit(-1)
+except sp.CalledProcessError:
+    # Steamed_hams.py isn't already running, so the script can proceed
+    pass
+
+
 parser = steamed_hams_parser()
 args = parser.parse_args()
 kwargs = " ".join(args.kwargs)
