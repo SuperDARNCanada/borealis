@@ -155,14 +155,15 @@ def steamed_hams_parser():
 
 
 # Check if steamed_hams.py is already running
-try:
-    output = sp.check_output(["pgrep", "-f", "steamed_hams.py"])
-    # Steamed_hams.py is already running, so the script must stop
+output = sp.check_output(["pgrep", "-f", "steamed_hams.py"]).strip()
+pids = [int(pid) for pid in output.split()]
+pids.remove(os.getpid())  # Remove pid of current steamed_hams.py call
+if pids:
+    # If any pids are remaining, steamed_hams.py is already running
     print("Script steamed_hams.py is already running. Exiting...")
     sys.exit(-1)
-except sp.CalledProcessError:
-    # Steamed_hams.py isn't already running, so the script can proceed
-    pass
+
+time.sleep(10)
 
 
 parser = steamed_hams_parser()
