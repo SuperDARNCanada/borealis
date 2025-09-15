@@ -163,8 +163,6 @@ if pids:
     print("Script steamed_hams.py is already running. Exiting...")
     sys.exit(-1)
 
-time.sleep(10)
-
 
 parser = steamed_hams_parser()
 args = parser.parse_args()
