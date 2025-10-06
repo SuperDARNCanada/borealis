@@ -8,14 +8,14 @@ Sends data to realtime applications.
 :copyright: 2019 SuperDARN Canada
 """
 
+import bz2
 import inspect
-import json
 from pathlib import Path
 import pickle
-import zlib
 
 from backscatter import fitacf
 import numpy as np
+import pydarnio
 import structlog
 import zmq
 
@@ -27,6 +27,7 @@ def fit_record(rawacf_records):
     fitted_records = []
     for rec in rawacf_records[1]:
         fit_data = fitacf._fit(rec)
+        fit_data['pwr0'] = np.array(fit_data['pwr0'], dtype=np.float32)  # backscatter returns float64, need float32
         fitted_records.append(fit_data.copy())
 
     return fitted_records
@@ -61,23 +62,15 @@ def realtime_server(recv_socket, server_socket):
             log.critical("error processing record", exception=err)
             continue
 
-        for rec in fitted_recs:
-            # Can't jsonify numpy, so we convert to native types for serving over the web
-            for k, v in rec.items():
-                if hasattr(v, "dtype"):
-                    if isinstance(v, np.ndarray):
-                        rec[k] = v.tolist()
-                    else:
-                        rec[k] = v.item()
-
-            publishable_data = zlib.compress(json.dumps(rec).encode("utf-8"))
-            try:
-                # Serve the data over the websocket. This is non-blocking in a background thread that zmq handles
-                server_socket.send(publishable_data)
-            except (zmq.ContextTerminated, zmq.ZMQError):  # No way to recover from this
-                recv_socket.close()
-                server_socket.close()
-                return
+        data_to_send = pydarnio.write_fitacf(fitted_recs)
+        publishable_data = bz2.compress(data_to_send)
+        try:
+            # Serve the data over the websocket. This is non-blocking in a background thread that zmq handles
+            server_socket.send(publishable_data)
+        except (zmq.ContextTerminated, zmq.ZMQError):  # No way to recover from this
+            recv_socket.close()
+            server_socket.close()
+            return
 
 
 if __name__ == "__main__":
