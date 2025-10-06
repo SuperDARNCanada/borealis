@@ -101,6 +101,8 @@ class AveragingPeriod(InterfaceClassBase):
         self.intn = self.slice_dict[self.slice_ids[0]].intn
         self.txctrfreq = self.slice_dict[self.slice_ids[0]].txctrfreq
         self.rxctrfreq = self.slice_dict[self.slice_ids[0]].rxctrfreq
+        self.mixing_freqs = []  # will be populated from slice_dict
+
         if self.intt is not None:  # intt has priority over intn
             for slice_id in self.slice_ids:
                 if self.slice_dict[slice_id].intt != self.intt:
@@ -142,6 +144,13 @@ class AveragingPeriod(InterfaceClassBase):
                     " interfaced and do not have the same rxctrfreq"
                 )
                 raise ExperimentException(errmsg)
+            if self.slice_dict[slice_id].freq is None:
+                slice_range = self.slice_dict[slice_id].cfs_range
+                center_freq_khz = int((slice_range[0] + slice_range[1]) / 2)
+                mixing_freq_hz = center_freq_khz * 1e3
+            else:
+                mixing_freq_hz = self.slice_dict[slice_id].freq * 1e3
+            self.mixing_freqs.append(mixing_freq_hz)
 
         self.num_beams_in_scan = len(self.slice_dict[self.slice_ids[0]].rx_beam_order)
 
@@ -286,7 +295,7 @@ class CFSAveragingPeriod(AveragingPeriod):
         # Set to a time in the past that is guaranteed to trigger a clear frequency search on the
         # first averaging period run
         self.last_cfs_set_time = [
-            datetime.datetime.utcnow()
+            datetime.datetime.now(datetime.timezone.utc)
             - datetime.timedelta(seconds=self.cfs_stable_time)
         ] * len(self.slice_dict[self.slice_ids[0]].rx_beam_order)
 

@@ -52,54 +52,6 @@ log = structlog.getLogger(module_name)
 
 options = Options()
 
-slice_key_set = frozenset(
-    [
-        "acf",
-        "acfint",
-        "align_sequences",
-        "averaging_method",
-        "beam_angle",
-        "cfs_range",
-        "cfs_fft_n",
-        "cfs_freq_res",
-        "comment",
-        "cpid",
-        "first_range",
-        "txctrfreq",
-        "rxctrfreq",
-        "freq",
-        "intn",
-        "intt",
-        "lag_table",
-        "num_ranges",
-        "pulse_len",
-        "pulse_phase_offset",
-        "pulse_sequence",
-        "range_sep",
-        "rx_beam_order",
-        "rx_intf_antennas",
-        "rx_main_antennas",
-        "rxonly",
-        "rx_antenna_pattern",
-        "scanbound",
-        "seqoffset",
-        "slice_id",
-        "tau_spacing",
-        "tx_antennas",
-        "tx_antenna_pattern",
-        "tx_beam_order",
-        "wait_for_first_scanbound",
-        "xcf",
-    ]
-)
-hidden_key_set = frozenset(
-    ["cfs_flag", "slice_interfacing", "tx_freq_bounds", "rx_freq_bounds"]
-)
-"""
-These are used by the build_scans method (called from the experiment_handler every time the
-experiment is run). If set by the user, the values will be overwritten and therefore ignored.
-"""
-
 
 class SliceConfig:
     """

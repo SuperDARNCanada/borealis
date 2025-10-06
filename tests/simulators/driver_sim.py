@@ -43,17 +43,17 @@ def driver_thread():
     sqn_num = 0
 
     # set up the pulse_buffer
-    num_antennas = len(options.tx_main_antennas)
+    num_tx_antennas = len(options.tx_main_antennas)
     buffer_size_per_antenna_samps = (
         options.pulse_buffer_size * 8
     )  # 8 bytes per complex64 sample
-    pulse_buffer_size = num_antennas * buffer_size_per_antenna_samps
+    pulse_buffer_size = num_tx_antennas * buffer_size_per_antenna_samps
     shm = ipc.SharedMemory(
         options.pulse_buffer_name, flags=ipc.O_CREX, size=pulse_buffer_size
     )
     pulse_buffer_mem = mmap.mmap(shm.fd, shm.size)
     pulse_buffer = np.frombuffer(pulse_buffer_mem, dtype=np.complex64).reshape(
-        num_antennas, -1
+        num_tx_antennas, -1
     )
     log.info("pulse_buffer size", shape=pulse_buffer.shape, size=pulse_buffer.size)
 
@@ -81,7 +81,7 @@ def driver_thread():
     )  # [0, 2pi)
     ringbuffer[:] = np.power(10, noise_pwr / 10.0) * np.exp(1j * noise_phase)
 
-    initialization_time = dt.datetime.utcnow()
+    initialization_time = dt.datetime.now(dt.timezone.utc)
 
     # On startup, radar_control sends some preliminary data to help the driver set up
     radctrl_msg = so.recv_bytes(radctrl_socket, options.radctrl_to_driver_identity, log)
@@ -165,12 +165,14 @@ def driver_thread():
                 pulse_len=len(pulse_sent[0, :]),
                 pulse_duration=pulse_durations[i],
             )
-            mock_samples[:16, start_samp : start_samp + pulse_len] += pulse_sent
+            mock_samples[
+                options.tx_main_antennas, start_samp : start_samp + pulse_len
+            ] += pulse_sent
 
         seed_mod += 1
 
         # todo: put the pulses into the mock data
-        starting_pulses = dt.datetime.utcnow()
+        starting_pulses = dt.datetime.now(dt.timezone.utc)
         sqn_start_time = starting_pulses + dt.timedelta(milliseconds=5)
         if align_sqns:
             next_tenth = int(np.ceil(sqn_start_time.microsecond * 1e-5))
@@ -202,7 +204,7 @@ def driver_thread():
         rx_metadata.num_rx_samps = num_rx_samps
         rx_metadata.sequence_num = sqn_num
         rx_metadata.sequence_time = (
-            dt.datetime.utcnow() - starting_pulses
+            dt.datetime.now(dt.timezone.utc) - starting_pulses
         ).total_seconds()
         rx_metadata.agc_status_bank_h = np.int16(0)
         rx_metadata.agc_status_bank_l = np.int16(0)

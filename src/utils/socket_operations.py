@@ -82,7 +82,7 @@ def send_string(socket, receiver_identity, msg):
     socket.send_multipart(frames)
 
 
-def recv_bytes(socket, sender_identity, log):
+def recv_bytes(socket, sender_identity, log, block=True):
     """
     Receives data from a socket and verifies it comes from the correct sender.
 
@@ -96,7 +96,11 @@ def recv_bytes(socket, sender_identity, log):
     :returns:   Received data
     :rtype:     String or Protobuf or None
     """
-    receiver_identity, _, bytes_object = socket.recv_multipart()
+    flags = 0
+    if block is False:
+        flags += zmq.NOBLOCK
+
+    receiver_identity, _, bytes_object = socket.recv_multipart(flags)
     if receiver_identity != sender_identity.encode("utf-8"):
         log.error(
             "sender_identity != receiver_identity",
@@ -144,7 +148,7 @@ def send_bytes(socket, receiver_identity, bytes_object, log=None):
     socket.send_multipart(frames)
 
 
-def recv_pyobj(socket, sender_identity, log, expected_type=None):
+def recv_pyobj(socket, sender_identity, log, expected_type=None, block=True):
     """Un-packs a pickled object received from recv_bytes. Can be used
     to check if the received object is of the expected type.
 
@@ -159,7 +163,7 @@ def recv_pyobj(socket, sender_identity, log, expected_type=None):
     """
     # TODO: Account for if multiple types are allowed to be returned.
 
-    bytes_packet = recv_bytes(socket, sender_identity, log)
+    bytes_packet = recv_bytes(socket, sender_identity, log, block)
     message = pickle.loads(bytes_packet)
     if expected_type is not None:
         if not isinstance(message, expected_type):

@@ -24,10 +24,9 @@ import structlog
 # local
 from utils.options import Options
 from experiment_prototype.experiment_exception import ExperimentException
-from experiment_prototype.experiment_slice import (
-    ExperimentSlice,
-    slice_key_set,
-    hidden_key_set,
+from experiment_prototype.experiment_slice import ExperimentSlice
+from experiment_prototype.experiment_utils.decimation_scheme import (
+    create_default_cfs_scheme,
 )
 from experiment_prototype.interface_classes.scans import Scan
 from experiment_prototype.interface_classes.interface_class_base import (
@@ -159,6 +158,7 @@ class ExperimentPrototype:
         cpid,
         rx_bandwidth=default_rx_bandwidth,
         tx_bandwidth=5.0e6,
+        cfs_decimation_scheme=create_default_cfs_scheme(),
         comment_string="",
     ):
         if not isinstance(cpid, int):
@@ -226,6 +226,7 @@ class ExperimentPrototype:
 
         self.__txrate = float(tx_bandwidth)  # sampling rate, samples per sec, Hz.
         self.__rxrate = float(rx_bandwidth)  # sampling rate for rx in samples per sec
+        self.__cfs_decimation_scheme = cfs_decimation_scheme
 
         # Transmitting is possible in the range of txctrfreq +/- (txrate/2) because we have iq data
         # Receiving is possible in the range of rxctrfreq +/- (rxrate/2)
@@ -298,9 +299,6 @@ class ExperimentPrototype:
             "transition_bandwidth": transition_bandwidth,
         }
 
-    __slice_keys = slice_key_set
-    __hidden_slice_keys = hidden_key_set
-
     @property
     def cpid(self):
         """
@@ -353,6 +351,16 @@ class ExperimentPrototype:
         return self.__rxrate
 
     @property
+    def cfs_decimation_scheme(self):
+        """
+        The DecimationScheme for this experiment's clear frequency search.
+
+        :returns:   cfs_decimation_scheme
+        :rtype:     DecimationScheme
+        """
+        return self.__cfs_decimation_scheme
+
+    @property
     def rxrate(self):
         """
         The receive bandwidth for this experiment, or the receive sampling rate (of I and Q samples)
@@ -384,19 +392,6 @@ class ExperimentPrototype:
         :rtype:     int
         """
         return len(self.__slice_dict)
-
-    @property
-    def slice_keys(self):
-        """
-        The list of slice keys available.
-
-        This cannot be updated. These are the keys in the current ExperimentPrototype slice_keys
-        dictionary (the parameters available for slices).
-
-        :returns:   slice_keys
-        :rtype:     frozenset
-        """
-        return self.__slice_keys
 
     @property
     def slice_dict(self):

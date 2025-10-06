@@ -20,6 +20,7 @@ import plotille
 import posix_ipc as ipc
 from pydantic import ConfigDict, model_validator, NonNegativeInt
 from pydantic.dataclasses import dataclass
+import zmq
 
 try:
     import cupy as xp
@@ -34,9 +35,6 @@ else:
 
 sys.path.append(os.environ["BOREALISPATH"])
 
-from experiment_prototype.experiment_utils.decimation_scheme import (
-    create_default_cfs_scheme,
-)
 from utils.message_formats import (
     DriverRxMetadata,
     SpectrumStart,
@@ -55,6 +53,8 @@ class SpectrumParams:
     start_idx: NonNegativeInt = 0
     rxrate: float = 0.0
     end_idx: NonNegativeInt = 0
+    first_rx_sample_off: NonNegativeInt = 0
+    extra_samples: NonNegativeInt = 0
 
     @model_validator(mode="after")
     def wrap_idx(self):
@@ -156,6 +156,32 @@ def spectral_analysis(params: SpectrumParams, processor: DSP, num_bins: int):
     return fft_data, cfs_freqs
 
 
+def calculate_sqn_indices(
+    rx_metadata: DriverRxMetadata, params: SpectrumParams, processor: DSP
+):
+    """
+    Calculates the indices in the ringbuffer of the start and end of a sequence.
+    """
+    total_dm_rate = np.prod(processor.dm_rates)
+
+    sample_time_diff = rx_metadata.sequence_start_time - rx_metadata.initialization_time
+    # Time delay between start of ringbuffer and start of this sequence
+
+    sample_in_time = (sample_time_diff * processor.rx_rate) - params.extra_samples
+    # Move the time delay into units of samples, and adjust to avoid pulse leaking in
+
+    sqn_start_sample = int(math.fmod(sample_in_time, params.ringbuffer.shape[1]))
+    samples_needed = int(
+        math.ceil(
+            float(rx_metadata.num_rx_samps + 2 * params.extra_samples)
+            / float(total_dm_rate)
+        )
+        * total_dm_rate
+    )
+    sqn_end_sample = sqn_start_sample + samples_needed + 2 * params.first_rx_sample_off
+    return sqn_start_sample, sqn_end_sample
+
+
 def main():
     options = Options()
     params = SpectrumParams()
@@ -164,32 +190,29 @@ def main():
         options.router_address,
         options.spectrum_to_driver_identity,
         options.spectrum_to_driverrx_identity,
+        options.spectrum_to_radctrl_identity,
     )
     spectrum_to_driver = sockets[0]
     spectrum_to_driverrx = sockets[1]
+    spectrum_to_radctrl = sockets[2]
 
     total_antennas = len(options.rx_main_antennas) + len(options.rx_intf_antennas)
 
-    # TODO: Get DecimationScheme from radar_control
-    ############ Set up the filtering/downsampling strategy #########################
-    dec_scheme = create_default_cfs_scheme()
+    ################# Set up the filtering/downsampling strategy ####################
+    dec_scheme = so.recv_pyobj(
+        spectrum_to_radctrl, options.radctrl_to_spectrum_identity, log
+    )
+
     taps_per_stage = []
-    dm_rates = dec_scheme.dm_rates
     dm_scheme_taps = []
     extra_samples = 0
     for stage in dec_scheme.stages:
-        dm_rates.append(stage.dm_rate)
         dm_scheme_taps.append(np.array(stage.filter_taps, dtype=np.complex64))
         taps_per_stage.append(len(stage.filter_taps))
-    log.verbose(
-        "CFS decimation and filter taps",
-        decimation_rates=dm_rates,
-        filter_taps_per_stage=taps_per_stage,
-    )
-    dm_rates = np.array(dm_rates, dtype=np.uint32)
-    for dm, taps in zip(reversed(dm_rates), reversed(dm_scheme_taps)):
+
+    for dm, taps in zip(reversed(dec_scheme.dm_rates), reversed(dm_scheme_taps)):
         extra_samples = (extra_samples * dm) + len(taps) // 2
-    total_dm_rate = np.prod(dm_rates)
+    params.extra_samples = extra_samples
 
     ########################## Get start message from driver ########################
     driver_started_msg = so.recv_bytes(
@@ -217,21 +240,27 @@ def main():
         xp.cuda.runtime.setDevice(0)
 
     ########################### Set up the DSP object ###############################
+    mixing_freqs = so.recv_pyobj(
+        spectrum_to_radctrl, options.radctrl_to_spectrum_identity, log
+    )
     cfs_processor = DSP(
         dec_scheme.rxrate,
         dm_scheme_taps,
-        [-1.5e6],  # TODO: get this from somewhere
+        mixing_freqs,
         dec_scheme.dm_rates,
         use_shared_mem=False,
     )
     n = 512  # TODO: get this from somewhere
-    first_rx_sample_off = 1050  # TODO: Get from radar_control
+    params.first_rx_sample_off = 1050  # TODO: Get from radar_control
 
     ################# Sleep until enough samples have been connected ################
     end_time = dt.datetime.now(dt.timezone.utc)
     to_sleep = dt.timedelta(milliseconds=80) - (end_time - start_time)
     if to_sleep > dt.timedelta(0):
         time.sleep(to_sleep.total_seconds())
+
+    # Tell radar_control to start
+    so.send_string(spectrum_to_radctrl, options.radctrl_to_spectrum_identity, "Start")
 
     #################################################################################
     # Run an initial spectral analysis before Tx starts
@@ -244,28 +273,26 @@ def main():
         rx_metadata = parse_msg(msg.decode("utf-8"), DriverRxMetadata)
         log.verbose("rx_metadata", metadata=rx_metadata)
 
-        sample_time_diff = (
-            rx_metadata.sequence_start_time - rx_metadata.initialization_time
-        )
-        # Time delay between start of ringbuffer and start of this sequence
+        sqn_start, sqn_end = calculate_sqn_indices(rx_metadata, params, cfs_processor)
+        params.end_idx = sqn_start
 
-        sample_in_time = (sample_time_diff * cfs_processor.rx_rate) - extra_samples
-        # Move the time delay into units of samples, and adjust to avoid pulse leaking in
-
-        sqn_start_sample = int(math.fmod(sample_in_time, params.ringbuffer.shape[1]))
-        samples_needed = int(
-            math.ceil(
-                float(rx_metadata.num_rx_samps + 2 * extra_samples)
-                / float(total_dm_rate)
+        # Update the frequencies to scan when prompted by radar_control
+        try:
+            mixing_freqs = so.recv_pyobj(
+                spectrum_to_radctrl,
+                options.radctrl_to_spectrum_identity,
+                log,
+                block=False,
             )
-            * total_dm_rate
-        )
-        sqn_end_sample = sqn_start_sample + samples_needed + 2 * first_rx_sample_off
-        params.end_idx = sqn_start_sample
+            log.verbose("received new frequencies", freqs=mixing_freqs)
+            cfs_processor.set_new_freqs(mixing_freqs)
+        except zmq.ZMQError as e:
+            if e.errno != zmq.EAGAIN:
+                log.warning("Error receiving from radctrl", error=e)
 
         cfs_data, cfs_freqs = spectral_analysis(params, cfs_processor, n)
 
-        params.start_idx = sqn_end_sample
+        params.start_idx = sqn_end
 
 
 if __name__ == "__main__":

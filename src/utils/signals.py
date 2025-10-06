@@ -57,6 +57,7 @@ class DSP:
         :type       use_shared_mem: bool
         """
         self.filter_outputs = []
+        self.filter_taps = filter_taps
         self.beamformed_samples = None
         self.antennas_iq_samples = None
         self.shared_mem = {}
@@ -71,6 +72,13 @@ class DSP:
         Removes all filter results.
         """
         self.filter_outputs = []
+
+    def set_new_freqs(self, mixing_freqs):
+        """
+        Creates new filters using the same taps, but new mixing frequencies.
+        """
+        self.mixing_freqs = mixing_freqs
+        self.filters = self.create_filters(self.filter_taps, mixing_freqs, self.rx_rate)
 
     def set_filters(self, filter_taps, dm_rates):
         """

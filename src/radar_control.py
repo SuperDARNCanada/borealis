@@ -15,7 +15,7 @@ through the interface_class_base objects to control the radar.
 import os
 import sys
 import time
-from datetime import datetime, timedelta
+import datetime as dt
 import zmq
 import threading
 import numpy as np
@@ -81,9 +81,9 @@ class RadctrlParameters:
     num_sequences: int = 0
     last_sequence_num: int = 0
     sequence_index: int = 0
-    start_time: datetime = datetime.utcnow()
-    averaging_period_start_time: datetime = datetime.utcnow()
-    averaging_period_time: timedelta = timedelta(seconds=0)
+    start_time: dt.datetime = dt.datetime.now(dt.timezone.utc)
+    averaging_period_start_time: dt.datetime = dt.datetime.now(dt.timezone.utc)
+    averaging_period_time: dt.timedelta = dt.timedelta(seconds=0)
     debug_samples: list = field(default_factory=list)
     pulse_transmit_data_tracker: dict = field(default_factory=dict)
     pulse_buffer_offset: int = 0
@@ -433,7 +433,7 @@ def make_next_samples(radctrl_params):
     ] = sqn
 
     if TIME_PROFILE:
-        new_sequence_time = datetime.utcnow() - radctrl_params.start_time
+        new_sequence_time = dt.datetime.now(dt.timezone.utc) - radctrl_params.start_time
         log.verbose(
             "make new sequence time",
             time=new_sequence_time,
@@ -601,11 +601,11 @@ def create_dw_message(radctrl_params):
     return message
 
 
-def round_up_time(dt=None, round_to=60):
+def round_up_time(timestamp=None, round_to=60):
     """
     Round a datetime object to any time-lapse in seconds
 
-    :param dt: datetime.datetime object, default now.
+    :param timestamp: dt.datetime object, default now.
     :param round_to: Closest number of seconds to round to, default 1 minute.
     :author: Thierry Husson 2012 - Use it as you want but don't blame me.
     :modified: K.Kotyk 2019
@@ -613,15 +613,15 @@ def round_up_time(dt=None, round_to=60):
     Will round to the nearest minute mark. Adds one minute if rounded down.
     """
 
-    if dt is None:
-        dt = datetime.utcnow()
-    midnight = dt.replace(hour=0, minute=0, second=0)
-    seconds = (dt.replace(tzinfo=None) - midnight).seconds
+    if timestamp is None:
+        timestamp = dt.datetime.now(dt.timezone.utc)
+    midnight = timestamp.replace(hour=0, minute=0, second=0)
+    seconds = (timestamp - midnight).seconds
     rounding = (seconds + round_to / 2) // round_to * round_to
-    result = dt + timedelta(0, rounding - seconds, -dt.microsecond)
+    result = timestamp + dt.timedelta(0, rounding - seconds, -timestamp.microsecond)
 
-    if result < dt:
-        result += timedelta(minutes=1)
+    if result < timestamp:
+        result += dt.timedelta(minutes=1)
     return result
 
 
@@ -679,12 +679,13 @@ def cfs_block(ave_params, cfs_sockets, pulse_buffer):
     beam = aveperiod.beam_iter
     if not (
         aveperiod.last_cfs_set_time[beam]
-        < datetime.utcnow() - timedelta(seconds=aveperiod.cfs_stable_time)
+        < dt.datetime.now(dt.timezone.utc)
+        - dt.timedelta(seconds=aveperiod.cfs_stable_time)
         or aveperiod.cfs_always_run
     ):
         return
 
-    aveperiod.last_cfs_set_time[beam] = datetime.utcnow()
+    aveperiod.last_cfs_set_time[beam] = dt.datetime.now(dt.timezone.utc)
 
     # Only let CFS run after the user set stable time has
     # passed to prevent CFS from switching freqs too quickly
@@ -752,6 +753,7 @@ def main():
     ids = [
         options.radctrl_to_exphan_identity,
         options.radctrl_to_brian_identity,
+        options.radctrl_to_spectrum_identity,
     ]
 
     # Setup sockets
@@ -767,6 +769,7 @@ def main():
 
     radar_control_to_exp_handler = sockets_list[0]
     radctrl_brian_socket = sockets_list[1]
+    radctrl_spectrum_socket = sockets_list[2]
 
     # Sockets for thread communication
     radctrl_inproc_socket = zmq.Context().instance().socket(zmq.PAIR)
@@ -795,6 +798,12 @@ def main():
 
     new_experiment_waiting = False
     new_experiment_loaded = True
+
+    so.send_pyobj(
+        radctrl_spectrum_socket,
+        options.spectrum_to_radctrl_identity,
+        experiment.cfs_decimation_scheme,
+    )
 
     # Flag for starting the radar on the minute boundary
     wait_for_first_scanbound = experiment.slice_dict.get("wait_for_first_scanbound")
@@ -882,13 +891,13 @@ def main():
                 and not wait_for_first_scanbound
             ):
                 # On first integration, determine current averaging period and set scan_iter to it
-                now = datetime.utcnow()
+                now = dt.datetime.now(dt.timezone.utc)
                 current_minute = now.replace(second=0, microsecond=0)
                 scan_iter = next(
                     (
                         i
                         for i, v in enumerate(scan.scanbound)
-                        if current_minute + timedelta(seconds=v) > now
+                        if current_minute + dt.timedelta(seconds=v) > now
                     ),
                     0,
                 )
@@ -920,10 +929,13 @@ def main():
                 if first_aveperiod:
                     # On the very first averaging period of Borealis starting, calculate the start minute
                     # align scanbound reference time to find when to start
-                    now = datetime.utcnow()
-                    dt = now.replace(second=0, microsecond=0)
-                    if dt + timedelta(seconds=scan.scanbound[scan_iter]) >= now:
-                        start_minute = dt
+                    now = dt.datetime.now(dt.timezone.utc)
+                    timestamp = now.replace(second=0, microsecond=0)
+                    if (
+                        timestamp + dt.timedelta(seconds=scan.scanbound[scan_iter])
+                        >= now
+                    ):
+                        start_minute = timestamp
                     else:
                         start_minute = round_up_time(now)
                 else:
@@ -943,15 +955,17 @@ def main():
                 # A scanbound necessitates intt
                 end_of_scan = (
                     start_minute
-                    + timedelta(seconds=scan.scanbound[-1])
-                    + timedelta(seconds=last_aveperiod_intt * 1e-3)
+                    + dt.timedelta(seconds=scan.scanbound[-1])
+                    + dt.timedelta(seconds=last_aveperiod_intt * 1e-3)
                 )
                 end_minute = end_of_scan.replace(second=0, microsecond=0)
 
-                if end_minute + timedelta(seconds=next_scanbound[0]) >= end_of_scan:
-                    next_scan_start = end_minute + timedelta(seconds=next_scanbound[0])
+                if end_minute + dt.timedelta(seconds=next_scanbound[0]) >= end_of_scan:
+                    next_scan_start = end_minute + dt.timedelta(
+                        seconds=next_scanbound[0]
+                    )
                 else:
-                    next_scan_start = round_up_time(end_of_scan) + timedelta(
+                    next_scan_start = round_up_time(end_of_scan) + dt.timedelta(
                         seconds=next_scanbound[0]
                     )
 
@@ -961,7 +975,7 @@ def main():
                 # If there are multiple aveperiods in a scan they are alternated (AVEPERIOD interfaced)
                 aveperiod = scan.aveperiods[scan.aveperiod_iter]
                 if TIME_PROFILE:
-                    time_start_of_aveperiod = datetime.utcnow()
+                    time_start_of_aveperiod = dt.datetime.now(dt.timezone.utc)
 
                 # Get new experiment here, before starting a new averaging period.
                 # If new_experiment_waiting is set here, implement new_experiment after this
@@ -980,7 +994,7 @@ def main():
                 # All phases are set up for this averaging period for the beams required.
                 # Time to start averaging in the below loop.
                 if not scan.scanbound:
-                    averaging_period_start_time = datetime.utcnow()  # ms
+                    averaging_period_start_time = dt.datetime.now(dt.timezone.utc)  # ms
                     log.verbose(
                         "averaging period start time",
                         time=averaging_period_start_time,
@@ -993,10 +1007,10 @@ def main():
                         # Calculate scan start time. First beam in the sequence will likely
                         # be ready to go if the first scan aligns directly to the minute. The
                         # rest will need to wait until their boundary time is up.
-                        beam_scanbound = start_minute + timedelta(
+                        beam_scanbound = start_minute + dt.timedelta(
                             seconds=scan.scanbound[scan_iter]
                         )
-                        time_diff = beam_scanbound - datetime.utcnow()
+                        time_diff = beam_scanbound - dt.datetime.now(dt.timezone.utc)
                         if time_diff.total_seconds() > 0:
                             if first_aveperiod:
                                 log.verbose(
@@ -1018,7 +1032,7 @@ def main():
                             time.sleep(time_diff.total_seconds())
                         else:
                             # TODO: This will be wrong if the start time is in the past.
-                            # TODO: maybe use datetime.utcnow() like below instead of beam_scanbound
+                            # TODO: maybe use dt.datetime.now(dt.timezone.utc) like below instead of beam_scanbound
                             #       when the avg period should have started?
                             log.debug(
                                 "expected avg period start time",
@@ -1026,7 +1040,7 @@ def main():
                                 beam_scanbound=beam_scanbound,
                             )
 
-                        averaging_period_start_time = datetime.utcnow()
+                        averaging_period_start_time = dt.datetime.now(dt.timezone.utc)
                         log.verbose(
                             "avg period start time",
                             time=averaging_period_start_time,
@@ -1072,17 +1086,17 @@ def main():
                             #       (if bound_time_remaining < 0, we need a solution to reset)
                             averaging_period_done_time = (
                                 averaging_period_start_time
-                                + timedelta(milliseconds=bound_time_remaining * 1e3)
+                                + dt.timedelta(milliseconds=bound_time_remaining * 1e3)
                             )
                         else:
                             averaging_period_done_time = (
                                 averaging_period_start_time
-                                + timedelta(milliseconds=aveperiod.intt)
+                                + dt.timedelta(milliseconds=aveperiod.intt)
                             )
                     else:  # No scanbound for this scan
                         averaging_period_done_time = (
                             averaging_period_start_time
-                            + timedelta(milliseconds=aveperiod.intt)
+                            + dt.timedelta(milliseconds=aveperiod.intt)
                         )
                 else:  # intt does not exist, therefore using intn
                     intt_break = False
@@ -1095,7 +1109,9 @@ def main():
                 log.verbose("avg period slice and beam number", slice_and_beam=msg)
 
                 if TIME_PROFILE:
-                    aveperiod_prep_time = datetime.utcnow() - time_start_of_aveperiod
+                    aveperiod_prep_time = (
+                        dt.datetime.now(dt.timezone.utc) - time_start_of_aveperiod
+                    )
                     log.verbose(
                         "time to prep aveperiod",
                         time=aveperiod_prep_time,
@@ -1113,6 +1129,21 @@ def main():
                     num_beams=aveperiod.num_beams_in_scan,
                 )
                 time_remains = True
+
+                # tell spectrum module which frequencies to use
+                so.send_pyobj(
+                    radctrl_spectrum_socket,
+                    options.spectrum_to_radctrl_identity,
+                    aveperiod.mixing_freqs,
+                )
+
+                if first_aveperiod:
+                    # Block until spectrum has a chance to get an initial spectral analysis
+                    so.recv_string(
+                        radctrl_spectrum_socket,
+                        options.spectrum_to_radctrl_identity,
+                        log,
+                    )
 
                 while time_remains:
                     if ave_params.num_sequences == 0 and isinstance(
@@ -1133,7 +1164,7 @@ def main():
 
                     for sequence_index, sequence in enumerate(aveperiod.sequences):
                         # Alternating sequences if there are multiple in the averaging_period
-                        ave_params.start_time = datetime.utcnow()
+                        ave_params.start_time = dt.datetime.now(dt.timezone.utc)
                         ave_params.sequence = sequence
                         ave_params.sequence_index = sequence_index
 
@@ -1220,7 +1251,7 @@ def main():
                             time.sleep(1)
 
                 if TIME_PROFILE:
-                    avg_period_end_time = datetime.utcnow()
+                    avg_period_end_time = dt.datetime.now(dt.timezone.utc)
                     log.verbose(
                         "avg period end time",
                         time=avg_period_end_time,
@@ -1253,7 +1284,9 @@ def main():
                 seqnum_start += ave_params.num_sequences
 
                 if TIME_PROFILE:
-                    time_to_finish_aveperiod = datetime.utcnow() - avg_period_end_time
+                    time_to_finish_aveperiod = (
+                        dt.datetime.now(dt.timezone.utc) - avg_period_end_time
+                    )
                     log.verbose(
                         "time to finish avg period",
                         time=time_to_finish_aveperiod,
