@@ -1,5 +1,3 @@
-#!/usr/bin/python
-
 """
 interface_class_base
 ~~~~~~~~~~~~~~~~~~~~
@@ -28,7 +26,7 @@ module_name = caller.name.split(".")[0]
 log = structlog.getLogger(module_name)
 
 
-class InterfaceClassBase(object):
+class InterfaceClassBase:
     """
     The base class for the classes Scan, AveragingPeriod, and Sequence. Scans are made up of
     AveragingPeriods, these are typically a 3sec time of the same pulse sequence pointing in one
@@ -83,7 +81,7 @@ class InterfaceClassBase(object):
         # interface_types)
         self.interface = object_interface
 
-        # The nested slice list is filled in a child class before the prep_for_nested_interface_class
+        # The nested slice list is filled in a child class before the params_for_nested
         # function is run. This list is of format [[], [], ...] where the length of the outer list
         # is equal to the number of the lower interface_class_base instance within the instance of the
         # higher interface_class_base ( ex. number of sequences within averagingperiods)
@@ -95,9 +93,9 @@ class InterfaceClassBase(object):
         # List of lists, each inner list is all slice ids that share a scan
         self.nested_slice_list = self.get_nested_slice_ids()
 
-    def prep_for_nested_interface_class(self):
+    def params_for_nested(self):
         """
-        Retrieve the params needed for the nested class (also with base InterfaceClassBase).
+        Retrieve the params needed for the nested class.
 
         This class reduces duplicate code by breaking down the InterfaceClassBase class into the separate
         portions for the nested instances. For Scan class, the nested class is AveragingPeriod, and
@@ -126,8 +124,9 @@ class InterfaceClassBase(object):
             # of interface_class_base type.
             nested_class_interface = {}
             for i in itertools.combinations(slice_list, 2):
-                # slice_list is sorted so we should have the following effect:
-                # combinations([1, 3, 5], 2) --> [1,3], [1,5], [3,5]
+                # slice_list is sorted, so we should have the following effect:
+                # slice_list = [1, 3, 5]
+                # --> i = [1,3], then [1,5], then [3,5]
                 nested_class_interface[tuple(i)] = self.interface[tuple(i)]
 
             nested_class_param_lists.append(
@@ -142,7 +141,7 @@ class InterfaceClassBase(object):
         return nested_class_param_lists
 
     @staticmethod
-    def slice_combos_sorter(list_of_combos, all_keys):
+    def slice_combos_sorter(list_of_combos: list[list[int]], all_keys: list[int]) -> list[list[int]]:
         """
         Sort keys of a list of combinations so that keys only appear once in the list.
 
@@ -152,15 +151,14 @@ class InterfaceClassBase(object):
         slice dictionary for nested class instances. In the above example, we would then have two
         instances of the nested class to create: one with slices 0,1,2,4 and another with slice 5.
 
-        :param      list_of_combos: list of lists of length two associating two slices together.
-        :type       list_of_combos: list
-        :param      all_keys:       list of all keys included in this object (scan, ave_period, or
+        :param      list_of_combos: lists of length two associating two slices together.
+        :type       list_of_combos: list[list[int]]
+        :param      all_keys:       all keys included in this object (scan, ave_period, or
                                     sequence).
-        :type       all_keys:       list
+        :type       all_keys:       list[int]
 
-        :returns:   list of combos that is sorted so that each key only appears once and the lists
-                    within the list are of however long necessary
-        :rtype:     list
+        :returns:   unique
+        :rtype:     list[list[int]]
         """
         disjoint_sets = []
 
@@ -205,7 +203,7 @@ class InterfaceClassBase(object):
         disjoint_sets.sort(key=lambda x: x[0])  # Sort by the first key in each list
         return disjoint_sets
 
-    def get_nested_slice_ids(self):
+    def get_nested_slice_ids(self) -> list[list[int]]:
         """
         Organize the slice_ids by interface.
 
@@ -221,7 +219,7 @@ class InterfaceClassBase(object):
         :returns:   A list that has one element per scan. Each element is a list of slice_ids
                     signifying which slices are combined inside that scan. The list returned could
                     be of length 1, meaning only one scan is present in the experiment.
-        :rtype:     list of lists
+        :rtype:     list[list[int]]
         """
         nested_combos = []
 

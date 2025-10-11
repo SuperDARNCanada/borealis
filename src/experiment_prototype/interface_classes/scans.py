@@ -78,7 +78,7 @@ class Scan(InterfaceClassBase):
         self.aveperiods = []
         self.nested_slice_list = self.get_nested_slice_ids()
 
-        for params in self.prep_for_nested_interface_class():
+        for params in self.params_for_nested():
             if any([s.cfs_flag for s in params[1].values()]):
                 self.aveperiods.append(CFSAveragingPeriod(*params))
             else:
@@ -109,7 +109,7 @@ class Scan(InterfaceClassBase):
         self.aveperiod_iter = 0  # used to keep track of index into aveperiods list.
         # AveragingPeriod will be in slice_id # order
 
-    def prep_for_nested_interface_class(self):
+    def params_for_nested(self):
         """
         Override of base method to give more information about beamorder and beamdir.
 
@@ -123,7 +123,7 @@ class Scan(InterfaceClassBase):
         """
 
         # Get the basic parameters for a InterfaceClassBase type
-        params_list = InterfaceClassBase.prep_for_nested_interface_class(self)
+        params_list = InterfaceClassBase.params_for_nested(self)
 
         # Add the beam order and beam direction information that is necessary for AveragingPeriods
         # specifically.

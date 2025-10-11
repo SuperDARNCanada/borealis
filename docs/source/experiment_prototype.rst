@@ -52,7 +52,7 @@ Interface Class Package
 Decimation Scheme
 -----------------
 
-.. automodule:: src.experiment_prototype.experiment_utils.decimation_scheme
+.. automodule:: src.utils.decimation_scheme
     :members:
     :undoc-members:
     :show-inheritance:

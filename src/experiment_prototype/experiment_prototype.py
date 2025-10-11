@@ -12,6 +12,7 @@ this class.
 
 # built-in
 import copy
+import importlib
 import inspect
 import os
 from pathlib import Path
@@ -289,7 +290,6 @@ class ExperimentPrototype:
         # interfacing specified.
         self.__scan_objects = []
         self.__scanbound = False
-        self.__running_experiment = None  # this will be of InterfaceClassBase type
 
         # This is used for adding and editing slices
         self.__slice_restrictions = {
@@ -674,7 +674,7 @@ class ExperimentPrototype:
     def __update_slice_interfacing(self):
         """
         Internal slice interfacing updater. This should only be used internally when slice
-        dictionary is changed, to update all of the slices' interfacing dictionaries.
+        dictionary is changed, to update all the slices' interfacing dictionaries.
         """
         for slice_id in self.slice_ids:
             self.__slice_dict[slice_id].slice_interfacing = self.get_slice_interfacing(
@@ -701,8 +701,6 @@ class ExperimentPrototype:
         if not isinstance(exp_slice, dict):
             errmsg = f"Attempt to add a slice failed - {exp_slice} is not a dictionary of slice parameters"
             raise ExperimentException(errmsg)
-            # TODO multiple types of Exceptions so they can be caught by the experiment in these
-            #  add_slice, edit_slice, del_slice functions (and handled specifically)
         if interfacing_dict is None:
             interfacing_dict = {}
 
@@ -710,7 +708,7 @@ class ExperimentPrototype:
         # each added slice has a unique slice id, even if previous slices have been deleted.
         exp_slice["cpid"] = self.cpid
 
-        # Now we setup the slice which will check minimum requirements and set defaults, and then
+        # Now we set up the slice which will check minimum requirements and set defaults, and then
         # will complete a check_slice and raise any errors found.
         new_exp_slice = ExperimentSlice(**exp_slice, **self.__slice_restrictions)
 
@@ -765,76 +763,6 @@ class ExperimentPrototype:
 
         return removed_slice
 
-    def edit_slice(self, edit_slice_id, **kwargs):
-        """
-        Edit a slice.
-
-        A quick way to edit a slice. In reality this is actually adding a new slice and deleting the
-        old one. Useful for quick changes. Note that using this function will remove the slice_id
-        that you are changing and will give it a new id. It will account for this in the interfacing
-        dictionary.
-
-        :param      edit_slice_id:  the slice id of the slice to be edited.
-        :type       edit_slice_id:  int
-        :param      kwargs:         slice parameter to slice values that you want to change.
-        :type       kwargs:         dict
-
-        :returns:   the new slice id of the edited slice, or the edit_slice_id if no change has
-                    occurred due to failure of new slice parameters to pass experiment checks.
-        :rtype:     int
-
-        :raises ExperimentException:    if the edit_slice_id does not exist in slice dictionary or
-                                        the params or values do not make sense.
-        """
-        slice_params_to_edit = dict(kwargs)
-
-        try:
-            edited_slice = copy.deepcopy(self.slice_dict[edit_slice_id])
-        except (KeyError, TypeError):
-            # the edit_slice_id is not an index in the slice_dict
-            errmsg = f"Trying to edit {edit_slice_id} but it does not exist in Slice_IDs list."
-            raise ExperimentException(errmsg)
-
-        for edit_slice_param, edit_slice_value in slice_params_to_edit.items():
-            if edit_slice_param in self.slice_keys:
-                setattr(edited_slice, edit_slice_param, edit_slice_value)
-            else:
-                errmsg = (
-                    f"Cannot edit slice ID {edit_slice_id}: {edit_slice_param} is not a valid"
-                    " slice parameter"
-                )
-                raise ExperimentException(errmsg)
-
-        # Get the interface values of the slice. These are not editable, if these are wished to be
-        # changed add_slice must be used explicitly to interface a new slice.
-        interface_values = self.get_slice_interfacing(edit_slice_id)
-
-        removed_slice = self.del_slice(edit_slice_id)
-
-        try:
-            # checks are done on interfacing when slice is added.
-            # interfacing between existing slice_ids cannot be changed after addition.
-            new_slice_id = self.add_slice(edited_slice, interface_values)
-            return new_slice_id
-
-        except ExperimentException as err:
-            # if any failure occurs when checking the slice, the slice has not been added to the
-            # slice dictionary so we will revert to old slice
-            self.__slice_dict[edit_slice_id] = removed_slice
-
-            for key1, key1_interface in interface_values.items():
-                if key1 < edit_slice_id:
-                    self.__interface[(key1, edit_slice_id)] = key1_interface
-                else:
-                    self.__interface[(edit_slice_id, key1)] = key1_interface
-
-            # reset all slice_interfacing back
-            self.__update_slice_interfacing()
-
-            log.error("Slice has errors, unable to add to experiment", errors=err)
-
-            return edit_slice_id
-
     def __repr__(self):
         represent = (
             f"self.cpid = {self.cpid}\n"
@@ -859,22 +787,14 @@ class ExperimentPrototype:
         # Check interfacing and other experiment-wide settings.
         self.self_check()
 
-        # TODO: investigating how I might go about using this base class - maybe make a new IterableExperiment class
-        #  to inherit
-
         # Set any unset center frequencies in the experiment
         self.set_center_frequencies()
 
-        # TODO consider removing scan_objects from init and making a new Experiment class to inherit
-        # from InterfaceClassBase and having all of this included in there. Then would only need to
-        # pass the running experiment to the radar control (would be returned from build_scans)
-        self.__running_experiment = InterfaceClassBase(
+        running_experiment = InterfaceClassBase(
             self.slice_ids, self.slice_dict, self.interface, self.transmit_metadata
         )
 
-        self.__scan_objects = []
-        for params in self.__running_experiment.prep_for_nested_interface_class():
-            self.__scan_objects.append(Scan(*params))
+        self.__scan_objects = [Scan(*params) for params in running_experiment.params_for_nested()]
 
         for scan in self.__scan_objects:
             if scan.scanbound is not None:
@@ -941,9 +861,6 @@ class ExperimentPrototype:
         if self.num_slices < 1:
             errmsg = "Invalid num_slices less than 1"
             raise ExperimentException(errmsg)
-
-        # TODO: check if self.cpid is not unique - incorporate known cpids from git repo
-        # TODO: use pygit2 for this
 
         log.info("No Self Check Errors. Continuing...")
 
@@ -1197,3 +1114,102 @@ class ExperimentPrototype:
             self.slice_dict[slice_id].rxctrfreq = self.calculate_center_freq(
                 slice_ctr_freq[slice_id]
             )
+
+
+def retrieve_experiment(experiment_module_name: str):
+    """
+    Retrieve the experiment class from the provided module given as an argument.
+
+    :param  experiment_module_name: The name of the experiment module to run from the Borealis
+                                    project's experiments directory.
+    :type   experiment_module_name: str
+
+    :raise  ExperimentException:    if the experiment module provided as an argument does not
+                                    contain a single class that inherits from ExperimentPrototype
+                                    class.
+
+    :returns:   The found experiment that inherits from `ExperimentPrototype`
+    :rtype:     Type[ExperimentPrototype]
+    """
+
+    log.debug("loading experiment", experiment_module_name=experiment_module_name)
+    experiment_mod = importlib.import_module(
+        "borealis_experiments." + experiment_module_name
+    )
+
+    # find the class or classes defined in this module that inherit from ExperimentPrototype.
+    # returns list of (class name, object)
+    experiment_classes = [
+        (name, obj)
+        for name, obj in inspect.getmembers(experiment_mod, inspect.isclass)
+        if obj.__module__ == experiment_mod.__name__ and ExperimentPrototype in inspect.getmro(obj)
+    ]
+    # TODO: get the CPID of each experiment while iterating (once cpid is a class variable of ExperimentPrototype)
+    # TODO: check if self.cpid is not unique
+
+    if len(experiment_classes) == 0:
+        errmsg = (
+            "No experiment classes are present that are built from"
+            " parent class ExperimentPrototype - exiting"
+        )
+        raise ExperimentException(errmsg)
+    if len(experiment_classes) > 1:
+        errmsg = (
+            "You have more than one experiment class in your "
+            "experiment file - exiting"
+        )
+        raise ExperimentException(errmsg)
+
+    experiment = experiment_classes[0][1]
+
+    log.verbose(
+        "retrieving experiment from module",
+        experiment_class=experiment_classes[0][0],
+        experiment_module=experiment_mod,
+    )
+
+    return experiment
+
+
+def experiment_handler(experiment_module: str, scheduling_mode_type: str, embargo: bool = False, **kwargs) -> ExperimentPrototype:
+    """
+    Build the experiment class.
+
+    This process begins with retrieving the experiment class from the module.
+    It then will build and return the scan iterable objects (of class InterfaceClassBase).
+
+    In the future, the update method will be implemented where the experiment can be modified by
+    the incoming data.
+    :param experiment_module: The name of the module in the experiment_prototype package that contains your Experiment class, e.g. normalscan
+    :type  experiment_module: str
+    :param scheduling_mode_type: The type of scheduling time for this experiment run, e.g. `common`, `special`, or `discretionary`
+    :type  scheduling_mode_type: str
+    :param embargo: Flag to embargo the file (makes the CPID negative)
+    :type  embargo: bool
+    :param kwargs: Any kwargs for the experiment class
+    :type  kwargs: dict
+
+    :returns: The instantiated experiment object
+    :rtype:   ExperimentPrototype
+    """
+    experiment_name = experiment_module
+    scheduling_mode_type = scheduling_mode_type
+
+    experiment_class = retrieve_experiment(experiment_name)
+
+    if kwargs:
+        exp = experiment_class(**kwargs)
+    else:
+        exp = experiment_class()
+
+    exp._set_scheduling_mode(scheduling_mode_type)
+    exp._embargo_files(embargo)
+    exp.build_scans()
+
+    log.info(
+        "experiment successfully built",
+        experiment_name=exp.__class__.__name__,
+        cpid=exp.cpid,
+    )
+
+    return exp

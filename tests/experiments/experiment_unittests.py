@@ -72,12 +72,9 @@ def ehmain(experiment_name="normalscan", scheduling_mode="discretionary", **kwar
         console=False, logfile=False, aggregator=False
     )  # Prevent logging in experiment
 
-    import experiment_handler as eh
+    from experiment_prototype.experiment_prototype import experiment_handler
 
-    experiment = eh.retrieve_experiment(experiment_name)
-    exp = experiment(**kwargs)
-    exp._set_scheduling_mode(scheduling_mode)
-    exp.build_scans()
+    experiment_handler(experiment_name, scheduling_mode, embargo=False, **kwargs)
 
 
 class TestExperimentEnvSetup(unittest.TestCase):
@@ -92,15 +89,6 @@ class TestExperimentEnvSetup(unittest.TestCase):
         unittest lingo)
         """
         print("\nMethod: ", self._testMethodName)
-
-    def test_no_args(self):
-        """
-        Test calling the experiment handler without any command line arguments, which returns 2
-        """
-        import experiment_handler as eh
-
-        with self.assertRaisesRegex(SystemExit, "2"):
-            eh.main([])
 
     @unittest.skip("Skip for TODO reason")
     def test_borealispath(self):

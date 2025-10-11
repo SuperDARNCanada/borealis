@@ -12,18 +12,21 @@ through the interface_class_base objects to control the radar.
 :author: Marci Detwiller
 """
 
+import argparse
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from functools import reduce
+import mmap
 import os
 import sys
-import time
-from datetime import datetime, timedelta
-import zmq
 import threading
+import time
+
+import zmq
 import numpy as np
 import posix_ipc as ipc
-import mmap
-from functools import reduce
-from dataclasses import dataclass, field
 
+from experiment_prototype.experiment_prototype import experiment_handler
 from experiment_prototype.interface_classes.averaging_periods import CFSAveragingPeriod
 from utils.options import Options
 import utils.message_formats as messages
@@ -376,49 +379,6 @@ def create_dsp_message(radctrl_params):
     return message
 
 
-def search_for_experiment(radar_control_to_exp_handler, exphan_to_radctrl_iden, status):
-    """
-    Check for new experiments from the experiment handler
-
-    :param radar_control_to_exp_handler: String identifier of the radar control to experiment handler socket
-    :param exphan_to_radctrl_iden: String identifier of the experiment handler to radar control socket
-    :param status: status string (EXP_NEEDED or NO_ERROR).
-    :returns new_experiment_received: boolean (True for new experiment received)
-    :returns experiment: experiment instance (or None if there is no new experiment)
-    """
-
-    try:
-        so.send_string(radar_control_to_exp_handler, exphan_to_radctrl_iden, status)
-    except zmq.ZMQBaseError as e:
-        log.error("zmq failed request", error=e)
-        log.exception("zmq failed request", exception=e)
-        sys.exit(1)
-
-    experiment = None
-    new_experiment_received = False
-
-    try:
-        new_exp = so.recv_pyobj(
-            radar_control_to_exp_handler,
-            exphan_to_radctrl_iden,
-            log,
-        )
-    except zmq.ZMQBaseError as e:
-        log.error("zmq failed receive", error=e)
-        log.exception("zmq failed receive", exception=e)
-        sys.exit(1)
-
-    if new_exp is not None:
-        experiment = new_exp
-        new_experiment_received = True
-        log.info("new experiment found")
-    else:
-        log.debug("experiment continuing without update")
-        # TODO decide what to do here. I think we need this case if someone doesn't build their experiment properly
-
-    return new_experiment_received, experiment
-
-
 def make_next_samples(radctrl_params):
     sqn = radctrl_params.sequence.make_sequence(
         radctrl_params.aveperiod.beam_iter,
@@ -724,7 +684,7 @@ def cfs_block(ave_params, cfs_sockets, pulse_buffer):
         aveperiod.beam_frequency[slice_id][beam] = last_set_cfs[slice_id]
 
 
-def main():
+def main(exp_name, scheduling_mode, embargo, **kwargs):
     """
     Run the radar with the experiment supplied by experiment_handler.
 
@@ -744,25 +704,16 @@ def main():
     # Get config options
     options = Options()
 
-    # The socket identities for radar_control, retrieved from options
-    ids = [
-        options.radctrl_to_exphan_identity,
-        options.radctrl_to_brian_identity,
-    ]
-
     # Setup sockets
     # Socket to send pulse samples over
     # TODO test: need to make sure that we know that all sockets are set up after this try...except block.
     # TODO test: starting the programs in different orders.
     try:
-        sockets_list = so.create_sockets(options.router_address, *ids)
+        radctrl_brian_socket = so.create_sockets(options.router_address, options.radctrl_to_brian_identity)
     except zmq.ZMQBaseError as e:
         log.error("zmq failed setting up sockets", error=e)
         log.exception("zmq failed setting up sockets", exception=e)
         sys.exit(1)
-
-    radar_control_to_exp_handler = sockets_list[0]
-    radctrl_brian_socket = sockets_list[1]
 
     # Sockets for thread communication
     radctrl_inproc_socket = zmq.Context().instance().socket(zmq.PAIR)
@@ -780,17 +731,7 @@ def main():
     seqnum_start = 0
 
     # Wait for experiment handler at the start until we have an experiment to run.
-    new_experiment_waiting = False
-
-    while not new_experiment_waiting:
-        new_experiment_waiting, experiment = search_for_experiment(
-            radar_control_to_exp_handler,
-            options.exphan_to_radctrl_identity,
-            "EXPNEEDED",
-        )
-
-    new_experiment_waiting = False
-    new_experiment_loaded = True
+    experiment = experiment_handler(exp_name, scheduling_mode, embargo, **kwargs)
 
     # Flag for starting the radar on the minute boundary
     wait_for_first_scanbound = experiment.slice_dict.get("wait_for_first_scanbound")
@@ -854,19 +795,6 @@ def main():
         # TODO : further documentation throughout in comments (high level) and in separate documentation.
         # Iterate through Scans, AveragingPeriods, Sequences, Pulses.
         # Start anew on first scan if we have a new experiment.
-        if new_experiment_waiting:
-            try:
-                experiment = new_experiment
-            except NameError as e:
-                # new_experiment does not exist, should never happen as flag only gets set when
-                # there is a new experiment.
-                log.error("experiment could not be found", error=e)
-                log.exception("experiment could not be found", exception=e)
-                sys.exit(1)
-
-            new_experiment_waiting = False
-            new_experiment = None
-            new_experiment_loaded = True
 
         for scan_num, scan in enumerate(experiment.scan_objects):
             log.debug("scan number", scan_num=scan_num)
@@ -891,12 +819,6 @@ def main():
             else:
                 # Otherwise start at first averaging period
                 scan_iter = 0
-
-            # If a new experiment was received during the last scan, it finished the integration period
-            # it was on and returned here with new_experiment_waiting set to True. Break to load new experiment.
-            # Start anew on first scan if we have a new experiment
-            if new_experiment_waiting:
-                break
 
             if scan.scanbound:
                 if scan.align_scan_to_beamorder:
@@ -951,25 +873,11 @@ def main():
                         seconds=next_scanbound[0]
                     )
 
-            while (
-                scan_iter < scan.num_aveperiods_in_scan and not new_experiment_waiting
-            ):
+            while scan_iter < scan.num_aveperiods_in_scan:
                 # If there are multiple aveperiods in a scan they are alternated (AVEPERIOD interfaced)
                 aveperiod = scan.aveperiods[scan.aveperiod_iter]
                 if TIME_PROFILE:
                     time_start_of_aveperiod = datetime.utcnow()
-
-                # Get new experiment here, before starting a new averaging period.
-                # If new_experiment_waiting is set here, implement new_experiment after this
-                # averaging period. There may be a new experiment waiting, or a new experiment.
-                if not new_experiment_waiting and not new_experiment_loaded:
-                    new_experiment_waiting, new_experiment = search_for_experiment(
-                        radar_control_to_exp_handler,
-                        options.exphan_to_radctrl_identity,
-                        "NOERROR",
-                    )
-                elif new_experiment_loaded:
-                    new_experiment_loaded = False
 
                 log.debug("new averaging period")
 
@@ -1271,7 +1179,35 @@ if __name__ == "__main__":
     log = log_config.log()
     log.info("RADAR_CONTROL BOOTED")
     try:
-        main()
+        parser = argparse.ArgumentParser()
+        parser.add_argument(
+            "experiment_module",
+            help="The name of the module in the experiment_prototype package that contains "
+                 "your Experiment class, e.g. normalscan",
+        )
+        parser.add_argument(
+            "scheduling_mode_type",
+            help="The type of scheduling time for this experiment run, e.g. common, "
+                 "special, or discretionary.",
+        )
+        parser.add_argument(
+            "--embargo",
+            action="store_true",
+            help="Embargo the file (makes the CPID negative)",
+        )
+        parser.add_argument(
+            "--kwargs",
+            nargs="+",
+            default="",
+            help="Keyword arguments for the experiment. Each must be formatted as kw=val",
+        )
+        args = parser.parse_args()
+        # parse kwargs and pass to experiment
+        parsed_kwargs = {}
+        for element in args.kwargs:
+            kwarg = element.split("=")
+            parsed_kwargs[kwarg[0]] = kwarg[1]
+        main(args.experiment_module, args.scheduling_mode_type, args.embargo, **parsed_kwargs)
         log.info("RADAR_CONTROL EXITED")
     except Exception as main_exception:
         log.critical("RADAR_CONTROL CRASHED", error=main_exception)

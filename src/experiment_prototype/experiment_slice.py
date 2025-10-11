@@ -38,7 +38,7 @@ from typing import List, Optional, Union, Literal, Callable, Hashable, TypeVar
 
 # local
 from utils.options import Options
-from experiment_prototype.experiment_utils.decimation_scheme import (
+from utils.decimation_scheme import (
     DecimationScheme,
     create_default_scheme,
     create_default_cfs_scheme,

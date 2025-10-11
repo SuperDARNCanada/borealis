@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 """
 decimation_scheme
 ~~~~~~~~~~~~~~~~~
@@ -15,7 +13,7 @@ import math
 from scipy.signal import firwin, remez, kaiserord
 
 
-class DecimationStage(object):
+class DecimationStage:
     def __init__(self, stage_num, input_rate, dm_rate, filter_taps):
         """
         Create a decimation stage with given decimation rate, input sample rate, and filter taps.
@@ -59,7 +57,7 @@ class DecimationStage(object):
         return True
 
 
-class DecimationScheme(object):
+class DecimationScheme:
     """
     Class for DSP filtering and decimation scheme.
     """

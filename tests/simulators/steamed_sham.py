@@ -92,10 +92,7 @@ split
 focus
 screen -t "Data Write" bash -c "{data_write}"                   # Bottom middle
 focus
-screen -t "Experiment Handler" bash -c "{experiment_handler}"   # Right top
-split
 {realtime}      # extra screen created here if realtime enabled
-focus
 screen -t "Brian" bash -c "{brian}"                             # Right bottom
 focus
 
@@ -103,9 +100,9 @@ detach
 """
 
 realtime_window = """
+screen -t "Realtime" bash -c "{realtime}"                   # Right top
 split
 focus
-screen -t "Realtime" bash -c "{realtime}"                   # Right middle
 """
 
 
@@ -209,8 +206,7 @@ else:
 # Configure python first, starting with options for each module
 options = {
     "brian": "",
-    "experiment_handler": f"{args.experiment_module} {args.scheduling_mode_type}",
-    "radar_control": "",
+    "radar_control": f"{args.experiment_module} {args.scheduling_mode_type}",
     "data_write": f"{data_write_args}",
     "realtime": "",
     "rx_signal_processing": "",
@@ -218,9 +214,9 @@ options = {
 }
 
 if args.embargo:
-    options["experiment_handler"] += " --embargo"
+    options["radar_control"] += " --embargo"
 if args.kwargs:
-    options["experiment_handler"] += f" --kwargs {kwargs}"
+    options["radar_control"] += f" --kwargs {kwargs}"
 if args.realtime_off:
     options["brian"] += " --realtime-off"
 

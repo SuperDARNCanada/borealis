@@ -150,7 +150,7 @@ class AveragingPeriod(InterfaceClassBase):
         # Determine how this averaging period is made by separating out the SEQUENCE interfaced.
         self.nested_slice_list = self.get_nested_slice_ids()
         self.sequences = []
-        for params in self.prep_for_nested_interface_class():
+        for params in self.params_for_nested():
             self.sequences.append(Sequence(*params))
 
         self.one_pulse_only = False
