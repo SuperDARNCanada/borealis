@@ -14,7 +14,6 @@ Runtime Processes
 
     brian
     data_write
-    experiment_handler
     radar_control
     realtime
     rx_signal_processing

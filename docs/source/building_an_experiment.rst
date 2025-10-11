@@ -176,11 +176,7 @@ Below is an example of properly inheriting the prototype class and defining your
                 comment_string='My experiment explanation')
 
 The experiment handler will create an instance of your experiment when your experiment is scheduled
-to start running. Your class is a child class of ExperimentPrototype and because of this, the parent
-class needs to be instantiated when the experiment is instantiated. This is important because the
-experiment_handler will build the scans required by your class in a way that is easily readable and
-iterable by the radar control program. This is done by methods that are set up in the
-ExperimentPrototype parent class.
+to start running.
 
 The next step is to add slices to your experiment. An experiment is defined by the slices in the
 class, and how the slices interface. As mentioned above, slices are just python dictionaries, with a
