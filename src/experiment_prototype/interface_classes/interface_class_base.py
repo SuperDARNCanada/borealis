@@ -141,7 +141,9 @@ class InterfaceClassBase:
         return nested_class_param_lists
 
     @staticmethod
-    def slice_combos_sorter(list_of_combos: list[list[int]], all_keys: list[int]) -> list[list[int]]:
+    def slice_combos_sorter(
+        list_of_combos: list[list[int]], all_keys: list[int]
+    ) -> list[list[int]]:
         """
         Sort keys of a list of combinations so that keys only appear once in the list.
 

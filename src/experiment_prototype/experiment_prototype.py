@@ -794,7 +794,9 @@ class ExperimentPrototype:
             self.slice_ids, self.slice_dict, self.interface, self.transmit_metadata
         )
 
-        self.__scan_objects = [Scan(*params) for params in running_experiment.params_for_nested()]
+        self.__scan_objects = [
+            Scan(*params) for params in running_experiment.params_for_nested()
+        ]
 
         for scan in self.__scan_objects:
             if scan.scanbound is not None:
@@ -1142,7 +1144,8 @@ def retrieve_experiment(experiment_module_name: str):
     experiment_classes = [
         (name, obj)
         for name, obj in inspect.getmembers(experiment_mod, inspect.isclass)
-        if obj.__module__ == experiment_mod.__name__ and ExperimentPrototype in inspect.getmro(obj)
+        if obj.__module__ == experiment_mod.__name__
+        and ExperimentPrototype in inspect.getmro(obj)
     ]
     # TODO: get the CPID of each experiment while iterating (once cpid is a class variable of ExperimentPrototype)
     # TODO: check if self.cpid is not unique
@@ -1155,8 +1158,7 @@ def retrieve_experiment(experiment_module_name: str):
         raise ExperimentException(errmsg)
     if len(experiment_classes) > 1:
         errmsg = (
-            "You have more than one experiment class in your "
-            "experiment file - exiting"
+            "You have more than one experiment class in your experiment file - exiting"
         )
         raise ExperimentException(errmsg)
 
@@ -1171,7 +1173,9 @@ def retrieve_experiment(experiment_module_name: str):
     return experiment
 
 
-def experiment_handler(experiment_module: str, scheduling_mode_type: str, embargo: bool = False, **kwargs) -> ExperimentPrototype:
+def experiment_handler(
+    experiment_module: str, scheduling_mode_type: str, embargo: bool = False, **kwargs
+) -> ExperimentPrototype:
     """
     Build the experiment class.
 

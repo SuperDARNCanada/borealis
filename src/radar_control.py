@@ -709,7 +709,9 @@ def main(exp_name, scheduling_mode, embargo, **kwargs):
     # TODO test: need to make sure that we know that all sockets are set up after this try...except block.
     # TODO test: starting the programs in different orders.
     try:
-        radctrl_brian_socket = so.create_sockets(options.router_address, options.radctrl_to_brian_identity)
+        radctrl_brian_socket = so.create_sockets(
+            options.router_address, options.radctrl_to_brian_identity
+        )
     except zmq.ZMQBaseError as e:
         log.error("zmq failed setting up sockets", error=e)
         log.exception("zmq failed setting up sockets", exception=e)
@@ -1183,12 +1185,12 @@ if __name__ == "__main__":
         parser.add_argument(
             "experiment_module",
             help="The name of the module in the experiment_prototype package that contains "
-                 "your Experiment class, e.g. normalscan",
+            "your Experiment class, e.g. normalscan",
         )
         parser.add_argument(
             "scheduling_mode_type",
             help="The type of scheduling time for this experiment run, e.g. common, "
-                 "special, or discretionary.",
+            "special, or discretionary.",
         )
         parser.add_argument(
             "--embargo",
@@ -1207,7 +1209,12 @@ if __name__ == "__main__":
         for element in args.kwargs:
             kwarg = element.split("=")
             parsed_kwargs[kwarg[0]] = kwarg[1]
-        main(args.experiment_module, args.scheduling_mode_type, args.embargo, **parsed_kwargs)
+        main(
+            args.experiment_module,
+            args.scheduling_mode_type,
+            args.embargo,
+            **parsed_kwargs,
+        )
         log.info("RADAR_CONTROL EXITED")
     except Exception as main_exception:
         log.critical("RADAR_CONTROL CRASHED", error=main_exception)

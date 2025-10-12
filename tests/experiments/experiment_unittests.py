@@ -336,9 +336,9 @@ def run_tests(raw_args=None, buffer=True, print_results=True):
 
     # Read in config.ini file for current site to make necessary directories
     path = (
-        f'{os.environ["BOREALISPATH"]}/config/'
-        f'{os.environ["RADAR_ID"]}/'
-        f'{os.environ["RADAR_ID"]}_config.ini'
+        f"{os.environ['BOREALISPATH']}/config/"
+        f"{os.environ['RADAR_ID']}/"
+        f"{os.environ['RADAR_ID']}_config.ini"
     )
     try:
         with open(path, "r") as data:
@@ -351,7 +351,7 @@ def run_tests(raw_args=None, buffer=True, print_results=True):
     data_directory = raw_config["data_directory"]
     log_directory = raw_config["log_handlers"]["logfile"]["directory"]
     hdw_path = raw_config["hdw_path"]
-    hdw_dat_file = f'{hdw_path}/hdw.dat.{os.environ["RADAR_ID"]}'
+    hdw_dat_file = f"{hdw_path}/hdw.dat.{os.environ['RADAR_ID']}"
     if not os.path.exists(data_directory):
         os.makedirs(data_directory)
     if not os.path.exists(log_directory):
