@@ -270,7 +270,6 @@ class ExperimentPrototype:
             "tr_window_time": self.options.tr_window_time,
             "pulse_ramp_time": self.options.pulse_ramp_time,
             "max_usrp_dac_amplitude": self.options.max_usrp_dac_amplitude,
-            "rx_sample_rate": self.rxrate,
             "min_pulse_separation": self.options.min_pulse_separation,
             "rxrate": self.rxrate,
             "txrate": self.txrate,
