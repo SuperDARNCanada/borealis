@@ -287,11 +287,7 @@ def create_dsp_message(radctrl_params):
         message.cfs_fft_n = radctrl_params.aveperiod.cfs_fft_n
 
     if radctrl_params.decimation_scheme is not None:
-        for stage in radctrl_params.decimation_scheme.stages:
-            dm_stage_add = messages.DecimationStageMessage(
-                stage.stage_num, stage.input_rate, stage.dm_rate, stage.filter_taps
-            )
-            message.add_decimation_stage(dm_stage_add)
+        message.decimation_scheme = radctrl_params.decimation_scheme
 
     slice_dict = radctrl_params.slice_dict
     if radctrl_params.cfs_scan_flag:
@@ -333,26 +329,26 @@ def create_dsp_message(radctrl_params):
 
     slice_dict = radctrl_params.sequence.slice_dict
     for slice_id in radctrl_params.sequence.slice_ids:
-        chan_add = messages.RxChannel(slice_id)
-        chan_add.tau_spacing = slice_dict[slice_id].tau_spacing
+        rx_chan = messages.RxChannel(slice_id)
+        rx_chan.tau_spacing = slice_dict[slice_id].tau_spacing
 
         # Send the translational frequencies to dsp in order to bandpass filter correctly.
-        chan_add.rx_freq = slice_dict[slice_id].freq * 1.0e3
-        chan_add.num_ranges = slice_dict[slice_id].num_ranges
-        chan_add.first_range = slice_dict[slice_id].first_range
-        chan_add.range_sep = slice_dict[slice_id].range_sep
-        chan_add.rx_intf_antennas = slice_dict[slice_id].rx_intf_antennas
-        chan_add.pulses = slice_dict[slice_id].pulse_sequence
-        chan_add.acf = slice_dict[slice_id].acf
-        chan_add.xcf = slice_dict[slice_id].xcf
-        chan_add.acfint = slice_dict[slice_id].acfint
+        rx_chan.rx_freq = slice_dict[slice_id].freq * 1.0e3
+        rx_chan.num_ranges = slice_dict[slice_id].num_ranges
+        rx_chan.first_range = slice_dict[slice_id].first_range
+        rx_chan.range_sep = slice_dict[slice_id].range_sep
+        rx_chan.rx_intf_antennas = slice_dict[slice_id].rx_intf_antennas
+        rx_chan.pulses = slice_dict[slice_id].pulse_sequence
+        rx_chan.acf = slice_dict[slice_id].acf
+        rx_chan.xcf = slice_dict[slice_id].xcf
+        rx_chan.acfint = slice_dict[slice_id].acfint
 
         main_bms = beam_dict[slice_id]["main"]
         intf_bms = beam_dict[slice_id]["intf"]
 
         # Combine main and intf such that for a given beam all main phases come first.
         beams = np.hstack((main_bms, intf_bms))
-        chan_add.beam_phases = np.array(beams)
+        rx_chan.beam_phases = np.array(beams)
 
         for lag in slice_dict[slice_id].lag_table:
             lag_add = messages.Lag(lag[0], lag[1], int(lag[1] - lag[0]))
@@ -373,8 +369,8 @@ def create_dsp_message(radctrl_params):
 
             lag_add.phase_offset_real = np.real(phase_offset)
             lag_add.phase_offset_imag = np.imag(phase_offset)
-            chan_add.add_lag(lag_add)
-        message.add_rx_channel(chan_add)
+            rx_chan.lags.append(lag_add)
+        message.rx_channels.append(rx_chan)
 
     return message
 
@@ -502,7 +498,7 @@ def create_dw_message(radctrl_params):
             for encoding in sequence.output_encodings[slice_id][
                 : radctrl_params.num_sequences
             ]:
-                rxchannel.add_sqn_encodings(encoding.flatten().tolist())
+                rxchannel.sequence_encodings.append(encoding.flatten().tolist())
             sequence.output_encodings[slice_id] = []
 
             rxchannel.rx_main_antennas = sqn_slice.rx_main_antennas
@@ -520,7 +516,7 @@ def create_dw_message(radctrl_params):
             rx_intf_excitations = []
             for beam in beams:
                 beam_add = messages.Beam(sqn_slice.beam_angle[beam], beam)
-                rxchannel.add_beam(beam_add)
+                rxchannel.beams.append(beam_add)
                 rx_main_excitations.append(
                     sequence.rx_beam_phases[slice_id]["main"][
                         beam, sequence.rx_main_antenna_indices[slice_id]
@@ -549,9 +545,9 @@ def create_dw_message(radctrl_params):
 
                 for lag in sqn_slice.lag_table:
                     lag_add = messages.LagTable(lag, int(lag[1] - lag[0]))
-                    rxchannel.add_ltab(lag_add)
+                    rxchannel.ltabs.append(lag_add)
                 rxchannel.averaging_method = sqn_slice.averaging_method
-            sequence_add.add_rx_channel(rxchannel)
+            sequence_add.rx_channels.append(rxchannel)
         message.sequences.append(sequence_add)
 
     return message
@@ -1070,7 +1066,7 @@ def main(exp_name, scheduling_mode, embargo, **kwargs):
 
                         ave_params.decimation_scheme = sequence.decimation_scheme
 
-                        # These three things can happen simultaneously. We can spawn them as threads.
+                        # This can happen simultaneously
                         threads = [
                             threading.Thread(target=make_next_samples(ave_params))
                         ]

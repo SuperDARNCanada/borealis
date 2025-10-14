@@ -1,9 +1,12 @@
-#!/usr/bin/python3
-#
-# Copyright 2022 SuperDARN Canada
-# Author: Remington Rohel
+"""
+Copyright 2022 SuperDARN Canada
+Author: Remington Rohel
+"""
+
 from dataclasses import dataclass, field, fields
 import numpy as np
+
+from .decimation_scheme import DecimationScheme
 
 
 @dataclass
@@ -65,24 +68,6 @@ class ProcessedSequenceMessage:
     output_datasets: list[OutputDataset] = field(default_factory=list)
     cfs_freq: list = field(default_factory=list)
 
-    def add_debug_data(self, stage: DebugDataStage):
-        """Add a stage of debug data to the message"""
-        self.debug_data.append(stage)
-
-    def add_output_dataset(self, data_set: OutputDataset):
-        """Add an output dataset to the message"""
-        self.output_datasets.append(data_set)
-
-
-@dataclass
-class DecimationStageMessage:
-    """Defines a decimation_stage structure within a SequenceMetadataMessage"""
-
-    stage_num: int = None
-    input_rate: float = None
-    dm_rate: int = None
-    filter_taps: list[float] = field(default_factory=list)
-
 
 @dataclass
 class Lag:
@@ -97,7 +82,7 @@ class Lag:
 
 @dataclass
 class RxChannel:
-    """Defines an rx_channel structure within a SequenceMetadataMessage"""
+    """Defines the rx_channel structure within a SequenceMetadataMessage"""
 
     slice_id: int = None
     tau_spacing: int = None
@@ -114,10 +99,6 @@ class RxChannel:
     xcf: bool = False
     acfint: bool = False
 
-    def add_lag(self, lag: Lag):
-        """Add a Lag dataclass to the message."""
-        self.lags.append(lag)
-
 
 @dataclass
 class SequenceMetadataMessage:
@@ -133,7 +114,7 @@ class SequenceMetadataMessage:
     rx_rate: float = None
     output_sample_rate: float = None
     rx_ctr_freq: float = None
-    decimation_stages: list[DecimationStageMessage] = field(default_factory=list)
+    decimation_scheme: DecimationScheme = None
     rx_channels: list[RxChannel] = field(default_factory=list)
     acf: bool = False
     xcf: bool = False
@@ -141,18 +122,10 @@ class SequenceMetadataMessage:
     cfs_scan_flag: bool = False
     cfs_fft_n: int = None
 
-    def add_decimation_stage(self, stage: DecimationStageMessage):
-        """Add a decimation stage to the message."""
-        self.decimation_stages.append(stage)
-
-    def add_rx_channel(self, channel: RxChannel):
-        """Add an rx_channel dataclass to the message."""
-        self.rx_channels.append(channel)
-
 
 @dataclass
 class Beam:
-    """Defines a beam structure for inclusion in an RxChannelMetadata dataclass"""
+    """Defines a beam structure for inclusion in an RxChannelMetadata"""
 
     beam_azimuth: float = None
     beam_num: int = None
@@ -160,7 +133,7 @@ class Beam:
 
 @dataclass
 class LagTable:
-    """Defines a ltab structure for inclusion in an RxChannelMetadata dataclass"""
+    """Defines a ltab structure for inclusion in a RxChannelMetadata"""
 
     pulse_position: list[int] = field(default_factory=list)
     lag_num: int = None
@@ -195,18 +168,6 @@ class RxChannelMetadata:
     ltabs: list[LagTable] = field(default_factory=list)
     averaging_method: str = None
 
-    def add_sqn_encodings(self, encodings: list):
-        """Add a sequence_encodings list to the message."""
-        self.sequence_encodings.append(encodings)
-
-    def add_beam(self, beam: Beam):
-        """Add a Beam dataclass to the message."""
-        self.beams.append(beam)
-
-    def add_ltab(self, ltab: LagTable):
-        """Add a LagTable dataclass to the message."""
-        self.ltabs.append(ltab)
-
 
 @dataclass
 class Sequence:
@@ -216,17 +177,12 @@ class Sequence:
     output_sample_rate: float = None
     rx_channels: list[RxChannelMetadata] = field(default_factory=list)
 
-    def add_rx_channel(self, channel: RxChannelMetadata):
-        """Add an rx channel metadata dataclass to the message."""
-        self.rx_channels.append(channel)
-
 
 @dataclass
 class AveperiodMetadataMessage:
     """
     Defines a message containing metadata about an averaging period of data.
-    This message format is for communication from radar_control to
-    data_write.
+    Message is sent from radar_control to data_write.
     """
 
     experiment_id: int = None
@@ -240,86 +196,20 @@ class AveperiodMetadataMessage:
     input_sample_rate: float = None
     data_normalization_factor: float = None
     scheduling_mode: str = None
-    sequences: list = field(default_factory=list)
+    sequences: list[Sequence] = field(default_factory=list)
     cfs_freqs: list = field(default_factory=list)
     cfs_noise: dict = field(default_factory=dict)
     cfs_range: dict = field(default_factory=dict)
     cfs_masks: dict = field(default_factory=dict)
     cfs_slice_ids: list = field(default_factory=list)
 
-    def add_sequence(self, sequence: dict):
-        """Add a sequence dict to the message."""
-        self.sequences.append(sequence)
-
 
 @dataclass
-class RxSamplesMetadata:
-    """
-    Message from usrp_driver to rx_signal_processing.
-    """
-
-    sequence_num: int = 0
-    num_rx_samps: int = 0
-    rx_rate: float = 0.0
-    sequence_time: float = 0.0
-    initialization_time: float = 0.0
-    sequence_start_time: float = 0.0
-    ringbuffer_size: int = 0
-    agc_status_bank_h: int = 0
-    lp_status_bank_h: int = 0
-    agc_status_bank_l: int = 0
-    lp_status_bank_l: int = 0
-    gps_locked: bool = False
-    gps_to_system_time_diff: float = 0.0
-
-    @staticmethod
-    def parse(message: str):
-        """Parses a string of `k1=v1 k2=v2` into RxSamplesMetadata"""
-        rx_metadata = RxSamplesMetadata()
-        split_reply = message.split(" ")  # expect "k1=v1 k2=v2 k3=v3"
-        for token in split_reply:
-            split_token = token.split("=")
-            k = split_token[0]
-            v = split_token[1]
-            var_type = getattr(rx_metadata, k)
-            if isinstance(var_type, bool):
-                v = bool(int(v))  # bool("0") -> True, bool(int("0")) -> False
-            else:
-                v = type(var_type)(v)
-            setattr(rx_metadata, k, v)
-        return rx_metadata
-
-    def format_for_ipc(self):
-        str_list = list()
-        for f in fields(self):
-            v = getattr(self, f.name)
-            if isinstance(v, bool):
-                v = int(v)
-            str_list.append(f"{f.name}={v}")
-        msg_str = " ".join(str_list)
-        return msg_str.encode("utf-8")
-
-
-@dataclass
-class DriverPacket:
-    sequence_num: int = 0
-    rxrate: float = 0.0
-    txrate: float = 0.0
-    txcenterfreq: float = 0.0
-    rxcenterfreq: float = 0.0
-    num_rx_samps: int = 0
-    num_tx_samps: int = 0
-    seqtime: float = 0.0
-    sample_timing: float = 0.0
-    burst_start: bool = False
-    burst_end: bool = False
-    align_sequences: bool = False
-    buffer_offset: int = 0
-
-    @staticmethod
-    def parse(message: str):
-        """Parses a string of `k1=v1 k2=v2` into DriverPacket"""
-        packet = DriverPacket()
+class CustomSerialization:
+    @classmethod
+    def parse(cls, message: str):
+        """Parses a string of `k1=v1 k2=v2` into object"""
+        packet = cls()
         split_reply = message.split(" ")  # expect "k1=v1 k2=v2 k3=v3"
         for token in split_reply:
             split_token = token.split("=")
@@ -342,3 +232,45 @@ class DriverPacket:
             str_list.append(f"{f.name}={v}")
         msg_str = " ".join(str_list)
         return msg_str.encode("utf-8")
+
+
+@dataclass
+class RxSamplesMetadata(CustomSerialization):
+    """
+    Message from usrp_driver to rx_signal_processing.
+    """
+
+    sequence_num: int = 0
+    num_rx_samps: int = 0
+    rx_rate: float = 0.0
+    sequence_time: float = 0.0
+    initialization_time: float = 0.0
+    sequence_start_time: float = 0.0
+    ringbuffer_size: int = 0
+    agc_status_bank_h: int = 0
+    lp_status_bank_h: int = 0
+    agc_status_bank_l: int = 0
+    lp_status_bank_l: int = 0
+    gps_locked: bool = False
+    gps_to_system_time_diff: float = 0.0
+
+
+@dataclass
+class DriverPacket(CustomSerialization):
+    """
+    Message from radar_control to usrp_driver.
+    """
+
+    sequence_num: int = 0
+    rxrate: float = 0.0
+    txrate: float = 0.0
+    txcenterfreq: float = 0.0
+    rxcenterfreq: float = 0.0
+    num_rx_samps: int = 0
+    num_tx_samps: int = 0
+    seqtime: float = 0.0
+    sample_timing: float = 0.0
+    burst_start: bool = False
+    burst_end: bool = False
+    align_sequences: bool = False
+    buffer_offset: int = 0
