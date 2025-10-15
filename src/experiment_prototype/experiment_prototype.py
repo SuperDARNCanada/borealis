@@ -15,11 +15,11 @@ import copy
 import importlib
 import inspect
 import os
+import pkgutil
 from pathlib import Path
 
 # third-party
 import numpy as np
-import re
 import structlog
 
 # local
@@ -121,6 +121,10 @@ class ExperimentPrototype:
     in-experiment by the class method 'update' in your experiment class. These variables have been
     given property setters.
 
+    Each concrete experiment class should have a `cpid` class variable which is a unique positive integer
+    identifier for the experiment. This identifier will be checked against all other defined experiments
+    to ensure uniqueness.
+
     The following are the user-modifiable attributes of the ExperimentPrototype that are
     used to make an experiment. Other parameters are set in the init and cannot be modified after
     instantiation.
@@ -129,9 +133,6 @@ class ExperimentPrototype:
     * interface:    modifiable using the add_slice, edit_slice, and del_slice methods, or by
                     updating the interface dict directly.
 
-    :param  cpid:               Unique id necessary for each control program (experiment). Cannot be
-                                changed after instantiation.
-    :type   cpid:               int
     :param  rx_bandwidth:       The desired bandwidth for the experiment. Directly determines rx
                                 sampling rate of the USRPs. Cannot be changed after instantiation.
                                 Default 5.0 MHz.
@@ -155,58 +156,59 @@ class ExperimentPrototype:
                                     USRP clock rate
     """
 
+    cpid = 0  # default, will raise exception if not overwritten in child class
+
     def __init__(
         self,
-        cpid,
         rx_bandwidth=default_rx_bandwidth,
         tx_bandwidth=5.0e6,
         comment_string="",
     ):
-        if not isinstance(cpid, int):
+        if not isinstance(self.cpid, int):
             errmsg = "CPID must be a unique int"
             raise ExperimentException(errmsg)
-        if cpid > np.iinfo(np.int16).max:
+        if self.cpid > np.iinfo(np.int16).max:
             errmsg = "CPID must be representable by a 16-bit signed integer"
             raise ExperimentException(errmsg)
         # Quickly check for uniqueness with a search in the experiments directory first taking care
         # not to look for CPID in any experiments that are just tests (located in the testing
         # directory)
-        experiment_files_list = list(
-            Path(f"{BOREALISPATH}/src/borealis_experiments/").glob("*.py")
-        )
         self.__experiment_name = self.__class__.__name__
         # TODO use this to check the cpid is correct using pygit2, or __class__.__module__ for module name
         # TODO replace below cpid local uniqueness check with pygit2 or some reference
         #  to a database to to ensure CPID uniqueness and to ensure CPID is entered in the database
         #  for this experiment (this CPID is unique AND its correct given experiment name)
         cpid_list = {}
-        for experiment_file in experiment_files_list:
-            with open(experiment_file) as file_to_search:
-                for line in file_to_search:
-                    # Find the name of the class in the file and break if it matches this class
-                    experiment_class_name = re.findall(
-                        "class.*\(ExperimentPrototype\):", line
-                    )
-                    if experiment_class_name:
-                        # Parse out just the name from the experiment, format will be like this:
-                        # ['class IBCollabMode(ExperimentPrototype):']
-                        atomic_class_name = (
-                            experiment_class_name[0].split()[1].split("(")[0]
-                        )
-                        if self.__experiment_name == atomic_class_name:
-                            break
 
-                    # Find any lines that have 'cpid = [integer]'
-                    existing_cpid = re.findall("cpid.?=.?[0-9]+", line)
-                    if existing_cpid:
-                        cpid_list[existing_cpid[0].split("=")[1].strip()] = (
-                            experiment_file
-                        )
+        experiment_path = f"{BOREALISPATH}/src/borealis_experiments/"
+        if not os.path.exists(experiment_path):
+            raise OSError(f"Error: experiment path {experiment_path} is invalid")
 
-        if str(cpid) in cpid_list.keys():
-            errmsg = f"CPID must be unique. {cpid} is in use by another local experiment {cpid_list[str(cpid)]}"
+        # Iterate through all modules in the borealis_experiments directory
+        for _, name, _ in pkgutil.iter_modules([experiment_path]):
+            imported_module = importlib.import_module(
+                "." + name, package="borealis_experiments"
+            )
+            # Loop through all attributes of each found module
+            for i in dir(imported_module):
+                attribute = getattr(imported_module, i)
+                # To verify that an attribute is a runnable experiment, check that the attribute is
+                # a class and inherits from ExperimentPrototype, but is not ExperimentPrototype itself
+                if (
+                    inspect.isclass(attribute)
+                    and issubclass(attribute, ExperimentPrototype)
+                    and "ExperimentPrototype" not in str(attribute)
+                    and self.__experiment_name not in str(attribute)
+                ):
+                    cpid = getattr(attribute, "cpid")
+                    cpid_list[int(cpid)] = str(attribute)
+                    break
+            del imported_module
+
+        if self.cpid in cpid_list.keys():
+            errmsg = f"CPID must be unique. {self.cpid} is in use by another local experiment {cpid_list[self.cpid]}"
             raise ExperimentException(errmsg)
-        if cpid <= 0:
+        if self.cpid <= 0:
             errmsg = (
                 "The CPID should be a positive number in the experiment. If the embargo"
                 " flag is set, then borealis will configure the CPID to be negative to ."
@@ -217,7 +219,6 @@ class ExperimentPrototype:
         self.__options = (
             Options()
         )  # Load the config, hardware, and restricted frequency data
-        self.__cpid = cpid
         self.__scheduling_mode = "unknown"
         if comment_string is None:
             comment_string = ""
@@ -300,17 +301,6 @@ class ExperimentPrototype:
 
     __slice_keys = slice_key_set
     __hidden_slice_keys = hidden_key_set
-
-    @property
-    def cpid(self):
-        """
-        This experiment's CPID (control program ID, a term that comes from ROS).
-
-        :returns:   cpid - read-only, only modified at runtime by set_scheduling_mode() to set to a
-                    negative value if the embargo flag was set in the schedule
-        :rtype:     int
-        """
-        return self.__cpid
 
     @property
     def experiment_name(self):
@@ -1147,8 +1137,6 @@ def retrieve_experiment(experiment_module_name: str):
         if obj.__module__ == experiment_mod.__name__
         and ExperimentPrototype in inspect.getmro(obj)
     ]
-    # TODO: get the CPID of each experiment while iterating (once cpid is a class variable of ExperimentPrototype)
-    # TODO: check if self.cpid is not unique
 
     if len(experiment_classes) == 0:
         errmsg = (
