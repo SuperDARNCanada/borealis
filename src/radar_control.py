@@ -26,7 +26,7 @@ import zmq
 import numpy as np
 import posix_ipc as ipc
 
-from experiment_prototype.experiment_prototype import experiment_handler
+from experiment_prototype.experiment_prototype import experiment_handler, retrieve_experiment
 from experiment_prototype.interface_classes.averaging_periods import CFSAveragingPeriod
 from utils.options import Options
 import utils.message_formats as messages
@@ -729,7 +729,8 @@ def main(exp_name, scheduling_mode, embargo, **kwargs):
     seqnum_start = 0
 
     # Wait for experiment handler at the start until we have an experiment to run.
-    experiment = experiment_handler(exp_name, scheduling_mode, embargo, **kwargs)
+    exp_class = retrieve_experiment(exp_name)
+    experiment = experiment_handler(exp_class, scheduling_mode, embargo, **kwargs)
 
     # Flag for starting the radar on the minute boundary
     wait_for_first_scanbound = experiment.slice_dict.get("wait_for_first_scanbound")

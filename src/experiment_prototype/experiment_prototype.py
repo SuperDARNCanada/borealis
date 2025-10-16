@@ -17,6 +17,7 @@ import inspect
 import os
 import pkgutil
 from pathlib import Path
+from typing import Type
 
 # third-party
 import numpy as np
@@ -1108,7 +1109,7 @@ class ExperimentPrototype:
             )
 
 
-def retrieve_experiment(experiment_module_name: str):
+def retrieve_experiment(experiment_module_name: str) -> Type[ExperimentPrototype]:
     """
     Retrieve the experiment class from the provided module given as an argument.
 
@@ -1162,7 +1163,7 @@ def retrieve_experiment(experiment_module_name: str):
 
 
 def experiment_handler(
-    experiment_module: str, scheduling_mode_type: str, embargo: bool = False, **kwargs
+    experiment_class: Type[ExperimentPrototype], scheduling_mode_type: str, embargo: bool = False, **kwargs
 ) -> ExperimentPrototype:
     """
     Build the experiment class.
@@ -1172,8 +1173,8 @@ def experiment_handler(
 
     In the future, the update method will be implemented where the experiment can be modified by
     the incoming data.
-    :param experiment_module: The name of the module in the experiment_prototype package that contains your Experiment class, e.g. normalscan
-    :type  experiment_module: str
+    :param experiment_class: class (not object) of the experiment
+    :type  experiment_class: Type[ExperimentPrototype]
     :param scheduling_mode_type: The type of scheduling time for this experiment run, e.g. `common`, `special`, or `discretionary`
     :type  scheduling_mode_type: str
     :param embargo: Flag to embargo the file (makes the CPID negative)
@@ -1184,10 +1185,7 @@ def experiment_handler(
     :returns: The instantiated experiment object
     :rtype:   ExperimentPrototype
     """
-    experiment_name = experiment_module
     scheduling_mode_type = scheduling_mode_type
-
-    experiment_class = retrieve_experiment(experiment_name)
 
     if kwargs:
         exp = experiment_class(**kwargs)

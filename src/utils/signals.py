@@ -8,10 +8,11 @@ filtered signals, and extraction of lag profiles from beamformed samples.
 :copyright: 2024 SuperDARN Canada
 :author: Remington Rohel
 """
-
+import itertools
 from functools import reduce
 import math
 from multiprocessing import shared_memory
+from typing import Union
 
 from scipy.constants import speed_of_light
 import numpy as np
@@ -431,7 +432,7 @@ class DSP:
 
 def get_phase_shift(
     beam_angle: list[float],
-    freq_khz: float,
+    freq_khz: Union[float, list[float]],
     antenna_locations: np.ndarray,
 ):
     """
@@ -440,27 +441,35 @@ def get_phase_shift(
     :param  beam_angle:         list of azimuthal direction of the beam off boresight, in degrees,
                                 positive beamdir being to the right of the boresight (looking along
                                 boresight from ground).
-    :type   beam_angle:         list
-    :param  freq_khz:           transmit frequency in kHz
-    :type   freq_khz:           float
+    :type   beam_angle:         list[float]
+    :param  freq_khz:           transmit frequency in kHz. Can be a single number, or a list of same length
+                                as beam_order.
+    :type   freq_khz:           Union[float, list[float]]
     :param  antenna_locations:  x-coordinates of each antenna in the array, in meters. Shape [num_antennas]
     :type   antenna_locations:  np.ndarray
 
-    :returns:   phase_shift     a 2D array of shape [beams, antennas] giving the complex excitation for each
-                                antenna required to form each beam.
+    :returns:   phase_shift     a 3D array of shape [freqs, beams, antennas] giving the complex excitation for each
+                                antenna required to form each beam for each frequency.
     :rtype:     phase_shift     ndarray
     """
 
+    if not isinstance(freq_khz, list):
+        freq_khz = [freq_khz]
+    # freq_khz: [num_freqs]
+
+    freq_khz = np.array(freq_khz, dtype=np.float32)
     freq_hz = freq_khz * 1000.0  # convert to Hz.
     k = 2 * np.pi * freq_hz / speed_of_light  # 2pi / wavelength
     beam_rads = np.deg2rad(np.array(beam_angle, dtype=np.float32))
+    # beam_rads: [num_angles]
 
     # phase shift = 0 at array midpoint (by convention), so this is the displacement in x of each beam from the array
     # midpoint after the wave traverses one wavelength. Essentially, the component along x of the beam, normalized by
     # the wavelength.
-    beam_displacements = -1 * np.sin(beam_rads) * k
+    beam_displacements = np.outer(k, -1 * np.sin(beam_rads))
+    # beam_displacements: [num_freqs, num_angles]
 
-    phase_shift = np.einsum("i,j->ij", beam_displacements, antenna_locations)
+    phase_shift = np.einsum("ij,k->ijk", beam_displacements, antenna_locations)
     phase_shift = np.exp(1j * phase_shift)
 
     return phase_shift
@@ -519,18 +528,23 @@ def get_samples(rate, wave_freq, pulse_len, ramp_time, max_amplitude):
     return samples
 
 
-def basic_pulse_phase_offset(exp_slice):
+def basic_pulse_phase_offset(exp_slice, beam_iter):
     """
     Calculate the phase difference of each pulse with respect to the first
     pulse based on the transmit frequency and the pulse separation.
 
     :param      exp_slice:  The experiment slice information
     :type       exp_slice:  class
+    :param      beam_iter:  beam index
+    :type       beam_iter:  int
 
     :returns:   Pulse phase offsets
     :rtype:     array (rad)
     """
-    freq_hz = exp_slice.freq * 1e3
+    freqs = exp_slice.freq
+    if not isinstance(freqs, list):
+        freqs = [freqs]
+    freq_hz = freqs[beam_iter] * 1e3
     tau_s = exp_slice.tau_spacing / 1e6
     omega = 2 * np.pi * freq_hz
     pulse_sequence = exp_slice.pulse_sequence
