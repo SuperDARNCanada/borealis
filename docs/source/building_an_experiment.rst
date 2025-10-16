@@ -246,7 +246,7 @@ by the following command::
         python3 BOREALISPATH/tests/experiments/experiment_unittests.py
 
 This will test all experiments within the ``borealis_experiments`` directory, and run all
-exception-checking unit tests within the testing_archive directory of the experiments directory.
+exception-checking unit tests within the tests/ directory of the experiments directory.
 At the end, the results of all tests will be summarized, showing how many tests passed and failed.
 
 This testing script can also be used to check specific experiments are written correctly. To do

@@ -3,7 +3,7 @@ Test module for the experiment_handler/experiment_prototype code.
 
 This script can be run most simply via 'python3 experiment_unittests.py'. This will run through all
 experiments defined in the Borealis experiments top level directory, experiment exception tests
-defined in the testing_archive directory, as well as any other tests hard coded into this script.
+defined in the tests/ directory, as well as any other tests hard coded into this script.
 Any experiment that raises an exception when building will show up as a failed test here.
 
 This script can also be run to test individual experiments by using the --experiment flag. For
@@ -33,10 +33,14 @@ import pkgutil
 from importlib import import_module
 import importlib.util
 import json
+from typing import Type
 
 # Need the path append to import within this file
 BOREALISPATH = os.environ["BOREALISPATH"]
 sys.path.append(f"{BOREALISPATH}/src")
+
+import borealis_experiments.superdarn_common_fields as scf
+from experiment_prototype.experiment_prototype import ExperimentPrototype, retrieve_experiment, experiment_handler
 
 
 def redirect_to_devnull(func, *args, **kwargs):
@@ -53,14 +57,12 @@ def redirect_to_devnull(func, *args, **kwargs):
     return result
 
 
-def ehmain(experiment_name="normalscan", scheduling_mode="discretionary", **kwargs):
+def ehmain(exp_class: Type[ExperimentPrototype], scheduling_mode="discretionary", **kwargs):
     """
     Calls the functions within experiment handler that verify an experiment
 
-    :param  experiment_name: The module name of the experiment to be verified. Experiment name must
-                             be in module format (i.e. testing_archive.test_example for unit tests)
-                             to work properly
-    :type   experiment_name: str
+    :param  exp_class: The class of the experiment to be verified.
+    :type   exp_class: Type[ExperimentPrototype]
     :param  scheduling_mode: The scheduling mode to run. Defaults to 'discretionary'
     :type   scheduling_mode: str
     :param  kwargs: The keyword arguments for the experiment
@@ -72,9 +74,7 @@ def ehmain(experiment_name="normalscan", scheduling_mode="discretionary", **kwar
         console=False, logfile=False, aggregator=False
     )  # Prevent logging in experiment
 
-    from experiment_prototype.experiment_prototype import experiment_handler
-
-    experiment_handler(experiment_name, scheduling_mode, embargo=False, **kwargs)
+    experiment_handler(exp_class, scheduling_mode, embargo=False, **kwargs)
 
 
 class TestExperimentEnvSetup(unittest.TestCase):
@@ -110,7 +110,6 @@ class TestExperimentEnvSetup(unittest.TestCase):
         """
         Test the code that checks for the hdw.dat file
         """
-        import borealis_experiments.superdarn_common_fields as scf
 
         site_name = scf.options.site_id
         hdw_path = scf.options.hdw_path
@@ -118,13 +117,14 @@ class TestExperimentEnvSetup(unittest.TestCase):
         os.rename(f"{hdw_path}/hdw.dat.{site_name}", f"{hdw_path}/_hdw.dat.{site_name}")
 
         with self.assertRaisesRegex(ValueError, "Cannot open hdw.dat.[a-z]{3} file at"):
-            ehmain()
+            normalscan = retrieve_experiment("normalscan")
+            ehmain(normalscan)
 
         # Now rename the hdw.dat file and move on
         os.rename(f"{hdw_path}/_hdw.dat.{site_name}", f"{hdw_path}/hdw.dat.{site_name}")
 
 
-class TestExperimentArchive(unittest.TestCase):
+class TestMockExperiments(unittest.TestCase):
     """
     A unittest class to test various ways for an experiment to fail for the experiment_handler
     module. Tests will check that exceptions are correctly thrown for each failure case. All test
@@ -154,11 +154,10 @@ class TestActiveExperiments(unittest.TestCase):
 
 def build_unit_tests():
     """
-    Create individual unit tests for all test cases specified in testing_archive directory of experiments path.
+    Create individual unit tests for all test cases specified in tests/ directory of experiments path.
     """
-    from experiment_prototype.experiment_prototype import ExperimentPrototype
 
-    experiment_package = "testing_archive"
+    experiment_package = "tests"
     experiment_path = f"{BOREALISPATH}/src/borealis_experiments/{experiment_package}/"
     if not os.path.exists(experiment_path):
         raise OSError(f"Error: experiment path {experiment_path} is invalid")
@@ -181,24 +180,26 @@ def build_unit_tests():
                     if hasattr(attribute, "error_message"):
                         # If expected to fail, should have a classmethod called "error_message"
                         # that contains the error message raised
-                        exp_exception, msg = getattr(attribute, "error_message")()
+                        try:
+                            exp_exception, msg = getattr(attribute, "error_message")()
+                        except ValueError:
+                            pass
                         test = exception_test_generator(
-                            "testing_archive." + name, exp_exception, msg
+                            attribute, exp_exception, msg
                         )
                     else:  # No exception expected - this is a positive test
-                        test = experiment_test_generator("testing_archive." + name)
+                        test = experiment_test_generator(attribute)
                     # setattr makes a properly named test method within TestExperimentArchive which
                     # can be run by unittest.main()
-                    setattr(TestExperimentArchive, name, test)
-                    break
+                    setattr(TestMockExperiments, f"test_{attribute.__name__}", test)
 
 
-def exception_test_generator(module_name, exception, exception_message):
+def exception_test_generator(exp_class: Type[ExperimentPrototype], exception, exception_message):
     """
     Generate a single test for the given module name and exception message
 
-    :param module_name:         Experiment module name, i.e. 'normalscan'
-    :type  module_name:         str
+    :param exp_class:           Experiment class
+    :type  exp_class:           Type[ExperimentPrototype]
     :param exception:           Exception that is expected to be raised
     :type  exception:           BaseException
     :param exception_message:   Message from the Exception raised.
@@ -207,7 +208,7 @@ def exception_test_generator(module_name, exception, exception_message):
 
     def test(self):
         with self.assertRaisesRegex(exception, exception_message):
-            redirect_to_devnull(ehmain, experiment_name=module_name)
+            redirect_to_devnull(ehmain, exp_class)
 
     return test
 
@@ -217,7 +218,6 @@ def build_experiment_tests(experiments=None, kwargs=None):
     Create individual unit tests for all experiments within the base borealis_experiments/
     directory. All experiments are run to ensure no exceptions are thrown when they are built
     """
-    from experiment_prototype.experiment_prototype import ExperimentPrototype
 
     experiment_package = "borealis_experiments"
     experiment_path = f"{BOREALISPATH}/src/{experiment_package}/"
@@ -249,10 +249,10 @@ def build_experiment_tests(experiments=None, kwargs=None):
             ):
                 # Only create a test if the current attribute is the experiment itself
                 if "ExperimentPrototype" not in str(attribute):
-                    test = experiment_test_generator(exp_name, **kwargs_dict)
+                    test = experiment_test_generator(attribute, **kwargs_dict)
                     # setattr make the "test" function a method within TestActiveExperiments called
                     # "test_[exp_name]" which can be run via unittest.main()
-                    setattr(TestActiveExperiments, f"test_{exp_name}", test)
+                    setattr(TestActiveExperiments, f"test_{attribute.__name__}", test)
 
     # Grab the experiments specified
     if experiments is not None:
@@ -274,18 +274,18 @@ def build_experiment_tests(experiments=None, kwargs=None):
             add_experiment_test(name)
 
 
-def experiment_test_generator(module_name, **kwargs):
+def experiment_test_generator(exp_class: Type[ExperimentPrototype], **kwargs):
     """
     Generate a single test for a given experiment name. The test will try to run the experiment,
     and if any exceptions are thrown (i.e. the experiment is built incorrectly) the test will fail.
 
-    :param module_name: Experiment module name (i.e. 'normalscan')
-    :type module_name: str
+    :param exp_class: Experiment class
+    :type  exp_class: Type[ExperimentPrototype]
     """
 
     def test(self):
         try:
-            redirect_to_devnull(ehmain, experiment_name=module_name, **kwargs)
+            redirect_to_devnull(ehmain, exp_class, **kwargs)
         except Exception as err:
             self.fail(err)
 
@@ -328,7 +328,13 @@ def run_tests(raw_args=None, buffer=True, print_results=True):
         "--no-tests",
         required=False,
         action="store_true",
-        help="Only test the main experiments, not those in testing_archive/",
+        help="Only test the main experiments, not those in tests/",
+    )
+    parser.add_argument(
+        "--verbose",
+        required=False,
+        default=1,
+        help="Print more context during testing"
     )
     args = parser.parse_args(raw_args)
 
@@ -382,7 +388,7 @@ def run_tests(raw_args=None, buffer=True, print_results=True):
                 exit(1)
         argv = [parser.prog] + exp_tests
     if print_results:
-        result = unittest.main(module=args.module, argv=argv, exit=False, buffer=buffer)
+        result = unittest.main(module=args.module, argv=argv, exit=False, buffer=buffer, verbosity=int(args.verbose))
     else:
         result = redirect_to_devnull(
             unittest.main, module=args.module, argv=argv, exit=False, buffer=buffer

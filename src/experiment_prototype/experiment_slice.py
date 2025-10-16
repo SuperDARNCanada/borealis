@@ -975,13 +975,14 @@ class ExperimentSlice:
 
         # TODO review issue #195 - Characterize transmit waveforms near edge of tx bandwidth
         if info.data["rxonly"] is False:
-            tx_center = info.data["txctrfreq"]
             if (freq > info.data["tx_freq_bounds"][1]) or (
                 freq < info.data["tx_freq_bounds"][0]
             ):
                 raise ValueError(
                     f"Slice frequency is outside tx frequency bounds {info.data['tx_freq_bounds']}"
                 )
+
+            tx_center = info.data.get("txctrfreq", None)
             if tx_center is not None and abs(freq - tx_center) < 50:
                 raise ValueError(
                     f"Slice frequency cannot be within 50kHz of tx center frequency {tx_center:.3f}"
