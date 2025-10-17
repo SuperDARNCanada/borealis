@@ -271,7 +271,7 @@ def experiment_handler(semaphore, args):
                 main_antennas = set([i for i in range(options.main_antenna_locations.shape[0])])
                 tx_antennas = set(options.tx_main_antennas)
                 unused_antennas = main_antennas - tx_antennas
-                log.warning("Not all antennas being used", unused_antennas=unused_antennas)
+                log.warning("Not all antennas are being used", unused_antennas=unused_antennas)
             serialized_exp = pickle.dumps(exp, protocol=pickle.HIGHEST_PROTOCOL)
             # Use the newest, fastest protocol (currently version 4 in python 3.4+)
             change_flag = False
