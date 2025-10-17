@@ -8,7 +8,7 @@ filtered signals, and extraction of lag profiles from beamformed samples.
 :copyright: 2024 SuperDARN Canada
 :author: Remington Rohel
 """
-import itertools
+
 from functools import reduce
 import math
 from multiprocessing import shared_memory

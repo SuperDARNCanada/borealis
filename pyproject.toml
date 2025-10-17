@@ -55,7 +55,6 @@ include = [
     "**/pyproject.toml"
 ]
 extend-exclude = [
-    "src/borealis_experiments/**/*.py",
     "tests/archive/**/*",
 ]
 

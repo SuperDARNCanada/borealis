@@ -40,7 +40,12 @@ BOREALISPATH = os.environ["BOREALISPATH"]
 sys.path.append(f"{BOREALISPATH}/src")
 
 import borealis_experiments.superdarn_common_fields as scf
-from experiment_prototype.experiment_prototype import ExperimentPrototype, retrieve_experiment, experiment_handler
+from experiment_prototype.experiment_exception import ExperimentException
+from experiment_prototype.experiment_prototype import (
+    ExperimentPrototype,
+    retrieve_experiment,
+    experiment_handler,
+)
 
 
 def redirect_to_devnull(func, *args, **kwargs):
@@ -57,7 +62,9 @@ def redirect_to_devnull(func, *args, **kwargs):
     return result
 
 
-def ehmain(exp_class: Type[ExperimentPrototype], scheduling_mode="discretionary", **kwargs):
+def ehmain(
+    exp_class: Type[ExperimentPrototype], scheduling_mode="discretionary", **kwargs
+):
     """
     Calls the functions within experiment handler that verify an experiment
 
@@ -124,6 +131,38 @@ class TestExperimentEnvSetup(unittest.TestCase):
         os.rename(f"{hdw_path}/_hdw.dat.{site_name}", f"{hdw_path}/hdw.dat.{site_name}")
 
 
+class TestExperimentRetrieval(unittest.TestCase):
+    """
+    A class to test that `retrieve_experiment()` works properly.
+    """
+
+    def setUp(self):
+        """
+        This function is called before every test case.
+        """
+        print("\nRetrieve Experiment test: ", self._testMethodName)
+
+    def test_normalscan(self):
+        exp = retrieve_experiment("normalscan")
+        assert exp.__name__, "NormalScan"
+
+    def test_two_classes(self):
+        with self.assertRaisesRegex(
+            ExperimentException,
+            "You have more than one experiment class in your experiment file - exiting",
+        ):
+            retrieve_experiment("tests.beam_order")
+
+    def test_nonexistent_file(self):
+        with self.assertRaisesRegex(
+            ModuleNotFoundError, "No module named 'borealis_experiments.dummy'"
+        ):
+            retrieve_experiment("dummy")
+
+    def test_module_with_extra_attributes(self):
+        retrieve_experiment("full_fov")
+
+
 class TestMockExperiments(unittest.TestCase):
     """
     A unittest class to test various ways for an experiment to fail for the experiment_handler
@@ -184,9 +223,7 @@ def build_unit_tests():
                             exp_exception, msg = getattr(attribute, "error_message")()
                         except ValueError:
                             pass
-                        test = exception_test_generator(
-                            attribute, exp_exception, msg
-                        )
+                        test = exception_test_generator(attribute, exp_exception, msg)
                     else:  # No exception expected - this is a positive test
                         test = experiment_test_generator(attribute)
                     # setattr makes a properly named test method within TestExperimentArchive which
@@ -194,7 +231,9 @@ def build_unit_tests():
                     setattr(TestMockExperiments, f"test_{attribute.__name__}", test)
 
 
-def exception_test_generator(exp_class: Type[ExperimentPrototype], exception, exception_message):
+def exception_test_generator(
+    exp_class: Type[ExperimentPrototype], exception, exception_message
+):
     """
     Generate a single test for the given module name and exception message
 
@@ -331,10 +370,7 @@ def run_tests(raw_args=None, buffer=True, print_results=True):
         help="Only test the main experiments, not those in tests/",
     )
     parser.add_argument(
-        "--verbose",
-        required=False,
-        default=1,
-        help="Print more context during testing"
+        "--verbosity", required=False, default=1, help="Verbosity level, larger number increases verbosity."
     )
     args = parser.parse_args(raw_args)
 
@@ -388,7 +424,13 @@ def run_tests(raw_args=None, buffer=True, print_results=True):
                 exit(1)
         argv = [parser.prog] + exp_tests
     if print_results:
-        result = unittest.main(module=args.module, argv=argv, exit=False, buffer=buffer, verbosity=int(args.verbose))
+        result = unittest.main(
+            module=args.module,
+            argv=argv,
+            exit=False,
+            buffer=buffer,
+            verbosity=int(args.verbosity),
+        )
     else:
         result = redirect_to_devnull(
             unittest.main, module=args.module, argv=argv, exit=False, buffer=buffer
