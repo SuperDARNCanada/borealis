@@ -9,6 +9,7 @@ Sends data to realtime applications.
 """
 
 import bz2
+import datetime as dt
 import inspect
 from pathlib import Path
 import pickle
@@ -22,10 +23,20 @@ import zmq
 
 def fit_record(rawacf_records):
     """Fits a list of DMAP-formatted rawacf records using backscatter, returning the results"""
-    log.info("fitting record", record=rawacf_records[0])
+    first_rec = rawacf_records[0]
+    timestamp = dt.datetime(
+        first_rec['time.yr'],
+        first_rec['time.mo'],
+        first_rec['time.dy'],
+        first_rec['time.hr'],
+        first_rec['time.mt'],
+        first_rec['time.sc'],
+        first_rec['time.us'],
+    )
+    log.info("fitting record", timestamp=timestamp)
 
     fitted_records = []
-    for rec in rawacf_records[1]:
+    for rec in rawacf_records:
         fit_data = fitacf._fit(rec)
         fit_data['pwr0'] = np.array(fit_data['pwr0'], dtype=np.float32)  # backscatter returns float64, need float32
         fitted_records.append(fit_data.copy())
