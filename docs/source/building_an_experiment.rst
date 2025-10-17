@@ -63,7 +63,7 @@ East, depending upon the radar.
 Interfacing Types Between Slices
 --------------------------------
 
-.. autodata:: src.experiment_prototype.experiment_prototype.interface_types
+.. autodata:: src.utils.experiment_prototype.interface_types
     :noindex:
 
 If the ``txctrfreq`` and ``rxctrfreq`` parameters are not set by the user, then borealis will attempt
@@ -138,7 +138,7 @@ ExperimentPrototype class.
 
 This means the ExperimentPrototype class must be imported at the start of the experiment file ::
 
-    from experiment_prototype.experiment_prototype import ExperimentPrototype
+    from utils.experiment_prototype import ExperimentPrototype
 
 Please name the class within the experiment file in a similar fashion to the file, as the class name
 is written to the datasets produced.
@@ -187,7 +187,7 @@ dictionary are described below.
 Slice Keys
 ----------
 
-.. autoclass:: src.experiment_prototype.experiment_slice.ExperimentSlice()
+.. autoclass:: src.utils.experiment_slice.ExperimentSlice()
     :noindex:
 
 ------------------

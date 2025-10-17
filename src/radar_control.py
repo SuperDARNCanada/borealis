@@ -26,8 +26,8 @@ import zmq
 import numpy as np
 import posix_ipc as ipc
 
-from experiment_prototype.experiment_prototype import experiment_handler, retrieve_experiment
-from experiment_prototype.interface_classes.averaging_periods import CFSAveragingPeriod
+from utils.experiment_prototype import experiment_handler, retrieve_experiment
+from utils.interface_classes.averaging_periods import CFSAveragingPeriod
 from utils.options import Options
 import utils.message_formats as messages
 from utils import socket_operations as so
@@ -312,7 +312,7 @@ def create_dsp_message(radctrl_params):
                     slice_dict[slice_id],
                     np.average(slice_dict[slice_id].cfs_range),
                 )
-                main_phases = tx_phases[beam_num]
+                main_phases = tx_phases[0, beam_num]
 
             intf_phases = np.zeros(
                 len(slice_dict[slice_id].rx_intf_antennas), dtype=np.complex64
@@ -333,7 +333,10 @@ def create_dsp_message(radctrl_params):
         rx_chan.tau_spacing = slice_dict[slice_id].tau_spacing
 
         # Send the translational frequencies to dsp in order to bandpass filter correctly.
-        rx_chan.rx_freq = slice_dict[slice_id].freq * 1.0e3
+        freq_khz = slice_dict[slice_id].freq
+        if isinstance(freq_khz, list):
+            freq_khz = freq_khz[slice_dict[slice_id].freq_order[radctrl_params.aveperiod.beam_iter]]
+        rx_chan.rx_freq = freq_khz * 1.0e3
         rx_chan.num_ranges = slice_dict[slice_id].num_ranges
         rx_chan.first_range = slice_dict[slice_id].first_range
         rx_chan.range_sep = slice_dict[slice_id].range_sep
@@ -483,6 +486,7 @@ def create_dw_message(radctrl_params):
 
         for slice_id in sequence.slice_ids:
             sqn_slice = sequence.slice_dict[slice_id]
+            freq_idx = sqn_slice.freq_order[radctrl_params.aveperiod.beam_iter]
             rxchannel = messages.RxChannelMetadata()
             rxchannel.slice_id = slice_id
             rxchannel.slice_comment = sqn_slice.comment
@@ -490,7 +494,10 @@ def create_dw_message(radctrl_params):
             rxchannel.rx_only = sqn_slice.rxonly
             rxchannel.pulse_len = sqn_slice.pulse_len
             rxchannel.tau_spacing = sqn_slice.tau_spacing
-            rxchannel.rx_freq = sqn_slice.freq
+            freq_khz = sqn_slice.freq
+            if isinstance(freq_khz, list):
+                freq_khz = freq_khz[freq_idx]
+            rxchannel.rx_freq = freq_khz
             rxchannel.ptab = sqn_slice.pulse_sequence
 
             # We always build one sequence in advance, so we trim the last one from when radar
@@ -505,7 +512,7 @@ def create_dw_message(radctrl_params):
             rxchannel.rx_intf_antennas = sqn_slice.rx_intf_antennas
             rxchannel.tx_antennas = sqn_slice.tx_antennas
             rxchannel.tx_excitations = sequence.tx_main_phase_shifts[slice_id][
-                radctrl_params.aveperiod.beam_iter
+                freq_idx, sqn_slice.tx_beam_order[radctrl_params.aveperiod.beam_iter]
             ]
 
             beams = sqn_slice.rx_beam_order[radctrl_params.aveperiod.beam_iter]
@@ -519,12 +526,12 @@ def create_dw_message(radctrl_params):
                 rxchannel.beams.append(beam_add)
                 rx_main_excitations.append(
                     sequence.rx_beam_phases[slice_id]["main"][
-                        beam, sequence.rx_main_antenna_indices[slice_id]
+                        freq_idx, beam, sequence.rx_main_antenna_indices[slice_id]
                     ]
                 )
                 rx_intf_excitations.append(
                     sequence.rx_beam_phases[slice_id]["intf"][
-                        beam, sequence.rx_intf_antenna_indices[slice_id]
+                        freq_idx, beam, sequence.rx_intf_antenna_indices[slice_id]
                     ]
                 )
             rxchannel.rx_main_excitations = np.array(

@@ -26,12 +26,12 @@ import structlog
 # local
 import borealis_experiments.superdarn_common_fields as scf
 from utils.options import Options
-from experiment_prototype.interface_classes.sequences import Sequence
-from experiment_prototype.interface_classes.interface_class_base import (
+from utils.interface_classes.sequences import Sequence
+from utils.interface_classes.interface_class_base import (
     InterfaceClassBase,
 )
-from experiment_prototype.experiment_exception import ExperimentException
-from experiment_prototype.experiment_slice import ExperimentSlice
+from utils.exceptions import ExperimentException
+from utils.experiment_slice import ExperimentSlice
 
 # Obtain the module name that imported this log_config
 caller = Path(inspect.stack()[-1].filename)

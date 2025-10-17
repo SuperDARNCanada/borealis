@@ -25,6 +25,8 @@ https://www.bnmetrics.com/blog/dynamic-import-in-python3
 """
 
 import argparse
+import random
+import string
 import unittest
 import os
 import sys
@@ -40,8 +42,8 @@ BOREALISPATH = os.environ["BOREALISPATH"]
 sys.path.append(f"{BOREALISPATH}/src")
 
 import borealis_experiments.superdarn_common_fields as scf
-from experiment_prototype.experiment_exception import ExperimentException
-from experiment_prototype.experiment_prototype import (
+from utils.experiment_prototype import (
+    ExperimentException,
     ExperimentPrototype,
     retrieve_experiment,
     experiment_handler,
@@ -228,6 +230,8 @@ def build_unit_tests():
                         test = experiment_test_generator(attribute)
                     # setattr makes a properly named test method within TestExperimentArchive which
                     # can be run by unittest.main()
+                    if hasattr(TestActiveExperiments, f"test_{attribute.__name__}"):
+                        raise ValueError(f"Multiple tests have name test_{attribute.__name__}")
                     setattr(TestMockExperiments, f"test_{attribute.__name__}", test)
 
 
@@ -291,7 +295,10 @@ def build_experiment_tests(experiments=None, kwargs=None):
                     test = experiment_test_generator(attribute, **kwargs_dict)
                     # setattr make the "test" function a method within TestActiveExperiments called
                     # "test_[exp_name]" which can be run via unittest.main()
-                    setattr(TestActiveExperiments, f"test_{attribute.__name__}", test)
+                    test_name = f"test_{exp_name}"
+                    if hasattr(TestActiveExperiments, test_name):
+                        test_name += ''.join(random.choice(string.ascii_lowercase) for _ in range(6))
+                    setattr(TestActiveExperiments, f"test_{exp_name}", test)
 
     # Grab the experiments specified
     if experiments is not None:

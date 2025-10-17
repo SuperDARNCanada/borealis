@@ -753,13 +753,15 @@ class ExperimentSlice:
 
         freqs = info.data.get("freq", None)
         if freqs is None:
-            return freq_order
+            if freq_order is not None:
+                raise ValueError("Cannot specify freq_order if using CFS")
+            # CFS, will only ever have one frequency at a time
+            return [0] * len(rx_beam_order)
 
         if freq_order is None:
             if isinstance(freqs, list):
                 raise ValueError(f"multiple freqs specified ({freqs}) but freq_order not given")
-            else:
-                freq_order = [0] * len(rx_beam_order)
+            return [0] * len(rx_beam_order)
         else:
             if len(freq_order) != len(rx_beam_order):
                 raise ValueError(

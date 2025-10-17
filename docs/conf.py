@@ -28,10 +28,9 @@ BOREALISPATH = os.path.abspath("..")
 os.environ["BOREALISPATH"] = BOREALISPATH
 sys.path.insert(0, BOREALISPATH)
 sys.path.insert(1, f"{BOREALISPATH}/src")
-sys.path.insert(2, f"{BOREALISPATH}/src/experiment_prototype")
-sys.path.insert(3, f"{BOREALISPATH}/src/utils")
-sys.path.insert(4, f"{BOREALISPATH}/scheduler")
-sys.path.insert(5, os.environ["PATH"])
+sys.path.insert(2, f"{BOREALISPATH}/src/utils")
+sys.path.insert(3, f"{BOREALISPATH}/scheduler")
+sys.path.insert(4, os.environ["PATH"])
 
 # -- Pre-build configuration ----------------------------------------------
 

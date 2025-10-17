@@ -541,10 +541,10 @@ def basic_pulse_phase_offset(exp_slice, beam_iter):
     :returns:   Pulse phase offsets
     :rtype:     array (rad)
     """
-    freqs = exp_slice.freq
-    if not isinstance(freqs, list):
-        freqs = [freqs]
-    freq_hz = freqs[beam_iter] * 1e3
+    freq = exp_slice.freq
+    if isinstance(freq, list):
+        freq = freq[exp_slice.freq_order[beam_iter]]
+    freq_hz = freq * 1e3
     tau_s = exp_slice.tau_spacing / 1e6
     omega = 2 * np.pi * freq_hz
     pulse_sequence = exp_slice.pulse_sequence

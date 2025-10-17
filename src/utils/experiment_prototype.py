@@ -24,17 +24,18 @@ import numpy as np
 import structlog
 
 # local
+from utils.exceptions import ExperimentException
 from utils.options import Options
-from experiment_prototype.experiment_exception import ExperimentException
-from experiment_prototype.experiment_slice import (
+from utils.experiment_slice import (
     ExperimentSlice,
     slice_key_set,
     hidden_key_set,
 )
-from experiment_prototype.interface_classes.scans import Scan
-from experiment_prototype.interface_classes.interface_class_base import (
+from utils.interface_classes.interface_class_base import (
     InterfaceClassBase,
 )
+from utils.interface_classes.scans import Scan
+
 
 # Obtain the module name that imported this log_config
 caller = Path(inspect.stack()[-1].filename)

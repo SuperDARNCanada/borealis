@@ -20,17 +20,18 @@ from functools import reduce
 import inspect
 import math
 from pathlib import Path
+from typing import Union
 
 # third-party
 import numpy as np
 import structlog
 
 # local
-from experiment_prototype.interface_classes.interface_class_base import (
+from utils.interface_classes.interface_class_base import (
     InterfaceClassBase,
 )
-from experiment_prototype.experiment_slice import ExperimentSlice
-from experiment_prototype.experiment_exception import ExperimentException
+from utils.experiment_slice import ExperimentSlice
+from utils.exceptions import ExperimentException
 from utils.signals import get_samples, get_phase_shift, basic_pulse_phase_offset
 
 # Obtain the module name that imported this log_config
@@ -201,7 +202,7 @@ class Sequence(InterfaceClassBase):
 
             # Set up the tx pulses if transmitting
             self.tx_main_phase_shifts[slice_id] = self.build_tx_phases(
-                slice_id, exp_slice
+                slice_id, exp_slice, exp_slice.freq
             )
 
             for pulse_time in exp_slice.pulse_sequence:
@@ -543,7 +544,7 @@ class Sequence(InterfaceClassBase):
         return phases, channel_indices
 
     def build_tx_phases(
-        self, slice_id: int, exp_slice: ExperimentSlice
+        self, slice_id: int, exp_slice: ExperimentSlice, freqs: Union[float, list[float]]
     ):
         """
         Builds the basic pulse IQ samples for this slice, and the complex phases
@@ -553,10 +554,15 @@ class Sequence(InterfaceClassBase):
         :type   slice_id: int
         :param exp_slice: ExperimentSlice object
         :type  exp_slice: ExperimentSlice
+        :param     freqs: Frequencies to build phases for
+        :type      freqs: Union[float, list[float]]
 
         :returns: Phase shifts as complex numbers with magnitude <= 1, with shape [num_freqs, num_beams, num_antennas]
         :rtype:   np.ndarray
         """
+
+        if not isinstance(freqs, list):
+            freqs = [freqs]
 
         if exp_slice.rxonly:
             self.basic_slice_pulses[slice_id] = []
@@ -573,9 +579,6 @@ class Sequence(InterfaceClassBase):
         txrate = self.transmit_metadata["txrate"]
         main_antenna_locations = self.transmit_metadata["main_antenna_locations"]
         pulse_ramp_time = self.transmit_metadata["pulse_ramp_time"]
-        freqs = exp_slice.freq
-        if not isinstance(freqs, list):
-            freqs = [freqs]
 
         pulse_samples = []
         for freq_khz in freqs:
