@@ -12,7 +12,7 @@ each stage of decimation from Radar Control. The DSP block has been designed to 
 as many decimation stages as are configured in the decimation scheme. This allows SuperDARN users
 to have as much control as they want in designing filter characteristics.
 
-.. figure:: img/rx_sig_updated.png
+.. figure:: /source/img/rx_sig_updated.png
    :width: 100%
    :alt: Block diagram of RX DSP software
    :align: center
@@ -57,7 +57,7 @@ or more data sets that get individually decimated, the kernel dimensions get sli
 grid now adds a third dimension for frequency data set and the block now only has one set of threads
 for a single lowpass filter.
 
-.. figure:: img/dsp_data_flow.jpg
+.. figure:: /source/img/dsp_data_flow.jpg
    :width: 80 %
    :alt: Diagram of Rx DSP data flow during decimation
    :align: center
@@ -78,5 +78,5 @@ See also
    :glob:
    :maxdepth: 1
 
-   frerking.rst
-   dsp_chain_in_detail.rst
+   /source/frerking.rst
+   /source/dsp_chain_in_detail.rst

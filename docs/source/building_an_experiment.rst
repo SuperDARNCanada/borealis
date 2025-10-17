@@ -265,4 +265,4 @@ your experiment, the test will fail and the exception will describe the error.
 ..  toctree::
     :glob:
 
-    experiment_unittests.rst
+    /source/api/experiment_unittests

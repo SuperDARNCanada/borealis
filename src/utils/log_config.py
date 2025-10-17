@@ -14,8 +14,8 @@ See example.
         log.info(f"Example info text {[1, 2, 3]}", example_key=[1, 2, 3])
         try:
             main()
-        except Exception as exec:
-            log.exception("Example crashed", exception=exec)
+        except Exception as err:
+            log.exception("Example crashed", exception=err)
 
 :notes:
     Setting up structlog is very tricky, but after it is done it should just work
@@ -26,6 +26,7 @@ See example.
     https://docs.python.org/3/library/logging.handlers.html#timedrotatingfilehandler
     https://www.structlog.org/en/stable/standard-library.html
     https://www.structlog.org/en/stable/processors.html#chains
+
 """
 
 import inspect

@@ -1,6 +1,8 @@
-==============
-Scheduler Code
-==============
+.. _scheduler:
+
+=========
+Scheduler
+=========
 
 .. automodule:: scheduler.local_scd_server
     :members:

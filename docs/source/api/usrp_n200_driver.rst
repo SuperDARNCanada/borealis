@@ -56,7 +56,7 @@ continuous receive ringbuffer system to minimize dropped samples. Instead of usi
 receive event, we start sampling continuously at a specific time. We then use the timestamp of the
 transmit pulse sequence to calculate where in the ringbuffer the pulse sequence samples are located.
 
-.. figure:: img/ringbuffer.png
+.. figure:: /source/img/ringbuffer.png
    :width: 80%
    :alt: Ringbuffer Visualization
    :align: center
@@ -89,5 +89,5 @@ begin and the transmit thread needs to send this info to the DSP unit.
 .. toctree::
    :glob:
 
-   file/usrp__driver_8cpp
-   file/usrp_8hpp
+   /source/file/usrp__driver_8cpp
+   /source/file/usrp_8hpp

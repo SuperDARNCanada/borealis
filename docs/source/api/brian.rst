@@ -16,7 +16,7 @@ the flow of data between sockets to make sure that the pipeline of messages is o
 correct order, and if not it is a helpful tool in debugging.
 
 
-.. figure:: img/brian_zmq.png
+.. figure:: /source/img/brian_zmq.png
    :width: 70 %
    :alt: Block diagram of ZMQ connections
    :align: center

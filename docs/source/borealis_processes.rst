@@ -12,13 +12,13 @@ Runtime Processes
 ..  toctree::
     :maxdepth: 1
 
-    brian
-    data_write
-    experiment_handler
-    radar_control
-    realtime
-    rx_signal_processing
-    usrp_n200_driver
+    /source/api/brian
+    /source/api/data_write
+    /source/api/experiment_handler
+    /source/api/radar_control
+    /source/api/realtime
+    /source/api/rx_signal_processing
+    /source/api/usrp_n200_driver
 
 ---------------------
 Experiment Components
@@ -27,15 +27,5 @@ Experiment Components
 ..  toctree::
     :maxdepth: 1
 
-    experiment_prototype
-    experiments
-
------
-Utils
------
-
-..  toctree::
-    :maxdepth: 1
-
-    utils
-    signals
+    /source/api/experiment_prototype
+    /source/experiments
