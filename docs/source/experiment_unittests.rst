@@ -14,7 +14,7 @@ This script tests both runnable experiments (those in borealis/src/borealis_expe
 these tests have an extra method defined which returns the expected exception and a regex of the expected error message.
 An example unit test is shown below.
 
-..  literalinclude:: ../../src/borealis_experiments/tests/test_avg_method.py
+..  literalinclude:: ../../src/borealis_experiments/tests/avg_method.py
     :language: python
     :linenos:
     :caption: Example Unit Test file
