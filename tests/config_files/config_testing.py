@@ -44,18 +44,18 @@ class MockOptions(Options):
             raise ValueError("BOREALISPATH env variable not set")
 
         os.environ["RADAR_ID"] = "test"  # For testing a new config file
-        self.parse_config()  # Parse info from config file
+        self._parse_config()  # Parse info from config file
 
         os.environ["RADAR_ID"] = (
             "sas"  # Use SAS to ensure that valid hdw and restrict files are loaded.
         )
-        self.parse_hdw()
-        self.parse_restrict()
+        self._parse_hdw()
+        self._parse_restrict()
 
         os.environ["RADAR_ID"] = (
             self.site_id
         )  # Match the value from the config file, to hack a test in verify_options
-        self.verify_options()  # Check that all parsed values are valid
+        self._verify_options()  # Check that all parsed values are valid
 
 
 class TestConfigFile(unittest.TestCase):
