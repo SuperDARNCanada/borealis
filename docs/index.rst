@@ -111,7 +111,7 @@ In the next release, we plan to implement:
     /source/postprocessing
     /source/tools
     /source/failure_modes
-    /source/development
+    /source/api
     /source/glossary
 
 Indices and tables

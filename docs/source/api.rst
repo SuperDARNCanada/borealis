@@ -1,4 +1,4 @@
-.. _development:
+.. _api:
 
 ===
 API
@@ -41,8 +41,8 @@ Other Code
     :maxdepth: 1
     :glob:
 
-    /source/api/utils
-    /source/api/scheduler
-    /source/api/scripts
+    /source/api/utils/utils
+    /source/api/scheduler/scheduler
+    /source/api/scripts/scripts
     /source/api/scons
     /source/api/tests

@@ -89,4 +89,4 @@ Here are the steps to configure scheduling:
    :glob:
    :maxdepth: 1
 
-   /source/api/scheduler
+   /source/api/scheduler/scheduler

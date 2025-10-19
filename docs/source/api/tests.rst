@@ -4,7 +4,8 @@
 Tests
 =====
 
-.. automodule:: tests
-    :members:
-    :undoc-members:
-    :show-inheritance:
+.. toctree::
+   :maxdepth: 1
+   :glob:
+
+

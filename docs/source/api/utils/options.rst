@@ -1,8 +1,8 @@
 .. _options:
 
-=====================
-Configuration Options
-=====================
+=======
+Options
+=======
 
 .. automodule:: src.utils.options
     :members:
