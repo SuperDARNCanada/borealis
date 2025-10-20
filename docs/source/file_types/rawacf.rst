@@ -1,8 +1,8 @@
-.. _bfiq:
+.. _rawacf:
 
-----
-bfiq
-----
+------
+rawacf
+------
 
     Each field contains metadata that determines how the field is written to file.
 
@@ -32,7 +32,7 @@ bfiq
 
     ``units``
        Units for the data.
-    
+
 
 Fields
 ------
@@ -40,13 +40,6 @@ Fields
 
    * level: ``record``
    * required_for: ``['antennas_iq', 'bfiq', 'rawacf', 'rawrf']``
-
-
-:antenna_arrays: Descriptor of each antenna array contained in the data
-
-   * level: ``file``
-   * nickname: ``array``
-   * required_for: ``['bfiq']``
 
 
 :antenna_locations: Relative antenna locations
@@ -65,6 +58,12 @@ Fields
    * required_for: ``['antennas_iq', 'bfiq', 'rawacf', 'rawrf']``
 
 
+:averaging_method: Averaging method, e.g. mean, median
+
+   * level: ``file``
+   * required_for: ``['rawacf']``
+
+
 :beam_azms: Beams azimuths for each beam in degrees CW of boresight
 
    * dim_labels: ``['beam']``
@@ -80,15 +79,6 @@ Fields
    * level: ``record``
    * nickname: ``beam number``
    * required_for: ``['antennas_iq', 'bfiq', 'rawacf']``
-
-
-:bfiq_data: Beamformed I&Q complex voltage samples for each antenna array
-
-   * dim_labels: ``['array', 'sequence', 'beam', 'time']``
-   * dim_scales: ``['antenna_arrays', 'sqn_timestamps', ['beam_nums', 'beam_azms'], 'sample_time']``
-   * level: ``record``
-   * required_for: ``['bfiq']``
-   * units: ``a.u. ~ V``
 
 
 :blanked_samples: Samples blanked during transmission of a pulse
@@ -210,6 +200,15 @@ Fields
    * units: ``s``
 
 
+:intf_acfs: Interferometer array autocorrelations
+
+   * dim_labels: ``['beam', 'range', 'lag']``
+   * dim_scales: ``[['beam_azms', 'beam_nums'], 'range_gates', 'lag_numbers']``
+   * level: ``record``
+   * required_for: ``[]``
+   * units: ``a.u. ~ W``
+
+
 :lags: Lag indices
 
    * level: ``file``
@@ -254,6 +253,15 @@ Fields
    * required_for: ``['antennas_iq', 'bfiq', 'rawacf', 'rawrf']``
 
 
+:main_acfs: Main array autocorrelations
+
+   * dim_labels: ``['beam', 'range', 'lag']``
+   * dim_scales: ``[['beam_azms', 'beam_nums'], 'range_gates', 'lag_numbers']``
+   * level: ``record``
+   * required_for: ``['rawacf']``
+   * units: ``a.u. ~ W``
+
+
 :num_sequences: Number of sampling periods in the averaging period
 
    * level: ``record``
@@ -264,15 +272,6 @@ Fields
 
    * level: ``file``
    * required_for: ``['antennas_iq', 'bfiq', 'rawacf', 'rawrf']``
-
-
-:pulse_phase_offset: Phase offset in degrees for each pulse in pulses
-
-   * dim_labels: ``['sequence', 'pulse']``
-   * dim_scales: ``['sqn_timestamps', 'pulses']``
-   * level: ``record``
-   * required_for: ``[]``
-   * units: ``degrees``
 
 
 :pulses: Pulse sequence in units of tau_spacing
@@ -336,14 +335,6 @@ Fields
 
    * level: ``file``
    * required_for: ``['antennas_iq', 'bfiq', 'rawacf', 'rawrf']``
-
-
-:sample_time: Time of measurement relative to the first pulse in the sequence
-
-   * dim_labels: ``['time']``
-   * level: ``file``
-   * required_for: ``['antennas_iq', 'bfiq', 'rawrf']``
-   * units: ``μs``
 
 
 :scan_start_marker: Designates if the record is the first in a scan
@@ -429,3 +420,10 @@ Fields
    * units: ``μs``
 
 
+:xcfs: Cross-correlations between main and interferometer arrays
+
+   * dim_labels: ``['beam', 'range', 'lag']``
+   * dim_scales: ``[['beam_azms', 'beam_nums'], 'range_gates', 'lag_numbers']``
+   * level: ``record``
+   * required_for: ``[]``
+   * units: ``a.u. ~ W``

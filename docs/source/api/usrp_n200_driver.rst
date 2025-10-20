@@ -86,6 +86,20 @@ USRP streaming mode. Right before it begins streaming it sends the initializatio
 ringbuffer size to the transmit thread. This acts as the "go" signal for the transmit thread to
 begin and the transmit thread needs to send this info to the DSP unit.
 
+Starting the ``usrp_driver`` module::
+
+    usrp_driver.py [-h] [--c_debug_opts C_DEBUG_OPTS] run_mode
+
+        Wrapper to the USRP driver
+
+        positional arguments:
+          run_mode              The mode to run, switches scons builds and some arguments to modules based on this mode. Commonly 'release'.
+
+        options:
+          -h, --help            show this help message and exit
+          --c_debug_opts C_DEBUG_OPTS
+                                A C debug run options string
+
 .. toctree::
    :glob:
 

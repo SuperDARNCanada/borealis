@@ -414,9 +414,7 @@ class DataWrite:
         for slice_num in main_acfs:
             slice_data = aveperiod_data[slice_num]
             if slice_num in parsed_data.main_acf_slices:
-                slice_data.main_acfs = find_expectation_value(
-                    main_acfs[slice_num]
-                )
+                slice_data.main_acfs = find_expectation_value(main_acfs[slice_num])
         for slice_num in xcfs:
             slice_data = aveperiod_data[slice_num]
             if slice_num in parsed_data.xcf_slices:
@@ -424,9 +422,7 @@ class DataWrite:
         for slice_num in intf_acfs:
             slice_data = aveperiod_data[slice_num]
             if slice_num in parsed_data.intf_acf_slices:
-                slice_data.intf_acfs = find_expectation_value(
-                    intf_acfs[slice_num]
-                )
+                slice_data.intf_acfs = find_expectation_value(intf_acfs[slice_num])
 
         all_slice_data = {}
         for slice_num, slice_data in aveperiod_data.items():

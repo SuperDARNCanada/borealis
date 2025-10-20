@@ -32,7 +32,7 @@ rawrf
 
     ``units``
        Units for the data.
-    
+
 
 Fields
 ------
@@ -271,5 +271,3 @@ Fields
    * level: ``record``
    * required_for: ``[]``
    * units: ``a.u.``
-
-

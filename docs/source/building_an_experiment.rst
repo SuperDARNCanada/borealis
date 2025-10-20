@@ -74,6 +74,19 @@ centre frequencies for the experiment and users should set these parameters manu
 experiment does not perform as expected or if they have performance concerns due to the tuning time
 required to switch between slices with different centre frequencies.
 
+----------
+normalscan
+----------
+
+Normalscan is a very common experiment for SuperDARN. It only has a single slice, as there is only one
+frequency, pulse_len, beam_order, etc. Since there is only one slice there is no need
+for an interface dictionary.
+
+..  literalinclude:: ../../src/borealis_experiments/normalscan.py
+    :linenos:
+    :language: python
+    :caption: normalsound.py
+
 --------------------------
 Slice Interfacing Examples
 --------------------------
@@ -236,7 +249,7 @@ Notice that you must specify interfacing to an existing slice when you add a sec
 slice to the experiment. To see the types of interfacing that can be used, see the above section
 `Interfacing Types Between Slices`_.
 
-This experiment is very similar to the twofsound experiment. To see examples of common experiments,
+This experiment is very similar to the twofsound experiment. To see examples of experiments,
 look at :doc:`experiments`.
 
 -----------------------------------

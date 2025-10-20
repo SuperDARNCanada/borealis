@@ -1,8 +1,8 @@
-.. _dsp-chain-label:
+.. _Borealis DSP:
 
-============================================
-Walkthrough of the Borealis Processing Chain
-============================================
+=========================
+Borealis Processing Chain
+=========================
 
 ---------
 Filtering
@@ -17,7 +17,7 @@ spectrum received from the N200 devices can be filtered simultaneously into mult
 centered on different frequencies. The data is first run through frequency-translating bandpass
 filters to create multiple baseband output spectra, one for each filter frequency. This is done in
 one algorithm using the modified Frerking method described in Section `Modified Frerking Method`_
-and at :ref:`frerking-label`.
+and at :ref:`frerking`.
 
 Following the bandpass-mixing filter, three stages of lowpass filtering and downsampling are done.
 These stages are identical for all mixing frequencies.
@@ -54,7 +54,7 @@ are shown for each stage in the table below.
 For a typical sequence of *normalscan* data, the input data to the first filter stage contains
 451500 complex data samples for each antenna. After the first stage, this has been reduced to 45084
 samples per antenna, but if multiple frequencies are being selected, there will be one copy of
-(:math:`num\_antennas`, 45084) for each frequency. After the second stage, the number of samples is
+(:math:`num\_channels`, 45084) for each frequency. After the second stage, the number of samples is
 reduced from 45084 to 8992. The next stage reduces it again to 1495 samples. Lastly, the final stage
 reduces the data length to 299 samples. The number of samples in and out of each stage does not
 exactly correspond to the downsampling rate; this will be explained shortly, as a result of the
@@ -113,14 +113,14 @@ bring the desired frequency to baseband, then running it through a low-pass filt
 
 Mixing a signal with an oscillator is just multiplying the signal with the oscillator value as the
 signals are coming in. Since we gather complex samples, we use a complex oscillator (a complex
-exponential instead of a cosine). To accomplish this in one (actually two) step(s), the complex
+exponential instead of a cosine). To accomplish this efficiently, the complex
 exponential is multiplied into the filter coefficients. Then, the wideband samples are passed
 through the filter, which simultaneously mixes the samples and low-pass filters them. However, there
-is still one more detail to resolve (the second step). In an analog system, the phase of the
+is one more detail to handle. In an analog system, the phase of the
 oscillator changes over time, as might be obvious from the name "oscillator". So, as samples arrive,
 they are multiplied by the oscillator value at the moment they arrive. However, with Borealis we are
 mixing with the filter sequence, rather than the input samples (less multiplications). We mix the
-oscillator with the filter once, then run the input samples through the filter. The top curve in
+oscillator with the filter once, then convolve the input samples with the filter. The top curve in
 Figure 4 depicts the numerical oscillator sequence that gets mixed with the filter sequence. As the
 filter sequence "slides" along the input samples, the phase is not consistent with an equivalent
 analog mixing system.
@@ -128,14 +128,14 @@ analog mixing system.
 As the filter "slides" along the samples, we are effectively getting a different window of the input
 samples. The curves in Figure 4 depict the analog mixer sequence for each windowed view of the input
 samples (the legend corresponds to the output sample number). In Borealis, there is only one mixer
-sequence - the top curve. As we apply the filter and "slide" along the input samples, we then have a
+sequence - the top (blue) curve. As we convolve with the filter and "slide" along the input samples, we then have a
 phase difference between Borealis and its equivalent analog system. This difference is fairly simple
 to correct. If the oscillator has phase :math:`{\phi}_0 = 0` when it mixes with the zeroth sample,
 then it will have phase :math:`\phi_1 = 2\pi\frac{f_o}{F_s}` when it mixes with the first sample,
 :math:`\phi_2 = 2\pi\frac{f_o}{F_s}2` when it mixes with the second sample, and so on. The general
 formula is :math:`\phi_k = 2\pi\frac{f_o}{F_s}k`, where :math:`f_o` is the oscillator frequency,
 :math:`F_s` is the data sampling rate, and :math:`k` is the index of the newest sample. Borealis
-applies this correction after applying the filter and decimating, to reduce the number of
+applies this correction after applying the filter and downsampling, to reduce the number of
 mathematical operations. So, for a downsampling rate of :math:`R`, the phase correction for sample
 :math:`k` after downsampling is :math:`\phi_k = 2\pi\frac{f_o}{F_s}Rk`.
 
@@ -149,6 +149,8 @@ mathematical operations. So, for a downsampling rate of :math:`R`, the phase cor
 
 Standard Filters
 ----------------
+
+TODO: Update this with new two-stage filter
 
 As mentioned previously, Borealis uses a four-stage filter approach with staged downsampling. These
 filters are shown in Figures 5, 6, 7, and 8.

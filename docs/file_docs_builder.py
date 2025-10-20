@@ -56,7 +56,7 @@ def write_rst_file(outdir: str, file_type: str):
 
 def main():
     file_types = ["antennas_iq", "bfiq", "rawacf", "rawrf"]
-    outdir = "source/"
+    outdir = "source/file_types/"
     for ftype in file_types:
         write_rst_file(outdir, ftype)
 

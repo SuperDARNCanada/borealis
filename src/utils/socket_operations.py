@@ -35,7 +35,9 @@ import zmq
 import pickle
 
 
-def create_sockets(router_addr: str, *identities: str) -> Union[zmq.Socket, list[zmq.Socket]]:
+def create_sockets(
+    router_addr: str, *identities: str
+) -> Union[zmq.Socket, list[zmq.Socket]]:
     """
     Creates a ``DEALER`` socket for each identity in the list argument. Each socket is then connected
     to the router.
@@ -61,7 +63,9 @@ def create_sockets(router_addr: str, *identities: str) -> Union[zmq.Socket, list
     return sockets
 
 
-def recv_string(socket: zmq.Socket, sender_identity: str, log: Optional[Any] = None) -> Optional[str]:
+def recv_string(
+    socket: zmq.Socket, sender_identity: str, log: Optional[Any] = None
+) -> Optional[str]:
     """
     Receives data from a socket and verifies it comes from the correct sender.
 
@@ -105,7 +109,9 @@ def send_string(socket: zmq.Socket, receiver_identity: str, msg: str):
     socket.send_multipart(frames)
 
 
-def recv_bytes(socket: zmq.Socket, sender_identity: str, log: Optional[Any] = None) -> Optional[bytes]:
+def recv_bytes(
+    socket: zmq.Socket, sender_identity: str, log: Optional[Any] = None
+) -> Optional[bytes]:
     """
     Receives data from a socket and verifies it comes from the correct sender.
 
@@ -146,7 +152,12 @@ def recv_bytes_from_any_iden(socket: zmq.Socket) -> Optional[bytes]:
     return bytes_object
 
 
-def send_bytes(socket: zmq.Socket, receiver_identity: str, bytes_object: bytes, log: Optional[Any] = None):
+def send_bytes(
+    socket: zmq.Socket,
+    receiver_identity: str,
+    bytes_object: bytes,
+    log: Optional[Any] = None,
+):
     """Sends experiment to another identity.
 
     :param  socket:             Socket to send from
@@ -168,7 +179,12 @@ def send_bytes(socket: zmq.Socket, receiver_identity: str, bytes_object: bytes, 
     socket.send_multipart(frames)
 
 
-def recv_pyobj(socket: zmq.Socket, sender_identity: str, log: Optional[Any] = None, expected_type: Optional[Any] = None) -> Any:
+def recv_pyobj(
+    socket: zmq.Socket,
+    sender_identity: str,
+    log: Optional[Any] = None,
+    expected_type: Optional[Any] = None,
+) -> Any:
     """
     Receive a pickled Python object.
 
@@ -197,11 +213,15 @@ def recv_pyobj(socket: zmq.Socket, sender_identity: str, log: Optional[Any] = No
                 received_message=type(message),
                 expected_message=expected_type,
             )
-        raise ValueError(f"Message data has type {type(message)}, expected {expected_type}")
+        raise ValueError(
+            f"Message data has type {type(message)}, expected {expected_type}"
+        )
     return message
 
 
-def send_pyobj(socket: zmq.Socket, receiver_identity: str, message: Any, log: Optional[Any] = None):
+def send_pyobj(
+    socket: zmq.Socket, receiver_identity: str, message: Any, log: Optional[Any] = None
+):
     """Pickles the message and passes it to send bytes to be communicated
     over the router.
 

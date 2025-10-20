@@ -10,7 +10,6 @@ repos:
     hooks:
       - id: end-of-file-fixer  # Ensures that files are either empty or end in newline
       - id: trailing-whitespace  # Trims trailing whitespace
-      - id: requirements-txt-fixer  # Sorts entries in requirements.txt files (docs in our case)
       - id: check-toml  # Checks toml files for parseable syntax
       - id: check-yaml  # Checks yaml files for parseable syntax
 

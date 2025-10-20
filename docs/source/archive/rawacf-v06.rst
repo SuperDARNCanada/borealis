@@ -476,10 +476,3 @@ all samples. Similar precision is lost in timestamps.
 
 HDF5 is a much more user-friendly format and we encourage the use of this data if possible. Please
 reach out if you have questions on how to use the Borealis rawacf files.
-
-The mapping to rawacf dmap files is completed as follows:
-
-..  toctree::
-    :maxdepth: 2
-
-    ./../rawacf_mapping

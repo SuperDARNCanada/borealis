@@ -1,7 +1,3 @@
-#!/usr/bin/python3
-#
-# Copyright 2022 SuperDARN Canada
-# Author: Remington Rohel
 from dataclasses import dataclass, field, fields
 import numpy as np
 

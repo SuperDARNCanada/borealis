@@ -3,7 +3,7 @@ Brian
 =====
 
 Brian is an administrator process for Borealis. It acts as a router for all messages in the system
-and it is responsible for controlling the flow of logic. This process was originally called Brain,
+and it is responsible for controlling inter-process communication. This process was originally called Brain,
 but after repeated misspellings, the name Brian stuck.
 
 Brian implements a ZMQ router in order for all the other processes to connect. Using a ZMQ router
@@ -28,6 +28,14 @@ module, it is an ideal place to make sure that the pipeline isn't being overwhel
 This step is very important to make sure that the GPU processing isn't being overloaded with work or
 that too many new requests enter the USRP driver.
 
+Starting the ``brian`` module::
+
+    brian.py [-h] [--router-only] [--realtime-off]
+
+    options:
+      -h, --help      show this help message and exit
+      --router-only   Run only the router. Do not run any of the other threads or functions.
+      --realtime-off  Flag if realtime is disabled
 
 .. automodule:: src.brian
     :members:

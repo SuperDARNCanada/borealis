@@ -32,14 +32,20 @@ class Options:
     """
 
     # config.ini options
-    data_directory: str = field(init=False)  #: Location of output data files, e.g. ``"/data/borealis_data"``
-    hdw_path: str = field(init=False)  #: Path to SuperDARN hardware files, e.g. ``"/usr/local/hdw"``
-    rx_intf_antennas: list[int] = field(init=False)  #: Interferometer antennas connected to USRP RX channels.
+    data_directory: str = field(
+        init=False
+    )  #: Location of output data files, e.g. ``"/data/borealis_data"``
+    hdw_path: str = field(
+        init=False
+    )  #: Path to SuperDARN hardware files, e.g. ``"/usr/local/hdw"``
+    rx_intf_antennas: list[int] = field(
+        init=False
+    )  #: Interferometer antennas connected to USRP RX channels.
     intf_antenna_locations: np.ndarray = field(init=False)
     """
-    ``[x, y, z]`` coordinates for each antenna in the interferometer array, relative to the center-point of the main 
+    ``[x, y, z]`` coordinates for each antenna in the interferometer array, relative to the center-point of the main
     array, in meters. Example::
-    
+
         {
             "0": [-22.86, 0.0, 0.0],
             "1": [-7.62, 0.0, 0.0],
@@ -47,76 +53,118 @@ class Options:
             "3": [22.86, 0.0, 0.0]
         }
     """
-    intf_antenna_count: int = field(init=False)  #: Total number of interferometer array antennas
-    intf_antenna_spacing: float = field(init=False)  #: Distance between adjacent antennas in interferometer array [m]
-    log_aggregator_addr: str = field(init=False)  #: Network address of remote log aggregator
-    log_aggregator_bool: bool = field(init=False)  #: Flag to enable remote log aggregation
+    intf_antenna_count: int = field(
+        init=False
+    )  #: Total number of interferometer array antennas
+    intf_antenna_spacing: float = field(
+        init=False
+    )  #: Distance between adjacent antennas in interferometer array [m]
+    log_aggregator_addr: str = field(
+        init=False
+    )  #: Network address of remote log aggregator
+    log_aggregator_bool: bool = field(
+        init=False
+    )  #: Flag to enable remote log aggregation
     log_aggregator_port: int = field(init=False)  #: Port of remote log aggregator
     log_console_bool: bool = field(init=False)  #: Flag to enable console logging
     log_directory: str = field(init=False)
     """Directory in which to store JSON log files, e.g. ``"/data/borealis_logs"``"""
     console_log_level: str = field(init=False)
-    """Level for console logging. 
-    
-    Supported levels are ``DEBUG``, ``VERBOSE``, ``INFO``, ``WARNING``, ``ERROR``, ``CRITICAL``, and ``NOTSET``, 
+    """Level for console logging.
+
+    Supported levels are ``DEBUG``, ``VERBOSE``, ``INFO``, ``WARNING``, ``ERROR``, ``CRITICAL``, and ``NOTSET``,
     or a numeric value between 0 and 50.
     """
     logfile_log_level: str = field(init=False)
-    """Level for JSON logfile logging. 
-    
-    Supported levels are ``DEBUG``, ``VERBOSE``, ``INFO``, ``WARNING``, ``ERROR``, ``CRITICAL``, and ``NOTSET``, 
+    """Level for JSON logfile logging.
+
+    Supported levels are ``DEBUG``, ``VERBOSE``, ``INFO``, ``WARNING``, ``ERROR``, ``CRITICAL``, and ``NOTSET``,
     or a numeric value between 0 and 50.
     """
     aggregator_log_level: str = field(init=False)
-    """Level for remote aggregator logging. 
-    
-    Supported levels are ``DEBUG``, ``VERBOSE``, ``INFO``, ``WARNING``, ``ERROR``, ``CRITICAL``, and ``NOTSET``, 
+    """Level for remote aggregator logging.
+
+    Supported levels are ``DEBUG``, ``VERBOSE``, ``INFO``, ``WARNING``, ``ERROR``, ``CRITICAL``, and ``NOTSET``,
     or a numeric value between 0 and 50.
     """
     log_logfile_bool: bool = field(init=False)  #: Flag to enable JSON file logging
-    rx_main_antennas: list[int] = field(init=False)  #: Main antennas connected to RX channels
-    tx_main_antennas: list[int] = field(init=False)  #: Main antennas connected to TX channels
+    rx_main_antennas: list[int] = field(
+        init=False
+    )  #: Main antennas connected to RX channels
+    tx_main_antennas: list[int] = field(
+        init=False
+    )  #: Main antennas connected to TX channels
     main_antenna_locations: np.ndarray = field(init=False)
     """
-    ``[x, y, z]`` coordinates for each antenna in the main array, relative to the center-point of the main 
+    ``[x, y, z]`` coordinates for each antenna in the main array, relative to the center-point of the main
     array, in meters. Example::
-    
+
         {
             "0": [-114.3, 0.0, 0.0],
             "1": [-99.06, 0.0, 0.0],
-            ..., 
+            ...,
             "14": [99.06, 0.0, 0.0],
             "15": [114.3, 0.0, 0.0]
         }
     """
     main_antenna_count: int = field(init=False)  #: Total number of main array antennas
-    main_antenna_spacing: float = field(init=False)  #: Distance between adjacent antennas in main array [m]
+    main_antenna_spacing: float = field(
+        init=False
+    )  #: Distance between adjacent antennas in main array [m]
     max_filtering_stages: int = field(init=False)
     """Maximum number of filter stages allowed in a :class:`DecimationScheme`"""
     max_filter_taps_per_stage: int = field(init=False)
     """Maximum number of filter taps allowed in any :class:`DecimationStage` of a :class:`DecimationScheme`"""
     max_freq: float = field(init=False)  #: Maximum operating frequency [Hz]
-    max_output_sample_rate: float = field(init=False)  #: Maximum output sampling rate [Hz]
+    max_output_sample_rate: float = field(
+        init=False
+    )  #: Maximum output sampling rate [Hz]
     max_rx_sample_rate: float = field(init=False)  #: Maximum USRP RX sampling rate [Hz]
     max_tx_sample_rate: float = field(init=False)  #: Maximum USRP TX sample rate [Hz]
-    max_usrp_dac_amplitude: float = field(init=False)  #: Max amplitude of USRP TX samples [V]
+    max_usrp_dac_amplitude: float = field(
+        init=False
+    )  #: Max amplitude of USRP TX samples [V]
     min_freq: float = field(init=False)  #: Minimum operating frequency [Hz]
-    min_pulse_length: float = field(init=False)  #: Minimum pulse duration [μs]. Dependent on AGC hold time
-    min_pulse_separation: float = field(init=False)  #: Minimum separation before pulses are digitally combined [μs]
-    min_tau_spacing_length: float = field(init=False)  #: Minimum duration between pulses in a pulse sequence [μs]
+    min_pulse_length: float = field(
+        init=False
+    )  #: Minimum pulse duration [μs]. Dependent on AGC hold time
+    min_pulse_separation: float = field(
+        init=False
+    )  #: Minimum separation before pulses are digitally combined [μs]
+    min_tau_spacing_length: float = field(
+        init=False
+    )  #: Minimum duration between pulses in a pulse sequence [μs]
 
     n200_addrs: list[str] = field(init=False)
     n200_count: int = field(init=False)
     pulse_ramp_time: float = field(init=False)  #: Linear ramp time for the pulse [s]
-    rawacf_format: str = field(init=False)  #: Output format for rawacf files. Either ``"hdf5"`` or ``"dmap"``
-    realtime_address: str = field(init=False)  #: Network address to serve DMAP data over, e.g. ``tcp://eth0:9696``
-    ringbuffer_name: str = field(init=False)  #: Shared memory name for the RX sample buffer
-    pulse_buffer_name: str = field(init=False)  #: Shared memory name for the TX sample buffer
-    pulse_buffer_size: int = field(init=False)  #: Size of TX pulse buffer, per TX channel [bytes]
-    router_address: str = field(init=False)  #: Internal network address used for IPC, e.g. ``tcp://127.0.0.1:9696``
-    site_id: str = field(init=False)  #: Standard 3-letter ID of the radar, e.g. ``"sas"``
-    standard_antenna_positions: bool = field(init=False)  #: Flag for standard (uniformly spaced) antennas
-    tr_window_time: float = field(init=False)  #: Duration to window on either side of TX pulse for T/R signal [s]
+    rawacf_format: str = field(
+        init=False
+    )  #: Output format for rawacf files. Either ``"hdf5"`` or ``"dmap"``
+    realtime_address: str = field(
+        init=False
+    )  #: Network address to serve DMAP data over, e.g. ``tcp://eth0:9696``
+    ringbuffer_name: str = field(
+        init=False
+    )  #: Shared memory name for the RX sample buffer
+    pulse_buffer_name: str = field(
+        init=False
+    )  #: Shared memory name for the TX sample buffer
+    pulse_buffer_size: int = field(
+        init=False
+    )  #: Size of TX pulse buffer, per TX channel [bytes]
+    router_address: str = field(
+        init=False
+    )  #: Internal network address used for IPC, e.g. ``tcp://127.0.0.1:9696``
+    site_id: str = field(
+        init=False
+    )  #: Standard 3-letter ID of the radar, e.g. ``"sas"``
+    standard_antenna_positions: bool = field(
+        init=False
+    )  #: Flag for standard (uniformly spaced) antennas
+    tr_window_time: float = field(
+        init=False
+    )  #: Duration to window on either side of TX pulse for T/R signal [s]
     usrp_master_clock_rate: float = field(init=False)  #: E.g. ``"1.00E+08"``
 
     # hdw.dat options

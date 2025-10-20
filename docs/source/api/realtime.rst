@@ -27,6 +27,10 @@ should see ``UP`` in the ``eth1`` line like so:
     inet6 xxxx:xxxx:xxxx:xxxx:xxxx:xxxx/64 scope link noprefixroute
        valid_lft forever preferred_lft forever
 
+Starting the ``realtime`` module::
+
+    python3 realtime.py
+
 To disable this module, run the radar with the argument ``--realtime-off``. For example::
 
     /home/radar/borealis/scripts/steamed_hams.py twofsound release --realtime-off

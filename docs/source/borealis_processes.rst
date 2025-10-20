@@ -19,13 +19,3 @@ Runtime Processes
     /source/api/realtime
     /source/api/rx_signal_processing
     /source/api/usrp_n200_driver
-
----------------------
-Experiment Components
----------------------
-
-..  toctree::
-    :maxdepth: 1
-
-    /source/api/experiment_prototype
-    /source/experiments

@@ -29,7 +29,7 @@ from nothing and eventually have a Borealis system running. The information incl
   :ref:`Canadian radars do it <txio-board>`
 - What :ref:`hardware` and :ref:`software` modifications are required
 - What :ref:`options <config-options>` there are within the Borealis system and how to configure them
-- How to set up :ref:`tests <lab-testing>` in order to verify a working system
+- How to test the :ref:`hardware <hardware-verification>` and :ref:`software <software-verification>`
 - How to write your own custom :ref:`experiments <building-experiments>`
 - How data produced by Borealis :ref:`map <rawacf-sdarn-mapping>` to formats
   agreed upon by the SuperDARN community
@@ -98,8 +98,9 @@ In the next release, we plan to implement:
     /source/system_specifications
     /source/system_setup
     /source/config_options
+    /source/hardware_verification
+    /source/software_verification
     /source/starting_the_radar
-    /source/lab_testing
     /source/transmitter_interface
     /source/txio_board
     /source/scheduling
@@ -108,6 +109,7 @@ In the next release, we plan to implement:
     /source/new_experiments
     /source/borealis_processes
     /source/borealis_data
+    /source/dsp_chain_in_detail
     /source/postprocessing
     /source/tools
     /source/failure_modes

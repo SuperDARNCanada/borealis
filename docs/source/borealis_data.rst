@@ -24,13 +24,13 @@ These are the Borealis filetypes produced by the radar software, from most proce
 
 * **rawacf:** The correlated data from the main and interferometer arrays. Produced by Borealis in release mode.
 
-* **bfiq:** The beamformed iq data from both arrays.
+* **bfiq:** The beamformed IQ data from both arrays.
 
-* **antennas_iq:** The iq data from every antenna. Produced by Borealis in release mode.
+* **antennas_iq:** The IQ data from every antenna. Produced by Borealis in release mode.
 
 * **rawrf:** The unfiltered, full receive bandwidth data from every antenna. Only produced by Borealis in debug modes.
 
-Post-processed dmap files can be created from the hdf5 rawacf or bfiq files using the `pyDARNio
+Post-processed DMAP files can be created from the hdf5 rawacf or bfiq files using the `pyDARNio
 package <https://github.com/superdarn/pydarnio>`_.
 
 For more information on the data files and the fields stored within them, check the data file
@@ -40,15 +40,24 @@ Borealis current version
 ------------------------
 
 The Borealis software version can affect the data fields in the file format so be sure to check if
-your data is of the most up to date version. The current Borealis software version is v0.7.
+your data is of the most up to date version.
 
 ..  toctree::
     :maxdepth: 1
 
-    rawacf
-    bfiq
-    antennas_iq
-    rawrf
+    file_types/rawacf
+    file_types/bfiq
+    file_types/antennas_iq
+    file_types/rawrf
+
+Mappings between ``rawacf`` and ``bfiq`` HDF5 files and their DMAP equivalents ``rawacf`` and ``iqdat``
+are detailed in the following pages.
+
+.. toctree::
+    :maxdepth: 1
+
+    file_types/iqdat_mapping
+    file_types/rawacf_mapping
 
 Previous versions
 -----------------
@@ -91,19 +100,19 @@ v0.2 and v0.3  follow the v0.4 format.
 Reading Data
 ------------
 
-To read the files in python, we recommend using `h5py <https://docs.h5py.org/en/stable/>`_ package.
-If you are looking to generate SuperDARN standard plots, we recommend using the the `pyDARN package
-<https://github.com/superdarn/pydarn>`_, which can read Borealis files specifically. After
-converting to dmap, standard SuperDARN plots including RTI plots and fan plots can be produced.
+To read the files in python, we recommend using
+`pyDARNio <https://pydarnio.readthedocs.io/en/latest/user/BorealisIO/>`_. If you are looking to generate SuperDARN
+standard plots, we recommend using `pyDARN <https://github.com/superdarn/pydarn>`_, which can read Borealis files
+specifically. After converting to DMAP, standard SuperDARN plots including RTI plots and fan plots can be produced.
 
 -------------------------
 Data Storage and Deletion
 -------------------------
 
-Borealis file sizes can add up quickly to fill all available hard drive space, especially if
-antennas_iq and/or bfiq data types are being generated. However, it is convenient and recommended to
-keep a backlog of lower level data products such as antennas_iq for a period of time. These files
-are useful for debugging hardware issues and reproducing RAWACF files.
+Borealis file sizes can add up quickly to fill all available hard drive space, especially if antennas_iq and/or bfiq
+data types are being generated. However, it is convenient and recommended to keep a backlog of lower level data
+products such as antennas_iq for a period of time. These files are useful for debugging hardware issues and reproducing
+RAWACF files.
 
 
 File Rotation

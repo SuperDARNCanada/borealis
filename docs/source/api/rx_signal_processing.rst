@@ -64,19 +64,18 @@ for a single lowpass filter.
 
    Diagram of Rx DSP data flow during decimation
 
+Starting the ``rx_signal_processing`` module::
+
+    python3 rx_signal_processing.py
 
 DSP Class
 ---------
 
-.. autoclass:: src.utils.signals.DSP
-    :noindex:
+See the :ref:`source code <Signals>`
 
 See also
 --------
 
-.. toctree::
-   :glob:
-   :maxdepth: 1
+:ref:`Borealis DSP`
 
-   /source/frerking.rst
-   /source/dsp_chain_in_detail.rst
+:ref:`frerking`

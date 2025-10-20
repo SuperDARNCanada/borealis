@@ -110,9 +110,7 @@ extensions = [
 
 # Modules that can't be imported on RTD will be ignored if they are listed here
 autodoc_mock_imports = ["build", "utils.log_config"]
-autodoc_default_options = {
-    "member-order": "groupwise"
-}
+autodoc_default_options = {"member-order": "groupwise"}
 breathe_projects = {"borealis": "xml/"}
 breathe_default_project = "borealis"
 # Add any paths that contain templates here, relative to this directory.

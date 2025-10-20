@@ -91,7 +91,7 @@ class Aggregator:
     gps_locked: bool = True
     """
     GPS lock status.
-    
+
     Initialized to True for updating with logical AND in :func:`update()`
     """
 
@@ -118,14 +118,14 @@ class Aggregator:
     )
     """
     Complex voltage samples for all slices, filtering stages, and RX channels.
-    
+
     By level of nesting, the keys for this field are:
-    
+
     1. Slice ID
-    2. Filter stage name. The final stage is always named ``"antennas_iq"``, intermediate stages are named 
-       ``"stage_x"`` where ``x`` is the stage of filtering that has been conducted. ``"stage_0"`` is the output 
+    2. Filter stage name. The final stage is always named ``"antennas_iq"``, intermediate stages are named
+       ``"stage_x"`` where ``x`` is the stage of filtering that has been conducted. ``"stage_0"`` is the output
        after filter 0, ``"stage_1"`` is the output after filters 0 and 1, and so forth.
-    3. Antenna index. This is the physical antenna index, not receive channel index. Indices start at 0 for the 
+    3. Antenna index. This is the physical antenna index, not receive channel index. Indices start at 0 for the
        main array. Interferometer antennas are numbered after the main array, typically starting at 16.
     """
 
@@ -135,9 +135,9 @@ class Aggregator:
     )
     """
     Beamformed samples for all slices, beam directions, and antenna arrays.
-    
+
     By level of nesting, the keys for this field are:
-    
+
     1. Slice ID
     2. Antenna array name. This is either ``"main"`` or ``"intf"``.
     """
@@ -392,9 +392,7 @@ class Aggregator:
         for slice_id, slice_data in self.antenna_iq_accumulator.items():
             for stage in slice_data.values():
                 for channel_name, channel_data in stage.items():
-                    stage[channel_name] = np.array(
-                        channel_data, dtype=np.complex64
-                    )
+                    stage[channel_name] = np.array(channel_data, dtype=np.complex64)
 
         for slice_id, slice_data in self.bfiq_accumulator.items():
             for param_name, param_data in slice_data.items():

@@ -32,7 +32,7 @@ antennas_iq
 
     ``units``
        Units for the data.
-    
+
 
 Fields
 ------
@@ -427,5 +427,3 @@ Fields
    * level: ``file``
    * required_for: ``['antennas_iq', 'bfiq', 'rawacf']``
    * units: ``μs``
-
-

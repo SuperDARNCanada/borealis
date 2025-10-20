@@ -26,7 +26,7 @@ except ImportError:
 else:
     cupy_available = True
 
-from ..experiment_prototype.experiment_slice import ExperimentSlice
+from experiment_prototype.experiment_slice import ExperimentSlice
 
 
 class DSP:
@@ -35,7 +35,12 @@ class DSP:
     """
 
     def __init__(
-        self, rx_rate: float, filter_taps: list[np.ndarray], mixing_freqs: list[float], dm_rates: list[int], use_shared_mem: bool = True
+        self,
+        rx_rate: float,
+        filter_taps: list[np.ndarray],
+        mixing_freqs: list[float],
+        dm_rates: list[int],
+        use_shared_mem: bool = True,
     ):
         """
         Create the filters and initialize parameters for signal processing operations.
@@ -53,15 +58,15 @@ class DSP:
         """
         self.filter_outputs: list[xp.ndarray] = []
         """IQ data for each RX channel, with intermediate results of staged filters.
-        
-        This field is populated by :func:`DSP.apply_filters()` and will be a list of either cupy or numpy ndarray's, 
+
+        This field is populated by :func:`DSP.apply_filters()` and will be a list of either cupy or numpy ndarray's,
         depending on the type of ``input_samples`` parameter to :func:`DSP.apply_filters()`. Entries are ordered by
         the filter stage, and each has shape ``[num_slices, num_channels, num_samples]``, where ``num_samples`` gets
         smaller with each successive filter stage.
         """
         self.beamformed_samples: Optional[np.ndarray] = None
         """Beamformed IQ data.
-        
+
         This field is populated by :func:`DSP.beamform()` after :func:`DSP.apply_filters()` has been called.
         The shape of the array is ``[num_slices, num_beams, num_samples]``.
         """
@@ -187,7 +192,9 @@ class DSP:
         num_intervals = int((end_sample - start_sample) / num_fft_points)
         end_sample = start_sample + num_intervals * num_fft_points
         data = self.beamformed_samples[:, :, start_sample:end_sample]
-        data_chunks = np.reshape(data, data.shape[:-1] + (num_intervals, num_fft_points))
+        data_chunks = np.reshape(
+            data, data.shape[:-1] + (num_intervals, num_fft_points)
+        )
 
         fft_data = fft.fftshift(fft.fft(data_chunks, axis=-1), axes=-1)
         cfs_data = 20 * np.log(np.sum(np.abs(np.average(fft_data, axis=2)), axis=1))
@@ -196,7 +203,9 @@ class DSP:
         return cfs_data, cfs_freqs
 
     @staticmethod
-    def create_filters(filter_taps: list[np.ndarray], mixing_freqs: list[float], rx_rate: float):
+    def create_filters(
+        filter_taps: list[np.ndarray], mixing_freqs: list[float], rx_rate: float
+    ):
         """
         Makes bandpass filters and moves taps to the GPU, if available.
 
@@ -224,7 +233,9 @@ class DSP:
         for idx, f in enumerate(mixing_freqs):
             # Filtering is actually done via a correlation, not a convolution (the filter is not reversed).
             # Thus, the mixing frequency should be the negative of the frequency that is actually being extracted.
-            bandpass[idx, :] = filter_taps[0] * np.exp(oscillator * 2j * np.pi * (-f) / rx_rate)
+            bandpass[idx, :] = filter_taps[0] * np.exp(
+                oscillator * 2j * np.pi * (-f) / rx_rate
+            )
         filters.append(xp.array(bandpass, dtype=xp.complex64))
 
         for t in filter_taps[1:]:
@@ -468,7 +479,13 @@ def get_phase_shift(
     return phase_shift
 
 
-def get_samples(sampling_rate: float, mixing_freq: float, pulse_len: float, ramp_time: float, max_amplitude: float) -> np.ndarray:
+def get_samples(
+    sampling_rate: float,
+    mixing_freq: float,
+    pulse_len: float,
+    ramp_time: float,
+    max_amplitude: float,
+) -> np.ndarray:
     """
     Get basic (not phase-shifted) samples for a given pulse.
 

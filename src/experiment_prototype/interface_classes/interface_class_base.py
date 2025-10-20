@@ -1,5 +1,3 @@
-#!/usr/bin/python
-
 """
 interface_class_base
 ~~~~~~~~~~~~~~~~~~~~
