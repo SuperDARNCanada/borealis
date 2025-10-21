@@ -102,7 +102,7 @@ interfaced. The pulses from both slices are combined into a single set of transm
 that sequence and samples received from those sequences are used for both slices (filtering the raw
 data separates the frequencies).
 
-.. figure:: img/cutlass.png
+.. figure:: img/experiments/cutlass.png
    :width: 100%
    :alt: CUTLASS-style experiment slice interfacing
    :align: center
@@ -113,7 +113,7 @@ beam data from the full scan, if desired. With AVEPERIOD interfacing, one averag
 slice will be followed by an averaging period of another, and so on. The averaging periods are
 interleaved. The resulting experiment runs beams 0, 7, 1, 7, etc.
 
-.. figure:: img/themisscan.png
+.. figure:: img/experiments/themisscan.png
    :width: 100%
    :alt: THEMISSCAN slice interfacing
    :align: center
@@ -123,7 +123,7 @@ frequency. The txfreq are unique between the slices. In this experiment, the sli
 interfaced. A full scan of slice 0 runs followed by a full scan of slice 1, and then the process
 repeats.
 
-.. figure:: img/twofsound.png
+.. figure:: img/experiments/twofsound.png
    :width: 100%
    :alt: TWOFSOUND slice interfacing
    :align: center
@@ -137,7 +137,7 @@ AVEPERIOD interfaced, additionally that slices 2 and 3 are AVEPERIOD interfaced)
 SCAN interfaced (finally, to really drive home this point, this implies that slices 1 and 4 are SCAN
 interfaced, slices 2 and 4 are SCAN interfaced, and slices 3 and 4 are SCAN interfaced).
 
-.. figure:: img/one-experiment-all-interfacing-types.png
+.. figure:: img/experiments/one-experiment-all-interfacing-types.png
    :width: 100%
    :alt: An example showing all types of slice interfacing
    :align: center

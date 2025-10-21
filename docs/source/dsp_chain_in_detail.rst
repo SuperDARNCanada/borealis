@@ -66,7 +66,7 @@ process for a hypothetical 10-sample dataset and 3-tap filter.
 Figure 1 shows the dataset :math:`x` and the filter taps :math:`h`. For all stages of filtering,
 :math:`x` is much longer than :math:`h`, by three to four orders of magnitude.
 
-.. figure:: img/convolution_sequences.png
+.. figure:: img/dsp/convolution_sequences.png
    :width: 80%
    :alt: Sample and filter sequences
    :align: center
@@ -89,14 +89,14 @@ To speed up the processing, downsampling in Borealis is done in the convolution 
 by sliding :math:`h` in steps of the downsampling rate, as shown in Figure 3. This is mathematically
 equivalent to taking the linear convolution then downsampling, but is computationally faster.
 
-.. figure:: img/windowed_view-convolution.png
+.. figure:: img/dsp/windowed_view-convolution.png
    :width: 80 %
    :alt: Convolution of two sequences
    :align: center
 
    Figure 2: Linear convolution of two sequences
 
-.. figure:: img/windowed_view-convolve_decimate.png
+.. figure:: img/dsp/windowed_view-convolve_decimate.png
    :width: 80 %
    :alt: Downsampled convolution with edge effects discarded
    :align: center
@@ -139,7 +139,7 @@ applies this correction after applying the filter and downsampling, to reduce th
 mathematical operations. So, for a downsampling rate of :math:`R`, the phase correction for sample
 :math:`k` after downsampling is :math:`\phi_k = 2\pi\frac{f_o}{F_s}Rk`.
 
-.. figure:: img/oscillator_sequences.png
+.. figure:: img/dsp/oscillator_sequences.png
    :width: 80 %
    :alt: Windowed view of oscillator mixing sequence
    :align: center
@@ -164,35 +164,35 @@ shown in Figure 6. The data is then decimated again by a factor of 5, then passe
 shown in Figure 7. Another decimation by a factor of 6, passed through the filter in Figure 7, then
 a final decimation by a rate of 5 yields the antennas IQ dataset.
 
-.. figure:: img/Bandpass_0-5_MHz.png
+.. figure:: img/dsp/Bandpass_0-5_MHz.png
    :width: 80 %
    :alt: 0.5 MHz Bandpass Filter
    :align: center
 
    Figure 5: 0.5 MHz Bandpass Filter Frequency Response
 
-.. figure:: img/Lowpass_stage_1.png
+.. figure:: img/dsp/Lowpass_stage_1.png
    :width: 80 %
    :alt: First Stage of Lowpass Filtering
    :align: center
 
    Figure 6: Stage 1 Lowpass Filter Frequency Response
 
-.. figure:: img/Lowpass_stage_2.png
+.. figure:: img/dsp/Lowpass_stage_2.png
    :width: 80 %
    :alt: Second Stage of Lowpass Filtering
    :align: center
 
    Figure 7: Stage 2 Lowpass Filter Frequency Response
 
-.. figure:: img/Lowpass_stage_3.png
+.. figure:: img/dsp/Lowpass_stage_3.png
    :width: 80 %
    :alt: Third Stage of Lowpass Filtering
    :align: center
 
    Figure 8: Stage 3 Lowpass Filter Frequency Response
 
-.. figure:: img/Bandpass_2-0_MHz.png
+.. figure:: img/dsp/Bandpass_2-0_MHz.png
    :width: 80 %
    :alt: 2.0 MHz Bandpass Filter
    :align: center
@@ -207,7 +207,7 @@ were to plot the FFT of the data, the FFT frequencies will take the range of (-2
 the transmitted signal was at 10.5 MHz, we then expect to see it in our received samples at (12.0
 MHz - 10.5 MHz) = -1.5 MHz. Figure 10 shows exactly this situation.
 
-.. figure:: img/sequence_22_antenna_16.png
+.. figure:: img/dsp/sequence_22_antenna_16.png
    :width: 100 %
    :alt: Time- and Frequency-domain representations of one sequence of received data at 10.5 MHz
    :align: center
@@ -250,7 +250,7 @@ final formula of
 
 .. math:: \phi_n = \left(\frac{L}{\lambda}(n-\frac{N}{2})\sin(\theta)\right) 2\pi
 
-.. figure:: img/beamforming.png
+.. figure:: img/dsp/beamforming.png
    :width: 90 %
    :alt: Beamforming with a 1-D phased array
    :align: center
@@ -269,7 +269,7 @@ If the interferometer is also used, the interferometer samples are autocorrelate
 interferometer samples are cross-correlated. The process is the same for all correlations, and is
 described with the aid of Figure 12.
 
-.. figure:: img/correlations.png
+.. figure:: img/dsp/correlations.png
    :width: 90 %
    :alt: Correlations explained with matrix
    :align: center
@@ -297,7 +297,7 @@ lag-1 as the samples are the correlation of data from :math:`x` and :math:`y` wh
 SuperDARN 7-pulse sequence, with 75 range gates, a tau spacing of 8 samples, and the first range
 occurring four samples after a pulse.
 
-.. figure:: img/correlation_matrix.png
+.. figure:: img/dsp/correlation_matrix.png
    :width: 80 %
    :alt: Borealis correlation matrix
    :align: center
