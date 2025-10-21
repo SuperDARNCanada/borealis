@@ -44,5 +44,4 @@ Other Code
 
     /source/api/utils/utils
     /source/api/scheduler/scheduler
-    /source/api/scripts/scripts
     /source/api/scons

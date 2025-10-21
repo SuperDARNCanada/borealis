@@ -12,25 +12,25 @@ and then a remote script on site that converts the schedules to actual radar com
 The local script will monitor the Scheduling Working Group (SWG) web link for new uploads and then
 grab them if there is anything new. At the time of writing, these files are hosted at
 `<https://github.com/SuperDARN/schedules>`_. This automated script will then parse the lines from
-the file and convert them to schedule file (SCD) commands.
+the file and convert them to schedule file entries.
 
-The schedule files need to be synced to the radar sites. The SCD files that the local script adds to
-should all be in this directory so that syncing is all automated. This syncing is currently done via
+The schedule files need to be synced to the radar sites. The schedule files that the local script adds to
+should all be in one directory so that syncing is easily automated. This syncing is currently done via
 a daemon process (``scheduler_sync.daemon``) that continually watches the local files for changes
-using inotify, then rsyncs the changed files to each site. If a schedule fails to sync, an alert is
+using inotify, then syncs the changed files to each site. If a schedule fails to sync, an alert is
 sent to our group's Slack workspace to notify us. For more information on integrating Slack alerts,
-see `here <https://www.howtogeek.com/devops/how-to-send-a-message-to-slack-from-a-bash-script/>`__.
+see `here <https://www.howtogeek.com/devops/how-to-send-a-message-to-slack-from-a-bash-script/>`_.
 
-The remote script (``remote_server.py``) will check for changes to any synced files and then generate
-``atq`` command arguments for Borealis experiments to run. This allows us to utilize scheduling
+The remote script (``remote_server.py``) will check for changes to any files on the computer running the script
+and then generate ``atq`` command arguments for Borealis experiments to run. This allows us to utilize scheduling
 utilities already available in Linux.
 
 These scripts are configured with logging capability so that maintainers can track if
-scheduling is successful. There is also a utility script called ``schedule_modifier.py`` that should
-be used to add or remove lines from the schedule so that no errors are made in the schedule file. It
+scheduling is successful. There is also a `TUI application <https://github.com/SuperDARNCanada/schedule_modifier.git>`_
+that should be used to add or remove lines from the schedule so that no errors are made in the schedule file. It
 is not recommended to manually modify any schedule files.
 
-Here is a simple diagram for how scheduling works. It starts with the DSWG repository, which is
+Here is a simple diagram for how scheduling works. It starts with the SWG repository, which is
 accessed via a local server, which then uses the scheduler sync daemon to sync with all Borealis
 radars.
 
@@ -69,13 +69,12 @@ Here are the steps to configure scheduling:
       ``sas.scd``.
     - Configure a system service or reboot ``cron`` task to run the python3 script
       ``local_scd_server.py`` at boot. This script requires the argument ``--scd-dir`` for the
-      schedules directory.
+      schedules directory. A system service is preferred as it will restart automatically if it fails for any reason.
     - The ``local_scd_server.py`` script has an option for running manually the first time to
       properly configure the scheduling directory with the schedules for the latest files available.
     - Example: ::
 
         python3 ./local_scd_server.py --first-run --scd-dir=/data/borealis_schedules
-
 
 2. Configure the Borealis computer.
 

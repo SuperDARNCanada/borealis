@@ -15,14 +15,6 @@ messages much easier to track. By having all messages flow through a router, it'
 the flow of data between sockets to make sure that the pipeline of messages is occurring in the
 correct order, and if not it is a helpful tool in debugging.
 
-
-.. figure:: /source/img/brian_zmq.png
-   :width: 70 %
-   :alt: Block diagram of ZMQ connections
-   :align: center
-
-   Block diagram of ZMQ connections
-
 Brian is also responsible for rate controlling the system. Since all the traffic routes through this
 module, it is an ideal place to make sure that the pipeline isn't being overwhelmed by any modules.
 This step is very important to make sure that the GPU processing isn't being overloaded with work or
