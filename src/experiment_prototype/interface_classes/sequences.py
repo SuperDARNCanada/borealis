@@ -151,7 +151,6 @@ class Sequence(InterfaceClassBase):
         self.tx_main_phase_shifts = {}
         self.rx_main_antenna_indices = {}
         self.rx_intf_antenna_indices = {}
-        self.tx_antenna_indices = {}
         self.txctrfreq = self.slice_dict[self.slice_ids[0]].txctrfreq
         self.rxctrfreq = self.slice_dict[self.slice_ids[0]].rxctrfreq
 
@@ -425,7 +424,7 @@ class Sequence(InterfaceClassBase):
         # sync delay which is there for the amount of time necessary to get the echoes from the
         # specified number of ranges.
         self.numberofreceivesamples = int(
-            self.transmit_metadata["rx_sample_rate"] * self.sstime * 1e-6
+            self.transmit_metadata["rxrate"] * self.sstime * 1e-6
         )
 
         self.output_encodings = collections.defaultdict(list)
@@ -506,35 +505,39 @@ class Sequence(InterfaceClassBase):
             rx_phase_shift = exp_slice.rx_antenna_pattern(
                 exp_slice.beam_angle,
                 freq_khz,
-                antenna_locations[all_antennas],
+                antenna_locations,
             )
         else:
             rx_phase_shift = get_phase_shift(
                 exp_slice.beam_angle,
                 freq_khz,
-                antenna_locations[all_antennas, 0],
+                antenna_locations[:, 0],
             )
 
         # The index of the antennas for this slice, within the list of all antennas from the config file
-        antenna_indices = [all_antennas.index(ant) for ant in slice_antennas]
+        # antenna_indices = the index of the antennas for this slice within the list of all physical antennas.
+        # E.g. all_antennas = [1, 2, 3]
+        #      slice_antennas = [1, 3]
+        #      channel_indices = [0, 2]
+        channel_indices = [all_antennas.index(ant) for ant in slice_antennas]
         antenna_idx_dict = getattr(self, f"rx_{array}_antenna_indices")
-        antenna_idx_dict[slice_id] = antenna_indices
+        antenna_idx_dict[slice_id] = channel_indices
 
-        # Zero out the complex phase for any antenna that isn't used in this slice
+        # has shape [num_beams, num_rx_channels]
         phases = np.zeros(
             (rx_phase_shift.shape[0], len(all_antennas)),
             dtype=rx_phase_shift.dtype,
         )
-        phases[:, antenna_indices] = rx_phase_shift[:, slice_antennas]
+        phases[:, channel_indices] = rx_phase_shift[:, slice_antennas]
 
-        return phases, antenna_indices
+        return phases, channel_indices
 
     def build_tx_phases(
         self, slice_id: int, exp_slice: ExperimentSlice, freq_khz: float
     ):
         """
-        Builds the basic pulse IQ samples for this slice, and the complex phases
-        for each beam and antenna.
+        Builds the basic pulse IQ samples for this slice, and the complex phases for each beam and tx channel
+        of the experiment.
 
         :param  slice_id: Unique identifier for the slice
         :type   slice_id: int
@@ -543,7 +546,7 @@ class Sequence(InterfaceClassBase):
         :param  freq_khz: Operating frequency, in kHz.
         :type   freq_khz: float
 
-        :returns: Phase shifts as complex numbers with magnitude <= 1, with shape [num_beams, num_antennas]
+        :returns: Phase shifts as complex numbers with magnitude <= 1, with shape [num_beams, num_tx_channels]
         :rtype:   np.ndarray
         """
         txrate = self.transmit_metadata["txrate"]
@@ -571,36 +574,43 @@ class Sequence(InterfaceClassBase):
             )
 
             if exp_slice.tx_antenna_pattern is not None:
-                # Returns an array of size [tx_antennas] of complex numbers of magnitude <= 1
+                # Returns an array of size [num_antennas] of complex numbers of magnitude <= 1
                 tx_main_phase_shift = exp_slice.tx_antenna_pattern(
                     freq_khz,
                     exp_slice.tx_antennas,
-                    main_antenna_locations[self.tx_main_antennas],
+                    main_antenna_locations,
                 )
             else:
                 tx_main_phase_shift = get_phase_shift(
                     exp_slice.beam_angle,
                     freq_khz,
-                    main_antenna_locations[self.tx_main_antennas, 0],
+                    main_antenna_locations[:, 0],
                 )
 
             # The antennas used for transmitting this slice
             slice_tx_antennas = exp_slice.tx_antennas
 
-            # The index of the antennas for this slice, within the list of all antennas from the config file
-            tx_indices = [self.tx_main_antennas.index(ant) for ant in slice_tx_antennas]
-            self.tx_antenna_indices[slice_id] = tx_indices
-
-            # Zero out the complex phase of any antenna that isn't used in this slice
+            # has shape [num_beams, num_tx_channels]
             tx_phases = np.zeros(
                 (tx_main_phase_shift.shape[0], len(self.tx_main_antennas)),
                 dtype=tx_main_phase_shift.dtype,
             )
+
+            # tx_indices = the index of the antennas for this slice within the list of all antennas from the config file
+            # E.g. self.tx_main_antennas = [1, 2, 3]
+            #      slice_tx_antennas = [1, 3]
+            #      tx_indices = [0, 2]
+            tx_indices = [self.tx_main_antennas.index(ant) for ant in slice_tx_antennas]
+
+            # All phases start at zero - only those channels which are configured to transmit for this slice will be
+            # populated with non-zero phase values.
+            # Note that tx_main_phase_shift has dimension shaped by [num_antennas], and slice_tx_antennas is essentially
+            # the index of each Tx channel for this slice within [num_antennas].
             tx_phases[:, tx_indices] = tx_main_phase_shift[:, slice_tx_antennas]
 
-            # tx_phases:        [num_beams, num_antennas]
+            # tx_phases:        [num_beams, num_tx_channels]
             # basic_samples:    [num_samples]
-            # phased_samps_for_beams: [num_beams, num_antennas, num_samples]
+            # phased_samps_for_beams: [num_beams, num_tx_channels, num_samples]
             log.debug(
                 "slice information",
                 slice_id=slice_id,
