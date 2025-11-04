@@ -426,7 +426,7 @@ def _main():
         try:
             i = 0
             for i, line in enumerate(relevant_lines):
-                line.test()
+                line.test('sas')
         except (IndexError, ValueError) as e:
             logtime = time_of_interest.strftime("%c")
             error_msg = f"{logtime}: Unable to make schedule\n\t Exception thrown:\n\t\t {str(e)}\n"

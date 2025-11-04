@@ -65,43 +65,24 @@ static clocks_t borealis_clocks;
 
 /**
  * @brief      Makes a set of vectors of the samples for each TX channel from
- * the driver packet.
+ * shared memory.
  *
+ * @param[in]  total tx channels.
  * @param[in]  driver_packet    A received driver packet from radar_control.
- * @param[in]  driver_options   The parsed config options needed by the driver.
+ * @param[in]  pulse_ptrs       Pointer for each channel in the pulse buffer.
  *
  * @return     A set of vectors of TX samples for each USRP channel.
- *
- * Values in a protobuffer have no contiguous underlying storage so values need
- * to be parsed into a vector.
  */
 std::vector<std::vector<std::complex<float>>> make_tx_samples(
-    const driverpacket::DriverPacket &driver_packet,
-    const DriverOptions &driver_options) {
-  // channel_samples_size() will get you # of channels (protobuf in c++)
-  std::vector<std::vector<std::complex<float>>> samples(
-      driver_packet.channel_samples_size());
-
-  for (int channel = 0; channel < driver_packet.channel_samples_size();
-       channel++) {
-    // Get the number of real samples in this particular channel (_size() is
-    // from protobuf)
-    auto num_samps = driver_packet.channel_samples(channel).real_size();
-    std::vector<std::complex<float>> v(num_samps);
-    // Type for smp? protobuf object, containing repeated double real and double
-    // imag
-    auto smp = driver_packet.channel_samples(channel);
-    for (int smp_num = 0; smp_num < num_samps; smp_num++) {
-      v[smp_num] = std::complex<float>(smp.real(smp_num), smp.imag(smp_num));
-    }
+    int total_tx_channels, const driverpacket::DriverPacket &driver_packet,
+    std::vector<std::complex<float> *> pulse_ptrs) {
+  std::vector<std::vector<std::complex<float>>> samples(total_tx_channels);
+  auto num_samps = driver_packet.numberoftransmitsamples();
+  auto offset = driver_packet.buffer_offset();
+  for (int channel = 0; channel < total_tx_channels; channel++) {
+    auto start = pulse_ptrs[channel] + offset;
+    std::vector<std::complex<float>> v(start, start + num_samps);
     samples[channel] = v;
-  }
-
-  for (auto &s : samples) {
-    if (s.size() != samples[0].size()) {
-      // TODO(keith): Handle this error. Samples buffers are of different
-      // lengths.
-    }
   }
 
   return samples;
@@ -149,6 +130,23 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
   uint32_t num_recv_samples = 0;
 
   size_t ringbuffer_size;
+
+  // Initialize shared memory for getting pulses from radar_control
+  size_t pulse_buf_size = driver_options.get_pulse_buffer_size();
+  auto total_pbuf_size =
+      tx_channels.size() * pulse_buf_size * sizeof(std::complex<float>);
+
+  SharedMemoryHandler pulse_buf(driver_options.get_pulse_buffer_name());
+  pulse_buf.create_shr_mem(total_pbuf_size);
+  mlock(pulse_buf.get_shrmem_addr(), total_pbuf_size);
+
+  std::vector<std::complex<float> *> pulse_buffer_starts;
+  for (uint32_t i = 0; i < tx_channels.size(); i++) {
+    auto p_ptr =
+        static_cast<std::complex<float> *>(pulse_buf.get_shrmem_addr()) +
+        i * pulse_buf_size;
+    pulse_buffer_starts.push_back(p_ptr);
+  }
 
   uhd::time_spec_t sequence_start_time;
   uhd::time_spec_t initialization_time;
@@ -252,19 +250,16 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
             );
 
             TIMEIT_IF_TRUE_OR_DEBUG(
-                false,
-                COLOR_BLUE("TRANSMIT") << " sample unpack time: ", [&]() {
+                true, COLOR_BLUE("TRANSMIT") << " sample unpack time: ", [&]() {
                   if (driver_packet.sob() == true) {
                     pulses.clear();
                   }
-                  // Parse new samples from driver packet if they exist.
-                  if (driver_packet.channel_samples_size() >
-                      0) {  // ~700us to unpack 4x1600 samples
-                    last_pulse_sent =
-                        make_tx_samples(driver_packet, driver_options);
-                    samples_set = true;
-                  }
-                  pulses.push_back(last_pulse_sent);
+                  // Parse new samples from shared memory.
+                  last_pulse_sent = make_tx_samples(
+                      tx_channels.size(), driver_packet, pulse_buffer_starts);
+                  samples_set = true;
+                  pulses.push_back(
+                      last_pulse_sent);  // [pulses, channels, samples]
                 }());
           }();
 

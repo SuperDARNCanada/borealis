@@ -3,7 +3,6 @@ syntax = "proto3";
 package driverpacket;
 
 message DriverPacket {
-  repeated SamplesBuffer channel_samples = 1;
   uint32 sequence_num = 2;
   double rxrate = 3;
   double txrate = 4;
@@ -15,9 +14,6 @@ message DriverPacket {
   bool SOB = 10;
   bool EOB = 11;
   bool align_sequences = 12;
-
-  message SamplesBuffer {
-    repeated float real = 1;
-    repeated float imag = 2;
-  }
+  uint32 buffer_offset = 13;
+  uint32 numberoftransmitsamples = 14;
 }

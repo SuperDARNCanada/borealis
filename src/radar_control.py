@@ -19,6 +19,8 @@ from datetime import datetime, timedelta
 import zmq
 import threading
 import numpy as np
+import posix_ipc as ipc
+import mmap
 from functools import reduce
 from dataclasses import dataclass, field
 
@@ -88,6 +90,7 @@ class RadctrlParameters:
     averaging_period_time: timedelta = timedelta(seconds=0)
     debug_samples: list = field(default_factory=list)
     pulse_transmit_data_tracker: dict = field(default_factory=dict)
+    pulse_buffer_offset: int = 0
     slice_dict: dict = field(default_factory=dict, init=False)
     cfs_scan_flag: bool = False
     scan_flag: bool = False
@@ -141,7 +144,7 @@ def driver_comms_thread(radctrl_driver_iden, driver_socket_iden, router_addr):
             first_time = False
 
 
-def create_driver_message(radctrl_params, pulse_transmit_data):
+def create_driver_message(radctrl_params, pulse_transmit_data, pulse_buffer):
     """
     Place data in the driver packet and send it via zeromq to the driver.
 
@@ -203,36 +206,23 @@ def create_driver_message(radctrl_params, pulse_transmit_data):
         message.seqtime = radctrl_params.sequence.seqtime
         message.align_sequences = radctrl_params.sequence.align_sequences
 
-        if pulse_transmit_data["isarepeat"]:
-            # antennas empty
-            # samples empty
-            # ctrfreq empty
-            # rxrate and txrate empty
-            log.debug("repeat timing", timing=timing, sob=SOB, eob=EOB)
-        else:
-            # Setup data to send to driver for transmit.
-            log.debug("non-repeat timing", timing=timing, sob=SOB, eob=EOB)
-            samples_array = pulse_transmit_data["samples_array"]
-            for ant_idx in range(samples_array.shape[0]):
-                sample_add = message.channel_samples.add()
-                # Add one Samples message for each channel possible in config.
-                # Any unused channels will be sent zeros.
-                # Protobuf expects types: int, long, or float, will reject numpy types and
-                # throw a TypeError so we must convert the numpy arrays to lists
-                sample_add.real.extend(samples_array[ant_idx, :].real.tolist())
-                sample_add.imag.extend(samples_array[ant_idx, :].imag.tolist())
+        samples_array = pulse_transmit_data["samples_array"]
+        num_samps = samples_array.shape[1]
+        offset = radctrl_params.pulse_buffer_offset
+        if offset + num_samps >= pulse_buffer.shape[1]:
+            offset = 0
+        pulse_buffer[:, offset : offset + num_samps] = samples_array
 
-            message.txcenterfreq = (
-                radctrl_params.sequence.txctrfreq * 1000
-            )  # convert to Hz
-            message.rxcenterfreq = (
-                radctrl_params.sequence.rxctrfreq * 1000
-            )  # convert to Hz
-            message.txrate = radctrl_params.experiment.txrate
-            message.rxrate = radctrl_params.experiment.rxrate
-            message.numberofreceivesamples = (
-                radctrl_params.sequence.numberofreceivesamples
-            )
+        message.buffer_offset = offset
+        message.numberoftransmitsamples = num_samps
+
+        radctrl_params.pulse_buffer_offset = offset + num_samps
+
+        message.txcenterfreq = radctrl_params.sequence.txctrfreq * 1000  # convert to Hz
+        message.rxcenterfreq = radctrl_params.sequence.rxctrfreq * 1000  # convert to Hz
+        message.txrate = radctrl_params.experiment.txrate
+        message.rxrate = radctrl_params.experiment.rxrate
+        message.numberofreceivesamples = radctrl_params.sequence.numberofreceivesamples
 
     return message.SerializeToString()
 
@@ -624,7 +614,7 @@ def round_up_time(dt=None, round_to=60):
     return result
 
 
-def run_cfs_scan(radctrl_params, sockets):
+def run_cfs_scan(radctrl_params, sockets, pulse_buffer):
     radctrl_process_socket = sockets[0]
     radctrl_brian_socket = sockets[1]
     to_driver_inproc_sock = sockets[2]
@@ -646,7 +636,9 @@ def run_cfs_scan(radctrl_params, sockets):
     # The above call is blocking; will wait until brian says to start
 
     for pulse_transmit_data in sqn:
-        driver_message = create_driver_message(radctrl_params, pulse_transmit_data)
+        driver_message = create_driver_message(
+            radctrl_params, pulse_transmit_data, pulse_buffer
+        )
         to_driver_inproc_sock.send_pyobj(driver_message)
 
     radctrl_params.cfs_scan_flag = True
@@ -671,7 +663,7 @@ def run_cfs_scan(radctrl_params, sockets):
     return freq_data
 
 
-def cfs_block(ave_params, cfs_sockets):
+def cfs_block(ave_params, cfs_sockets, pulse_buffer):
     aveperiod = ave_params.aveperiod
     beam = aveperiod.beam_iter
     if not (
@@ -688,7 +680,7 @@ def cfs_block(ave_params, cfs_sockets):
     ave_params.sequence = aveperiod.cfs_sequence
     ave_params.decimation_scheme = aveperiod.cfs_sequence.decimation_scheme
 
-    processed_cfs_packet = run_cfs_scan(ave_params, cfs_sockets)
+    processed_cfs_packet = run_cfs_scan(ave_params, cfs_sockets, pulse_buffer)
     ave_params.num_sequences += 1
     ave_params.cfs_scan_flag = False
     aveperiod.cfs_freq = processed_cfs_packet.cfs_freq
@@ -802,7 +794,7 @@ def main():
     start_up_params = RadctrlParameters(
         experiment, None, None, options, seqnum_start, True
     )
-    driver_start_message = create_driver_message(start_up_params, None)
+    driver_start_message = create_driver_message(start_up_params, None, None)
 
     dsp_comms = threading.Thread(
         target=dsp_comms_thread,
@@ -838,6 +830,14 @@ def main():
     driver_comms_socket.send_pyobj(driver_start_message)
     driver_comms_socket.recv_string()
     # Wait until driver acknowledges that it is good to start
+
+    shm = ipc.SharedMemory(options.pulse_buffer_name)
+    mapped_mem = mmap.mmap(shm.fd, shm.size)
+    pulse_buffer = np.ndarray(
+        (len(options.tx_main_antennas), options.pulse_buffer_size),
+        buffer=mapped_mem,
+        dtype=np.complex64,
+    )
 
     first_aveperiod = True
     next_scan_start = None
@@ -1115,6 +1115,7 @@ def main():
                                 radctrl_brian_socket,
                                 driver_comms_socket,
                             ],
+                            pulse_buffer,
                         )
                         aveperiod.update_cfs_freqs()  # always update, to use correct freq for beam
                         log.verbose("CFS block run time", time=time.time() - cfs_time)
@@ -1166,8 +1167,14 @@ def main():
                         ) in ave_params.pulse_transmit_data_tracker[sequence_index][
                             ave_params.num_sequences
                         ]:
+                            message_create = time.perf_counter()
                             driver_message = create_driver_message(
-                                ave_params, pulse_transmit_data
+                                ave_params, pulse_transmit_data, pulse_buffer
+                            )
+                            log.debug(
+                                "driver_message creation time",
+                                duration=(time.perf_counter() - message_create) * 1000,
+                                units="ms",
                             )
                             driver_comms_socket.send_pyobj(driver_message)
 
