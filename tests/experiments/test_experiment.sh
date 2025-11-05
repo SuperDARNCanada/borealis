@@ -25,7 +25,5 @@ pwd
 
 for site in ${RADAR_IDS[*]}; do
     printf "\n$site:\n"
-    python3 $BOREALISPATH/tests/experiments/test_as_site.py \
-            --site_id $site \
-            --experiment $EXPERIMENT
+    python3 $BOREALISPATH/tests/experiments/test_as_site.py $site --experiment $EXPERIMENT
 done
