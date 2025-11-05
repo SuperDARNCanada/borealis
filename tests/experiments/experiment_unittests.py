@@ -28,6 +28,7 @@ import argparse
 import random
 import string
 import unittest
+import unittest.mock
 import os
 import sys
 import inspect
@@ -41,13 +42,13 @@ from typing import Type
 BOREALISPATH = os.environ["BOREALISPATH"]
 sys.path.append(f"{BOREALISPATH}/src")
 
-import borealis_experiments.superdarn_common_fields as scf
 from utils.experiment_prototype import (
     ExperimentException,
     ExperimentPrototype,
     retrieve_experiment,
     experiment_handler,
 )
+from utils.options import Options
 
 
 def redirect_to_devnull(func, *args, **kwargs):
@@ -99,29 +100,24 @@ class TestExperimentEnvSetup(unittest.TestCase):
         """
         print("\nMethod: ", self._testMethodName)
 
-    @unittest.skip("Skip for TODO reason")
+    @unittest.mock.patch.dict(os.environ, {"BOREALISPATH": ""})
     def test_borealispath(self):
         """
         Test failure to have BOREALISPATH in env
         """
-        # Need to remove the environment variable, reset for other tests
-        os.environ.pop("BOREALISPATH")
-        sys.path.remove(BOREALISPATH)
-        del os.environ["BOREALISPATH"]
-        os.unsetenv("BOREALISPATH")
-        with self.assertRaisesRegex(KeyError, "BOREALISPATH"):
-            ehmain()
-        os.environ["BOREALISPATH"] = BOREALISPATH
-        sys.path.append(BOREALISPATH)
+        with self.assertRaisesRegex(ValueError, "BOREALISPATH env variable not set"):
+            normalscan = retrieve_experiment("normalscan")
+            ehmain(normalscan)
 
     @unittest.skip("Cannot test this while hdw.dat files are in /usr/local/hdw")
     def test_hdw_file(self):
         """
         Test the code that checks for the hdw.dat file
         """
+        options = Options()
+        site_name = options.site_id
+        hdw_path = options.hdw_path
 
-        site_name = scf.options.site_id
-        hdw_path = scf.options.hdw_path
         # Rename the hdw.dat file temporarily
         os.rename(f"{hdw_path}/hdw.dat.{site_name}", f"{hdw_path}/_hdw.dat.{site_name}")
 
@@ -221,17 +217,16 @@ def build_unit_tests():
                     if hasattr(attribute, "error_message"):
                         # If expected to fail, should have a classmethod called "error_message"
                         # that contains the error message raised
-                        try:
-                            exp_exception, msg = getattr(attribute, "error_message")()
-                        except ValueError:
-                            pass
+                        exp_exception, msg = getattr(attribute, "error_message")()
                         test = exception_test_generator(attribute, exp_exception, msg)
                     else:  # No exception expected - this is a positive test
                         test = experiment_test_generator(attribute)
                     # setattr makes a properly named test method within TestExperimentArchive which
                     # can be run by unittest.main()
                     if hasattr(TestActiveExperiments, f"test_{attribute.__name__}"):
-                        raise ValueError(f"Multiple tests have name test_{attribute.__name__}")
+                        raise ValueError(
+                            f"Multiple tests have name test_{attribute.__name__}"
+                        )
                     setattr(TestMockExperiments, f"test_{attribute.__name__}", test)
 
 
@@ -259,7 +254,7 @@ def exception_test_generator(
 def build_experiment_tests(experiments=None, kwargs=None):
     """
     Create individual unit tests for all experiments within the base borealis_experiments/
-    directory. All experiments are run to ensure no exceptions are thrown when they are built
+    directory. All experiments are run to ensure no exceptions are thrown when they are built.
     """
 
     experiment_package = "borealis_experiments"
@@ -297,7 +292,9 @@ def build_experiment_tests(experiments=None, kwargs=None):
                     # "test_[exp_name]" which can be run via unittest.main()
                     test_name = f"test_{exp_name}"
                     if hasattr(TestActiveExperiments, test_name):
-                        test_name += ''.join(random.choice(string.ascii_lowercase) for _ in range(6))
+                        test_name += "".join(
+                            random.choice(string.ascii_lowercase) for _ in range(6)
+                        )
                     setattr(TestActiveExperiments, f"test_{exp_name}", test)
 
     # Grab the experiments specified
@@ -341,13 +338,6 @@ def experiment_test_generator(exp_class: Type[ExperimentPrototype], **kwargs):
 def run_tests(raw_args=None, buffer=True, print_results=True):
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--site_id",
-        required=False,
-        default="sas",
-        choices=["sas", "pgr", "inv", "rkn", "cly", "lab"],
-        help="Site ID of site to test experiments as. Defaults to sas.",
-    )
-    parser.add_argument(
         "--experiments",
         required=False,
         nargs="+",
@@ -376,12 +366,20 @@ def run_tests(raw_args=None, buffer=True, print_results=True):
         action="store_true",
         help="Only test the main experiments, not those in tests/",
     )
-    parser.add_argument(
-        "--verbosity", required=False, default=1, help="Verbosity level, larger number increases verbosity."
+    verbose_group = parser.add_mutually_exclusive_group()
+    verbose_group.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Increase verbosity",
+    )
+    verbose_group.add_argument(
+        "-q",
+        "--quiet",
+        action="store_true",
+        help="Decrease verbosity",
     )
     args = parser.parse_args(raw_args)
-
-    os.environ["RADAR_ID"] = args.site_id
 
     # Read in config.ini file for current site to make necessary directories
     path = (
@@ -431,12 +429,18 @@ def run_tests(raw_args=None, buffer=True, print_results=True):
                 exit(1)
         argv = [parser.prog] + exp_tests
     if print_results:
+        if args.quiet:
+            verbosity = 0
+        if args.verbose:
+            verbosity = 2
+        else:
+            verbosity = 1
         result = unittest.main(
             module=args.module,
             argv=argv,
             exit=False,
             buffer=buffer,
-            verbosity=int(args.verbosity),
+            verbosity=verbosity,
         )
     else:
         result = redirect_to_devnull(
@@ -462,6 +466,9 @@ def run_tests(raw_args=None, buffer=True, print_results=True):
                 os.removedirs(hdw_path)
             except OSError:  # If directories not empty, this will fail. That is fine.
                 pass
+
+    if isinstance(result, unittest.TestProgram):
+        result = result.result
 
     return result
 
