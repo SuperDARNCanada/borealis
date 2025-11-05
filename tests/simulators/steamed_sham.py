@@ -80,32 +80,29 @@ bindkey ^[[1;5C focus right
 bindkey ^[[1;5A focus up
 bindkey ^[[1;5B focus down
 
-screen -t "N200 Driver" bash -c "{usrp_driver}"                 # Top left
+screen -t "N200 Driver" bash -c "{usrp_driver}; exec bash"                 # Top left
 split -v
 split -v
 split
 focus
-screen -t "Signal Processing" bash -c "{rx_signal_processing}"  # Bottom left
+screen -t "Signal Processing" bash -c "{rx_signal_processing}; exec bash"  # Bottom left
 focus
-screen -t "Radar Control" bash -c "{radar_control}"             # Top middle
+screen -t "Radar Control" bash -c "{radar_control}; exec bash"             # Top middle
 split
 focus
-screen -t "Data Write" bash -c "{data_write}"                   # Bottom middle
+screen -t "Data Write" bash -c "{data_write}; exec bash"                   # Bottom middle
 focus
-screen -t "Experiment Handler" bash -c "{experiment_handler}"   # Right top
-split
 {realtime}      # extra screen created here if realtime enabled
-focus
-screen -t "Brian" bash -c "{brian}"                             # Right bottom
+screen -t "Brian" bash -c "{brian}; exec bash"                             # Right bottom
 focus
 
 detach
 """
 
 realtime_window = """
+screen -t "Realtime" bash -c "{realtime}; exec bash"                   # Right top
 split
 focus
-screen -t "Realtime" bash -c "{realtime}"                   # Right middle
 """
 
 
@@ -209,8 +206,7 @@ else:
 # Configure python first, starting with options for each module
 options = {
     "brian": "",
-    "experiment_handler": f"{args.experiment_module} {args.scheduling_mode_type}",
-    "radar_control": "",
+    "radar_control": f"{args.experiment_module} {args.scheduling_mode_type}",
     "data_write": f"{data_write_args}",
     "realtime": "",
     "rx_signal_processing": "",
@@ -218,9 +214,9 @@ options = {
 }
 
 if args.embargo:
-    options["experiment_handler"] += " --embargo"
+    options["radar_control"] += " --embargo"
 if args.kwargs:
-    options["experiment_handler"] += f" --kwargs {kwargs}"
+    options["radar_control"] += f" --kwargs {kwargs}"
 if args.realtime_off:
     options["brian"] += " --realtime-off"
 

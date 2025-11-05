@@ -10,6 +10,7 @@ Utilities for working with scd files
 import os
 import datetime as dt
 import shutil
+import subprocess as sp
 import sys
 from typing_extensions import Annotated, Union, Literal, Self, Optional
 
@@ -18,7 +19,6 @@ from pydantic import field_validator, Field, model_validator
 
 borealis_path = os.environ["BOREALISPATH"]
 sys.path.append(f"{borealis_path}/tests/experiments")
-import experiment_unittests
 
 
 class LineConfig:
@@ -111,26 +111,31 @@ class ScheduleLine:
         """
 
         args = [
-            "--site_id",
             site_id,
             "--experiments",
             self.experiment,
-            "--kwargs",
-            " ".join(self.kwargs),
-            "--module",
-            "experiment_unittests",
         ]
-        test_program = experiment_unittests.run_tests(
-            args, buffer=True, print_results=False
-        )
-        if (
-            len(test_program.result.failures) != 0
-            or len(test_program.result.errors) != 0
-        ):
+
+        if len(self.kwargs) > 0:
+            args.extend(
+                [
+                    "--kwargs",
+                    " ".join(self.kwargs),
+                ]
+            )
+        try:
+            sp.run(
+                [
+                    "python3",
+                    f"{os.environ['BOREALISPATH']}/tests/experiments/test_as_site.py",
+                ]
+                + args,
+                check=True,
+            )
+        except sp.CalledProcessError as e:
             raise ValueError(
                 "Experiment could not be scheduled due to errors in experiment.\n"
-                f"Errors: {test_program.result.errors}\n"
-                f"Failures: {test_program.result.failures}"
+                + str(e)
             )
 
     @classmethod

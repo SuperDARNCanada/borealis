@@ -43,7 +43,7 @@ restart_borealis = "scripts.restart_borealis:main"
 
 [tool.setuptools.packages.find]
 where = ["borealis", "build"]
-exclude = ["usrp_drivers", "src.borealis_experiments.testing_archive*"]
+exclude = ["usrp_drivers", "src.borealis_experiments.tests*"]
 
 [tool.ruff]
 include = [
@@ -55,8 +55,8 @@ include = [
     "**/pyproject.toml"
 ]
 extend-exclude = [
-    "src/borealis_experiments/**/*.py",
     "tests/archive/**/*",
+    "src/borealis_experiments/archive/*.py"
 ]
 
 [tool.ruff.lint]

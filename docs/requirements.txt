@@ -8,7 +8,6 @@ matplotlib
 myst_parser
 numpy
 posix_ipc
-protobuf
 pydantic>2
 pydarnio>=1.3
 pyzmq

@@ -114,7 +114,7 @@ def fill_datawrite_message(processed_data, slice_details, data_outputs, cfs_scan
             cfs_data = data_outputs["cfs_data"]
             output_dataset.cfs_data = cfs_data[slice_num]
 
-            processed_data.add_output_dataset(output_dataset)
+            processed_data.output_datasets.append(output_dataset)
             # if a clear frequency search was performed, add cfs data to message
         else:
             if "main_corrs" in data_outputs:
@@ -129,7 +129,7 @@ def fill_datawrite_message(processed_data, slice_details, data_outputs, cfs_scan
                 cross_corrs = data_outputs["cross_corrs"][sd["slice_num"]]
                 output_dataset.xcf_shm = add_array(cross_corrs)
 
-            processed_data.add_output_dataset(output_dataset)
+            processed_data.output_datasets.append(output_dataset)
 
 
 def sequence_worker(options, ringbuffer):
@@ -399,7 +399,7 @@ def sequence_worker(options, ringbuffer):
                         intf_data = intf_processor.filter_outputs[i]
                         debug_data_in_shm(stage, intf_data, "intf")
 
-                    rx_params.processed_data.add_debug_data(stage)
+                    rx_params.processed_data.debug_data.append(stage)
 
             # Add antennas_iq data
             stage = DebugDataStage()
@@ -412,7 +412,7 @@ def sequence_worker(options, ringbuffer):
                 intf_shm = intf_processor.shared_mem["antennas_iq"]
                 stage.intf_shm = intf_shm.name
                 intf_shm.close()
-            rx_params.processed_data.add_debug_data(stage)
+            rx_params.processed_data.debug_data.append(stage)
             log_dict["add_antiq_to_stage_time"] = (
                 time.perf_counter() - start_timer
             ) * 1e3
@@ -673,11 +673,10 @@ def main():
 
         # Set up the filtering/downsampling strategy
         taps_per_stage = []
-        dm_rates = []
         dm_scheme_taps = []
+        dm_rates = sqn_meta_message.decimation_scheme.dm_rates
         extra_samples = 0
-        for stage in sqn_meta_message.decimation_stages:
-            dm_rates.append(stage.dm_rate)
+        for stage in sqn_meta_message.decimation_scheme.stages:
             dm_scheme_taps.append(np.array(stage.filter_taps, dtype=np.complex64))
             taps_per_stage.append(len(stage.filter_taps))
         log.verbose(

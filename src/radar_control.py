@@ -12,19 +12,22 @@ through the interface_class_base objects to control the radar.
 :author: Marci Detwiller
 """
 
+import argparse
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from functools import reduce
+import mmap
 import os
 import sys
-import time
-from datetime import datetime, timedelta
-import zmq
 import threading
+import time
+
+import zmq
 import numpy as np
 import posix_ipc as ipc
-import mmap
-from functools import reduce
-from dataclasses import dataclass, field
 
-from experiment_prototype.interface_classes.averaging_periods import CFSAveragingPeriod
+from utils.experiment_prototype import experiment_handler, retrieve_experiment
+from utils.interface_classes.averaging_periods import CFSAveragingPeriod
 from utils.options import Options
 import utils.message_formats as messages
 from utils import socket_operations as so
@@ -284,11 +287,7 @@ def create_dsp_message(radctrl_params):
         message.cfs_fft_n = radctrl_params.aveperiod.cfs_fft_n
 
     if radctrl_params.decimation_scheme is not None:
-        for stage in radctrl_params.decimation_scheme.stages:
-            dm_stage_add = messages.DecimationStageMessage(
-                stage.stage_num, stage.input_rate, stage.dm_rate, stage.filter_taps
-            )
-            message.add_decimation_stage(dm_stage_add)
+        message.decimation_scheme = radctrl_params.decimation_scheme
 
     slice_dict = radctrl_params.slice_dict
     if radctrl_params.cfs_scan_flag:
@@ -313,7 +312,7 @@ def create_dsp_message(radctrl_params):
                     slice_dict[slice_id],
                     np.average(slice_dict[slice_id].cfs_range),
                 )
-                main_phases = tx_phases[beam_num]
+                main_phases = tx_phases[0, beam_num]
 
             intf_phases = np.zeros(
                 len(slice_dict[slice_id].rx_intf_antennas), dtype=np.complex64
@@ -330,26 +329,29 @@ def create_dsp_message(radctrl_params):
 
     slice_dict = radctrl_params.sequence.slice_dict
     for slice_id in radctrl_params.sequence.slice_ids:
-        chan_add = messages.RxChannel(slice_id)
-        chan_add.tau_spacing = slice_dict[slice_id].tau_spacing
+        rx_chan = messages.RxChannel(slice_id)
+        rx_chan.tau_spacing = slice_dict[slice_id].tau_spacing
 
         # Send the translational frequencies to dsp in order to bandpass filter correctly.
-        chan_add.rx_freq = slice_dict[slice_id].freq * 1.0e3
-        chan_add.num_ranges = slice_dict[slice_id].num_ranges
-        chan_add.first_range = slice_dict[slice_id].first_range
-        chan_add.range_sep = slice_dict[slice_id].range_sep
-        chan_add.rx_intf_antennas = slice_dict[slice_id].rx_intf_antennas
-        chan_add.pulses = slice_dict[slice_id].pulse_sequence
-        chan_add.acf = slice_dict[slice_id].acf
-        chan_add.xcf = slice_dict[slice_id].xcf
-        chan_add.acfint = slice_dict[slice_id].acfint
+        freq_khz = slice_dict[slice_id].freq
+        if isinstance(freq_khz, list):
+            freq_khz = freq_khz[slice_dict[slice_id].freq_order[radctrl_params.aveperiod.beam_iter]]
+        rx_chan.rx_freq = freq_khz * 1.0e3
+        rx_chan.num_ranges = slice_dict[slice_id].num_ranges
+        rx_chan.first_range = slice_dict[slice_id].first_range
+        rx_chan.range_sep = slice_dict[slice_id].range_sep
+        rx_chan.rx_intf_antennas = slice_dict[slice_id].rx_intf_antennas
+        rx_chan.pulses = slice_dict[slice_id].pulse_sequence
+        rx_chan.acf = slice_dict[slice_id].acf
+        rx_chan.xcf = slice_dict[slice_id].xcf
+        rx_chan.acfint = slice_dict[slice_id].acfint
 
         main_bms = beam_dict[slice_id]["main"]
         intf_bms = beam_dict[slice_id]["intf"]
 
         # Combine main and intf such that for a given beam all main phases come first.
         beams = np.hstack((main_bms, intf_bms))
-        chan_add.beam_phases = np.array(beams)
+        rx_chan.beam_phases = np.array(beams)
 
         for lag in slice_dict[slice_id].lag_table:
             lag_add = messages.Lag(lag[0], lag[1], int(lag[1] - lag[0]))
@@ -370,53 +372,10 @@ def create_dsp_message(radctrl_params):
 
             lag_add.phase_offset_real = np.real(phase_offset)
             lag_add.phase_offset_imag = np.imag(phase_offset)
-            chan_add.add_lag(lag_add)
-        message.add_rx_channel(chan_add)
+            rx_chan.lags.append(lag_add)
+        message.rx_channels.append(rx_chan)
 
     return message
-
-
-def search_for_experiment(radar_control_to_exp_handler, exphan_to_radctrl_iden, status):
-    """
-    Check for new experiments from the experiment handler
-
-    :param radar_control_to_exp_handler: String identifier of the radar control to experiment handler socket
-    :param exphan_to_radctrl_iden: String identifier of the experiment handler to radar control socket
-    :param status: status string (EXP_NEEDED or NO_ERROR).
-    :returns new_experiment_received: boolean (True for new experiment received)
-    :returns experiment: experiment instance (or None if there is no new experiment)
-    """
-
-    try:
-        so.send_string(radar_control_to_exp_handler, exphan_to_radctrl_iden, status)
-    except zmq.ZMQBaseError as e:
-        log.error("zmq failed request", error=e)
-        log.exception("zmq failed request", exception=e)
-        sys.exit(1)
-
-    experiment = None
-    new_experiment_received = False
-
-    try:
-        new_exp = so.recv_pyobj(
-            radar_control_to_exp_handler,
-            exphan_to_radctrl_iden,
-            log,
-        )
-    except zmq.ZMQBaseError as e:
-        log.error("zmq failed receive", error=e)
-        log.exception("zmq failed receive", exception=e)
-        sys.exit(1)
-
-    if new_exp is not None:
-        experiment = new_exp
-        new_experiment_received = True
-        log.info("new experiment found")
-    else:
-        log.debug("experiment continuing without update")
-        # TODO decide what to do here. I think we need this case if someone doesn't build their experiment properly
-
-    return new_experiment_received, experiment
 
 
 def make_next_samples(radctrl_params):
@@ -527,6 +486,7 @@ def create_dw_message(radctrl_params):
 
         for slice_id in sequence.slice_ids:
             sqn_slice = sequence.slice_dict[slice_id]
+            freq_idx = sqn_slice.freq_order[radctrl_params.aveperiod.beam_iter]
             rxchannel = messages.RxChannelMetadata()
             rxchannel.slice_id = slice_id
             rxchannel.slice_comment = sqn_slice.comment
@@ -534,7 +494,10 @@ def create_dw_message(radctrl_params):
             rxchannel.rx_only = sqn_slice.rxonly
             rxchannel.pulse_len = sqn_slice.pulse_len
             rxchannel.tau_spacing = sqn_slice.tau_spacing
-            rxchannel.rx_freq = sqn_slice.freq
+            freq_khz = sqn_slice.freq
+            if isinstance(freq_khz, list):
+                freq_khz = freq_khz[freq_idx]
+            rxchannel.rx_freq = freq_khz
             rxchannel.ptab = sqn_slice.pulse_sequence
 
             # We always build one sequence in advance, so we trim the last one from when radar
@@ -542,14 +505,14 @@ def create_dw_message(radctrl_params):
             for encoding in sequence.output_encodings[slice_id][
                 : radctrl_params.num_sequences
             ]:
-                rxchannel.add_sqn_encodings(encoding.flatten().tolist())
+                rxchannel.sequence_encodings.append(encoding.flatten().tolist())
             sequence.output_encodings[slice_id] = []
 
             rxchannel.rx_main_antennas = sqn_slice.rx_main_antennas
             rxchannel.rx_intf_antennas = sqn_slice.rx_intf_antennas
             rxchannel.tx_antennas = sqn_slice.tx_antennas
             rxchannel.tx_excitations = sequence.tx_main_phase_shifts[slice_id][
-                radctrl_params.aveperiod.beam_iter
+                freq_idx, sqn_slice.tx_beam_order[radctrl_params.aveperiod.beam_iter]
             ]
 
             beams = sqn_slice.rx_beam_order[radctrl_params.aveperiod.beam_iter]
@@ -560,15 +523,15 @@ def create_dw_message(radctrl_params):
             rx_intf_excitations = []
             for beam in beams:
                 beam_add = messages.Beam(sqn_slice.beam_angle[beam], beam)
-                rxchannel.add_beam(beam_add)
+                rxchannel.beams.append(beam_add)
                 rx_main_excitations.append(
                     sequence.rx_beam_phases[slice_id]["main"][
-                        beam, sequence.rx_main_antenna_indices[slice_id]
+                        freq_idx, beam, sequence.rx_main_antenna_indices[slice_id]
                     ]
                 )
                 rx_intf_excitations.append(
                     sequence.rx_beam_phases[slice_id]["intf"][
-                        beam, sequence.rx_intf_antenna_indices[slice_id]
+                        freq_idx, beam, sequence.rx_intf_antenna_indices[slice_id]
                     ]
                 )
             rxchannel.rx_main_excitations = np.array(
@@ -589,9 +552,9 @@ def create_dw_message(radctrl_params):
 
                 for lag in sqn_slice.lag_table:
                     lag_add = messages.LagTable(lag, int(lag[1] - lag[0]))
-                    rxchannel.add_ltab(lag_add)
+                    rxchannel.ltabs.append(lag_add)
                 rxchannel.averaging_method = sqn_slice.averaging_method
-            sequence_add.add_rx_channel(rxchannel)
+            sequence_add.rx_channels.append(rxchannel)
         message.sequences.append(sequence_add)
 
     return message
@@ -724,7 +687,7 @@ def cfs_block(ave_params, cfs_sockets, pulse_buffer):
         aveperiod.beam_frequency[slice_id][beam] = last_set_cfs[slice_id]
 
 
-def main():
+def main(exp_name, scheduling_mode, embargo, **kwargs):
     """
     Run the radar with the experiment supplied by experiment_handler.
 
@@ -744,25 +707,18 @@ def main():
     # Get config options
     options = Options()
 
-    # The socket identities for radar_control, retrieved from options
-    ids = [
-        options.radctrl_to_exphan_identity,
-        options.radctrl_to_brian_identity,
-    ]
-
     # Setup sockets
     # Socket to send pulse samples over
     # TODO test: need to make sure that we know that all sockets are set up after this try...except block.
     # TODO test: starting the programs in different orders.
     try:
-        sockets_list = so.create_sockets(options.router_address, *ids)
+        radctrl_brian_socket = so.create_sockets(
+            options.router_address, options.radctrl_to_brian_identity
+        )
     except zmq.ZMQBaseError as e:
         log.error("zmq failed setting up sockets", error=e)
         log.exception("zmq failed setting up sockets", exception=e)
         sys.exit(1)
-
-    radar_control_to_exp_handler = sockets_list[0]
-    radctrl_brian_socket = sockets_list[1]
 
     # Sockets for thread communication
     radctrl_inproc_socket = zmq.Context().instance().socket(zmq.PAIR)
@@ -780,17 +736,8 @@ def main():
     seqnum_start = 0
 
     # Wait for experiment handler at the start until we have an experiment to run.
-    new_experiment_waiting = False
-
-    while not new_experiment_waiting:
-        new_experiment_waiting, experiment = search_for_experiment(
-            radar_control_to_exp_handler,
-            options.exphan_to_radctrl_identity,
-            "EXPNEEDED",
-        )
-
-    new_experiment_waiting = False
-    new_experiment_loaded = True
+    exp_class = retrieve_experiment(exp_name)
+    experiment = experiment_handler(exp_class, scheduling_mode, embargo, **kwargs)
 
     # Flag for starting the radar on the minute boundary
     wait_for_first_scanbound = experiment.slice_dict.get("wait_for_first_scanbound")
@@ -854,19 +801,6 @@ def main():
         # TODO : further documentation throughout in comments (high level) and in separate documentation.
         # Iterate through Scans, AveragingPeriods, Sequences, Pulses.
         # Start anew on first scan if we have a new experiment.
-        if new_experiment_waiting:
-            try:
-                experiment = new_experiment
-            except NameError as e:
-                # new_experiment does not exist, should never happen as flag only gets set when
-                # there is a new experiment.
-                log.error("experiment could not be found", error=e)
-                log.exception("experiment could not be found", exception=e)
-                sys.exit(1)
-
-            new_experiment_waiting = False
-            new_experiment = None
-            new_experiment_loaded = True
 
         for scan_num, scan in enumerate(experiment.scan_objects):
             log.debug("scan number", scan_num=scan_num)
@@ -891,12 +825,6 @@ def main():
             else:
                 # Otherwise start at first averaging period
                 scan_iter = 0
-
-            # If a new experiment was received during the last scan, it finished the integration period
-            # it was on and returned here with new_experiment_waiting set to True. Break to load new experiment.
-            # Start anew on first scan if we have a new experiment
-            if new_experiment_waiting:
-                break
 
             if scan.scanbound:
                 if scan.align_scan_to_beamorder:
@@ -951,25 +879,11 @@ def main():
                         seconds=next_scanbound[0]
                     )
 
-            while (
-                scan_iter < scan.num_aveperiods_in_scan and not new_experiment_waiting
-            ):
+            while scan_iter < scan.num_aveperiods_in_scan:
                 # If there are multiple aveperiods in a scan they are alternated (AVEPERIOD interfaced)
                 aveperiod = scan.aveperiods[scan.aveperiod_iter]
                 if TIME_PROFILE:
                     time_start_of_aveperiod = datetime.utcnow()
-
-                # Get new experiment here, before starting a new averaging period.
-                # If new_experiment_waiting is set here, implement new_experiment after this
-                # averaging period. There may be a new experiment waiting, or a new experiment.
-                if not new_experiment_waiting and not new_experiment_loaded:
-                    new_experiment_waiting, new_experiment = search_for_experiment(
-                        radar_control_to_exp_handler,
-                        options.exphan_to_radctrl_identity,
-                        "NOERROR",
-                    )
-                elif new_experiment_loaded:
-                    new_experiment_loaded = False
 
                 log.debug("new averaging period")
 
@@ -1160,7 +1074,7 @@ def main():
 
                         ave_params.decimation_scheme = sequence.decimation_scheme
 
-                        # These three things can happen simultaneously. We can spawn them as threads.
+                        # This can happen simultaneously
                         threads = [
                             threading.Thread(target=make_next_samples(ave_params))
                         ]
@@ -1271,7 +1185,40 @@ if __name__ == "__main__":
     log = log_config.log()
     log.info("RADAR_CONTROL BOOTED")
     try:
-        main()
+        parser = argparse.ArgumentParser()
+        parser.add_argument(
+            "experiment_module",
+            help="The name of the module in the experiment_prototype package that contains "
+            "your Experiment class, e.g. normalscan",
+        )
+        parser.add_argument(
+            "scheduling_mode_type",
+            help="The type of scheduling time for this experiment run, e.g. common, "
+            "special, or discretionary.",
+        )
+        parser.add_argument(
+            "--embargo",
+            action="store_true",
+            help="Embargo the file (makes the CPID negative)",
+        )
+        parser.add_argument(
+            "--kwargs",
+            nargs="+",
+            default="",
+            help="Keyword arguments for the experiment. Each must be formatted as kw=val",
+        )
+        args = parser.parse_args()
+        # parse kwargs and pass to experiment
+        parsed_kwargs = {}
+        for element in args.kwargs:
+            kwarg = element.split("=")
+            parsed_kwargs[kwarg[0]] = kwarg[1]
+        main(
+            args.experiment_module,
+            args.scheduling_mode_type,
+            args.embargo,
+            **parsed_kwargs,
+        )
         log.info("RADAR_CONTROL EXITED")
     except Exception as main_exception:
         log.critical("RADAR_CONTROL CRASHED", error=main_exception)

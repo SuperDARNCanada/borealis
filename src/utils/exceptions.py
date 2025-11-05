@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 """
 experiment_exception
 ~~~~~~~~~~~~~~~~~~~~
@@ -17,5 +15,5 @@ class ExperimentException(Exception):
     """
 
     def __init__(self, message, *args):
-        self.message = message  # to avoid DeprecationWarning
+        self.message = message
         super(ExperimentException, self).__init__(message, *args)
