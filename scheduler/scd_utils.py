@@ -111,7 +111,6 @@ class ScheduleLine:
         """
 
         args = [
-            "--site_id",
             site_id,
             "--experiments",
             self.experiment,
