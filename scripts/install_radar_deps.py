@@ -210,25 +210,6 @@ def install_zmq():
     execute_cmd(zmq_cmd)
 
 
-def install_ntp():
-    """
-    Install NTP with PPS support.
-    """
-    print("### Installing NTP ###")
-    ntp_cmd = (
-        "cd ${IDIR};"
-        "cp -v /usr/include/sys/timepps.h /usr/include/ || exit;"
-        "wget -N http://www.eecis.udel.edu/~ntp/ntp_spool/ntp4/ntp-4.2/ntp-4.2.8p13.tar.gz;"
-        "tar xvf ntp-4.2.8p13.tar.gz;"
-        "cd ntp-4.2.8p13/ || exit;"
-        "./configure --enable-atom;"
-        "make -j${CORES};"
-        "make install;"
-    )
-
-    execute_cmd(ntp_cmd)
-
-
 def install_uhd(distro: str):
     """
     Install UHD. UHD is particular about which version of boost it uses, so check that.
@@ -504,7 +485,6 @@ def main():
     install_packages(distro, args.dev)
     install_python(distro, args.python_version)
     install_zmq()
-    install_ntp()
     install_uhd(distro)
     install_hdw_dat()
     install_borealis_env(
