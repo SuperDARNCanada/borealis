@@ -83,7 +83,7 @@ the note when running ``install_radar_deps.py``.
       This is done to help prevent packet loss when the network traffic exceeds the capacity of the
       network adapter. ::
 
-        sudo ethtool -G <10G_network_device> tx 4096 rx 4096.
+        sudo ethtool -G <10G_network_device> tx 4096 rx 4096
 
       To see that this works as intended, and that it persists across reboots, you can execute the
       following, which will output the maximums and the current settings. ::
@@ -105,7 +105,7 @@ the note when running ``install_radar_deps.py``.
    #. Use ``cpupower`` to ungovern the CPU and run at the max frequency. This should be added to a
       script that occurs on reboot. ::
 
-        sudo cpupower frequency-set -g performance.
+        sudo cpupower frequency-set -g performance
 
       To verify that the CPU is running at maximum frequency, ::
 
@@ -134,18 +134,18 @@ the note when running ``install_radar_deps.py``.
 
     sudo tuned-adm profile_info
 
-#. Add an environment variable in ``.profile`` called ``BOREALISPATH`` that points to the cloned
+#. Add an environment variable in ``~/.profile`` called ``BOREALISPATH`` that points to the cloned
    Borealis git repository. For example **(NOTE the extra '/')**: ::
 
-    export BOREALISPATH=/home/radar/borealis/
+    echo "BOREALISPATH=/home/radar/borealis/" >> ~/.profile
     source .profile
 
    Verify the ``BOREALISPATH`` environment variable exists: ::
 
     env | grep BOREALISPATH
 
-#. Clone the Borealis software to a directory **The following ensures that Borealis will be in the
-   same directory that the ``BOREALISPATH`` environment variable points to**. ::
+#. Clone the Borealis software repository. Ensure that the ``BOREALISPATH`` environment variable
+   points to the directory Borealis is cloned to. ::
 
     sudo zypper in git
     git clone https://github.com/SuperDARNCanada/borealis.git $BOREALISPATH
@@ -161,7 +161,7 @@ the note when running ``install_radar_deps.py``.
    option. ::
 
     cd $BOREALISPATH
-    sudo -E python3 scripts/install_radar_deps.py [radar code] $BOREALISPATH --python-version=3.11 2>&1
+    sudo -E python3 scripts/install_radar_deps.py [radar code] $BOREALISPATH --python-version=3.12 2>&1
 
 #. Edit ``/etc/security/limits.conf`` (as root) to add the following line that allows UHD to set
    thread priority. UHD automatically tries to boost its thread scheduling priority, so it will fail
