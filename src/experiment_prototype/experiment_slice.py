@@ -31,6 +31,7 @@ from pydantic import (
     NonNegativeFloat,
     StrictFloat,
     AfterValidator,
+    ConfigDict,
 )
 from scipy.constants import speed_of_light
 import structlog
@@ -101,22 +102,6 @@ experiment is run). If set by the user, the values will be overwritten and there
 """
 
 
-class SliceConfig:
-    """
-    This class configures pydantic options for ExperimentSlice.
-
-    validate_assignment: Whether to run all validators for a field whenever field is changed (init or after init)
-    validate_all: Whether to validate default fields
-    extra: Whether to allow extra fields not defined when instantiating
-    arbitrary_types_allowed: Whether to allow arbitrary types like user-defined classes (e.g. Options, DecimationScheme)
-    """
-
-    validate_assignment = True
-    validate_default = True
-    extra = "forbid"
-    arbitrary_types_allowed = True
-
-
 T = TypeVar("T", bound=Hashable)
 
 
@@ -162,7 +147,14 @@ positive_float = Annotated[float, Field(gt=0), Strict()]
 non_neg_float = Annotated[float, Field(ge=0), Strict()]
 
 
-@dataclass(config=SliceConfig)
+@dataclass(
+    config=ConfigDict(
+        validate_assignment=True,
+        validate_default=True,
+        extra="forbid",
+        arbitrary_types_allowed=True,
+    )
+)
 class ExperimentSlice:
     """
     These are the keys that are set by the user when initializing a slice. Some are required, some can

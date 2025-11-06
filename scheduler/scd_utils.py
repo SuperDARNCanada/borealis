@@ -14,28 +14,18 @@ import sys
 from typing_extensions import Annotated, Union, Literal, Self, Optional
 
 from pydantic.dataclasses import dataclass
-from pydantic import field_validator, Field, model_validator
+from pydantic import field_validator, Field, model_validator, ConfigDict
 
 borealis_path = os.environ["BOREALISPATH"]
 sys.path.append(f"{borealis_path}/tests/experiments")
 import experiment_unittests
 
 
-class LineConfig:
-    """
-    This class configures pydantic options for ScheduleLine.
-
-    validate_assignment: Whether to run all validators for a field whenever field is changed (init or after init)
-    extra: Whether to allow extra fields not defined when instantiating
-    arbitrary_types_allowed: Whether to allow arbitrary types like user-defined classes (e.g. Options, DecimationScheme)
-    """
-
-    validate_assignment = True
-    extra = "allow"
-    arbitrary_types_allowed = False
-
-
-@dataclass(config=LineConfig)
+@dataclass(
+    config=ConfigDict(
+        validate_assignment=True, extra="allow", arbitrary_types_allowed=False
+    )
+)
 class ScheduleLine:
     timestamp: dt.datetime
     duration: Union[str, dt.timedelta]

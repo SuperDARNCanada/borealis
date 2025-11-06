@@ -57,19 +57,22 @@ class DSP:
         :type       use_shared_mem: bool
         """
         self.filter_outputs: list[xp.ndarray] = []
-        """IQ data for each RX channel, with intermediate results of staged filters.
+        """
+        IQ data for each RX channel, with intermediate results of staged filters.
 
         This field is populated by :func:`DSP.apply_filters()` and will be a list of either cupy or numpy ndarray's,
         depending on the type of ``input_samples`` parameter to :func:`DSP.apply_filters()`. Entries are ordered by
         the filter stage, and each has shape ``[num_slices, num_channels, num_samples]``, where ``num_samples`` gets
         smaller with each successive filter stage.
         """
+
         self.beamformed_samples: Optional[np.ndarray] = None
         """Beamformed IQ data.
 
         This field is populated by :func:`DSP.beamform()` after :func:`DSP.apply_filters()` has been called.
         The shape of the array is ``[num_slices, num_beams, num_samples]``.
         """
+
         self.antennas_iq_samples = None
         self.shared_mem = {}
         self.use_shared_mem = use_shared_mem
@@ -209,7 +212,7 @@ class DSP:
         """
         Makes bandpass filters and moves taps to the GPU, if available.
 
-        The first stage filters are mixed to bandpass and the low pass filters are reshaped. ``mixing_freqs``should
+        The first stage filters are mixed to bandpass and the low pass filters are reshaped. ``mixing_freqs`` should
         be given as offsets from the USRP center frequency. For example, with 12 MHz center frequency and a 10.5 MHz
         operating frequency, the mixing frequency should be -1.5 MHz.
 
