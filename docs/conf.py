@@ -236,14 +236,7 @@ html_logo = "source/img/logo.jpg"
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
 # pixels large.
-favicons = [
-    "favicon/favicon-16x16.png",
-    "favicon/favicon-32x32.png",
-    "favicon/android-chrome-192x192.png",
-    "favicon/android-chrome-512x512.png",
-    "favicon/apple-touch-icon.png",
-    "favicon/favicon.ico",
-]
+html_favicon = "_static/favicon-32x32.png"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
