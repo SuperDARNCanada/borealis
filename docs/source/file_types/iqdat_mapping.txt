@@ -1,10 +1,4 @@
-==============
-rawacf_mapping
-==============
-
-RAWACF SDARN FIELDS
-
-This conversion is done in pyDARNio here in the __convert_rawacf_record method: `Link to Source
+This conversion is done in pyDARNio here in the __convert_bfiq_record method: `Link to Source
 <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_convert.py>`_
 
 +-----------------------------------+---------------------------------------------+
@@ -173,7 +167,7 @@ This conversion is done in pyDARNio here in the __convert_rawacf_record method: 
 | | *short*                         | |                                           |
 | | Number of lags in sequence      | |                                           |
 +-----------------------------------+---------------------------------------------+
-| | **nrang**                       | | *correlation_dimensions* [1]              |
+| | **nrang**                       | | *num_ranges*                              |
 | | *short*                         | |                                           |
 | | Number of ranges                | |                                           |
 +-----------------------------------+---------------------------------------------+
@@ -202,25 +196,44 @@ This conversion is done in pyDARNio here in the __convert_rawacf_record method: 
 | | *int*                           | |                                           |
 | | Maximum noise level allowed     | |                                           |
 +-----------------------------------+---------------------------------------------+
-| | **rawacf.revision.major**       | | = 255                                     |
+| | **iqdata.revision.major**       | | = 1 (meaning Borealis conversion)         |
 | | *int*                           | |                                           |
 | | Major version number of the     | |                                           |
-| | rawacf format                   | |                                           |
+| | iqdata library                  | |                                           |
 +-----------------------------------+---------------------------------------------+
-| | **rawacf.revision.minor**       | | = 255                                     |
+| | **iqdata.revision.minor**       | | = 0 (Borealis conversion)                 |
 | | *int*                           | |                                           |
 | | Minor version number of the     | |                                           |
-| | rawacf format                   | |                                           |
+| | iqdata library                  | |                                           |
 +-----------------------------------+---------------------------------------------+
 | | **combf**                       | | Original Borealis filename, ‘converted    |
-| | *string*                        | | from Borealis file beam number ’ X,       |
-| | Comment buffer                  | | number of beams in this original record   |
-| | Comment buffer                  | | (len(beam_nums)), experiment_comment and  |
-| |                                 | | slice_comment from the file               |
+| | *string*                        | | from Borealis file ’ , number of beams in |
+| | Comment buffer                  | | this original record (len(beam_nums)),    |
+| |                                 | | experiment_comment and slice_comment      |
+| |                                 | | from the file                             |
 +-----------------------------------+---------------------------------------------+
-| | **thr**                         | | = 0.0 (filler)                            |
-| | *float*                         | |                                           |
-| | Thresholding factor             | |                                           |
+| | **seqnum**                      | | *num_sequences*                           |
+| | *int*                           | |                                           |
+| | Number of pulse sequences       | |                                           |
+| | transmitted                     | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **chnnum**                      | | len(*antenna_arrays_order*)               |
+| | *int*                           | |                                           |
+| | Number of channels sampled      | |                                           |
+| | (both I and Q quadrature        | |                                           |
+| | samples)                        | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **smpnum**                      | | *num_samps*                               |
+| | *int*                           | |                                           |
+| | Number of samples taken per     | |                                           |
+| | sequence                        | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **skpnum**                      | | math.ceil(first_range/range_sep). In      |
+| | *int*                           | | theory this should =0 due to Borealis     |
+| | Number of samples to skip       | | functionality(no rise time).              |
+| | before the first valid sample   | | However make_raw in RST requires this to  |
+| |                                 | | be indicative of the first range so we    |
+| |                                 | | provide this.                             |
 +-----------------------------------+---------------------------------------------+
 | | **ptab[mppul]**                 | | pulses                                    |
 | | *short*                         | |                                           |
@@ -230,24 +243,44 @@ This conversion is done in pyDARNio here in the __convert_rawacf_record method: 
 | | *short*                         | |                                           |
 | | Lag table                       | |                                           |
 +-----------------------------------+---------------------------------------------+
-| | **pwr0[nrang]**                 | | Calculated from *main_acfs*               |
-| | *[float]*                       | |                                           |
-| | Lag zero power for main         | |                                           |
+| | **tsc[seqnum]**                 | | *sqn_timestamps* conversion               |
+| | *int*                           | |                                           |
+| | Seconds component of time past  | |                                           |
+| | epoch of pulse sequence         | |                                           |
 +-----------------------------------+---------------------------------------------+
-| | **slist[0-nrang]**              | | range(0,*correlation_dimensions*.size[1]) |
-| | *[short]*                       | |                                           |
-| | List of stored ranges, length   | |                                           |
-| | dependent on SNR. Lists the     | |                                           |
-| | range gate of each stored ACF   | |                                           |
+| | **tus[seqnum]**                 | | *sqn_timestamps* conversion               |
+| | *int*                           | |                                           |
+| | Microsecond component of time   | |                                           |
+| | past epoch of pulse sequence    | |                                           |
 +-----------------------------------+---------------------------------------------+
-| | **acfd[2][mplgs][0-nrang]**     | | *main_acfs* conversion, real and imag     |
-| | *[short]*                       | |                                           |
-| | Calculated ACFs                 | |                                           |
+| | **tatten[seqnum]**              | | = [0,0…] (fillers)                        |
+| | *short*                         | |                                           |
+| | Attenuator setting for each     | |                                           |
+| | pulse sequence                  | |                                           |
 +-----------------------------------+---------------------------------------------+
-| | **xcfd[2][mplgs][0-nrang]**     | | *xcfs* conversion, real and imag          |
-| | *[short]*                       | |                                           |
-| | Calculated XCFs                 | |                                           |
+| | **tnoise[seqnum]**              | | *noise_at_freq* conversion                |
+| | *float*                         | |                                           |
+| | Noise value for each pulse      | |                                           |
+| | sequence                        | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **toff[seqnum]**                | | Offset = 2 * num_samps *                  |
+| | *int*                           | | len(antenna_arrays_order), toff = [i *    |
+| | Offset into the sample buffer   | | offset for i in range(v['num_sequences'])]|
+| | for each pulse sequence         | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **tsze[seqnum]**                | | = [offset, offset, offset….]              |
+| | *int*                           | |                                           |
+| | Number of words stored for this | |                                           |
+| | pulse sequence                  | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **data[totnum]**                | | Data conversion for correct dimensions    |
+| | *int*                           | | and scaled to max int (-32768 to 32767)   |
+| | Array of raw I and Q samples,   | |                                           |
+| | arranged: [[[smpnum(i),         | |                                           |
+| | smpnum(q)] * chnnum] * seqnum], | |                                           |
+| | so totnum =                     | |                                           |
+| | 2*seqnum*chnnum*smpnum          | |                                           |
 +-----------------------------------+---------------------------------------------+
 
-If blanked\_samples != ptab, or pulse\_phase\_offset contains non-zeroes, no conversion to dmap
-rawacf is possible.
+If *blanked_samples* != *ptab*, or *pulse_phase_offset* contains non-zeroes, no conversion to iqdat
+is possible.

@@ -1,6 +1,5 @@
 .. _scheduling:
 
-==========
 Scheduling
 ==========
 
@@ -81,11 +80,3 @@ Here are the steps to configure scheduling:
     - Schedule a reboot task via ``cron`` to run the ``start_radar.sh`` helper script in order to
       run the radar according the radar schedule.
     - Enable and start ``atq`` service.
-
-**Scheduler Code**
-
-.. toctree::
-   :glob:
-   :maxdepth: 1
-
-   /source/api/scheduler/scheduler

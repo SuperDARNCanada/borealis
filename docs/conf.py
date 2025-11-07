@@ -89,6 +89,16 @@ if on_rtd:  # Only run following changes on ReadTheDocs
 # If your documentation needs a minimal Sphinx version, state it here.
 needs_sphinx = "8.2.2"
 
+python_maximum_signature_line_length = 68
+cpp_maximum_signature_line_length = 68
+
+# Automatically extract typehints when specified and place them in
+# descriptions of the relevant function/method.
+autodoc_typehints = "description"
+
+# Don't show class signature with the class' name.
+autodoc_class_signature = "separated"
+
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
@@ -103,6 +113,8 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinxcontrib.programoutput",
     "sphinxcontrib.autoprogram",
+    "sphinx_favicon",
+    "sphinx_tabs.tabs",
     "breathe",
     "myst_parser",
 ]
@@ -193,26 +205,22 @@ todo_include_todos = True
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = "sphinx_book_theme"
+# html_theme = "sphinx_book_theme"
+html_theme = "furo"
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
 html_theme_options = {
-    "repository_url": "https://github.com/SuperDARNCanada/borealis.git",
-    "use_repository_button": True,
+    "sidebar_hide_name": True,
 }
 
 html_context = {
-    "default_mode": "dark",
+    "default_mode": "auto",
 }
 
 # Add any paths that contain custom themes here, relative to this directory.
-
-html_css_files = [
-    "_static/theme_overrides.css",
-]
-
+# html_css_files = []
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
@@ -228,7 +236,14 @@ html_logo = "source/img/logo.jpg"
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
 # pixels large.
-# html_favicon = None
+favicons = [
+    "favicon/favicon-16x16.png",
+    "favicon/favicon-32x32.png",
+    "favicon/android-chrome-192x192.png",
+    "favicon/android-chrome-512x512.png",
+    "favicon/apple-touch-icon.png",
+    "favicon/favicon.ico",
+]
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,

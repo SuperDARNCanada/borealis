@@ -1,26 +1,27 @@
 .. _Borealis DSP:
 
-=========================
-Borealis Processing Chain
-=========================
+================
+Processing Chain
+================
 
 ---------
 Filtering
 ---------
 
-Filtering Stages
-----------------
-
 The Borealis processing chain uses a staged-filter approach with staged downsampling, allowing for
 multi-frequency filtering in real time. Using numpy arrays and array operations, the broadband input
 spectrum received from the N200 devices can be filtered simultaneously into multiple datasets
-centered on different frequencies. The data is first run through frequency-translating bandpass
-filters to create multiple baseband output spectra, one for each filter frequency. This is done in
-one algorithm using the modified Frerking method described in Section `Modified Frerking Method`_
-and at :ref:`frerking`.
+centered on different frequencies.
 
-Following the bandpass-mixing filter, three stages of lowpass filtering and downsampling are done.
-These stages are identical for all mixing frequencies.
+Filtering Stages
+----------------
+
+The data is first run through frequency-translating bandpass filters to create multiple baseband output spectra,
+one for each filter frequency. This is done in one algorithm using the modified Frerking method described in
+Section `Modified Frerking Method`_ and at :ref:`frerking`.
+
+Following the bandpass-mixing filter, one stage of lowpass filtering and downsampling is done.
+This stage is identical for all mixing frequencies.
 
 As with most aspects of the Borealis system, there is freedom for customization of the filtering
 stages. The filtering stages are stored in a DecimationScheme class which is stored in the
@@ -35,21 +36,17 @@ found at ``$BOREALISPATH/tests/dsp_testing/filters.ipynb``.
 Default DecimationScheme
 ------------------------
 
-The default DecimationScheme for Borealis uses a 4-stage filter and downsampling to reduce the data
+The default DecimationScheme for Borealis use two stages of digital filtering and downsampling to reduce the data
 rate from 5 MHz to 3.333 kHz. The input sampling rate, downsampling rate, and output sampling rate
 are shown for each stage in the table below.
 
-+--------------+------------+-------------------+-------------+----------------+
-| Filter Stage | Input Rate | Downsampling Rate | Output Rate | Number of Taps |
-+==============+============+===================+=============+================+
-|      0       | 5 MHz      | 10                | 500 kHz     | 661            |
-+--------------+------------+-------------------+-------------+----------------+
-|      1       | 500 kHz    | 5                 | 100 kHz     | 127            |
-+--------------+------------+-------------------+-------------+----------------+
-|      2       | 100 kHz    | 6                 | 16.667 kHz  | 27             |
-+--------------+------------+-------------------+-------------+----------------+
-|      3       | 16.667 kHz | 5                 | 3.333 kHz   | 4              |
-+--------------+------------+-------------------+-------------+----------------+
++--------------+-------------+-------------------+-------------+----------------+
+| Filter Stage | Input Rate  | Downsampling Rate | Output Rate | Number of Taps |
++==============+=============+===================+=============+================+
+|      0       | 5 MHz       | 30                | 166.667 kHz | 661            |
++--------------+-------------+-------------------+-------------+----------------+
+|      1       | 166.667 kHz | 50                | 3.333 kHz   | 127            |
++--------------+-------------+-------------------+-------------+----------------+
 
 For a typical sequence of *normalscan* data, the input data to the first filter stage contains
 451500 complex data samples for each antenna. After the first stage, this has been reduced to 45084
@@ -150,19 +147,15 @@ mathematical operations. So, for a downsampling rate of :math:`R`, the phase cor
 Standard Filters
 ----------------
 
-TODO: Update this with new two-stage filter
-
-As mentioned previously, Borealis uses a four-stage filter approach with staged downsampling. These
-filters are shown in Figures 5, 6, 7, and 8.
+As mentioned previously, Borealis uses a two-stage filter approach with staged downsampling. These
+filters are shown in Figures 5 and 6.
 
 The first stage of filtering uses the Frerking method to simultaneously filter and mix to baseband.
 The passband center frequency of the filter is configurable, and changes automatically to match the
 frequency used in the experiment. Figure 5 shows the first stage of filter, with a passband centered
-around 0.5 MHz. Figure 9 shows the same stage, but for a different center frequency of 2.0 MHz.
-After this stage, the samples are decimated by a factor of 10 then passed through the lowpass filter
-shown in Figure 6. The data is then decimated again by a factor of 5, then passed through the filter
-shown in Figure 7. Another decimation by a factor of 6, passed through the filter in Figure 7, then
-a final decimation by a rate of 5 yields the antennas IQ dataset.
+around 0.5 MHz. Figure 7 shows the same stage, but for a different center frequency of 2.0 MHz.
+After this stage, the samples are decimated by a factor of 30 then passed through the lowpass filter
+shown in Figure 6 which yields the ``antennas_iq`` dataset.
 
 .. figure:: img/dsp/Bandpass_0-5_MHz.png
    :width: 80 %
@@ -176,50 +169,35 @@ a final decimation by a rate of 5 yields the antennas IQ dataset.
    :alt: First Stage of Lowpass Filtering
    :align: center
 
-   Figure 6: Stage 1 Lowpass Filter Frequency Response
-
-.. figure:: img/dsp/Lowpass_stage_2.png
-   :width: 80 %
-   :alt: Second Stage of Lowpass Filtering
-   :align: center
-
-   Figure 7: Stage 2 Lowpass Filter Frequency Response
-
-.. figure:: img/dsp/Lowpass_stage_3.png
-   :width: 80 %
-   :alt: Third Stage of Lowpass Filtering
-   :align: center
-
-   Figure 8: Stage 3 Lowpass Filter Frequency Response
+   Figure 6: Second Stage Lowpass Filter Frequency Response
 
 .. figure:: img/dsp/Bandpass_2-0_MHz.png
    :width: 80 %
    :alt: 2.0 MHz Bandpass Filter
    :align: center
 
-   Figure 9: 2.0 MHz Bandpass Filter Frequency Response
-
+   Figure 7: 2.0 MHz Bandpass Filter Frequency Response
 
 One thing to note is the sampling bandwidth of the data directly from the USRPs. Borealis specifies
 a receive frequency band to the USRPs, and all data lies within that band. Ordinarily, this band is
 defined by a bandwidth of 5 MHz centered around 12 MHz, for a total range of 9.5-14.5 MHz. If one
 were to plot the FFT of the data, the FFT frequencies will take the range of (-2.5 MHz, 2.5 MHz). If
 the transmitted signal was at 10.5 MHz, we then expect to see it in our received samples at (12.0
-MHz - 10.5 MHz) = -1.5 MHz. Figure 10 shows exactly this situation.
+MHz - 10.5 MHz) = -1.5 MHz. Figure 8 shows exactly this situation.
 
 .. figure:: img/dsp/sequence_22_antenna_16.png
    :width: 100 %
    :alt: Time- and Frequency-domain representations of one sequence of received data at 10.5 MHz
    :align: center
 
-   Figure 10: Sample Sequence of raw data from 10.5 MHz transmitted signal
+   Figure 8: Sample Sequence of raw data from 10.5 MHz transmitted signal
 
 
 -----------
 Beamforming
 -----------
 
-Beamforming in Borealis is relatively straightforward. Figure 11 illustrates the
+Beamforming in Borealis is relatively straightforward. Figure 9 illustrates the
 physical process, with the red antennas signifying the main array, the thick black line being the
 incoming plane wavefront, the parallel green lines indicating planar wavefronts at spacings of one
 wavelength, and the beam direction off of boresight shown by :math:`\theta`. For an incoming wave,
@@ -255,7 +233,7 @@ final formula of
    :alt: Beamforming with a 1-D phased array
    :align: center
 
-   Figure 11: Geometry of 1-D phased array beamforming
+   Figure 9: Geometry of 1-D phased array beamforming
 
 
 -----------
@@ -267,17 +245,17 @@ scattered from the ionosphere. For each sequence, Borealis computes either one o
 correlations. If only the main array is used, then the samples from that array are autocorrelated.
 If the interferometer is also used, the interferometer samples are autocorrelated, and the main and
 interferometer samples are cross-correlated. The process is the same for all correlations, and is
-described with the aid of Figure 12.
+described with the aid of Figure 10.
 
 .. figure:: img/dsp/correlations.png
    :width: 90 %
    :alt: Correlations explained with matrix
    :align: center
 
-   Figure 12: Correlation matrix with blanked samples removed and lag samples extracted
+   Figure 10: Correlation matrix with blanked samples removed and lag samples extracted
 
 
-In Figure 12, the array samples are shown outside of the correlation, as the sequences :math:`x` and
+In Figure 10, the array samples are shown outside of the correlation, as the sequences :math:`x` and
 :math:`y^*`. For autocorrelation, :math:`x = y`, and for cross-correlation they are different, but
 always of the same length in Borealis. Grey samples are "blanked" samples, which occur when the
 radar is transmitting data. These samples are later disregarded, as the Borealis transmitters block
@@ -293,7 +271,7 @@ ranges. The purple samples in the correlation matrix are the correlations for la
 ranges, with the closest range being :math:`x[1]y^*[1]` and the furthest range :math:`x[5]y^*[5]`.
 The orange samples represent the correlations for lag-1 for the same ranges. This data represents
 lag-1 as the samples are the correlation of data from :math:`x` and :math:`y` which occur
-:math:`\tau` seconds apart (three samples). Figure 13 shows the same style of diagram for a typical
+:math:`\tau` seconds apart (three samples). Figure 11 shows the same style of diagram for a typical
 SuperDARN 7-pulse sequence, with 75 range gates, a tau spacing of 8 samples, and the first range
 occurring four samples after a pulse.
 
@@ -302,4 +280,4 @@ occurring four samples after a pulse.
    :alt: Borealis correlation matrix
    :align: center
 
-   Figure 13: Borealis correlation matrix
+   Figure 11: Borealis correlation matrix

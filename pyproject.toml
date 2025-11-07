@@ -39,10 +39,13 @@ dev = [
 doc = [
     "breathe",
     "docutils==0.21",
+    "furo==2025.09.25",
     "latex",
     "myst_parser",
     "sphinx==8.2.2",
     "sphinx-book-theme==1.1.4",
+    "sphinx-favicon",
+    "sphinx-tabs",
     "sphinxcontrib-autoprogram",
     "sphinxcontrib-programoutput",
 ]

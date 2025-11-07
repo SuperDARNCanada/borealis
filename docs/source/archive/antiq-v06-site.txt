@@ -1,49 +1,3 @@
-==========
-rawrf v0.7
-==========
-
-This is the most up to date version of this file format produced by Borealis version 0.7, the
-current version.
-
-For data files from previous Borealis software versions, see `here
-<https://borealis.readthedocs.io/en/latest/borealis_data.html#previous-versions>`_.
-
-The pyDARNio format class for this format is BorealisRawrf found in the `borealis_formats
-<https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`_.
-
-The rawrf format is intended to hold high bandwidth, non-filtered raw data from every antenna.
-
-This format is only produced in a site-style, record by record format and is only available to be
-produced on request. Please note that this format can cause radar operating delays and may reduce
-number of averages in an integration, for example.
-
-----------------
-rawrf site files
-----------------
-
-Site files are produced by the Borealis code package and have the data in a record by record style
-format. In site files, the hdf5 group names (ie record names) are given as the timestamp in ms past
-epoch of the first sequence or sampling period recorded in the record.
-
-The naming convention of the rawrf site-structured files are: ::
-
-    [YYYYmmDD].[HHMM].[SS].[station_id].rawrf.hdf5.site
-
-For example: ::
-
-    20191105.1400.02.sas.rawrf.hdf5.site
-
-This is the file that began writing at 14:00:02 UT on November 5 2019 at the Saskatoon site, and it
-provides data the experiment that ran at that time. Since rawrf is not filtered, this data does not
-need a slice identifier because it contains all the samples being taken at that time. Some
-familiarity with the experiment may be necessary to understand the data, or some access to the other
-file types produced concurrently. This is primarily a debug format for engineering purposes and
-should only be produced for special cases.
-
-These files are often bzipped after they are produced.
-
-The file fields under the record name in rawrf site files are:
-
 +----------------------------------+---------------------------------------------+
 | | **Field name**                 | **description**                             |
 | | *type*                         |                                             |
@@ -53,10 +7,22 @@ The file fields under the record name in rawrf site files are:
 | |                                | | transmitter. A '1' indicates an agc fault |
 | |                                | | occurred at least once during integration |
 +----------------------------------+---------------------------------------------+
+| | **antenna_arrays_order**       | | States what order the data is in and      |
+| | *[unicode, ]*                  | | describes the data layout for the         |
+| |                                | | num_antennas data dimension. Antennas are |
+| |                                | | recorded main array ascending and then    |
+| |                                | | interferometer array ascending.           |
++----------------------------------+---------------------------------------------+
+| | **beam_azms**                  | | A list of the beam azimuths for each      |
+| | *[float64, ]*                  | | beam in degrees off boresite.             |
++----------------------------------+---------------------------------------------+
+| | **beam_nums**                  | | A list of beam numbers used in this slice |
+| | *[uint32, ]*                   | | in this record.                           |
++----------------------------------+---------------------------------------------+
 | | **blanked_samples**            | | Samples that should be blanked because    |
-| | *uint32*                       | | they occurred during transmission times,  |
-| | [number of blanked             | | given by sample number (index into        |
-| | samples]                       | | decimated data). Can differ from the      |
+| | *[uint32, ]*                   | | they occurred during transmission times,  |
+| |                                | | given by sample number (index into        |
+| |                                | | decimated data). Can differ from the      |
 | |                                | | pulses array due to multiple slices in a  |
 | |                                | | single sequence.                          |
 +----------------------------------+---------------------------------------------+
@@ -71,13 +37,17 @@ The file fields under the record name in rawrf site files are:
 | |                                | | correctly read.                           |
 +----------------------------------+---------------------------------------------+
 | | **data_descriptors**           | | Denotes what each data dimension          |
-| | *[bytes, ]*                    | | represents. = ‘num_sequences’,            |
-| |                                | | ‘num_antennas’, ‘num_samps’ for           |
-| |                                | | rawrf                                     |
+| | *[unicode, ]*                  | | represents. = ‘num_antennas’,             |
+| |                                | | ‘num_sequences’, ‘num_samps’ for          |
+| |                                | | antennas_iq                               |
 +----------------------------------+---------------------------------------------+
-| | **data_dimensions**            | | The dimensions of the data.               |
-| | *[uint32, ]*                   | | Dimensions correspond to                  |
+| | **data_dimensions**            | | The dimensions in which to reshape the    |
+| | *[uint32, ]*                   | | data. Dimensions correspond to            |
 | |                                | | data_descriptors.                         |
++----------------------------------+---------------------------------------------+
+| | **data_normalization_factor**  | | Scale of all the filters used, multiplied |
+| | *float32*                      | | for a total scale to normalize the data   |
+| |                                | | by.                                       |
 +----------------------------------+---------------------------------------------+
 | | **experiment_comment**         | | Comment provided in experiment about the  |
 | | *unicode*                      | | experiment as a whole.                    |
@@ -87,6 +57,10 @@ The file fields under the record name in rawrf site files are:
 +----------------------------------+---------------------------------------------+
 | | **experiment_name**            | | Name of the experiment file.              |
 | | *unicode*                      | |                                           |
++----------------------------------+---------------------------------------------+
+| | **freq**                       | | The frequency used for this experiment,   |
+| | *uint32*                       | | in kHz. This is the frequency the data    |
+| |                                | | has been filtered to.                     |
 +----------------------------------+---------------------------------------------+
 | | **gps_locked**                 | | Designates if the local GPS had a lock    |
 | | *bool*                         | | during the entire integration period.     |
@@ -110,6 +84,11 @@ The file fields under the record name in rawrf site files are:
 | | **main_antenna_count**         | | Number of main array antennas             |
 | | *uint32*                       | |                                           |
 +----------------------------------+---------------------------------------------+
+| | **noise_at_freq**              | | Noise at the receive frequency, with      |
+| | *[float64, ]*                  | | dimension = number of sequences.          |
+| |                                | | 20191114: not currently implemented and   |
+| |                                | | filled with zeros. Still a TODO.          |
++----------------------------------+---------------------------------------------+
 | | **num_samps**                  | | Number of samples in the sampling         |
 | | *uint32*                       | | period. Each sequence has its own         |
 | |                                | | sampling period. Will also be provided    |
@@ -124,8 +103,12 @@ The file fields under the record name in rawrf site files are:
 | |                                | | than 1, data should exist in another file |
 | |                                | | for this time period for the other slice. |
 +----------------------------------+---------------------------------------------+
-| | **rx_center_freq**             | | Center frequency of the sampled data      |
-| | *float64*                      | | in kHz.                                   |
+| | **pulse_phase_offset**         | | For pulse encoding phase, in degrees      |
+| | *[float32, ]*                  | | offset. Contains one phase offset per     |
+| |                                | | pulse in pulses, or none.                 |
++----------------------------------+---------------------------------------------+
+| | **pulses**                     | | The pulse sequence in units of the        |
+| | *[uint32, ]*                   | | tau_spacing.                              |
 +----------------------------------+---------------------------------------------+
 | | **rx_sample_rate**             | | Sampling rate of the samples in this      |
 | | *float64*                      | | file's data in Hz.                        |
@@ -141,6 +124,17 @@ The file fields under the record name in rawrf site files are:
 | | *unicode*                      | | period (ex. 'common', 'special',          |
 | |                                | | 'discretionary').                         |
 +----------------------------------+---------------------------------------------+
+| | **slice_comment**              | | Additional text comment that describes    |
+| | *unicode*                      | | the slice written in this file.           |
++----------------------------------+---------------------------------------------+
+| | **slice_id**                   | | The slice id of this file.                |
+| | *uint32*                       | |                                           |
++----------------------------------+---------------------------------------------+
+| | **slice_interfacing**          | | The interfacing of this slice to          |
+| | *unicode*                      | | other slices. String representation of    |
+| |                                | | the python dictionary of                  |
+| |                                | | {slice : interface_type, ... }            |
++----------------------------------+---------------------------------------------+
 | | **sqn_timestamps**             | | A list of GPS timestamps corresponding to |
 | | *[float64, ]*                  | | the beginning of transmission for each    |
 | |                                | | sampling period in the integration time.  |
@@ -152,13 +146,10 @@ The file fields under the record name in rawrf site files are:
 | | **station**                    | | Three-letter radar identifier.            |
 | | *unicode*                      | |                                           |
 +----------------------------------+---------------------------------------------+
-| | **tx_antenna_phases**          | | The complex phase for each antenna for    |
-| | *[complex64, ]*                | | transmission, normalized such that full-  |
-| |                                | | power has magnitude 1.                    |
+| | **tau_spacing**                | | The minimum spacing between pulses in     |
+| | *uint32*                       | | microseconds. Spacing between pulses is   |
+| |                                | | always a multiple of this.                |
 +----------------------------------+---------------------------------------------+
-
-------------------------
-Site/Array Restructuring
-------------------------
-
-File restructuring to array files is not done for this format.
+| | **tx_pulse_len**               | | Length of the transmit pulse in           |
+| | *uint32*                       | | microseconds.                             |
++----------------------------------+---------------------------------------------+
