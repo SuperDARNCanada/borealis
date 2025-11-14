@@ -84,8 +84,8 @@ class RadctrlParameters:
     num_sequences: int = 0
     last_sequence_num: int = 0
     sequence_index: int = 0
-    start_time: datetime = datetime.utcnow()
-    averaging_period_start_time: datetime = datetime.utcnow()
+    start_time: datetime = datetime.datetime.now(datetime.UTC)
+    averaging_period_start_time: datetime = datetime.datetime.now(datetime.UTC)
     averaging_period_time: timedelta = timedelta(seconds=0)
     debug_samples: list = field(default_factory=list)
     pulse_transmit_data_tracker: dict = field(default_factory=dict)
@@ -388,7 +388,7 @@ def make_next_samples(radctrl_params):
     ] = sqn
 
     if TIME_PROFILE:
-        new_sequence_time = datetime.utcnow() - radctrl_params.start_time
+        new_sequence_time = datetime.datetime.now(datetime.UTC) - radctrl_params.start_time
         log.verbose(
             "make new sequence time",
             time=new_sequence_time,
@@ -573,7 +573,7 @@ def round_up_time(dt=None, round_to=60):
     """
 
     if dt is None:
-        dt = datetime.utcnow()
+        dt = datetime.datetime.now(datetime.UTC)
     midnight = dt.replace(hour=0, minute=0, second=0)
     seconds = (dt.replace(tzinfo=None) - midnight).seconds
     rounding = (seconds + round_to / 2) // round_to * round_to
@@ -638,12 +638,12 @@ def cfs_block(ave_params, cfs_sockets, pulse_buffer):
     beam = aveperiod.beam_iter
     if not (
         aveperiod.last_cfs_set_time[beam]
-        < datetime.utcnow() - timedelta(seconds=aveperiod.cfs_stable_time)
+        < datetime.datetime.now(datetime.UTC) - timedelta(seconds=aveperiod.cfs_stable_time)
         or aveperiod.cfs_always_run
     ):
         return
 
-    aveperiod.last_cfs_set_time[beam] = datetime.utcnow()
+    aveperiod.last_cfs_set_time[beam] = datetime.datetime.now(datetime.UTC)
 
     # Only let CFS run after the user set stable time has
     # passed to prevent CFS from switching freqs too quickly
@@ -812,7 +812,7 @@ def main(exp_name, scheduling_mode, embargo, **kwargs):
                 and not wait_for_first_scanbound
             ):
                 # On first integration, determine current averaging period and set scan_iter to it
-                now = datetime.utcnow()
+                now = datetime.datetime.now(datetime.UTC)
                 current_minute = now.replace(second=0, microsecond=0)
                 scan_iter = next(
                     (
@@ -844,7 +844,7 @@ def main(exp_name, scheduling_mode, embargo, **kwargs):
                 if first_aveperiod:
                     # On the very first averaging period of Borealis starting, calculate the start minute
                     # align scanbound reference time to find when to start
-                    now = datetime.utcnow()
+                    now = datetime.datetime.now(datetime.UTC)
                     dt = now.replace(second=0, microsecond=0)
                     if dt + timedelta(seconds=scan.scanbound[scan_iter]) >= now:
                         start_minute = dt
@@ -883,14 +883,14 @@ def main(exp_name, scheduling_mode, embargo, **kwargs):
                 # If there are multiple aveperiods in a scan they are alternated (AVEPERIOD interfaced)
                 aveperiod = scan.aveperiods[scan.aveperiod_iter]
                 if TIME_PROFILE:
-                    time_start_of_aveperiod = datetime.utcnow()
+                    time_start_of_aveperiod = datetime.datetime.now(datetime.UTC)
 
                 log.debug("new averaging period")
 
                 # All phases are set up for this averaging period for the beams required.
                 # Time to start averaging in the below loop.
                 if not scan.scanbound:
-                    averaging_period_start_time = datetime.utcnow()  # ms
+                    averaging_period_start_time = datetime.datetime.now(datetime.UTC)  # ms
                     log.verbose(
                         "averaging period start time",
                         time=averaging_period_start_time,
@@ -906,7 +906,7 @@ def main(exp_name, scheduling_mode, embargo, **kwargs):
                         beam_scanbound = start_minute + timedelta(
                             seconds=scan.scanbound[scan_iter]
                         )
-                        time_diff = beam_scanbound - datetime.utcnow()
+                        time_diff = beam_scanbound - datetime.datetime.now(datetime.UTC)
                         if time_diff.total_seconds() > 0:
                             if first_aveperiod:
                                 log.verbose(
@@ -928,15 +928,16 @@ def main(exp_name, scheduling_mode, embargo, **kwargs):
                             time.sleep(time_diff.total_seconds())
                         else:
                             # TODO: This will be wrong if the start time is in the past.
-                            # TODO: maybe use datetime.utcnow() like below instead of beam_scanbound
-                            #       when the avg period should have started?
+                            # TODO: maybe use datetime.datetime.now(datetime.UTC) like below 
+                            #       instead of beam_scanbound when the avg period should have 
+                            #       started?
                             log.debug(
                                 "expected avg period start time",
                                 scan_iter=scan_iter,
                                 beam_scanbound=beam_scanbound,
                             )
 
-                        averaging_period_start_time = datetime.utcnow()
+                        averaging_period_start_time = datetime.datetime.now(datetime.UTC)
                         log.verbose(
                             "avg period start time",
                             time=averaging_period_start_time,
@@ -1005,7 +1006,7 @@ def main(exp_name, scheduling_mode, embargo, **kwargs):
                 log.verbose("avg period slice and beam number", slice_and_beam=msg)
 
                 if TIME_PROFILE:
-                    aveperiod_prep_time = datetime.utcnow() - time_start_of_aveperiod
+                    aveperiod_prep_time = datetime.datetime.now(datetime.UTC) - time_start_of_aveperiod
                     log.verbose(
                         "time to prep aveperiod",
                         time=aveperiod_prep_time,
@@ -1043,7 +1044,7 @@ def main(exp_name, scheduling_mode, embargo, **kwargs):
 
                     for sequence_index, sequence in enumerate(aveperiod.sequences):
                         # Alternating sequences if there are multiple in the averaging_period
-                        ave_params.start_time = datetime.utcnow()
+                        ave_params.start_time = datetime.datetime.now(datetime.UTC)
                         ave_params.sequence = sequence
                         ave_params.sequence_index = sequence_index
 
@@ -1130,7 +1131,7 @@ def main(exp_name, scheduling_mode, embargo, **kwargs):
                             time.sleep(1)
 
                 if TIME_PROFILE:
-                    avg_period_end_time = datetime.utcnow()
+                    avg_period_end_time = datetime.datetime.now(datetime.UTC)
                     log.verbose(
                         "avg period end time",
                         time=avg_period_end_time,
@@ -1163,7 +1164,7 @@ def main(exp_name, scheduling_mode, embargo, **kwargs):
                 seqnum_start += ave_params.num_sequences
 
                 if TIME_PROFILE:
-                    time_to_finish_aveperiod = datetime.utcnow() - avg_period_end_time
+                    time_to_finish_aveperiod = datetime.datetime.now(datetime.UTC) - avg_period_end_time
                     log.verbose(
                         "time to finish avg period",
                         time=time_to_finish_aveperiod,
