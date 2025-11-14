@@ -322,11 +322,7 @@ def install_borealis_env(
 
     optional_deps = []
     if not no_cupy:
-        cuda_check = execute_cmd("nvcc --version")
-        if "nvcc: command not found" in cuda_check:
-            print("WARNING: CUDA not installed; skipping cupy installation")
-        else:
-            optional_deps.append("gpu")
+        optional_deps.append("gpu")
     if dev:
         optional_deps.append("dev")
     if len(optional_deps) > 0:

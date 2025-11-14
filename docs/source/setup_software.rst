@@ -144,7 +144,7 @@ the note when running ``install_radar_deps.py``.
 #. Add an environment variable in ``~/.profile`` called ``BOREALISPATH`` that points to the cloned
    Borealis git repository. For example **(NOTE the extra '/')**: ::
 
-    echo "BOREALISPATH=/home/radar/borealis/" >> ~/.profile
+    echo "export BOREALISPATH=/home/radar/borealis/" >> ~/.profile
     source .profile
 
    Verify the ``BOREALISPATH`` environment variable exists: ::
