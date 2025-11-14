@@ -87,7 +87,7 @@ def main():
             else:
                 # Split result by enclosed brackets [...] to get log level and device
                 # Example: "[INFO] [GPS] No gps lock..." becomes ["", "INFO", " ", "GPS", "No gps lock..."]
-                result = re.split("\[|\]", result)
+                result = re.split("[][]", result)
                 # Remove "" and whitespace
                 result = [x for x in result if x.strip() != ""]
                 if len(result) == 0:
