@@ -24,12 +24,19 @@ the note when running ``install_radar_deps.py``.
    step, **so make sure you read this page carefully**.
 
    For our purposes the G06 drivers are required. To install the NVIDIA drivers on our OpenSUSE
-   computers, execute the following commands (tested on OpenSUSE Leap 15.6): ::
+   computers, first add the NVIDIA OpenSUSE repo: ::
 
     sudo zypper addrepo --refresh 'https://download.nvidia.com/opensuse/leap/$releasever' NVIDIA
-    sudo zypper in nvidia-video-G06 nvidia-gl-G06 nvidia-compute-utils-G06
 
-   then reboot the computer. To verify that the drivers have been installed correctly, run
+   Then use ``zypper`` to install the NVIDIA drivers. For OpenSUSE Leap 15.5: ::
+
+    sudo zypper install nvidia-video-G06 nvidia-gl-G06 nvidia-compute-utils-G06 nvidia-open
+
+   For Leap 15.6: ::
+
+    sudo zypper install nvidia-open-driver-G06-signed-kmp-meta
+
+   Reboot the computer. To verify that the drivers have been installed correctly, run
    ``sudo nvidia-smi`` - the output of this command should show the GPU installed on the computer.
 
 #. Install the latest NVIDIA CUDA drivers (see
@@ -43,7 +50,7 @@ the note when running ``install_radar_deps.py``.
     sudo zypper install -y kernel-<variant>-devel=<version>
     sudo usermod -a -G video <username>
     sudo zypper addrepo https://developer.download.nvidia.com/compute/cuda/repos/opensuse15/x86_64/cuda-opensuse15.repo
-    sudo zypper install cuda-toolkit nvidia-open
+    sudo zypper install cuda-toolkit
     echo "export PATH=/usr/local/cuda/bin:${PATH}" >> ~/.profile
     source ~/.profile
 
