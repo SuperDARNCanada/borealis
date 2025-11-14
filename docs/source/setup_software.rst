@@ -346,21 +346,25 @@ the note when running ``install_radar_deps.py``.
       all Borealis processes
 
 #. Configure and install the automatic Borealis restart daemon, ``restart_borealis.service``. Follow
-   the steps outlined :ref:`here <automated-restarts>` to install and start the system service. This
-   daemon will automatically start the radar after five minutes, following the radar schedule. To
-   verify that the daemon is working:
+   the steps outlined here to install and start the system service: :ref:`Automated Restarts <automated-restarts>`.     This daemon will automatically start the radar after five minutes, following the radar schedule. 
+   To verify that the daemon is working:
 
    - Check ``systemctl status restart_borealis.service`` that the system service is running
    - Check the logs at ``$HOME/logs/restart_borealis.log``
+
+#. *Optional:* Configure the radar to operate in conjunction with a Uninterruptible Power Supply 
+   using ``apcupsd``. Follow the steps outlined here: :ref:`UPS & Power Outages <ups-power-outages>`. 
+   The scripts defined within ``borealis/scripts/apcupsd/`` can be used to turn the radar off/on 
+   when the UPS goes on battery.
 
 #. Install necessary software to transfer, convert, and test data: ::
 
     cd $HOME
     git clone https://github.com/SuperDARNCanada/borealis-data-utils.git
     git clone https://github.com/SuperDARNCanada/data_flow.git
-    python3.11 -m venv $HOME/pydarnio-env
+    python$PYTHON_VERSION -m venv $HOME/pydarnio-env
     source $HOME/pydarnio-env/bin/activate
-    pip install pydarn    # Installs pydarnio as well, as it is a dependency.
+    pip install pydarnio
 
    Follow the `data flow documentation <https://github.com/SuperDARNCanada/data_flow>`_ to properly
    setup and configure the data flow
