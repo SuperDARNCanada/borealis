@@ -96,7 +96,7 @@ def main():
     now_utc_seconds = float(dt.now(timezone.utc).strftime("%s"))
 
     # How many seconds ago was the last write to a data file?
-    last_data_write = now_utc_seconds - new_file_write_time
+    last_data_write = round(now_utc_seconds - new_file_write_time, 2)
     print(
         f"Last write time: {dt.fromtimestamp(new_file_write_time, timezone.utc).strftime('%Y-%m-%dT%H:%M:%S')}, "
         f"Current time: {dt.fromtimestamp(now_utc_seconds, timezone.utc).strftime('%Y-%m-%dT%H:%M:%S')}, "
