@@ -286,7 +286,7 @@ class CFSAveragingPeriod(AveragingPeriod):
         # Set to a time in the past that is guaranteed to trigger a clear frequency search on the
         # first averaging period run
         self.last_cfs_set_time = [
-            datetime.datetime.utcnow()
+            datetime.datetime.now(datetime.timezone.utc)
             - datetime.timedelta(seconds=self.cfs_stable_time)
         ] * len(self.slice_dict[self.slice_ids[0]].rx_beam_order)
 

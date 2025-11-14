@@ -194,7 +194,7 @@ def get_next_month_from_date(date=None):
         TYPE: datetime object.
     """
     if date is None:
-        date = dt.datetime.utcnow()
+        date = dt.datetime.now(dt.timezone.utc)
 
     counter = 1
     new_date = date + dt.timedelta(days=counter)

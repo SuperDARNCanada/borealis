@@ -172,7 +172,7 @@ class DataWrite:
         start = time.perf_counter()
 
         # Format the name and location for the dataset
-        time_now = datetime.datetime.utcfromtimestamp(data_parsing.timestamps[0])
+        time_now = datetime.datetime.fromtimestamp(data_parsing.timestamps[0], datetime.timezone.utc)
         today_string = time_now.strftime("%Y%m%d")
         self.timestamp = time_now.strftime("%Y%m%d-%H%M-%S.%f")
         self.dataset_directory = f"{self.options.data_directory}/{today_string}"
