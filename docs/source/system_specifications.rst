@@ -42,8 +42,9 @@ Borealis Control Computer
 - HDD Storage: 2x 18TB 3.5" NAS HDD combined in RAID 1
 - Power Supply: 1000W Gold rated
 - Network Card: 10G Dual-Port SFP+ PCIe 3.0 x 8
+- Serial Card: Modified serial card for PPS input
 
-**Minimum Computer Hardware:**
+**Minimum Required Computer Hardware:**
 
 - Motherboard: CPU compatible, with PCIe slots for both GPU and network card
 - CPU: Intel Core i9-12900K
