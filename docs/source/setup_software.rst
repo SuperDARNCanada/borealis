@@ -346,11 +346,25 @@ the note when running ``install_radar_deps.py``.
       all Borealis processes
 
 #. Configure and install the automatic Borealis restart daemon, ``restart_borealis.service``. Follow
-   the steps outlined here to install and start the system service: :ref:`Automated Restarts <automated-restarts>`.     This daemon will automatically start the radar after five minutes, following the radar schedule. 
+   the steps outlined here to install and start the system service: :ref:`Automated Restarts <automated-restarts>`.
+   This daemon will automatically start the radar after five minutes, following the radar schedule. 
    To verify that the daemon is working:
 
    - Check ``systemctl status restart_borealis.service`` that the system service is running
    - Check the logs at ``$HOME/logs/restart_borealis.log``
+
+#. *Optional:* If your computer has enough RAM (greater than 16 GB), you can reduce how often swap
+   is used. Borealis computers have occasionally utilized swap when RAM was still available, which
+   greatly slows down Borealis resulting in very low sequence counts. To make this adjustment:
+
+   #. Add ``vm.swappiness=10`` to ``/etc/sysctl.conf``. This changes the swap frequency from the 
+      default 60% to 10%.
+
+   #. Run the following commands: ::
+
+       sudo sysctl --load=/etc/sysctl.conf
+       sudo swapoff -a
+       sudo swapon -a
 
 #. *Optional:* Configure the radar to operate in conjunction with a Uninterruptible Power Supply 
    using ``apcupsd``. Follow the steps outlined here: :ref:`UPS & Power Outages <ups-power-outages>`. 
