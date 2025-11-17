@@ -1,8 +1,8 @@
 .. _parts:
 
-======================================
-SuperDARN Canada System Specifications
-======================================
+=====================
+System Specifications
+=====================
 
 -----------------------
 Digital Radio Equipment
@@ -13,6 +13,7 @@ Digital Radio Equipment
 
   - 17x Ettus LFTX daughterboards
   - 17x Ettus LFRX daughterboards
+  - 17x Custom TXIO boards (for transmitter interfacing)
 
 - 1x Ettus Octoclock-g (includes GPSDO)
 - 2x Ettus Octoclock
@@ -20,111 +21,66 @@ Digital Radio Equipment
 - 18x 48" SMA Male to Male RG-316 for PPS signals (2x from octoclock-g to octoclocks, 16x for N200s)
 - 18x 48" SMA Male to Male RG-316 for 10MHz REF signals (2x from octoclock-g to octoclocks,
   16x for N200s)
-- 1x SMA Male to 0.1" pin header RG-316 for PPS signal input to motherboard (homemade by cutting up
-  a coaxial cable and soldering to a 0.1" two-position pin header)
 - GPS Antenna (Male SMA connector)
-- 17x Custom TXIO Revision 5.0 board (for transmitter interfacing)
-- 22x Mini-Circuits ZFL-500LN pre-amps (20 and 2 spare)
-- 16x Mini-Circuits SLP-21.4 low pass filters
-- 8x coax cables and adapters for to/from INTF (interferometer) pre-amps
-- 32x coax cables for to/from main array filters and pre-amps inside transmitter
-- 1x 15V, 0.5A power supply (INTF pre-amps)
+- 17x sets of main array receive path circuitry (16 and 1 spare)
+- 5x sets of interferometer array receive path circuitry (4 and 1 spare)
+- Cabling and power for receive path circuitry
 
-----------------
-Control Computer
-----------------
+-------------------------
+Borealis Control Computer
+-------------------------
 
-Current control computer hardware (as of September 2025):
+**Recommended Computer Hardware:** (Current control computer hardware as of September 2025)
 
 - Case: Rosewill 4U Server Chassis Case
-- Motherboard: GIGABYTE Z790 AORUS ELITE AX LGA 1700 Intel Z790 ATX Motherboard
+- Motherboard: GIGABYTE Z790 AORUS ELITE AX Motherboard
 - CPU: Intel Core i9-12900K
 - CPU Cooler: ASUS ROG Strix LC II 360
 - GPU: ASUS GeForce RTX 4070 Ti
-- Memory: 2x 16GB DDR5 6000
-- SSD Storage: 2x 2TB NVMe SSD combined in RAID 1
+- Memory: 2x 16GB DDR5
+- SSD Storage: 1x 2TB NVMe SSD
 - HDD Storage: 2x 18TB 3.5" NAS HDD combined in RAID 1
-- Power Supply: 1000W
-- Network Card: Intel X550-AT2 PCIe 2x 10G ports
+- Power Supply: 1000W Gold rated
+- Network Card: 10G Dual-Port SFP+ PCIe 3.0 x 8
 
-**NOTE:** Always update the BIOS before installing the computer in the field.
+**Minimum Computer Hardware:**
 
-**NOTE:** The motherboard has a 10G and 1G port, an additional network card is not required.
-Optionally, Fiber optic cards can be used as a link to network switches that support them.
-
-**NOTE:** XMP must be enabled in BIOS to utilize the full 6000 MHz RAM speed. RAM must also be socketed in
-the optimal configuration DIMM_A2 and DIMM_B2 for two sticks.
-
-**NOTE:** The M.2 drives should be slotted in sockets M.2_2 and M.2_3 as M.2_1 shares PCIe Gen5 lanes
-with PCIex16(G5)_1 which the GPU is slotted into. The M.2 drives are setup in RAID1 (mirroring) including
-the operating system. The bootloader on the second drive must be named differently to operate. Should drive
-failure occur the second bootloader must be pointed to in the BIOS, a new drive can then be installed.
-
-**NOTE:** It is critical during parts selection and installation that the PCIe lanes are dedicated and not
-split between components. Seamless operation requires the maximization of bandwidth. For the Z690 motherboard
-this means the GPU is slotted in PCIex16(G5)_1 and the Serial Card is slotted in PCIex1(G3), PCIex18(G5)_2
-is not to be filled as it share bandwidth with PCIex16(G5)_1.
-
-**NOTE:** A 1000W+ platinum or greater certified power supply is recommended.
-
-**NOTE:** A 3x120mm (360mm radiator) All-in-one (AIO) liquid cooler heatsink is required. The i9 series CPUs
-generate considerable heat by default, but the Borealis computer setup will pin each core to its maximum
-output which will generate even more heat.
-
-**NOTE:** This computer does not require overclocking for seamless operation which will allow for more
-reliable operation than previous Borealis computer builds.
-
-Minimum requirements:
-
-- 1x GeForce GTX 2080 Ti with 11GB of GRAM or better
-- 2x 16GB DDR4 (32GB total) 3200 MHz or faster
-- 1x Power supply, 1000W 80 Plus Gold or better
-- 1x Intel Core i9 10 core or better
-- 1x Cpu liquid cooling unit (240mm or 360mm)
-- 1x CPU compatible motherboard with serial port header or an extra unshared bandwidth PCIe slot for a serial card
-- 1x 256GB SSD (operating system partition)
-- 1x 1TB HDD (data partition)
-- 1x Intel X550-T2 10Gb PCIe network card (if the motherboard does not have 10G networking) OR
-  optionally, a Fiber optic NIC such as the Mellanox MCX4121A-ACAT, or the Intel X710-BM2
-
-**NOTE:** Intel 82579LM controllers WILL NOT WORK
-
-**NOTE:** A BIOS flash is required to use a RTX3000+ series NVidia GPU.
+- Motherboard: CPU compatible, with PCIe slots for both GPU and network card
+- CPU: Intel Core i9-12900K
+- CPU Cooler: Liquid cooler with 240mm radiator
+- GPU: NVIDIA GeForce GTX 1080 Ti
+- Memory: 24 GB DDR4
+- SSD Storage: 256 GB SSD (OS partition)
+- HDD Storage: 1 TB HDD (data partition)
+- Power Supply: 1000W Gold rated
+- Network Card: 10G PCIe 3.0 x 8
 
 ----------
 Networking
 ----------
 
-Note that these devices are what we currently use for the 5 SuperDARN Canada sites, and are by no
-means the only devices that would work for a Borealis radar.
+Below is the current network setup for the SuperDARN Canada radar sites:
 
 - 1x FS S3900 48 Port 1GbE switch. Supports 10Mbps (for octoclock), 100Mbps, 1Gbps (for N200s), and
-  10Gbps (for control computer) speeds.
-- 24x SSTP CAT 6a 7ft cables or better* (16x for the N200s, 3x for the octoclocks, and 5x spares).
-- 2x SSTP CAT 6a 15ft cables* (for connecting to the Borealis computer, and one spare)
-- Optional for Fiber: DAC/AOC cables such as the FS SFPP-AO05
+  10Gbps (for control computer) speeds
+- 19x SSTP Cat6a 7ft cables (16x for the N200s, 3x for the octoclocks)
+- 2x SFP+ 15ft Optical cables (for Borealis computer)
+- Various Cat5e cables for peripheral network connected devices
 
-**NOTE:** network cables need to be verified for the whole system as not all cables seem to work
-reliably.
+Borealis requires at least Cat6a cables for connecting the N200s. Using less-shielded cables will 
+cause communication errors between the N200s. Cat5e and non-SSTP cables were tried during testing
+and shown to **not** work - network cables need to be tested as not all cables seem to work 
+reliably. 
 
-*Models tested and known to work include:*
-
-- Cab-CAT6AS-05[GR|BK|GY|RE|WH]
-- Cab-CAT6AS-15GR
-
-*Models that were tested and do not work:*
-
-- CAT 5e cables
-- Non SSTP cables (not dual shielded)
-- Cab-Cat7-6BL
-- Cab-Cat7-6WH
+This is just one network setup that works for Borealis, not the only one that works - other network 
+switches and cables can be used instead.
 
 ----------------
 Rack and Cabling
 ----------------
 
-- 4x 8 outlet rackmount power strip
-- 2x APC AP7900B rackmount PDU (minimum, a third would be useful)
-- 1x 4 post 42U rack
-- 4x custom-made USRP N200 rackmount shelves (or Ettus ones)
+- 1x 4-post 42U rack
+- 2x 12-outlet rackmount power strip
+- 2x APC AP7900B rackmount PDU
+- 4x custom-made USRP N200 rackmount shelves
 - 1x rackmount shelf for interferometer pre-amps
