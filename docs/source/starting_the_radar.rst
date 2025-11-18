@@ -125,6 +125,7 @@ last-resort:
 
 #. Shut down the Borealis computer.
 
+.. _ups-power-outages:
 
 -------------------
 UPS & Power Outages
