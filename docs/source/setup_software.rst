@@ -10,12 +10,37 @@ this installation has been tested on is **OpenSUSE Leap 15.6**.
 
 **NOTE:** Commands that require root privileges will have a ``sudo`` or ``su`` command ahead of
 them, or explicitly say 'as root', all others should be executed as the normal user that will run
-Borealis  (recommended name: radar).
+Borealis (recommended name: radar).
 
-**NOTE:** It is possible to run Borealis on the CPU, that is, without using your graphics card for
-parallel computations. This will severely slow down the system, but may be useful in some cases. If
-this is desired, you can skip the step of installing NVIDIA drivers on your machine, and see
-the note when running ``install_radar_deps.py``.
+#. Once the desired Linux operating system is installed on your computer, there are a few system
+   settings that should be configured before installing any software.
+
+   #. **Network Card Configuration:** Configure one of the 10G interfaces to the same subnet at the 
+      USRP devices - 192.168.10.x. The recommended 10G network card interface is as follows:
+
+      - 10G interface 1: 192.168.1.x/24 (Interface for all other devices)
+      - 10G interface 2: 192.168.10.x/24 (Interface for USRPs)
+
+      Ensure IP routing is set up for each respective interface and subnet.
+
+   #. **Hard Drive Partition:** The recommended hard drive partitions are shown below, given a single
+      SSD and two HDDs. Adjust your partition sizes to match your hardware:
+
+      - Split SSD into the following partitions:
+
+         - Boot system partition (mounted to ``/boot/efi``)
+         - Root partition (mounted to ``/``)
+         - Home partition (mounted to ``/home``)
+         - Swap partition
+
+      - Combine both HDDs via RAID 1 and mount to single partition:
+
+         - Data partition (mounted to ``/data``)
+
+   #. **System Update**: Update all software packages via the package manager before proceeding with
+      installation of other packages. This will limit issues when installing NVIDIA and CUDA drivers. ::
+
+       sudo zypper update
 
 #. Install the latest version of the NVIDIA drivers (see https://en.opensuse.org/SDB:NVIDIA_drivers).
    The driver must be able to support running the GPU
@@ -38,6 +63,11 @@ the note when running ``install_radar_deps.py``.
 
    Reboot the computer. To verify that the drivers have been installed correctly, run
    ``sudo nvidia-smi`` - the output of this command should show the GPU installed on the computer.
+
+   **NOTE:** It is possible to run Borealis on the CPU, that is, without using your graphics card for
+   parallel computations. This will severely slow down the system, but may be useful in some cases. If
+   this is desired, you can skip the step of installing NVIDIA drivers on your machine, and see
+   the note when running ``install_radar_deps.py``.
 
 #. Install the latest NVIDIA CUDA drivers (see
    https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html). The radar software uses
