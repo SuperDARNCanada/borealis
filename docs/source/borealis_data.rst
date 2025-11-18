@@ -2,13 +2,12 @@
 Borealis Data Files
 ===================
 
----------------
 Data Generation
 ---------------
 
 The Borealis software module ``data_write.py`` is responsible for writing all data files. Different
 flags can be given to the module to write various types of files. See the documentation for
-:ref:`Borealis Processes`
+:ref:`Data Write<data_write>`.
 
 Borealis writes files into `HDF5 format <https://portal.hdfgroup.org/display/support>`_. Examples of
 how to use HDF5 files can be found here for multiple languages: `HDF5 Examples
@@ -24,86 +23,32 @@ These are the Borealis filetypes produced by the radar software, from most proce
 
 * **rawacf:** The correlated data from the main and interferometer arrays. Produced by Borealis in release mode.
 
-* **bfiq:** The beamformed iq data from both arrays.
+* **bfiq:** The beamformed IQ data from both arrays.
 
-* **antennas_iq:** The iq data from every antenna. Produced by Borealis in release mode.
+* **antennas_iq:** The IQ data from every antenna. Produced by Borealis in release mode.
 
 * **rawrf:** The unfiltered, full receive bandwidth data from every antenna. Only produced by Borealis in debug modes.
 
-Post-processed dmap files can be created from the hdf5 rawacf or bfiq files using the `pyDARNio
+Post-processed DMAP files can be created from the hdf5 rawacf or bfiq files using the `pyDARNio
 package <https://github.com/superdarn/pydarnio>`_.
 
 For more information on the data files and the fields stored within them, check the data file
 information for the correct Borealis software version.
 
-Borealis current version
-------------------------
-
-The Borealis software version can affect the data fields in the file format so be sure to check if
-your data is of the most up to date version. The current Borealis software version is v0.7.
-
-..  toctree::
-    :maxdepth: 1
-
-    rawacf
-    bfiq
-    antennas_iq
-    rawrf
-
-Previous versions
------------------
-
-..  toctree::
-    :maxdepth: 1
-
-    archive/rawacf-v07
-    archive/bfiq-v07
-    archive/antennas_iq-v07
-    archive/rawrf-v07
-
-..  toctree::
-    :maxdepth: 1
-
-    archive/rawacf-v06
-    archive/bfiq-v06
-    archive/antennas_iq-v06
-    archive/rawrf-v06
-
-..  toctree::
-    :maxdepth: 1
-
-    archive/rawacf-v05
-    archive/bfiq-v05
-    archive/antennas_iq-v05
-    archive/rawrf-v05
-
-..  toctree::
-    :maxdepth: 1
-
-    archive/rawacf-v04
-    archive/bfiq-v04
-    archive/antennas_iq-v04
-    archive/rawrf-v04
-
-v0.2 and v0.3  follow the v0.4 format.
-
-------------
 Reading Data
 ------------
 
-To read the files in python, we recommend using `h5py <https://docs.h5py.org/en/stable/>`_ package.
-If you are looking to generate SuperDARN standard plots, we recommend using the the `pyDARN package
-<https://github.com/superdarn/pydarn>`_, which can read Borealis files specifically. After
-converting to dmap, standard SuperDARN plots including RTI plots and fan plots can be produced.
+To read the files in python, we recommend using
+`pyDARNio <https://pydarnio.readthedocs.io/en/latest/user/BorealisIO/>`_. If you are looking to generate SuperDARN
+standard plots, we recommend using `pyDARN <https://github.com/superdarn/pydarn>`_, which can read Borealis files
+specifically. After converting to DMAP, standard SuperDARN plots including RTI plots and fan plots can be produced.
 
--------------------------
 Data Storage and Deletion
 -------------------------
 
-Borealis file sizes can add up quickly to fill all available hard drive space, especially if
-antennas_iq and/or bfiq data types are being generated. However, it is convenient and recommended to
-keep a backlog of lower level data products such as antennas_iq for a period of time. These files
-are useful for debugging hardware issues and reproducing RAWACF files.
+Borealis file sizes can add up quickly to fill all available hard drive space, especially if antennas_iq and/or bfiq
+data types are being generated. However, it is convenient and recommended to keep a backlog of lower level data
+products such as antennas_iq for a period of time. These files are useful for debugging hardware issues and reproducing RAWACF files.
 
 
 File Rotation
@@ -116,3 +61,250 @@ A utility script is scheduled via cron to check the filesystem that Borealis fil
 If the filesystem usage is too high, it searches for and deletes the oldest files in a loop until
 the filesystem usage goes below the threshold. See the SuperDARN Canada `data flow repository
 <https://github.com/SuperDARNCanada/data_flow>`_ for more information.
+
+
+.. _current_file_types:
+
+Current version
+---------------
+
+.. tabs::
+
+   .. tab:: info
+
+      The Borealis software version can affect the data fields in the file format so be sure to check if
+      your data is of the most up to date version.
+
+   .. tab:: rawacf
+
+      .. include:: file_types/rawacf.txt
+
+   .. tab:: bfiq
+
+      .. include:: file_types/bfiq.txt
+
+   .. tab:: antennas_iq
+
+      .. include:: file_types/antennas_iq.txt
+
+   .. tab:: rawrf
+
+      .. include:: file_types/rawrf.txt
+
+.. _dmap-equivalents:
+
+DMAP-equivalent files
+---------------------
+
+.. tabs::
+
+   .. tab:: info
+
+      Mappings between ``rawacf`` and ``bfiq`` HDF5 files and their DMAP equivalents ``rawacf`` and ``iqdat`` are detailed in the corresponding tabs.
+
+   .. tab:: bfiq
+
+      .. include:: file_types/iqdat_mapping.txt
+
+   .. tab:: rawacf
+
+      .. include:: file_types/rawacf_mapping.txt
+
+Previous Versions
+-----------------
+
+In prior Borealis versions, data files could be in one of two "structures": ``site`` or ``array``.
+
+``site`` structured files were written directly by the radar, consisting of one HDF5 group per averaging period
+of the experiment. Each group, or "record", contained the same metadata and data fields, even for static metadata
+(i.e. not dependent on the specific averaging period, for example, the experiment name). The naming convention of site-structured files is::
+
+    [YYYYMMDD].[HHMM].[SS].[station_id].[slice_id].[file type].hdf5.site
+
+``array`` structured files could be created using pyDARNio, where the HDF5 groups were removed and all matching fields
+from different records combined into one dataset. This structure is more ergonomic, and reduces the size of the file.
+However, converting between the structures can take a significant amount of time and memory. The naming convention of array-structured files is::
+
+    [YYYYMMDD].[HHMM].[SS].[station_id].[slice_id].[file type].hdf5
+
+.. tabs::
+
+   .. tab:: v0.2 and v0.3
+
+      These versions follow the v0.4 format.
+
+   .. tab:: v0.4
+
+      .. tabs::
+
+         .. tab:: rawacf
+
+            .. tabs::
+
+               .. tab:: array
+
+                  .. include:: archive/rawacf-v04-array.txt
+
+               .. tab:: site
+
+                  .. include:: archive/rawacf-v04-site.txt
+
+         .. tab:: bfiq
+
+            .. tabs::
+
+               .. tab:: array
+
+                  .. include:: archive/bfiq-v04-array.txt
+
+               .. tab:: site
+
+                  .. include:: archive/bfiq-v04-site.txt
+
+         .. tab:: antennas_iq
+
+            .. tabs::
+
+               .. tab:: array
+
+                  .. include:: archive/antiq-v04-array.txt
+
+               .. tab:: site
+
+                  .. include:: archive/antiq-v04-site.txt
+
+         .. tab:: rawrf
+
+            .. include:: archive/rawrf-v04.txt
+
+   .. tab:: v0.5
+
+      .. tabs::
+
+         .. tab:: rawacf
+
+            .. tabs::
+
+               .. tab:: array
+
+                  .. include:: archive/rawacf-v05-array.txt
+
+               .. tab:: site
+
+                  .. include:: archive/rawacf-v05-site.txt
+
+         .. tab:: bfiq
+
+            .. tabs::
+
+               .. tab:: array
+
+                  .. include:: archive/bfiq-v05-array.txt
+
+               .. tab:: site
+
+                  .. include:: archive/bfiq-v05-site.txt
+
+         .. tab:: antennas_iq
+
+            .. tabs::
+
+               .. tab:: array
+
+                  .. include:: archive/antiq-v05-array.txt
+
+               .. tab:: site
+
+                  .. include:: archive/antiq-v05-site.txt
+
+         .. tab:: rawrf
+
+            .. include:: archive/rawrf-v05.txt
+
+   .. tab:: v0.6
+
+      .. tabs::
+
+         .. tab:: rawacf
+
+            .. tabs::
+
+               .. tab:: array
+
+                  .. include:: archive/rawacf-v06-array.txt
+
+               .. tab:: site
+
+                  .. include:: archive/rawacf-v06-site.txt
+
+         .. tab:: bfiq
+
+            .. tabs::
+
+               .. tab:: array
+
+                  .. include:: archive/bfiq-v06-array.txt
+
+               .. tab:: site
+
+                  .. include:: archive/bfiq-v06-site.txt
+
+         .. tab:: antennas_iq
+
+            .. tabs::
+
+               .. tab:: array
+
+                  .. include:: archive/antiq-v06-array.txt
+
+               .. tab:: site
+
+                  .. include:: archive/antiq-v06-site.txt
+
+         .. tab:: rawrf
+
+            .. include:: archive/rawrf-v06.txt
+
+   .. tab:: v0.7
+
+      .. tabs::
+
+         .. tab:: rawacf
+
+            .. tabs::
+
+               .. tab:: array
+
+                  .. include:: archive/rawacf-v07-array.txt
+
+               .. tab:: site
+
+                  .. include:: archive/rawacf-v07-site.txt
+
+         .. tab:: bfiq
+
+            .. tabs::
+
+               .. tab:: array
+
+                  .. include:: archive/bfiq-v07-array.txt
+
+               .. tab:: site
+
+                  .. include:: archive/bfiq-v07-site.txt
+
+         .. tab:: antennas_iq
+
+            .. tabs::
+
+               .. tab:: array
+
+                  .. include:: archive/antiq-v07-array.txt
+
+               .. tab:: site
+
+                  .. include:: archive/antiq-v07-site.txt
+
+         .. tab:: rawrf
+
+            .. include:: archive/rawrf-v07.txt

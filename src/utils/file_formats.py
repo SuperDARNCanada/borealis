@@ -2,12 +2,12 @@
 file_formats
 ~~~~~~~~~~~~
 
-Contains the dataclass `SliceData` defining the data and metadata that is stored in files produced by borealis.
+Contains the dataclass ``SliceData`` defining the data and metadata that is stored in files produced by borealis.
 
-`SliceData` fields contain associated metadata that determines which file types (`rawrf`, `antennas_iq`, `bfiq`,
-`rawacf`) should contain the aforementioned field, and at which level (`file` or `record`) the field
-should be written. Fields at the `file` level are written only once, with the associated data immutable throughout
-the experiment for the given slice. Fields at the `record` level are written to each averaging period, within the record
+``SliceData`` fields contain associated metadata that determines which file types (``rawrf``, ``antennas_iq``, ``bfiq``,
+``rawacf``) should contain the aforementioned field, and at which level (``file`` or ``record``) the field
+should be written. Fields at the ``file`` level are written only once, with the associated data immutable throughout
+the experiment for the given slice. Fields at the ``record`` level are written to each averaging period, within the record
 for that averaging period.
 """
 

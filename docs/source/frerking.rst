@@ -1,4 +1,6 @@
-.. _frerking-label:
+:orphan:
+
+.. _frerking:
 
 -------------------------------------------
 Another representation of Frerking’s method

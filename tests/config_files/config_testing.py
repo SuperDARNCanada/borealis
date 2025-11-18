@@ -19,6 +19,8 @@ in the Borealis config file directory::
 import argparse
 import copy
 import json
+import subprocess
+
 import numpy as np
 import os
 from pathlib import Path
@@ -44,18 +46,18 @@ class MockOptions(Options):
             raise ValueError("BOREALISPATH env variable not set")
 
         os.environ["RADAR_ID"] = "test"  # For testing a new config file
-        self.parse_config()  # Parse info from config file
+        self._parse_config()  # Parse info from config file
 
         os.environ["RADAR_ID"] = (
             "sas"  # Use SAS to ensure that valid hdw and restrict files are loaded.
         )
-        self.parse_hdw()
-        self.parse_restrict()
+        self._parse_hdw()
+        self._parse_restrict()
 
         os.environ["RADAR_ID"] = (
             self.site_id
         )  # Match the value from the config file, to hack a test in verify_options
-        self.verify_options()  # Check that all parsed values are valid
+        self._verify_options()  # Check that all parsed values are valid
 
 
 class TestConfigFile(unittest.TestCase):
@@ -76,12 +78,19 @@ class TestConfigFile(unittest.TestCase):
 class TestConfig(unittest.TestCase):
     """This class modifies fields of `base_config.ini` to ensure that config file parsing is handled correctly."""
 
+    config_file = f"{os.environ['BOREALISPATH']}/config/test/test_config.ini"
+
     def setUp(self):
         """Create a new directory `$BOREALISPATH/config/test/`."""
-        if not os.path.exists(f'{os.environ["BOREALISPATH"]}/config/test'):
-            os.mkdir(f'{os.environ["BOREALISPATH"]}/config/test')
+        os.makedirs(f'{os.environ["BOREALISPATH"]}/config/test', exist_ok=True)
         for f in os.listdir(f'{os.environ["BOREALISPATH"]}/config/test/'):
             os.remove(f'{os.environ["BOREALISPATH"]}/config/test/{f}')
+        infile = Path(__file__).with_name("base_config.ini")
+        # strip everything after a # and any trailing whitespace
+        subprocess.run(
+            f"sed 's/#.*//' {infile} | sed -e 's/[[:space:]]*$//g' > {self.config_file}",
+            shell=True,
+        )
 
     def tearDown(self):
         """Delete the `$BOREALISPATH/config/test directory and all contained files."""
@@ -91,13 +100,6 @@ class TestConfig(unittest.TestCase):
 
     def testBaseConfig(self):
         """Test the parameters of the base_config.ini file"""
-        with open(Path(__file__).with_name("base_config.ini"), "r") as f:
-            config = json.load(f)
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
-            json.dump(config, f)
-
         options = MockOptions()
         self.assertEqual(options.n200_count, 16)
         self.assertEqual(len(options.n200_addrs), 16)
@@ -107,12 +109,10 @@ class TestConfig(unittest.TestCase):
 
     def testNoN200s(self):
         """No N200s specified in config file"""
-        with open(Path(__file__).with_name("base_config.ini"), "r") as f:
+        with open(self.config_file, "r") as f:
             config = json.load(f)
         config["n200s"] = []
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(self.config_file, "w") as f:
             json.dump(config, f)
 
         options = MockOptions()
@@ -124,16 +124,14 @@ class TestConfig(unittest.TestCase):
 
     def testSingleN200NoConnections(self):
         """No N200s connected to antennas"""
-        with open(Path(__file__).with_name("base_config.ini"), "r") as f:
+        with open(self.config_file, "r") as f:
             config = json.load(f)
         config["n200s"] = [config["n200s"][0]]  # Only keep the first
         n200 = config["n200s"][0]
         n200["rx_channel_0"] = ""
         n200["rx_channel_1"] = ""
         n200["tx_channel_0"] = ""
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(self.config_file, "w") as f:
             json.dump(config, f)
 
         options = MockOptions()
@@ -145,16 +143,14 @@ class TestConfig(unittest.TestCase):
 
     def testSingleN200Connected(self):
         """Single N200, connected to main antenna and intf antenna"""
-        with open(Path(__file__).with_name("base_config.ini"), "r") as f:
+        with open(self.config_file, "r") as f:
             config = json.load(f)
         config["n200s"] = [config["n200s"][0]]  # Only keep the first
         n200 = config["n200s"][0]
         n200["rx_channel_0"] = "m0"
         n200["rx_channel_1"] = "i0"
         n200["tx_channel_0"] = "m0"
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(self.config_file, "w") as f:
             json.dump(config, f)
 
         options = MockOptions()
@@ -169,16 +165,14 @@ class TestConfig(unittest.TestCase):
 
     def testSingleN200BadMain(self):
         """Single N200, connected to invalid main antenna (main_antenna_count = 16)"""
-        with open(Path(__file__).with_name("base_config.ini"), "r") as f:
+        with open(self.config_file, "r") as f:
             config = json.load(f)
         config["n200s"] = [config["n200s"][0]]  # Only keep the first
         n200 = config["n200s"][0]
         n200["rx_channel_0"] = "m100"  # main_antenna_count = 16, this is too large
         n200["rx_channel_1"] = ""
         n200["tx_channel_0"] = ""
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(self.config_file, "w") as f:
             json.dump(config, f)
 
         with self.assertRaisesRegex(ValueError, "channel 100 not in main antenna list"):
@@ -186,16 +180,14 @@ class TestConfig(unittest.TestCase):
 
     def testSingleN200BadIntf(self):
         """Single N200, connected to invalid intf antenna (intf_antenna_count = 4)"""
-        with open(Path(__file__).with_name("base_config.ini"), "r") as f:
+        with open(self.config_file, "r") as f:
             config = json.load(f)
         config["n200s"] = [config["n200s"][0]]  # Only keep the first
         n200 = config["n200s"][0]
         n200["rx_channel_0"] = ""
         n200["rx_channel_1"] = "i4"  # intf_antenna_count = 4, this is too large
         n200["tx_channel_0"] = ""
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(self.config_file, "w") as f:
             json.dump(config, f)
 
         with self.assertRaisesRegex(ValueError, "channel 4 not in intf antenna list"):
@@ -203,16 +195,14 @@ class TestConfig(unittest.TestCase):
 
     def testSingleN200BadTxMain(self):
         """Single N200, connected to invalid main antenna for TX (main_antenna_count = 16)"""
-        with open(Path(__file__).with_name("base_config.ini"), "r") as f:
+        with open(self.config_file, "r") as f:
             config = json.load(f)
         config["n200s"] = [config["n200s"][0]]  # Only keep the first
         n200 = config["n200s"][0]
         n200["rx_channel_0"] = ""
         n200["rx_channel_1"] = ""
         n200["tx_channel_0"] = "m100"  # main_antenna_count = 16, this is too large
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(self.config_file, "w") as f:
             json.dump(config, f)
 
         with self.assertRaisesRegex(ValueError, "channel 100 not in main antenna list"):
@@ -220,16 +210,14 @@ class TestConfig(unittest.TestCase):
 
     def testSingleN200TxIntf(self):
         """Single N200, connected to an intf antenna for TX"""
-        with open(Path(__file__).with_name("base_config.ini"), "r") as f:
+        with open(self.config_file, "r") as f:
             config = json.load(f)
         config["n200s"] = [config["n200s"][0]]  # Only keep the first
         n200 = config["n200s"][0]
         n200["rx_channel_0"] = ""
         n200["rx_channel_1"] = ""
         n200["tx_channel_0"] = "i0"  # cannot connect to intf antenna
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(self.config_file, "w") as f:
             json.dump(config, f)
 
         with self.assertRaisesRegex(
@@ -239,16 +227,14 @@ class TestConfig(unittest.TestCase):
 
     def testSingleN200TxRxDifferentAntennas(self):
         """Single N200, connected to different antennas for TX and RX (which is allowed)"""
-        with open(Path(__file__).with_name("base_config.ini"), "r") as f:
+        with open(self.config_file, "r") as f:
             config = json.load(f)
         config["n200s"] = [config["n200s"][0]]  # Only keep the first
         n200 = config["n200s"][0]
         n200["rx_channel_0"] = "m0"
         n200["rx_channel_1"] = ""
         n200["tx_channel_0"] = "m1"
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(self.config_file, "w") as f:
             json.dump(config, f)
 
         options = MockOptions()
@@ -262,7 +248,7 @@ class TestConfig(unittest.TestCase):
 
     def testTwoN200sOutOfOrder(self):
         """Two N200s, the first connected to a higher-index antenna than the second"""
-        with open(Path(__file__).with_name("base_config.ini"), "r") as f:
+        with open(self.config_file, "r") as f:
             config = json.load(f)
         config["n200s"] = config["n200s"][:2]  # Only keep the first two
         n200_0 = config["n200s"][0]
@@ -273,9 +259,7 @@ class TestConfig(unittest.TestCase):
         n200_1["rx_channel_0"] = "m0"
         n200_1["rx_channel_1"] = ""
         n200_1["tx_channel_0"] = "m0"
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(self.config_file, "w") as f:
             json.dump(config, f)
 
         options = MockOptions()
@@ -289,7 +273,7 @@ class TestConfig(unittest.TestCase):
 
     def testTooManyIntfAntennas(self):
         """Connected to all intf antennas, plus one invalid intf antenna (intf_antenna_count = 4)"""
-        with open(Path(__file__).with_name("base_config.ini"), "r") as f:
+        with open(self.config_file, "r") as f:
             config = json.load(f)
         config["n200s"] = config["n200s"][:3]  # Only keep the first three
         n200_0 = config["n200s"][0]
@@ -304,9 +288,7 @@ class TestConfig(unittest.TestCase):
         n200_2["rx_channel_0"] = "i4"
         n200_2["rx_channel_1"] = ""
         n200_2["tx_channel_0"] = ""
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(self.config_file, "w") as f:
             json.dump(config, f)
 
         with self.assertRaisesRegex(ValueError, "channel 4 not in intf antenna list"):
@@ -314,14 +296,12 @@ class TestConfig(unittest.TestCase):
 
     def testTooManyMainAntennas(self):
         """Connected to all main antennas, plus one invalid main antenna (main_antenna_count = 16)"""
-        with open(Path(__file__).with_name("base_config.ini"), "r") as f:
+        with open(self.config_file, "r") as f:
             config = json.load(f)
 
         n200_16 = config["n200s"][16]
         n200_16["rx_channel_0"] = "m16"
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(self.config_file, "w") as f:
             json.dump(config, f)
 
         with self.assertRaisesRegex(ValueError, "channel 16 not in main antenna list"):
@@ -329,7 +309,7 @@ class TestConfig(unittest.TestCase):
 
     def testDuplicateMainAntennaRx(self):
         """Connected to a main antenna twice for RX"""
-        with open(Path(__file__).with_name("base_config.ini"), "r") as f:
+        with open(self.config_file, "r") as f:
             config = json.load(f)
 
         config["n200s"] = config["n200s"][:1]  # Only keep the first n200
@@ -337,9 +317,7 @@ class TestConfig(unittest.TestCase):
         n200["rx_channel_0"] = "m0"
         n200["rx_channel_1"] = "m0"
         n200["tx_channel_0"] = ""
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(self.config_file, "w") as f:
             json.dump(config, f)
 
         with self.assertRaisesRegex(
@@ -349,7 +327,7 @@ class TestConfig(unittest.TestCase):
 
     def testDuplicateIntfAntennaRx(self):
         """Connected to an intf antenna twice for RX"""
-        with open(Path(__file__).with_name("base_config.ini"), "r") as f:
+        with open(self.config_file, "r") as f:
             config = json.load(f)
 
         config["n200s"] = config["n200s"][:1]  # Only keep the first n200
@@ -369,7 +347,7 @@ class TestConfig(unittest.TestCase):
 
     def testDuplicateMainAntennaTx(self):
         """Connected to a main antenna twice for TX"""
-        with open(Path(__file__).with_name("base_config.ini"), "r") as f:
+        with open(self.config_file, "r") as f:
             config = json.load(f)
 
         config["n200s"] = config["n200s"][:2]  # Only keep the first two n200s
@@ -381,9 +359,7 @@ class TestConfig(unittest.TestCase):
         n200_1["rx_channel_0"] = "m1"
         n200_1["rx_channel_1"] = ""
         n200_1["tx_channel_0"] = "m0"
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(self.config_file, "w") as f:
             json.dump(config, f)
 
         with self.assertRaisesRegex(
@@ -393,7 +369,7 @@ class TestConfig(unittest.TestCase):
 
     def testInvalidArraySpecifierRx(self):
         """Invalid array specifier for RX channel"""
-        with open(Path(__file__).with_name("base_config.ini"), "r") as f:
+        with open(self.config_file, "r") as f:
             config = json.load(f)
 
         config["n200s"] = config["n200s"][:1]  # Only keep the first n200
@@ -401,9 +377,7 @@ class TestConfig(unittest.TestCase):
         n200_0["rx_channel_0"] = "a0"
         n200_0["rx_channel_1"] = ""
         n200_0["tx_channel_0"] = ""
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(self.config_file, "w") as f:
             json.dump(config, f)
 
         with self.assertRaisesRegex(
@@ -413,7 +387,7 @@ class TestConfig(unittest.TestCase):
 
     def testInvalidArraySpecifierTx(self):
         """Invalid array specifier for TX channel"""
-        with open(Path(__file__).with_name("base_config.ini"), "r") as f:
+        with open(self.config_file, "r") as f:
             config = json.load(f)
 
         config["n200s"] = config["n200s"][:1]  # Only keep the first n200
@@ -421,9 +395,7 @@ class TestConfig(unittest.TestCase):
         n200_0["rx_channel_0"] = "m0"
         n200_0["rx_channel_1"] = ""
         n200_0["tx_channel_0"] = "z0"
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(self.config_file, "w") as f:
             json.dump(config, f)
 
         with self.assertRaisesRegex(
@@ -433,7 +405,7 @@ class TestConfig(unittest.TestCase):
 
     def testInvalidMainAntennaSpecifierRx(self):
         """Invalid main antenna index specifier for RX channel"""
-        with open(Path(__file__).with_name("base_config.ini"), "r") as f:
+        with open(self.config_file, "r") as f:
             config = json.load(f)
 
         config["n200s"] = config["n200s"][:1]  # Only keep the first n200
@@ -441,9 +413,7 @@ class TestConfig(unittest.TestCase):
         n200_0["rx_channel_0"] = "mo"
         n200_0["rx_channel_1"] = ""
         n200_0["tx_channel_0"] = ""
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(self.config_file, "w") as f:
             json.dump(config, f)
 
         with self.assertRaisesRegex(ValueError, "channel\[1:\] must be an integer"):
@@ -451,7 +421,7 @@ class TestConfig(unittest.TestCase):
 
     def testInvalidIntfAntennaSpecifierRx(self):
         """Invalid intf antenna index specifier for RX channel"""
-        with open(Path(__file__).with_name("base_config.ini"), "r") as f:
+        with open(self.config_file, "r") as f:
             config = json.load(f)
 
         config["n200s"] = config["n200s"][:1]  # Only keep the first n200
@@ -459,9 +429,7 @@ class TestConfig(unittest.TestCase):
         n200_0["rx_channel_0"] = "io"
         n200_0["rx_channel_1"] = ""
         n200_0["tx_channel_0"] = ""
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(self.config_file, "w") as f:
             json.dump(config, f)
 
         with self.assertRaisesRegex(ValueError, "channel\[1:\] must be an integer"):
@@ -469,7 +437,7 @@ class TestConfig(unittest.TestCase):
 
     def testInvalidMainAntennaSpecifierTx(self):
         """Invalid main antenna index specifier for TX channel"""
-        with open(Path(__file__).with_name("base_config.ini"), "r") as f:
+        with open(self.config_file, "r") as f:
             config = json.load(f)
 
         config["n200s"] = config["n200s"][:1]  # Only keep the first n200
@@ -477,9 +445,7 @@ class TestConfig(unittest.TestCase):
         n200_0["rx_channel_0"] = "m0"
         n200_0["rx_channel_1"] = ""
         n200_0["tx_channel_0"] = "mo"
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(self.config_file, "w") as f:
             json.dump(config, f)
 
         with self.assertRaisesRegex(ValueError, "channel\[1:\] must be an integer"):
@@ -487,7 +453,7 @@ class TestConfig(unittest.TestCase):
 
     def testDuplicateN200(self):
         """Two N200s have the same IP address"""
-        with open(Path(__file__).with_name("base_config.ini"), "r") as f:
+        with open(self.config_file, "r") as f:
             config = json.load(f)
 
         config["n200s"] = config["n200s"][:1]  # Only keep the first n200
@@ -498,9 +464,7 @@ class TestConfig(unittest.TestCase):
         n200_1 = copy.deepcopy(n200_0)
         n200_1["rx_channel_0"] = "m1"
         config["n200s"].append(n200_1)
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(self.config_file, "w") as f:
             json.dump(config, f)
 
         with self.assertRaisesRegex(
@@ -510,7 +474,7 @@ class TestConfig(unittest.TestCase):
 
     def testUnconnectedMainAntennaInExperimentSlice(self):
         """ExperimentSlice tries to use a main antenna for RX that is not connected to an N200"""
-        with open(Path(__file__).with_name("base_config.ini"), "r") as f:
+        with open(self.config_file, "r") as f:
             config = json.load(f)
 
         config["n200s"] = config["n200s"][:1]  # Only keep the first n200
@@ -518,9 +482,7 @@ class TestConfig(unittest.TestCase):
         n200_0["rx_channel_0"] = "m0"
         n200_0["rx_channel_1"] = ""
         n200_0["tx_channel_0"] = "m0"
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(self.config_file, "w") as f:
             json.dump(config, f)
 
         # Do this to avoid logging from ExperimentSlice
@@ -564,7 +526,7 @@ class TestConfig(unittest.TestCase):
 
     def testUnconnectedIntfAntennaInExperimentSlice(self):
         """ExperimentSlice tries to use an intf antenna for RX that is not connected to an N200"""
-        with open(Path(__file__).with_name("base_config.ini"), "r") as f:
+        with open(self.config_file, "r") as f:
             config = json.load(f)
 
         config["n200s"] = config["n200s"][:1]  # Only keep the first n200
@@ -572,9 +534,7 @@ class TestConfig(unittest.TestCase):
         n200_0["rx_channel_0"] = "m0"
         n200_0["rx_channel_1"] = "i0"
         n200_0["tx_channel_0"] = "m0"
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(self.config_file, "w") as f:
             json.dump(config, f)
 
         # Do this to avoid logging from ExperimentSlice
@@ -618,7 +578,7 @@ class TestConfig(unittest.TestCase):
 
     def testUnconnectedTxAntennaInExperimentSlice(self):
         """ExperimentSlice tries to use a main antenna for TX that is not connected to an N200"""
-        with open(Path(__file__).with_name("base_config.ini"), "r") as f:
+        with open(self.config_file, "r") as f:
             config = json.load(f)
 
         config["n200s"] = config["n200s"][:1]  # Only keep the first n200
@@ -626,9 +586,7 @@ class TestConfig(unittest.TestCase):
         n200_0["rx_channel_0"] = "m0"
         n200_0["rx_channel_1"] = ""
         n200_0["tx_channel_0"] = "m0"
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(self.config_file, "w") as f:
             json.dump(config, f)
 
         # Do this to avoid logging from ExperimentSlice
@@ -672,7 +630,7 @@ class TestConfig(unittest.TestCase):
 
     def testSingleAntennaConnected(self):
         """Single antenna, connected to N200"""
-        with open(Path(__file__).with_name("base_config.ini"), "r") as f:
+        with open(self.config_file, "r") as f:
             config = json.load(f)
         config["antennas"]["main_locations"] = {
             "0": config["antennas"]["main_locations"]["0"],
@@ -684,9 +642,7 @@ class TestConfig(unittest.TestCase):
         n200["rx_channel_0"] = "m0"
         n200["rx_channel_1"] = ""
         n200["tx_channel_0"] = "m0"
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(self.config_file, "w") as f:
             json.dump(config, f)
 
         options = MockOptions()
@@ -694,15 +650,13 @@ class TestConfig(unittest.TestCase):
 
     def testAntennaDims2D(self):
         """Single antenna has only 2D location specifier"""
-        with open(Path(__file__).with_name("base_config.ini"), "r") as f:
+        with open(self.config_file, "r") as f:
             config = json.load(f)
         config["antennas"]["main_locations"]["13"] = config["antennas"][
             "main_locations"
         ]["13"][:-1]
 
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(self.config_file, "w") as f:
             json.dump(config, f)
 
         with self.assertRaisesRegex(ValueError, "Antenna 13 has invalid location"):
@@ -710,15 +664,13 @@ class TestConfig(unittest.TestCase):
 
     def testTooManyAntennas(self):
         """Number of antennas too large based on main_antenna_count"""
-        with open(Path(__file__).with_name("base_config.ini"), "r") as f:
+        with open(self.config_file, "r") as f:
             config = json.load(f)
         config["antennas"]["main_locations"]["17"] = config["antennas"][
             "main_locations"
         ]["13"]
 
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(self.config_file, "w") as f:
             json.dump(config, f)
 
         with self.assertRaisesRegex(
@@ -729,7 +681,7 @@ class TestConfig(unittest.TestCase):
 
     def testAntennaNameTooLarge(self):
         """Antenna index too large based on main_antenna_count"""
-        with open(Path(__file__).with_name("base_config.ini"), "r") as f:
+        with open(self.config_file, "r") as f:
             config = json.load(f)
         config["antennas"]["main_locations"]["16"] = config["antennas"][
             "main_locations"
@@ -742,9 +694,7 @@ class TestConfig(unittest.TestCase):
         n200["rx_channel_1"] = ""
         n200["tx_channel_0"] = "m0"
 
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(self.config_file, "w") as f:
             json.dump(config, f)
 
         with self.assertRaisesRegex(
@@ -755,7 +705,7 @@ class TestConfig(unittest.TestCase):
 
     def testAntennaNameTooSmall(self):
         """Antenna index too large based on main_antenna_count"""
-        with open(Path(__file__).with_name("base_config.ini"), "r") as f:
+        with open(self.config_file, "r") as f:
             config = json.load(f)
         config["antennas"]["main_locations"]["-1"] = config["antennas"][
             "main_locations"
@@ -768,9 +718,7 @@ class TestConfig(unittest.TestCase):
         n200["rx_channel_1"] = ""
         n200["tx_channel_0"] = "m0"
 
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(self.config_file, "w") as f:
             json.dump(config, f)
 
         with self.assertRaisesRegex(
@@ -781,7 +729,7 @@ class TestConfig(unittest.TestCase):
 
     def testTwoAntennasUnordered(self):
         """Two antennas, specified out of order but otherwise valid (which is fine)"""
-        with open(Path(__file__).with_name("base_config.ini"), "r") as f:
+        with open(self.config_file, "r") as f:
             config = json.load(f)
 
         config["antennas"]["main_locations"] = {
@@ -795,9 +743,7 @@ class TestConfig(unittest.TestCase):
         n200["rx_channel_0"] = "m0"
         n200["rx_channel_1"] = "m1"
         n200["tx_channel_0"] = ""
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(self.config_file, "w") as f:
             json.dump(config, f)
 
         options = MockOptions()
@@ -817,7 +763,7 @@ class TestConfig(unittest.TestCase):
 
     def testTwoAntennasMisaligned(self):
         """Two antennas, with spacing mismatch compared to main_antenna_spacing field"""
-        with open(Path(__file__).with_name("base_config.ini"), "r") as f:
+        with open(self.config_file, "r") as f:
             config = json.load(f)
 
         config["antennas"]["main_locations"] = {
@@ -832,9 +778,7 @@ class TestConfig(unittest.TestCase):
         n200["rx_channel_0"] = "m0"
         n200["rx_channel_1"] = "m1"
         n200["tx_channel_0"] = ""
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(self.config_file, "w") as f:
             json.dump(config, f)
 
         with self.assertRaisesRegex(
@@ -845,7 +789,7 @@ class TestConfig(unittest.TestCase):
 
     def testTwoAntennasMisalignedY(self):
         """Two antennas, with spacing mismatch compared to main_antenna_spacing field"""
-        with open(Path(__file__).with_name("base_config.ini"), "r") as f:
+        with open(self.config_file, "r") as f:
             config = json.load(f)
 
         config["antennas"]["main_locations"] = {
@@ -860,9 +804,7 @@ class TestConfig(unittest.TestCase):
         n200["rx_channel_0"] = "m0"
         n200["rx_channel_1"] = "m1"
         n200["tx_channel_0"] = ""
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(self.config_file, "w") as f:
             json.dump(config, f)
 
         with self.assertRaisesRegex(
@@ -873,7 +815,7 @@ class TestConfig(unittest.TestCase):
 
     def testTwoAntennasMisalignedNonstandard(self):
         """Two antennas misaligned but non-standard positions specified"""
-        with open(Path(__file__).with_name("base_config.ini"), "r") as f:
+        with open(self.config_file, "r") as f:
             config = json.load(f)
 
         config["antennas"]["main_locations"] = {
@@ -889,9 +831,7 @@ class TestConfig(unittest.TestCase):
         n200["rx_channel_0"] = "m0"
         n200["rx_channel_1"] = "m1"
         n200["tx_channel_0"] = ""
-        with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
-        ) as f:
+        with open(self.config_file, "w") as f:
             json.dump(config, f)
 
         MockOptions()  # should run without issue
@@ -899,7 +839,11 @@ class TestConfig(unittest.TestCase):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("configs", help="List of config files to check", nargs="*")
+    parser.add_argument(
+        "configs",
+        help="List of config files to check. If none specified, will run unit tests.",
+        nargs="*",
+    )
     args = parser.parse_args()
 
     if len(args.configs) == 0:

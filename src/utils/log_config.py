@@ -1,21 +1,18 @@
 """
-This config script sets up the `logging` and `structlog` modules for message logging to
+This config script sets up the ``logging`` and ``structlog`` modules for message logging to
 console and file. It simply needs to be imported into any module where logging is needed.
 In order to capture exceptions and crashes main() should be in a try/except block.
-See example.
 
-:copyright: 2023 SuperDARN Canada
-:author: Adam Lozinsky
+**Usage**::
 
-:example:
     if __name__ == '__main__':
         from utils import log_config
         log = log_config.log(log_level='INFO')
         log.info(f"Example info text {[1, 2, 3]}", example_key=[1, 2, 3])
         try:
             main()
-        except Exception as exec:
-            log.exception("Example crashed", exception=exec)
+        except Exception as err:
+            log.exception("Example crashed", exception=err)
 
 :notes:
     Setting up structlog is very tricky, but after it is done it should just work
@@ -26,45 +23,44 @@ See example.
     https://docs.python.org/3/library/logging.handlers.html#timedrotatingfilehandler
     https://www.structlog.org/en/stable/standard-library.html
     https://www.structlog.org/en/stable/processors.html#chains
+
 """
 
 import inspect
-from pathlib import Path
-import sys
-from .options import Options
-
-# We need these two handlers from logging to print to a file and stdout
 import logging
 from logging import StreamHandler
 from logging.handlers import TimedRotatingFileHandler
+from pathlib import Path
+import sys
+
 import structlog
 import graypy
-
-# We need rich to make the console look pretty (Requires Python 3.7+)
 import rich
+
+from .options import Options
 
 rich.pretty.install()
 
 
-VERBOSE = logging.INFO - 5  #: New logging level, set between `DEBUG` and `INFO`.
+VERBOSE = logging.INFO - 5  #: New logging level, set between ``DEBUG`` and ``INFO``.
 
 
 class VerboseLogger(structlog.stdlib.BoundLogger):
     """
-    Wrapper class that adds a new logging method `verbose` between `debug` and `info` levels.
+    Wrapper class that adds a new logging method ``verbose`` between ``debug`` and ``info`` levels.
     """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         setattr(
             self._logger, "verbose", self._verbose
-        )  # Create the new `verbose` method.
+        )  # Create the new ``verbose`` method.
 
     def verbose(self, *args, **kwargs):
         return self._proxy_to_logger("verbose", *args, **kwargs)
 
     def _verbose(self, msg, *args, **kwargs):
-        """Log msg at the `VERBOSE` level"""
+        """Log msg at the ``VERBOSE`` level"""
         return self._logger._log(VERBOSE, msg, args, **kwargs)
 
 
@@ -72,18 +68,18 @@ def add_logging_level(level_name, level_num, method_name=None):
     """
     Modified from https://stackoverflow.com/a/35804945
 
-    Comprehensively adds a new logging level to the `logging` module and the
+    Comprehensively adds a new logging level to the ``logging`` module and the
     currently configured logging class.
 
-    `levelName` becomes an attribute of the `logging` module with the value
-    `levelNum`. `methodName` becomes a convenience method for both `logging`
-    itself and the class returned by `logging.getLoggerClass()` (usually just
-    `logging.Logger`). If `methodName` is not specified, `levelName.lower()` is
+    ``levelName`` becomes an attribute of the ``logging`` module with the value
+    ``levelNum``. ``methodName`` becomes a convenience method for both ``logging``
+    itself and the class returned by ``logging.getLoggerClass()`` (usually just
+    ``logging.Logger``). If ``methodName`` is not specified, ``levelName.lower()`` is
     used.
 
     To avoid accidental clobberings of existing attributes, this method will
-    raise an `AttributeError` if the level name is already an attribute of the
-    `logging` module or if the method name is already present
+    raise an ``AttributeError`` if the level name is already an attribute of the
+    ``logging`` module or if the method name is already present
 
     Example
     -------
@@ -110,8 +106,10 @@ def add_logging_level(level_name, level_num, method_name=None):
 
 def swap_logger_name(_, __, event_dict):
     """
-    Swaps the kw 'logger_name' value with the 'module_name' and 'func_name' values then removes them
-    from the 'event_dict' for nicer representation. This is done to hack ConsoleRenderer to somewhat
+    Swaps the kw ``logger_name`` value with the ``module_name`` and ``func_name`` values then removes them from
+    ``event_dict``.
+
+    This is done to hack ``ConsoleRenderer`` to somewhat
     match our past format. This is intended only to be used for console rendering and not
     JSON rendering (prints nice but does not appear in file).
     """
@@ -124,8 +122,9 @@ def swap_logger_name(_, __, event_dict):
 
 def format_floats(_, __, event_dict):
     """
-    Truncate all floating-point field to three decimal places. This is done only for ConsoleRenderer
-    to reduce the size of logs in the screen when running the radar.
+    Truncate all floating-point fields to three decimal places.
+
+    This is done only for ``ConsoleRenderer`` to reduce the size of logs in the screen when running the radar.
     """
     for k, v in event_dict.items():
         if isinstance(v, float):
@@ -158,11 +157,13 @@ def log(
     :param json_to_console: Enable (True) or Disable (False) a logger that converts JSON logs to console-style
     :type json_to_console: bool
 
-    :notes:
-    There are three parts to logging; processors, renderers, and handlers.
-        processors - modify, add, or clean up the log message dict
-        renderers - make the log message a string, json, dict, etc. with fancy styling
-        handlers -  print the rendered data to stdout, file, stream, etc.
+    .. note::
+
+        There are three parts to logging: ``processors``, ``renderers``, and ``handlers``.
+
+        * ``processors``: modify, add, or clean up the log message dict
+        * ``renderers``: make the log message a string, json, dict, etc. with fancy styling
+        * ``handlers``:  print the rendered data to stdout, file, stream, etc.
     """
     if json_to_console and (console or logfile or aggregator):
         raise RuntimeError("Cannot convert a JSON logfile while simultaneously logging")

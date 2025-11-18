@@ -179,39 +179,6 @@ The root cause is unknown, but symptoms are:
 To fix this issue and restart the radar:
 - Power cycle the machine
 
-**Protobuf library is not working**
-
-Symptoms: The following error in one or more screens when attempting to run the radar.::
-
-  Traceback (most recent call last):
-    File "brian/brian.py", line 24, in <module>
-      import driverpacket_pb2
-    File "/home/radar/borealis//build/release/utils/protobuf/driverpacket_pb2.py", line 5, in <module>
-      from google.protobuf.internal import builder as _builder
-  ImportError: cannot import name 'builder'
-
-Reason: There are two components to the protobuf installation - the package and the protoc compiler.
-Starting with version 3.20.0, the builder.py file was made for consolidation with this library,
-'Protobuf python generated codes are simplified. Descriptors and message classes' definitions are
-now dynamic created in internal/builder.py.' See
-https://github.com/protocolbuffers/protobuf/releases?page=2 We have had troubles installing versions
-newer than this, so we recommend using previous versions.
-
-Solution:
-Either upgrade your protobuf version or install an older version of the protoc compiler.
-
-**Update since v1.0:** protobuf is no longer a dependency, so this issue should no longer exist.
-
-**Number of sequences per integration time decreasing over time**
-
-This behaviour has been seen when setting up Borealis on new computers. Typically the radar starts
-and records 30-32 sequences per integration, but over the span of a half hour or more may decrease
-down to 10-20 sequences per integration.
-
-This is caused by a communication error between the brian and realtime modules, likely due to the
-value of ``realtime_address`` in config.ini. Make sure that the realtime_address uses a configured
-interface that is "UP". See Software Setup for instructions.
-
 **Borealis only runs one integration time then stops**
 
 This is an unresolved issue, which seems to be caused by the Signal Processing module. Restarting

@@ -74,6 +74,19 @@ centre frequencies for the experiment and users should set these parameters manu
 experiment does not perform as expected or if they have performance concerns due to the tuning time
 required to switch between slices with different centre frequencies.
 
+----------
+normalscan
+----------
+
+Normalscan is a very common experiment for SuperDARN. It only has a single slice, as there is only one
+frequency, pulse_len, beam_order, etc. Since there is only one slice there is no need
+for an interface dictionary.
+
+..  literalinclude:: ../../src/borealis_experiments/normalscan.py
+    :linenos:
+    :language: python
+    :caption: normalsound.py
+
 --------------------------
 Slice Interfacing Examples
 --------------------------
@@ -89,7 +102,7 @@ interfaced. The pulses from both slices are combined into a single set of transm
 that sequence and samples received from those sequences are used for both slices (filtering the raw
 data separates the frequencies).
 
-.. figure:: img/cutlass.png
+.. figure:: img/experiments/cutlass.png
    :width: 100%
    :alt: CUTLASS-style experiment slice interfacing
    :align: center
@@ -100,7 +113,7 @@ beam data from the full scan, if desired. With AVEPERIOD interfacing, one averag
 slice will be followed by an averaging period of another, and so on. The averaging periods are
 interleaved. The resulting experiment runs beams 0, 7, 1, 7, etc.
 
-.. figure:: img/themisscan.png
+.. figure:: img/experiments/themisscan.png
    :width: 100%
    :alt: THEMISSCAN slice interfacing
    :align: center
@@ -110,7 +123,7 @@ frequency. The txfreq are unique between the slices. In this experiment, the sli
 interfaced. A full scan of slice 0 runs followed by a full scan of slice 1, and then the process
 repeats.
 
-.. figure:: img/twofsound.png
+.. figure:: img/experiments/twofsound.png
    :width: 100%
    :alt: TWOFSOUND slice interfacing
    :align: center
@@ -124,7 +137,7 @@ AVEPERIOD interfaced, additionally that slices 2 and 3 are AVEPERIOD interfaced)
 SCAN interfaced (finally, to really drive home this point, this implies that slices 1 and 4 are SCAN
 interfaced, slices 2 and 4 are SCAN interfaced, and slices 3 and 4 are SCAN interfaced).
 
-.. figure:: img/one-experiment-all-interfacing-types.png
+.. figure:: img/experiments/one-experiment-all-interfacing-types.png
    :width: 100%
    :alt: An example showing all types of slice interfacing
    :align: center
@@ -232,7 +245,7 @@ Notice that you must specify interfacing to an existing slice when you add a sec
 slice to the experiment. To see the types of interfacing that can be used, see the above section
 `Interfacing Types Between Slices`_.
 
-This experiment is very similar to the twofsound experiment. To see examples of common experiments,
+This experiment is very similar to the twofsound experiment. To see examples of experiments,
 look at :doc:`experiments`.
 
 -----------------------------------
@@ -261,4 +274,4 @@ your experiment, the test will fail and the exception will describe the error.
 ..  toctree::
     :glob:
 
-    experiment_unittests.rst
+    /source/api/experiment_unittests

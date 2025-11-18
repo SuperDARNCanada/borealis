@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "borealis"
-version = "1.0"
+dynamic = ["version"]
 description = "SuperDARN Digital Radar System"
 readme = "README.md"
 authors = [{name = "SuperDARN Canada"}]
@@ -26,12 +26,28 @@ dependencies = [
     "zmq",
 ]
 
+[tool.setuptools.dynamic]
+version = {attr = "src.__version__"}
+
 [project.optional-dependencies]
 gpu = ["cupy"]
 dev = [
     "ruff",
     "pre-commit",
-    "jupyter"
+    "jupyter",
+]
+doc = [
+    "breathe",
+    "docutils==0.21",
+    "furo==2025.09.25",
+    "latex",
+    "myst_parser",
+    "sphinx==8.2.2",
+    "sphinx-book-theme==1.1.4",
+    "sphinx-favicon",
+    "sphinx-tabs",
+    "sphinxcontrib-autoprogram",
+    "sphinxcontrib-programoutput",
 ]
 
 [project.urls]
