@@ -382,11 +382,15 @@ class DataWrite:
             num_lags = slice_data.lag_numbers.shape[0]
 
             # First range offset in samples
-            sample_off = slice_data.first_range_rtt * 1e-6 * slice_data.rx_sample_rate
+            sample_off = int(
+                round(slice_data.first_range_rtt * 1e-6 * slice_data.rx_sample_rate)
+            )
             sample_off = np.uint32(sample_off)
 
             # Find sample number which corresponds with second pulse in sequence
-            tau_in_samples = slice_data.tau_spacing * 1e-6 * slice_data.rx_sample_rate
+            tau_in_samples = int(
+                round(slice_data.tau_spacing * 1e-6 * slice_data.rx_sample_rate)
+            )
             second_pulse_sample_num = (
                 np.uint32(tau_in_samples) * slice_data.pulses[1] - sample_off - 1
             )
