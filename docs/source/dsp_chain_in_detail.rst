@@ -81,10 +81,10 @@ Linear Convolution
 
 Borealis applies digital filters using linear convolution. This process involves multiplying the input signal sequence
 by a reversed and shifted filter sequence. Each output of the linear convolution corresponds to a unique shift of the
-filter sequence. For an input signal of length :math:`N` and filter of length :math:`M`, the output will be of length
-:math:`N+M-1`, as for the first and last few output samples the filter is "hanging off" the input sequence and only a
+filter sequence. For an input signal of length :math:`\color{lightgray}N` and filter of length :math:`\color{lightgray}M`, the output will be of length
+:math:`\color{lightgray}N+M-1`, as for the first and last few output samples the filter is "hanging off" the input sequence and only a
 partial overlap of the sequences contributes to the output. These "hanging off" output samples are discarded by Borealis,
-as they have an artifically small magnitude due to fewer samples contributing to them. As a result, only :math:`N-M+1`
+as they have an artifically small magnitude due to fewer samples contributing to them. As a result, only :math:`\color{lightgray}N-M+1`
 output samples are computed.
 
 Filtering Stages
@@ -133,7 +133,7 @@ are shown for each stage in the table below.
 For a typical sequence of *normalscan* data, the input data to the first filter stage contains
 around 450000 complex data samples for each antenna. After the first stage, this has been reduced to
 around 15000 samples per antenna, but if multiple frequencies are being selected, there will be one copy of
-(:math:`num\_channels`, 15000) for each frequency. After the second stage, the number of samples is
+(:math:`\color{lightgray}num\_channels`, 15000) for each frequency. After the second stage, the number of samples is
 reduced from 15000 to around 300. The number of samples in and out of each stage does not exactly correspond to
 the downsampling rate, due to the removal of edge effects in the linear convolution.
 
@@ -161,14 +161,14 @@ samples. The curves in Figure 4 depict the analog mixer sequence for each window
 samples (the legend corresponds to the output sample number). In Borealis, there is only one mixer
 sequence - the top (blue) curve. As we convolve with the filter and "slide" along the input samples, we then have a
 phase difference between Borealis and its equivalent analog system. This difference is fairly simple
-to correct. If the oscillator has phase :math:`{\phi}_0 = 0` when it mixes with the zeroth sample,
-then it will have phase :math:`\phi_1 = 2\pi\frac{f_o}{F_s}` when it mixes with the first sample,
-:math:`\phi_2 = 2\pi\frac{f_o}{F_s}2` when it mixes with the second sample, and so on. The general
-formula is :math:`\phi_k = 2\pi\frac{f_o}{F_s}k`, where :math:`f_o` is the oscillator frequency,
-:math:`F_s` is the data sampling rate, and :math:`k` is the index of the newest sample. Borealis
+to correct. If the oscillator has phase :math:`\color{lightgray}{\phi}_0 = 0` when it mixes with the zeroth sample,
+then it will have phase :math:`\color{lightgray}\phi_1 = 2\pi\frac{f_o}{F_s}` when it mixes with the first sample,
+:math:`\color{lightgray}\phi_2 = 2\pi\frac{f_o}{F_s}2` when it mixes with the second sample, and so on. The general
+formula is :math:`\color{lightgray}\phi_k = 2\pi\frac{f_o}{F_s}k`, where :math:`\color{lightgray}f_o` is the oscillator frequency,
+:math:`\color{lightgray}F_s` is the data sampling rate, and :math:`\color{lightgray}k` is the index of the newest sample. Borealis
 applies this correction after applying the filter and downsampling, to reduce the number of
-mathematical operations. So, for a downsampling rate of :math:`R`, the phase correction for sample
-:math:`k` after downsampling is :math:`\phi_k = 2\pi\frac{f_o}{F_s}Rk`.
+mathematical operations. So, for a downsampling rate of :math:`\color{lightgray}R`, the phase correction for sample
+:math:`\color{lightgray}k` after downsampling is :math:`\color{lightgray}\phi_k = 2\pi\frac{f_o}{F_s}Rk`.
 
 .. figure:: img/light/dsp/oscillator_sequences.png
    :width: 80 %
@@ -236,29 +236,29 @@ Beamforming
 
 Beamforming in Borealis is relatively straightforward. Figure 9 illustrates the
 physical process, with the red antennas signifying the main array, the thick blue line being the
-incoming plane wavefront, and the beam direction off of boresight shown by :math:`\theta`. For an incoming wave,
+incoming plane wavefront, and the beam direction off of boresight shown by :math:`\color{lightgray}\theta`. For an incoming wave,
 we can see that it will hit the leftmost antenna (antenna 0) first, then antenna 1, antenna 2, and
-so forth, reaching antenna 15 last. Each antenna :math:`n` is going to measure a different phase of
-the wave, determined by its distance from the reference wavefront :math:`d_n` as shown in the figure.
+so forth, reaching antenna 15 last. Each antenna :math:`\color{lightgray}n` is going to measure a different phase of
+the wave, determined by its distance from the reference wavefront :math:`\color{lightgray}d_n` as shown in the figure.
 The required phase shift can be calculated from the geometry of the diagram as
 
-.. math:: \phi_n = \frac{d_n}{\lambda} 2\pi
+.. math:: \color{lightgray}\phi_n = \frac{d_n}{\lambda} 2\pi
 
-The filtered samples for a given antenna are multiplied by :math:`\phi_n` to correct their phase,
+The filtered samples for a given antenna are multiplied by :math:`\color{lightgray}\phi_n` to correct their phase,
 then the samples for all antennas are summed together to yield one dataset for the linear array.
 
 In Borealis, the reference wavefront is taken chosen when the wavefront crosses the array axis at boresight, i.e.
 the origin of the shown coordinate system. This means that the distances
-:math:`d_n` for antennas 0 through 7 will be negative, since the wavefront will have passed them already.
-The distance from the reference wavefront for an antenna and beam angle :math:`\theta` is then
+:math:`\color{lightgray}d_n` for antennas 0 through 7 will be negative, since the wavefront will have passed them already.
+The distance from the reference wavefront for an antenna and beam angle :math:`\color{lightgray}\theta` is then
 
-.. math:: d_n = (n-\frac{N}{2})L\sin(\theta)
+.. math:: \color{lightgray}d_n = (n-\frac{N}{2})L\sin(\theta)
 
-where :math:`n` is the antenna index, :math:`N` is the total number of antennas in the array, and
-:math:`L` is the uniform antenna spacing. Plugging this result into the previous formula yields a
+where :math:`\color{lightgray}n` is the antenna index, :math:`\color{lightgray}N` is the total number of antennas in the array, and
+:math:`\color{lightgray}L` is the uniform antenna spacing. Plugging this result into the previous formula yields ais
 final formula of
 
-.. math:: \phi_n = \left(\frac{L}{\lambda}(n-\frac{N}{2})\sin(\theta)\right) 2\pi
+.. math:: \color{lightgray}\phi_n = \left(\frac{L}{\lambda}(n-\frac{N}{2})\sin(\theta)\right) 2\pi
 
 .. figure:: img/light/dsp/beamforming.svg
    :width: 90 %

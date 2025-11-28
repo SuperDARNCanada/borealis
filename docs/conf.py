@@ -127,6 +127,7 @@ breathe_default_project = "borealis"
 templates_path = ["_templates"]
 
 imgmath_embed = True  # To fix math images not loading
+imgmath_latex_preamble = r"\usepackage{xcolor}"  # for rendering colors in equations
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
