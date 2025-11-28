@@ -1,4 +1,4 @@
-where:orphan:
+:orphan:
 
 .. _frerking:
 
