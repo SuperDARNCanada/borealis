@@ -80,7 +80,7 @@ configurable.
 
 By default, the ``bistatic_test`` experiment will transmit a full FOV pattern like ``full_fov.py``
 on a single frequency. To operate a radar in a bistatic listening mode, the argument
-``listen_to=[three-letter radar code]`` must be passed to the experiment handler via
+``listen_to=[three-letter radar code]`` must be passed to radar_control via
 ``steamed_hams.py``. This will look something like this ::
 
     radar@borealis~$ ./steamed_hams.py bistatic_test release discretionary --kwargs_string "listen_to=rkn"

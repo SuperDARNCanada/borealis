@@ -445,33 +445,39 @@ electrical path lengths in the array which will affect beamformed data.
 Interferometer channels will need to be routed to a separate plate and supplied with 15V by a
 separate supply capable of supplying the required amperage for a minimum of 4 pre-amps.
 
------------------------
-Computer and Networking
------------------------
+----------------
+Control Computer
+----------------
 
-To be able to run Borealis at high data rates, a powerful CPU with many cores and a high number of
-PCI lanes is needed. The team recommends an Intel i9 10 core CPU or better. Likewise a good NVIDIA
-GPU is needed for fast data processing. The team recommends a GeForce 1080TI/2080TI or better (with
-the same or higher amount of CUDA cores, and the same or higher amount of VRAM). Just
-make sure the drivers are up to date on Linux for the model. A 10Gb (or multiple 1Gb interfaces) or
-better network interface is also required.
+Borealis requires a high-performance computer to operate. See :ref:`Borealis Control Computer<parts>`
+for the full computer specifications. Follow the manuals for the motherboard purchased to 
+assemble the computer. Notes on building a Borealis computer:
 
-Not all networking equipment works well together or with USRP equipment. Some prototyping with
-different models may be required. Essentially, Borealis requires high throughput and low latency.
-Typically, commerical grade equipment cannout provide high throughput and low latency
-simultaneously. You will need enterprise level switches, or a custom server with PCIe card
-extensions, or use a select few commerical devices. As maunfacutring and availablity changes some
-prototyping with different models may be required.
+- Update the BIOS when working with a new motherboard
+- XMP must be enabled in BIOS to utilize the full 6000 MHz RAM speed. RAM must also be socketed in
+  the optimal configuration DIMM_A2 and DIMM_B2 for two sticks.
+- CPU cooling is crucial. Borealis will run many cores at its maximum, generating significant heat.
+- PCIe ports must be dedicated to single devices, and not split between components. Proper operation
+  requires maximized PCIe bandwidth.
 
-Once these components are selected, the supporting components such as motherboard, cooling and hard
-drives can all be selected. Assemble the computer following the instructions that come with the
-motherboard.
+-------------------------
+Octoclocks and Networking
+-------------------------
+
+One issue with the Octoclock units is that they contain a very basic Ethernet controller chip, the
+ENC28J60. This means that the Octoclock units will only operate at 10Mbps link speed (10BASE-T). The
+previously used 10Gb network switches (NetGear XS708E-200NES or XS708T) only operated at 100Mbps,
+1000Mbps and 10000Mbps. Therefore, a 5-port unmanaged switch was required to connect all three Octoclocks
+to one of the 10Gbps network switches. The 5-port switch had to be capable of operating at both 10Mbps
+and 100Mbps so it could connect to both the Octoclocks as well as the XS708E switch. The network cables
+connecting the Octoclocks to the 5-port switch do not need to be dual shielded and any Cat5 cable
+(or better) should work.
 
 .. _ntp-hardware:
 
------------------------
-NTP discipline with PPS
------------------------
+----------------------------------
+NTP discipline with PPS (Optional)
+----------------------------------
 
 Some aspects of Borealis depend upon the operating system having the correct time. The Network Time
 Protocol (NTP) can be used to provide a stable and accurate system clock. A correct system clock,
@@ -534,16 +540,3 @@ bulkhead SMA connector in place.
    :width: 50%
    :alt: Modify one SMA coaxial cable to connect to the DCD and GND pins of the pcie header
    :align: center
-
--------------------------
-Octoclocks and Networking
--------------------------
-
-One issue with the Octoclock units is that they contain a very basic Ethernet controller chip, the
-ENC28J60. This means that the Octoclock units will only operate at 10Mbps link speed (10BASE-T). The
-previously used 10Gb network switches (NetGear XS708E-200NES or XS708T) only operated at 100Mbps,
-1000Mbps and 10000Mbps. Therefore, a 5-port unmanaged switch was required to connect all three Octoclocks
-to one of the 10Gbps network switches. The 5-port switch had to be capable of operating at both 10Mbps
-and 100Mbps so it could connect to both the Octoclocks as well as the XS708E switch. The network cables
-connecting the Octoclocks to the 5-port switch do not need to be dual shielded and any Cat5 cable
-(or better) should work.

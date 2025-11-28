@@ -20,4 +20,4 @@ An example unit test is shown below.
     :language: python
     :linenos:
     :caption: Example Unit Test file
-    :name: test_rxonly_dne-py
+    :name: test_avg_method-py

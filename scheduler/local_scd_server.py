@@ -151,7 +151,7 @@ class SWG(object):
         print("Parsing schedule files")
 
         if first_run:
-            month_to_use = datetime.datetime.utcnow()
+            month_to_use = datetime.datetime.now(datetime.timezone.utc)
         else:
             month_to_use = scd_utils.get_next_month_from_date()
 
@@ -278,7 +278,7 @@ def main():
 
     force_next_month = args.force
 
-    current_time = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    current_time = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     print(f"{current_time} - Starting local_scd_server.py...")
 
     if args.first_run:
@@ -290,7 +290,7 @@ def main():
 
     while True:
         if swg.new_swg_file_available() or args.first_run or force_next_month:
-            current_time = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+            current_time = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
             print(f"{current_time} - New swg file available")
 
             swg.pull_new_swg_file()
@@ -300,7 +300,7 @@ def main():
             ]
 
             errors = False
-            today = datetime.datetime.utcnow()
+            today = datetime.datetime.now(datetime.timezone.utc)
             scd_error_log = today.strftime("/scd_errors.%Y%m%d")
 
             for se, site_scd in zip(site_experiments, site_scds):

@@ -39,7 +39,20 @@
 # ipynb notebook checkpoints directories
 */.ipynb_checkpoints*
 
+# Borealis installation files
 *.swp
 bin/
 build/
 *.dat
+borealis_env*
+cppzmq/
+libzmq/
+libsodium-stable/
+*.gz
+*.bz2
+borealisscreenrc
+
+# Development files
+*egg-info*
+.idea/
+.vscode/

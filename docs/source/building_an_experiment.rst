@@ -63,7 +63,7 @@ East, depending upon the radar.
 Interfacing Types Between Slices
 --------------------------------
 
-.. autodata:: src.experiment_prototype.experiment_prototype.interface_types
+.. autodata:: src.utils.experiment_prototype.interface_types
     :noindex:
 
 If the ``txctrfreq`` and ``rxctrfreq`` parameters are not set by the user, then borealis will attempt
@@ -151,7 +151,7 @@ ExperimentPrototype class.
 
 This means the ExperimentPrototype class must be imported at the start of the experiment file ::
 
-    from experiment_prototype.experiment_prototype import ExperimentPrototype
+    from utils.experiment_prototype import ExperimentPrototype
 
 Please name the class within the experiment file in a similar fashion to the file, as the class name
 is written to the datasets produced.
@@ -189,11 +189,7 @@ Below is an example of properly inheriting the prototype class and defining your
                 comment_string='My experiment explanation')
 
 The experiment handler will create an instance of your experiment when your experiment is scheduled
-to start running. Your class is a child class of ExperimentPrototype and because of this, the parent
-class needs to be instantiated when the experiment is instantiated. This is important because the
-experiment_handler will build the scans required by your class in a way that is easily readable and
-iterable by the radar control program. This is done by methods that are set up in the
-ExperimentPrototype parent class.
+to start running.
 
 The next step is to add slices to your experiment. An experiment is defined by the slices in the
 class, and how the slices interface. As mentioned above, slices are just python dictionaries, with a
@@ -204,7 +200,7 @@ dictionary are described below.
 Slice Keys
 ----------
 
-.. autoclass:: src.experiment_prototype.experiment_slice.ExperimentSlice()
+.. autoclass:: src.utils.experiment_slice.ExperimentSlice()
     :noindex:
 
 ------------------
@@ -263,7 +259,7 @@ by the following command::
         python3 BOREALISPATH/tests/experiments/experiment_unittests.py
 
 This will test all experiments within the ``borealis_experiments`` directory, and run all
-exception-checking unit tests within the testing_archive directory of the experiments directory.
+exception-checking unit tests within the tests/ directory of the experiments directory.
 At the end, the results of all tests will be summarized, showing how many tests passed and failed.
 
 This testing script can also be used to check specific experiments are written correctly. To do

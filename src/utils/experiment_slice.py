@@ -39,7 +39,7 @@ from typing import List, Optional, Union, Literal, Callable, Hashable, TypeVar
 
 # local
 from utils.options import Options
-from experiment_prototype.experiment_utils.decimation_scheme import (
+from utils.decimation_scheme import (
     DecimationScheme,
     create_default_scheme,
     create_default_cfs_scheme,
@@ -173,7 +173,8 @@ class ExperimentSlice:
     first_range *required*
         first range gate, in km
     freq *required or cfs_range required*
-        transmit/receive frequency, in kHz. Note if you specify cfs_range it won't be used.
+        transmit/receive frequency, in kHz. Note if you specify cfs_range it won't be used. Can be either
+        a single frequency or a list of frequencies. If a list, you must also specify `freq_order`.
     intt *required or intn required*
         duration of an averaging period (integration), in ms. (maximum)
     intn *required or intt required*
@@ -248,6 +249,10 @@ class ExperimentSlice:
     comment *defaults*
         a comment string that will be placed in the borealis files describing the slice. Defaults to
         empty string.
+    freq_order *defaults*
+        frequencies to use for each averaging beam. If `freq` is a single number, or `cfs_freq` is specified,
+        this field defaults. Otherwise, you must specify the order with a list of indices which has the
+        same length as `rx_beam_order`.
     lag_table *defaults*
         used in acf calculations. It is a list of lags. Example of a lag: [24, 27] from 8-pulse
         normalscan. This defaults to a lagtable built by the pulse sequence provided. All combinations
@@ -375,7 +380,8 @@ class ExperimentSlice:
     tx_freq_bounds: Optional[tuple] = (options.min_freq / 1000, options.max_freq / 1000)
     rx_freq_bounds: Optional[tuple] = (options.min_freq / 1000, options.max_freq / 1000)
     rxonly: Optional[StrictBool] = False
-    freq: Optional[freq_khz] = None
+    freq: Optional[Union[freq_khz, List[freq_khz]]] = None
+    freq_order: Optional[List[non_neg_int]] = None
 
     acf: Optional[StrictBool] = False
     align_sequences: Optional[StrictBool] = False
@@ -730,6 +736,38 @@ class ExperimentSlice:
                     )
         return rx_beam_order
 
+    @field_validator("freq_order", mode="after")
+    @classmethod
+    def check_freq_order(cls, freq_order, info):
+        rx_beam_order = info.data.get("rx_beam_order", None)
+        if rx_beam_order is None:
+            return freq_order
+
+        freqs = info.data.get("freq", None)
+        if freqs is None:
+            if freq_order is not None:
+                raise ValueError("Cannot specify freq_order if using CFS")
+            # CFS, will only ever have one frequency at a time
+            return [0] * len(rx_beam_order)
+
+        if freq_order is None:
+            if isinstance(freqs, list):
+                raise ValueError(
+                    f"multiple freqs specified ({freqs}) but freq_order not given"
+                )
+            return [0] * len(rx_beam_order)
+        else:
+            if len(freq_order) != len(rx_beam_order):
+                raise ValueError(
+                    f"freq_order must have same length as rx_beam_order ({len(freq_order)} != {len(rx_beam_order)})"
+                )
+            if not all([0 <= x < len(list(freqs)) for x in freq_order]):
+                raise ValueError(
+                    f"freq_order entries must be in range [0, # frequencies - 1] ([0, {len(list(freqs))-1}])"
+                )
+
+        return freq_order
+
     @field_validator("tx_beam_order", mode="after")
     @classmethod
     def check_tx_beam_order(cls, tx_beam_order, info):
@@ -901,7 +939,15 @@ class ExperimentSlice:
     def check_freq(cls, freq, info):
         if freq is None:
             return freq
+        if isinstance(freq, list):
+            for f in freq:
+                cls.verify_freq(f, info)
+        else:
+            cls.verify_freq(freq, info)
+        return freq
 
+    @staticmethod
+    def verify_freq(freq, info):
         for freq_range in options.restricted_ranges:
             if freq_range[0] <= freq <= freq_range[1]:
                 raise ValueError(
@@ -925,19 +971,18 @@ class ExperimentSlice:
 
         # TODO review issue #195 - Characterize transmit waveforms near edge of tx bandwidth
         if info.data["rxonly"] is False:
-            tx_center = info.data["txctrfreq"]
             if (freq > info.data["tx_freq_bounds"][1]) or (
                 freq < info.data["tx_freq_bounds"][0]
             ):
                 raise ValueError(
                     f"Slice frequency is outside tx frequency bounds {info.data['tx_freq_bounds']}"
                 )
+
+            tx_center = info.data.get("txctrfreq", None)
             if tx_center is not None and abs(freq - tx_center) < 50:
                 raise ValueError(
                     f"Slice frequency cannot be within 50kHz of tx center frequency {tx_center:.3f}"
                 )
-
-        return freq
 
     @field_validator("cfs_range", mode="after")
     @classmethod
