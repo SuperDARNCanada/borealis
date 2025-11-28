@@ -33,10 +33,11 @@ An example invocation to run ``twofsound`` in ``release`` mode during ``common``
 
     $BOREALISPATH/scripts/steamed_hams.py twofsound release common
 
+.. note:: This script will kill the Borealis software if it is currently running, before it starts it anew.
+
 The experiment name must match to an experiment in the ``src/borealis_experiments`` folder, and does
-not include the ``.py`` extension. The second argument is the runtime mode, which controls the . **NOTE** This script will kill the
-Borealis software if it is currently running, before it starts it anew. The scheduling mode is one
-of ``common``, ``special``, or ``discretionary`` depending upon the DARN-SWG schedule (see the
+not include the ``.py`` extension. The scheduling mode is one
+of ``common``, ``special``, or ``discretionary``, depending upon the DARN-SWG schedule (see the
 scheduling working group page `here <http://superdarn.thayer.dartmouth.edu/WG-sched/charter.html>`_)
 
 The script will boot all the radar processes in a detached ``screen`` window that runs in the

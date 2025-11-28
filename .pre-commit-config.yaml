@@ -1,4 +1,4 @@
-exclude: "tests/archive|src/borealis_experiments"
+exclude: "tests/archive|src/borealis_experiments|.*.svg$"
 repos:
   - repo: meta
     hooks:

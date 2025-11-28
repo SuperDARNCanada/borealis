@@ -12,11 +12,11 @@ Experiment Unittests
 
 
 This script tests both runnable experiments (those in borealis/src/borealis_experiments/) and a set of unit tests
-(those in borealis/src/borealis_experiments/testing_archive/). Some unit tests are meant to raise an exception;
+(those in borealis/src/borealis_experiments/tests/). Some unit tests are meant to raise an exception;
 these tests have an extra method defined which returns the expected exception and a regex of the expected error message.
 An example unit test is shown below.
 
-..  literalinclude:: ../../../src/borealis_experiments/testing_archive/test_rxonly_dne.py
+..  literalinclude:: ../../../src/borealis_experiments/tests/avg_method.py
     :language: python
     :linenos:
     :caption: Example Unit Test file

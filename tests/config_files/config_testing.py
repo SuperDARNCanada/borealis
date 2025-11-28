@@ -516,7 +516,7 @@ class TestConfig(unittest.TestCase):
         }
 
         # Test that the ExperimentSlice object will raise an exception
-        from experiment_prototype import experiment_slice
+        from utils import experiment_slice
 
         experiment_slice.options = MockOptions()
         with self.assertRaisesRegex(
@@ -568,7 +568,7 @@ class TestConfig(unittest.TestCase):
         }
 
         # Test that the ExperimentSlice object will raise an exception
-        from experiment_prototype import experiment_slice
+        from utils import experiment_slice
 
         experiment_slice.options = MockOptions()
         with self.assertRaisesRegex(
@@ -620,7 +620,7 @@ class TestConfig(unittest.TestCase):
         }
 
         # Test that the ExperimentSlice object will raise an exception
-        from experiment_prototype import experiment_slice
+        from utils import experiment_slice
 
         experiment_slice.options = MockOptions()
         with self.assertRaisesRegex(

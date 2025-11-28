@@ -1,10 +1,8 @@
 Building a Borealis System
 ==========================
 
-
 .. toctree::
    :maxdepth: 2
-   :hidden:
    :glob:
 
    /source/system_specifications

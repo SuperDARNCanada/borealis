@@ -4,30 +4,112 @@
 Processing Chain
 ================
 
----------
-Filtering
----------
+Borealis is responsible for three main signal processing procedures:
+
+1. Digital filtering and downsampling;
+2. Beamforming; and
+3. ``rawacf`` generation (autocorrelation values).
+
+The software also supports searching for a quiet frequency to use, a procedure commonly known as
+Clear Frequency Search (CFS).
+
+-----------------
+Digital Filtering
+-----------------
 
 The Borealis processing chain uses a staged-filter approach with staged downsampling, allowing for
 multi-frequency filtering in real time. Using numpy arrays and array operations, the broadband input
 spectrum received from the N200 devices can be filtered simultaneously into multiple datasets
 centered on different frequencies.
 
+Very briefly, Borealis takes a broadband input (typically 5 MHz sampling rate) and reduces it down to
+a much smaller sampling rate (typically 3.333 kHz) while preserving the integrity of signal from a specific
+frequency band. Multiple bands can be filtered for simultaneously, resulting in multiple output datasets.
+
+In an analog system, this would be done in three stages: in the first stage, an RF mixer would translate the
+band of interest down to baseband. Next, a lowpass filter stage would remove everything but a narrow spectrum
+around baseband. Lastly, an analog-to-digital converter (ADC) would digitize the signal at the desired sampling
+rate (e.g. 3.333 kHz). This preserves the information from the original band, while removing out-of-band noise.
+
+In a digital system, this would take four stages; however, the order is slightly changed. The first stage is to digitize
+the signal with an ADC. The second stage is to digitally mix the band of interest to baseband. The third stage is to
+run a lowpass filter over the data to remove out-of-band noise. Finally, downsampling is conducted to reduce the sampling rate.
+In theory, this should yield identical results to the analog system, ignoring noise introduced by analog devices or
+choice of lowpass filter.
+
+In the digital domain, we re-order some of these operations to reduce the computational load of process.
+Specifically, instead of mixing the input samples down to baseband, we mix the lowpass filter up to the band
+of the signal of interest. We also downsample as part of the application of the digital filter, reducing the number
+of multiplications significantly by "skipping" output samples. As a consequence of mixing the filter, there is an additional
+phase correction required on each output sample, but there are many fewer samples so computationally it is not a burden.
+Another modification made to reduce computations is splitting of the filter into multiple stages. By splitting the filter,
+the number of multiplications for the first filter application is reduced, and subsequent filter stages are applied at lower
+and lower sampling rates. With these enhancements, the digital filtering is able to process 100 milliseconds of data on a GPU
+in typically 20-40 milliseconds.
+
+Background - Digital Signal Processing
+--------------------------------------
+
+RF Mixing
+~~~~~~~~~
+
+RF mixing is an operation that translates the frequency content of a signal by multiplying with an oscillator.
+In an analog system, the oscillator is a sinusoidal signal of a known (or configurable) frequency. The oscillator
+is typically a cosine, i.e. a real signal, so it has a frequency spectrum mirrored in the positive and negative
+frequency domains. By mixing the input signal with the oscillator, two copies of the input spectrum are created,
+one shifted by the negative component of the oscillator, and the other by the positive component. These two copies
+are half the strength of the input signal, and are added together in the output.
+The following figure depicts this process, for an ideal oscillator and an example signal spectrum.
+
+.. figure:: img/dark/dsp/rf_mixing.svg
+   :width: 60%
+   :class: only-dark
+   :alt: RF mixing process
+   :align: center
+
+.. figure:: img/light/dsp/rf_mixing.svg
+   :width: 60%
+   :class: only-light
+   :alt: RF mixing process
+   :align: center
+
+In the case of a digital mixing process, we can use a complex oscillator. This eliminates the negative copy of
+the oscillator, resulting in one full-strength shifted copy of the input spectrum in the output, i.e. at ``RF + LO``.
+
+Linear Convolution
+~~~~~~~~~~~~~~~~~~
+
+Borealis applies digital filters using linear convolution. This process involves multiplying the input signal sequence
+by a reversed and shifted filter sequence. Each output of the linear convolution corresponds to a unique shift of the
+filter sequence. For an input signal of length :math:`N` and filter of length :math:`M`, the output will be of length
+:math:`N+M-1`, as for the first and last few output samples the filter is "hanging off" the input sequence and only a
+partial overlap of the sequences contributes to the output. These "hanging off" output samples are discarded by Borealis,
+as they have an artifically small magnitude due to fewer samples contributing to them. As a result, only :math:`N-M+1`
+output samples are computed.
+
 Filtering Stages
 ----------------
 
-The data is first run through frequency-translating bandpass filters to create multiple baseband output spectra,
-one for each filter frequency. This is done in one algorithm using the modified Frerking method described in
-Section `Modified Frerking Method`_ and at :ref:`frerking`.
+Borealis provides the capability to customize digital filters per experiment. However, sensible defaults
+have been chosen for a 5 MHz input rate and 3.333 kHz output rate. Filter stages are specified with filter taps (samples)
+and a downsampling rate. Each stage should use a lowpass filter, if you are customizing your own filter.
+All filtering is done in the time domain.
 
-Following the bandpass-mixing filter, one stage of lowpass filtering and downsampling is done.
+The first stage lowpass filter is frequency-translated up to the mixing frequency, creating a bandpass filter that
+simultaneously mixes the filter output to baseband. This is detailed more explicitly in `Modified Frerking Method`_.
+Multiple mixing frequencies can be used simultaneously, creating multiple output datasets, one per mixing frequency.
+
+The data is run through these frequency-translating bandpass filters to create multiple baseband output spectra,
+one for each filter frequency. This is done in one algorithm using the modified Frerking method described below in
+`Modified Frerking Method`_ and at :ref:`frerking`.
+
+Following the bandpass-mixing filter, one stage of lowpass filtering and downsampling is conducted.
 This stage is identical for all mixing frequencies.
 
 As with most aspects of the Borealis system, there is freedom for customization of the filtering
-stages. The filtering stages are stored in a DecimationScheme class which is stored in the
-experiment file. If no DecimationScheme is provided, a default is used. Most Borealis experiments
-use this default scheme, which will be described in more detail below in Section `Default
-DecimationScheme`_.
+stages. The filtering stages are stored in a :py:class:`DecimationScheme` class which is stored in the
+experiment file. If no :py:class:`DecimationScheme` is provided, a default is used. Most Borealis experiments
+use this default scheme, which is described in more detail below in `Default DecimationScheme`_.
 
 A Jupyter notebook is included with the Borealis software for visualization and testing of filtering
 schemes, using the filtering methods that run when a Borealis radar operates. This notebook can be
@@ -36,91 +118,43 @@ found at ``$BOREALISPATH/tests/dsp_testing/filters.ipynb``.
 Default DecimationScheme
 ------------------------
 
-The default DecimationScheme for Borealis use two stages of digital filtering and downsampling to reduce the data
-rate from 5 MHz to 3.333 kHz. The input sampling rate, downsampling rate, and output sampling rate
+The default :py:class:`DecimationScheme` for Borealis use two stages of digital filtering and downsampling to
+reduce the data rate from 5 MHz to 3.333 kHz. The input sampling rate, downsampling rate, and output sampling rate
 are shown for each stage in the table below.
 
 +--------------+-------------+-------------------+-------------+----------------+
 | Filter Stage | Input Rate  | Downsampling Rate | Output Rate | Number of Taps |
 +==============+=============+===================+=============+================+
-|      0       | 5 MHz       | 30                | 166.667 kHz | 661            |
+|      0       | 5 MHz       | 30                | 166.667 kHz | 499            |
 +--------------+-------------+-------------------+-------------+----------------+
-|      1       | 166.667 kHz | 50                | 3.333 kHz   | 127            |
+|      1       | 166.667 kHz | 50                | 3.333 kHz   | 34             |
 +--------------+-------------+-------------------+-------------+----------------+
 
 For a typical sequence of *normalscan* data, the input data to the first filter stage contains
-451500 complex data samples for each antenna. After the first stage, this has been reduced to 45084
-samples per antenna, but if multiple frequencies are being selected, there will be one copy of
-(:math:`num\_channels`, 45084) for each frequency. After the second stage, the number of samples is
-reduced from 45084 to 8992. The next stage reduces it again to 1495 samples. Lastly, the final stage
-reduces the data length to 299 samples. The number of samples in and out of each stage does not
-exactly correspond to the downsampling rate; this will be explained shortly, as a result of the
-filtering technique.
-
-All Borealis signal processing is done in the time domain. The following figures illustrate the
-process for a hypothetical 10-sample dataset and 3-tap filter.
-
-Figure 1 shows the dataset :math:`x` and the filter taps :math:`h`. For all stages of filtering,
-:math:`x` is much longer than :math:`h`, by three to four orders of magnitude.
-
-.. figure:: img/dsp/convolution_sequences.png
-   :width: 80%
-   :alt: Sample and filter sequences
-   :align: center
-
-   Figure 1: Graphical depiction of a data sequence and filter sequence
-
-
-Figure 2 shows the process of linear convolution of :math:`h` with :math:`x`. The sequence :math:`h`
-is flipped, then slid along :math:`x` and multiplied element-wise. At each position, the sum of the
-element-wise multiplication is the output sample, call it :math:`y[n]`. We can see that the sequence
-:math:`y` will be longer than :math:`x`. The length of :math:`y` is equal to the length of :math:`h`
-plus the length of :math:`x`, minus one. However, the samples of :math:`y` for which :math:`h` was
-"hanging off" of :math:`x` exhibit undesirable edge effects. In Borealis, these samples are dropped.
-Thus, the first sample of :math:`y` corresponds to the third iteration shown in Figure 2, and
-similarly the last sample kept is the third-last sample in the convolution. In general, the number
-of dropped samples at each the start and end of the convolution is equal to the filter length minus
-one. The dropping of samples can be seen in Figure 3.
-
-To speed up the processing, downsampling in Borealis is done in the convolution step. This is done
-by sliding :math:`h` in steps of the downsampling rate, as shown in Figure 3. This is mathematically
-equivalent to taking the linear convolution then downsampling, but is computationally faster.
-
-.. figure:: img/dsp/windowed_view-convolution.png
-   :width: 80 %
-   :alt: Convolution of two sequences
-   :align: center
-
-   Figure 2: Linear convolution of two sequences
-
-.. figure:: img/dsp/windowed_view-convolve_decimate.png
-   :width: 80 %
-   :alt: Downsampled convolution with edge effects discarded
-   :align: center
-
-   Figure 3: Linear convolution and downsampling, with filter roll-off samples dropped
-
+around 450000 complex data samples for each antenna. After the first stage, this has been reduced to
+around 15000 samples per antenna, but if multiple frequencies are being selected, there will be one copy of
+(:math:`num\_channels`, 15000) for each frequency. After the second stage, the number of samples is
+reduced from 15000 to around 300. The number of samples in and out of each stage does not exactly correspond to
+the downsampling rate, due to the removal of edge effects in the linear convolution.
 
 Modified Frerking Method
 ------------------------
 
-The Frerking method is used to extract a narrow frequency from a wideband spectrum. The method is
+The Frerking method is used to extract a narrow frequency band from a wideband spectrum. The method is
 identical to the traditional multi-step approach of mixing an incoming signal with an oscillator to
 bring the desired frequency to baseband, then running it through a low-pass filter.
 
 Mixing a signal with an oscillator is just multiplying the signal with the oscillator value as the
-signals are coming in. Since we gather complex samples, we use a complex oscillator (a complex
-exponential instead of a cosine). To accomplish this efficiently, the complex
-exponential is multiplied into the filter coefficients. Then, the wideband samples are passed
-through the filter, which simultaneously mixes the samples and low-pass filters them. However, there
-is one more detail to handle. In an analog system, the phase of the
-oscillator changes over time, as might be obvious from the name "oscillator". So, as samples arrive,
-they are multiplied by the oscillator value at the moment they arrive. However, with Borealis we are
-mixing with the filter sequence, rather than the input samples (less multiplications). We mix the
-oscillator with the filter once, then convolve the input samples with the filter. The top curve in
-Figure 4 depicts the numerical oscillator sequence that gets mixed with the filter sequence. As the
-filter sequence "slides" along the input samples, the phase is not consistent with an equivalent
-analog mixing system.
+signals are coming in. We use a complex exponential oscillator (not a cosine).
+To reduce the number of computations, the complex exponential sequence is multiplied into the filter coefficients.
+Then, the filter is applied to the wideband samples, which simultaneously applies a bandpass filter and mixes
+the output to baseband. Lastly, a corrective phase is applied to the output samples, to compensate for the
+oscillator sequence not evolving in phase since it is multiplied into the filter coefficients. In an analog system,
+as samples arrive, they are multiplied by the oscillator value at the moment they arrive. However, with Borealis we are
+mixing the filter sequence, rather than the input samples. We mix the oscillator with the filter once, then convolve
+the input samples with the filter. The top curve in Figure 4 depicts the numerical oscillator sequence that gets mixed
+with the filter sequence. As the filter sequence "slides" along the input samples, the phase is not consistent with an
+equivalent analog mixing system.
 
 As the filter "slides" along the samples, we are effectively getting a different window of the input
 samples. The curves in Figure 4 depict the analog mixer sequence for each windowed view of the input
@@ -136,7 +170,7 @@ applies this correction after applying the filter and downsampling, to reduce th
 mathematical operations. So, for a downsampling rate of :math:`R`, the phase correction for sample
 :math:`k` after downsampling is :math:`\phi_k = 2\pi\frac{f_o}{F_s}Rk`.
 
-.. figure:: img/dsp/oscillator_sequences.png
+.. figure:: img/light/dsp/oscillator_sequences.png
    :width: 80 %
    :alt: Windowed view of oscillator mixing sequence
    :align: center
@@ -147,36 +181,39 @@ mathematical operations. So, for a downsampling rate of :math:`R`, the phase cor
 Standard Filters
 ----------------
 
-As mentioned previously, Borealis uses a two-stage filter approach with staged downsampling. These
-filters are shown in Figures 5 and 6.
+As mentioned previously, Borealis uses a two-stage filter. These filters are shown in Figures 5 and 6.
 
 The first stage of filtering uses the Frerking method to simultaneously filter and mix to baseband.
 The passband center frequency of the filter is configurable, and changes automatically to match the
-frequency used in the experiment. Figure 5 shows the first stage of filter, with a passband centered
-around 0.5 MHz. Figure 7 shows the same stage, but for a different center frequency of 2.0 MHz.
-After this stage, the samples are decimated by a factor of 30 then passed through the lowpass filter
-shown in Figure 6 which yields the ``antennas_iq`` dataset.
+frequency used in the experiment. Figure 5 shows the first stage of filter, before being mixed to become a bandpass filter.
+After this stage, the samples are downsampled by a factor of 30, passed through the lowpass filter
+shown in Figure 6, then finally dowsampled again by a factor of 50, which yields the ``antennas_iq`` dataset.
 
-.. figure:: img/dsp/Bandpass_0-5_MHz.png
+.. figure:: img/light/dsp/filter_stage0.png
    :width: 80 %
    :alt: 0.5 MHz Bandpass Filter
    :align: center
 
-   Figure 5: 0.5 MHz Bandpass Filter Frequency Response
+   Figure 5: First Stage Frequency Response
 
-.. figure:: img/dsp/Lowpass_stage_1.png
+.. figure:: img/light/dsp/filter_stage1.png
    :width: 80 %
-   :alt: First Stage of Lowpass Filtering
+   :alt: Second filter stage
    :align: center
 
-   Figure 6: Second Stage Lowpass Filter Frequency Response
+   Figure 6: Second Stage Frequency Response
 
-.. figure:: img/dsp/Bandpass_2-0_MHz.png
+The combination of these two filters stages can be modelled as well, showing the total frequency response of the
+filtering scheme. Figure 7 shows this, for a first stage that is not mixed away from baseband. The central peak
+is approximately 130 dB above the largest side lobes, providing ample isolation.
+
+.. figure:: img/light/dsp/filter_response.png
    :width: 80 %
-   :alt: 2.0 MHz Bandpass Filter
+   :alt: Combined filter response
    :align: center
 
-   Figure 7: 2.0 MHz Bandpass Filter Frequency Response
+   Figure 7: Combined frequency response of filtering scheme
+
 
 One thing to note is the sampling bandwidth of the data directly from the USRPs. Borealis specifies
 a receive frequency band to the USRPs, and all data lies within that band. Ordinarily, this band is
@@ -185,12 +222,12 @@ were to plot the FFT of the data, the FFT frequencies will take the range of (-2
 the transmitted signal was at 10.5 MHz, we then expect to see it in our received samples at (12.0
 MHz - 10.5 MHz) = -1.5 MHz. Figure 8 shows exactly this situation.
 
-.. figure:: img/dsp/sequence_22_antenna_16.png
+.. figure:: img/light/dsp/example_sqn.png
    :width: 100 %
    :alt: Time- and Frequency-domain representations of one sequence of received data at 10.5 MHz
    :align: center
 
-   Figure 8: Sample Sequence of raw data from 10.5 MHz transmitted signal
+   Figure 8: Sample sequence of raw data from 10.5 MHz transmitted signal
 
 
 -----------
@@ -198,27 +235,22 @@ Beamforming
 -----------
 
 Beamforming in Borealis is relatively straightforward. Figure 9 illustrates the
-physical process, with the red antennas signifying the main array, the thick black line being the
-incoming plane wavefront, the parallel green lines indicating planar wavefronts at spacings of one
-wavelength, and the beam direction off of boresight shown by :math:`\theta`. For an incoming wave,
+physical process, with the red antennas signifying the main array, the thick blue line being the
+incoming plane wavefront, and the beam direction off of boresight shown by :math:`\theta`. For an incoming wave,
 we can see that it will hit the leftmost antenna (antenna 0) first, then antenna 1, antenna 2, and
 so forth, reaching antenna 15 last. Each antenna :math:`n` is going to measure a different phase of
-the wave, determined by its distance from the wavefront :math:`d_n` as shown in the figure. Due to
-:math:`2\pi` ambiguity, the relevant phase correction is the phase required to get from the antenna
-to the closest green line. The required phase shift can be calculated from the geometry of the
-diagram as
+the wave, determined by its distance from the reference wavefront :math:`d_n` as shown in the figure.
+The required phase shift can be calculated from the geometry of the diagram as
 
 .. math:: \phi_n = \frac{d_n}{\lambda} 2\pi
 
 The filtered samples for a given antenna are multiplied by :math:`\phi_n` to correct their phase,
 then the samples for all antennas are summed together to yield one dataset for the linear array.
 
-The final wrinkle to this process is in the positioning of the wavefront. In Borealis, it is assumed
-that the wavefront crosses the array axis at boresight, i.e. between antennas 7 and 8 where the
-dotted line intersects the array axis. This means that the distances :math:`d_n` for antennas 0
-through 7 will be negative, since the wavefront will have passed them already. With this last detail
-considered, we can formulate the phase correction for a given beam angle :math:`\theta`. The result
-is
+In Borealis, the reference wavefront is taken chosen when the wavefront crosses the array axis at boresight, i.e.
+the origin of the shown coordinate system. This means that the distances
+:math:`d_n` for antennas 0 through 7 will be negative, since the wavefront will have passed them already.
+The distance from the reference wavefront for an antenna and beam angle :math:`\theta` is then
 
 .. math:: d_n = (n-\frac{N}{2})L\sin(\theta)
 
@@ -228,56 +260,63 @@ final formula of
 
 .. math:: \phi_n = \left(\frac{L}{\lambda}(n-\frac{N}{2})\sin(\theta)\right) 2\pi
 
-.. figure:: img/dsp/beamforming.png
+.. figure:: img/light/dsp/beamforming.svg
    :width: 90 %
    :alt: Beamforming with a 1-D phased array
    :align: center
+   :class: only-light
+
+.. figure:: img/dark/dsp/beamforming.svg
+   :width: 90 %
+   :alt: Beamforming with a 1-D phased array
+   :align: center
+   :class: only-dark
 
    Figure 9: Geometry of 1-D phased array beamforming
-
 
 -----------
 Correlating
 -----------
 
 Once beamforming has been completed, the data is correlated to analyze the time evolution of signals
-scattered from the ionosphere. For each sequence, Borealis computes either one or three
-correlations. If only the main array is used, then the samples from that array are autocorrelated.
+scattered from the ionosphere. If only the main array is used, then the samples from that array are autocorrelated.
 If the interferometer is also used, the interferometer samples are autocorrelated, and the main and
 interferometer samples are cross-correlated. The process is the same for all correlations, and is
-described with the aid of Figure 10.
+described with the aid of Figure 9.
 
-.. figure:: img/dsp/correlations.png
+.. figure:: img/light/dsp/acf_process.png
    :width: 90 %
-   :alt: Correlations explained with matrix
+   :alt: Process of calculating correlations
    :align: center
 
-   Figure 10: Correlation matrix with blanked samples removed and lag samples extracted
+   Figure 10: (a) Single lag of data extracted and correlated; (b) All lags correlated, coloured from zero lag (purple) to maximum lag (yellow).
 
 
-In Figure 10, the array samples are shown outside of the correlation, as the sequences :math:`x` and
-:math:`y^*`. For autocorrelation, :math:`x = y`, and for cross-correlation they are different, but
-always of the same length in Borealis. Grey samples are "blanked" samples, which occur when the
-radar is transmitting data. These samples are later disregarded, as the Borealis transmitters block
-ionospheric signals during transmit times. The 2-D matrix is the multiplication (outer product) of
-the two sequences. In this example, there are five range gates that we need data for, with the first
-range gate being one "sample" away from the radar, i.e. the range is half as far away as the
-distance light can travel in one unit of the sample spacing. The other useful time quantity required
-for this process is the lag spacing, denoted by :math:`\tau`. This is the common factor in all lag
-pairs of the data, which for this example is three samples, as pulses occur at :math:`x[0]` and
-:math:`x[3]`. We are interested in how the data is correlated in units of :math:`\tau`, for all
-ranges. To determine this, we correlate the data, and extract the correlations for all lags at all
-ranges. The purple samples in the correlation matrix are the correlations for lag-0 for the five
-ranges, with the closest range being :math:`x[1]y^*[1]` and the furthest range :math:`x[5]y^*[5]`.
-The orange samples represent the correlations for lag-1 for the same ranges. This data represents
-lag-1 as the samples are the correlation of data from :math:`x` and :math:`y` which occur
-:math:`\tau` seconds apart (three samples). Figure 11 shows the same style of diagram for a typical
-SuperDARN 7-pulse sequence, with 75 range gates, a tau spacing of 8 samples, and the first range
-occurring four samples after a pulse.
+In Figure 10a, two sequences of data are shown on the axes of the plot. These could be sequences from
+the main array or the interferometer array. A subsequence of data is extracted from one sequence (shown in orange),
+corresponding to all delays of interest (i.e. range gates) after a pulse is transmitted. From the other sequence, a
+similar subsequence is extracted (shown in green), however possibly from after a different pulse in the pulse train.
+The green subsequence is complex-conjugated, then multiplied with the orange sequence point-wise. The result is shown
+in purple. Note that only magnitudes of these complex numbers are shown for the purposes of this plot.
+In Figure 10b, every possible combination of pulses in the pulse train have had subsequences extracted and multiplied,
+with the results colour-coded by the delay between the two pulses extracted. Purple corresponds to zero delay (lag zero),
+and the colour cycles through to yellow for the maximum delay.
 
-.. figure:: img/dsp/correlation_matrix.png
-   :width: 80 %
-   :alt: Borealis correlation matrix
+.. figure:: img/light/dsp/range_lag.png
+   :width: 90 %
+   :alt: 7-pulse sequence range-lag combinations with blanks
    :align: center
 
-   Figure 11: Borealis correlation matrix
+   Figure 11: (a) Blanked values of range-lag; (b) data from Figure 10b arranged by range gate and lag.
+
+Figure 11b takes the output products from Figure 10b, and orders them by delay (or "lag"). Here, it is easy to see that there
+is one range gate with a large magnitude of signal, corresponding to backscatter from some target. Over an averaging period,
+typically 30-40 pulse sequences are collected, and the data shown in Figure 11b is from all 30-40 pulse sequences that are averaged
+together. This result is then stored in a RAWACF file, correlation products for all range gates and lag values.
+Figure 11a shows a top-down view, where lag increases on the x-axis, and range gate increases on the y-axis.
+Grey boxes indicate range-lag combinations where a pulse was transmitted at that time, so the data is
+contaminated by transmitter leakage and transmit/receive switching. The vertical grey lines are lags which
+are not possible for the pulse sequence, as no pulses are separated by that delay. For a different pulse sequence,
+the blanks and missing lags would be arranged differently, and the maximum lag value could be larger.
+The `Build Your Own Borealis Experiment <https://superdarn.ca/byobe>`_ page can be used to play around with the location
+of pulses in a pulse sequence and the resulting lag values that can be used.
