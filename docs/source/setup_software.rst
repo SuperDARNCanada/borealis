@@ -163,11 +163,15 @@ the note when running ``install_radar_deps.py``.
     cd $BOREALISPATH
     sudo -E python3 scripts/install_radar_deps.py [radar code] $BOREALISPATH --python-version=3.11 2>&1
 
-#. Edit ``/etc/security/limits.conf`` (as root) to add the following line that allows UHD to set
-   thread priority. UHD automatically tries to boost its thread scheduling priority, so it will fail
-   if the user executing UHD doesn't have permission. ::
+#. Edit ``/etc/security/limits.conf`` (as root) to add the following lines.
+   The first line allows UHD to set thread priority. UHD automatically tries to boost its thread scheduling priority, so it will fail
+   if the user executing UHD doesn't have permission.
+   The second line removes limits on the amount of page-locked memory and shared memory that a process can allocate
+   for the ``radar`` user, which we use to prevent the ringbuffer from being swapped to disk. Switch ``radar`` with the user that
+   will run borealis on your computer::
 
     @users - rtprio 99
+    radar - memlock unlimited
 
 #. Once all dependencies are resolved, use ``scons`` to build the system.
    ``SCONSFLAGS`` variable can be added to ``.profile`` to hold any flags such
