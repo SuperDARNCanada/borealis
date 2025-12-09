@@ -33,4 +33,4 @@ Starting the ``realtime`` module::
 
 To disable this module, run the radar with the argument ``--realtime-off``. For example::
 
-    /home/radar/borealis/scripts/steamed_hams.py twofsound release --realtime-off
+    $BOREALISPATH/scripts/steamed_hams.py twofsound release --realtime-off

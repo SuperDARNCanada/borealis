@@ -20,16 +20,16 @@ module, it is an ideal place to make sure that the pipeline isn't being overwhel
 This step is very important to make sure that the GPU processing isn't being overloaded with work or
 that too many new requests enter the USRP driver.
 
-Starting the ``brian`` module::
+Usage
+-----
 
-    brian.py [-h] [--router-only] [--realtime-off]
-
-    options:
-      -h, --help      show this help message and exit
-      --router-only   Run only the router. Do not run any of the other threads or functions.
-      --realtime-off  Flag if realtime is disabled
+.. argparse::
+   :module: src.brian
+   :func: brian_parser
+   :prog: brian.py
 
 .. automodule:: src.brian
     :members:
     :undoc-members:
     :show-inheritance:
+    :exclude-members: brian_parser

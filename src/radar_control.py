@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 """
 radar_control process
 ~~~~~~~~~~~~~~~~~~~~~
@@ -7,9 +5,6 @@ Radar_control is the process that runs the radar (sends pulses to the driver wit
 timing information and sends processing information to the signal processing process).
 Experiment_handler provides the experiment for radar_control to run. It iterates
 through the interface_class_base objects to control the radar.
-
-:copyright: 2018 SuperDARN Canada
-:author: Marci Detwiller
 """
 
 import argparse
@@ -335,7 +330,9 @@ def create_dsp_message(radctrl_params):
         # Send the translational frequencies to dsp in order to bandpass filter correctly.
         freq_khz = slice_dict[slice_id].freq
         if isinstance(freq_khz, list):
-            freq_khz = freq_khz[slice_dict[slice_id].freq_order[radctrl_params.aveperiod.beam_iter]]
+            freq_khz = freq_khz[
+                slice_dict[slice_id].freq_order[radctrl_params.aveperiod.beam_iter]
+            ]
         rx_chan.rx_freq = freq_khz * 1.0e3
         rx_chan.num_ranges = slice_dict[slice_id].num_ranges
         rx_chan.first_range = slice_dict[slice_id].first_range
@@ -928,8 +925,8 @@ def main(exp_name, scheduling_mode, embargo, **kwargs):
                             time.sleep(time_diff.total_seconds())
                         else:
                             # TODO: This will be wrong if the start time is in the past.
-                            # TODO: maybe use datetime.now(timezone.utc) like below 
-                            #       instead of beam_scanbound when the avg period should have 
+                            # TODO: maybe use datetime.now(timezone.utc) like below
+                            #       instead of beam_scanbound when the avg period should have
                             #       started?
                             log.debug(
                                 "expected avg period start time",
@@ -1006,7 +1003,9 @@ def main(exp_name, scheduling_mode, embargo, **kwargs):
                 log.verbose("avg period slice and beam number", slice_and_beam=msg)
 
                 if TIME_PROFILE:
-                    aveperiod_prep_time = datetime.now(timezone.utc) - time_start_of_aveperiod
+                    aveperiod_prep_time = (
+                        datetime.now(timezone.utc) - time_start_of_aveperiod
+                    )
                     log.verbose(
                         "time to prep aveperiod",
                         time=aveperiod_prep_time,
@@ -1164,7 +1163,9 @@ def main(exp_name, scheduling_mode, embargo, **kwargs):
                 seqnum_start += ave_params.num_sequences
 
                 if TIME_PROFILE:
-                    time_to_finish_aveperiod = datetime.now(timezone.utc) - avg_period_end_time
+                    time_to_finish_aveperiod = (
+                        datetime.now(timezone.utc) - avg_period_end_time
+                    )
                     log.verbose(
                         "time to finish avg period",
                         time=time_to_finish_aveperiod,
@@ -1180,35 +1181,39 @@ def main(exp_name, scheduling_mode, embargo, **kwargs):
                     scan.aveperiod_iter = 0
 
 
+def radctrl_parser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "experiment_module",
+        help="The name of the module in the experiment_prototype package that contains "
+        "your Experiment class, e.g. normalscan",
+    )
+    parser.add_argument(
+        "scheduling_mode_type",
+        help="The type of scheduling time for this experiment run, e.g. common, "
+        "special, or discretionary.",
+    )
+    parser.add_argument(
+        "--embargo",
+        action="store_true",
+        help="Embargo the file (makes the CPID negative)",
+    )
+    parser.add_argument(
+        "--kwargs",
+        nargs="+",
+        default="",
+        help="Keyword arguments for the experiment. Each must be formatted as kw=val",
+    )
+    return parser
+
+
 if __name__ == "__main__":
     from utils import log_config
 
     log = log_config.log()
     log.info("RADAR_CONTROL BOOTED")
     try:
-        parser = argparse.ArgumentParser()
-        parser.add_argument(
-            "experiment_module",
-            help="The name of the module in the experiment_prototype package that contains "
-            "your Experiment class, e.g. normalscan",
-        )
-        parser.add_argument(
-            "scheduling_mode_type",
-            help="The type of scheduling time for this experiment run, e.g. common, "
-            "special, or discretionary.",
-        )
-        parser.add_argument(
-            "--embargo",
-            action="store_true",
-            help="Embargo the file (makes the CPID negative)",
-        )
-        parser.add_argument(
-            "--kwargs",
-            nargs="+",
-            default="",
-            help="Keyword arguments for the experiment. Each must be formatted as kw=val",
-        )
-        args = parser.parse_args()
+        args = radctrl_parser().parse_args()
         # parse kwargs and pass to experiment
         parsed_kwargs = {}
         for element in args.kwargs:

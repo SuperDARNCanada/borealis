@@ -11,22 +11,16 @@ For ``antennas_iq`` and ``bfiq`` files, only HDF5 files are supported. For ``raw
 write to either to disk in either the HDF5 or DMAP file formats, configuring this in the radar's
 :ref:`Config File<config-options>`.
 
-Starting the ``data_write`` module::
+Usage
+-----
 
-    data_write.py [-h] [--enable-raw-acfs] [--enable-bfiq] [--enable-antenna-iq] [--enable-raw-rf] [--rawacf-format {hdf5,dmap}]
-
-    Write processed SuperDARN data to file
-
-    options:
-      -h, --help            show this help message and exit
-      --enable-raw-acfs     Enable raw acf writing
-      --enable-bfiq         Enable beamformed iq writing
-      --enable-antenna-iq   Enable individual antenna iq writing
-      --enable-raw-rf       Save raw, unfiltered IQ samples. Requires HDF5.
-      --rawacf-format {hdf5,dmap}
-                            Format to store rawacf files in.
+.. argparse::
+   :module: src.data_write
+   :func: dw_parser
+   :prog: data_write.py
 
 .. automodule:: src.data_write
     :members:
     :undoc-members:
     :show-inheritance:
+    :exclude-members: dw_parser

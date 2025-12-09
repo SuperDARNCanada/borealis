@@ -9,9 +9,10 @@ Software Verification
 Radar Simulator
 ---------------
 
-Usage::
-
-    python3 tests/simulators/steamed_sham.py normalscan release discretionary; screen -r borealis
+.. argparse::
+   :module: simulators.steamed_sham
+   :func: steamed_hams_parser
+   :prog: steamed_sham.py
 
 The most comprehensive test of a custom experiment is to run the radar with it. Without a lab setup, this can be costly
 in terms of radar time. As such, a simulator script ``tests/simulators/steamed_sham.py`` has been created to run

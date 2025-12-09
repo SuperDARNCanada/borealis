@@ -43,7 +43,7 @@ doc = [
     "latex",
     "myst_parser",
     "sphinx==8.2.2",
-    "sphinx-book-theme==1.1.4",
+    "sphinx-argparse",
     "sphinx-favicon",
     "sphinx-tabs",
     "sphinxcontrib-autoprogram",

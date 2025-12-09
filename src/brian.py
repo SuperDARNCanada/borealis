@@ -1,11 +1,7 @@
-#!/usr/bin/python
-
 """
 brian process
 ~~~~~~~~~~~~~
-This program communicates with all processes to administrate the Borealis software
-
-:copyright: 2017 SuperDARN Canada
+This program communicates with all processes to administrate the Borealis software.
 """
 
 import os
@@ -268,13 +264,18 @@ def sequence_timing(options):
             )
 
 
-def main():
+def brian_parser():
     parser = argparse.ArgumentParser()
     help_msg = "Run only the router. Do not run any of the other threads or functions."
     parser.add_argument("--router-only", action="store_true", help=help_msg)
     parser.add_argument(
         "--realtime-off", action="store_true", help="Flag if realtime is disabled"
     )
+    return parser
+
+
+def main():
+    parser = brian_parser()
     args = parser.parse_args()
 
     options = Options()

@@ -5,7 +5,8 @@ API
 ===
 
 Development on the Borealis software is both appreciated and encouraged. If you have new features you would like added,
-please reach out via email to superdarn@usask.ca and we would be happy to work with you to implement your request.
+please reach out via email to superdarn@usask.ca or make an issue on our `GitHub <https://github.com/SuperDARNCanada/borealis/issues>`_
+and we would be happy to work with you to implement your request.
 
 ----------------------
 Contribution Standards

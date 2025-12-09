@@ -81,27 +81,26 @@ def steamed_hams_parser():
     """
 
     parser = argparse.ArgumentParser(
-        usage="""steamed_sham.py experiment_module {release,debug,pyprof,rawrf,engdebug} {common,discretionary,special} [-h] [--embargo] [--rawacf-format {hdf5,dmap}] [--realtime-off] [--kwargs ...]"""
+        usage="""steamed_sham.py experiment_module runtime_mode scheduling_mode [-h] [--embargo] [--rawacf-format {hdf5,dmap}] [--realtime-off] [--kwargs ...]""",
+        formatter_class=argparse.RawTextHelpFormatter,
     )
     parser.add_argument(
         "experiment_module",
         help="The name of the module in the experiments directory that contains your experiment class, e.g. `normalscan`",
     )
     parser.add_argument(
-        "run_mode",
-        help="Runtime mode."
-        "`release`: runs Python modules with `-O -u` for faster performance, generates antennas_iq "
-        "and rawacf files."
-        "`debug`: runs `usrp_driver` module with `gdb`, limits performance to at most one pulse "
-        "sequence per second."
-        "`pyprof`: runs Python modules with profiler and `usrp_driver` module with `gdb`."
-        "`rawrf`: generates rawrf data only, limits performance to at most one pulse sequence per second."
-        "`engdebug`: runs `usrp_driver` module with `gdb`, limits performance to at most one pulse sequence per "
-        "second, and generates rawrf, intermediate filter stage, and antennas_iq data.",
+        "runtime_mode",
+        help="""Runtime mode.
+        `release`: runs Python modules with `-O -u` for faster performance, generates antennas_iq and rawacf files.
+        `debug`: runs `usrp_driver` module with `gdb`, limits performance to at most one pulse sequence per second.
+        `pyprof`: runs Python modules with profiler and `usrp_driver` module with `gdb`.
+        `rawrf`: generates rawrf data only, limits performance to at most one pulse sequence per second.
+        `engdebug`: runs `usrp_driver` module with `gdb`, limits performance to at most one pulse sequence per second,
+        and generates rawrf, intermediate filter stage, and antennas_iq data.""",
         choices=["release", "debug", "pyprof", "rawrf", "engdebug"],
     )
     parser.add_argument(
-        "scheduling_mode_type",
+        "scheduling_mode",
         help="The type of scheduling time for this experiment run.",
         choices=["common", "discretionary", "special"],
     )
@@ -130,107 +129,108 @@ def steamed_hams_parser():
     return parser
 
 
-parser = steamed_hams_parser()
-args = parser.parse_args()
-kwargs = " ".join(args.kwargs)
+if __name__ == "__main__":
+    parser = steamed_hams_parser()
+    args = parser.parse_args()
+    kwargs = " ".join(args.kwargs)
 
-rawacf_format = ""
-if args.rawacf_format is not None:
-    rawacf_format = f"--rawacf-format={args.rawacf_format}"
+    rawacf_format = ""
+    if args.rawacf_format is not None:
+        rawacf_format = f"--rawacf-format={args.rawacf_format}"
 
-if args.run_mode == "release":
-    # python optimized, no debug for regular operations
-    python_opts = "-O -u"
-    c_debug_opts = ""
-    mode = "release"
-    data_write_args = f"--enable-raw-acfs --enable-antenna-iq {rawacf_format}"
-elif args.run_mode == "debug":
-    # run all modules in debug with regular operations data outputs, for testing modules
-    python_opts = "-u"
-    c_debug_opts = "/usr/local/cuda/bin/cuda-gdb -ex start"
-    mode = "debug"
-    data_write_args = f"--enable-raw-acfs --enable-antenna-iq {rawacf_format}"
-elif args.run_mode == "pyprof":
-    # run all modules in debug with python profiling, for optimizing python modules
-    python_opts = "-O -u -m cProfile -o testing/python_testing/{module}.cprof"
-    c_debug_opts = "/usr/local/cuda/bin/cuda-gdb -ex start"
-    mode = "debug"
-    data_write_args = f"--enable-raw-acfs --enable-antenna-iq {rawacf_format}"
-elif args.run_mode == "rawrf":
-    # run in scons release with python debug for raw rf, for verifying data
-    python_opts = "-u"
-    c_debug_opts = ""
-    mode = "release"
-    data_write_args = "--enable-raw-rf"
-elif args.run_mode == "engdebug":
-    # run all modules in debug with rawrf data - this mode is very slow
-    python_opts = "-u"
-    c_debug_opts = "/usr/local/cuda/bin/cuda-gdb -ex start"
-    mode = "debug"
-    data_write_args = "--enable-antenna-iq --enable-raw-rf"
-else:
-    print(f"Mode {args.run_mode} is unknown. Exiting without running Borealis")
-    sys.exit(-1)
+    if args.run_mode == "release":
+        # python optimized, no debug for regular operations
+        python_opts = "-O -u"
+        c_debug_opts = ""
+        mode = "release"
+        data_write_args = f"--enable-raw-acfs --enable-antenna-iq {rawacf_format}"
+    elif args.run_mode == "debug":
+        # run all modules in debug with regular operations data outputs, for testing modules
+        python_opts = "-u"
+        c_debug_opts = "/usr/local/cuda/bin/cuda-gdb -ex start"
+        mode = "debug"
+        data_write_args = f"--enable-raw-acfs --enable-antenna-iq {rawacf_format}"
+    elif args.run_mode == "pyprof":
+        # run all modules in debug with python profiling, for optimizing python modules
+        python_opts = "-O -u -m cProfile -o testing/python_testing/{module}.cprof"
+        c_debug_opts = "/usr/local/cuda/bin/cuda-gdb -ex start"
+        mode = "debug"
+        data_write_args = f"--enable-raw-acfs --enable-antenna-iq {rawacf_format}"
+    elif args.run_mode == "rawrf":
+        # run in scons release with python debug for raw rf, for verifying data
+        python_opts = "-u"
+        c_debug_opts = ""
+        mode = "release"
+        data_write_args = "--enable-raw-rf"
+    elif args.run_mode == "engdebug":
+        # run all modules in debug with rawrf data - this mode is very slow
+        python_opts = "-u"
+        c_debug_opts = "/usr/local/cuda/bin/cuda-gdb -ex start"
+        mode = "debug"
+        data_write_args = "--enable-antenna-iq --enable-raw-rf"
+    else:
+        print(f"Mode {args.run_mode} is unknown. Exiting without running Borealis")
+        sys.exit(-1)
 
-# Configure python first, starting with options for each module
-options = {
-    "brian": "",
-    "radar_control": f"{args.experiment_module} {args.scheduling_mode_type}",
-    "data_write": f"{data_write_args}",
-    "realtime": "",
-    "rx_signal_processing": "",
-    "usrp_driver": "",
-}
+    # Configure python first, starting with options for each module
+    options = {
+        "brian": "",
+        "radar_control": f"{args.experiment_module} {args.scheduling_mode_type}",
+        "data_write": f"{data_write_args}",
+        "realtime": "",
+        "rx_signal_processing": "",
+        "usrp_driver": "",
+    }
 
-if args.embargo:
-    options["radar_control"] += " --embargo"
-if args.kwargs:
-    options["radar_control"] += f" --kwargs {kwargs}"
-if args.realtime_off:
-    options["brian"] += " --realtime-off"
+    if args.embargo:
+        options["radar_control"] += " --embargo"
+    if args.kwargs:
+        options["radar_control"] += f" --kwargs {kwargs}"
+    if args.realtime_off:
+        options["brian"] += " --realtime-off"
 
-modules = {}
-for mod in options.keys():
-    py_opts = python_opts.format(module=mod)
-    modules[mod] = (
+    modules = {}
+    for mod in options.keys():
+        py_opts = python_opts.format(module=mod)
+        modules[mod] = (
+            f"source borealis_env{PYTHON_VERSION}/bin/activate; "
+            f"python{PYTHON_VERSION} {py_opts} src/{mod}.py {options[mod]}"
+        )
+
+    modules["usrp_driver"] = (
         f"source borealis_env{PYTHON_VERSION}/bin/activate; "
-        f"python{PYTHON_VERSION} {py_opts} src/{mod}.py {options[mod]}"
+        f"python{PYTHON_VERSION} {python_opts.format(module='usrp_driver')} "
+        f"tests/simulators/driver_sim.py"
     )
 
-modules["usrp_driver"] = (
-    f"source borealis_env{PYTHON_VERSION}/bin/activate; "
-    f"python{PYTHON_VERSION} {python_opts.format(module='usrp_driver')} "
-    f"tests/simulators/driver_sim.py"
-)
+    # Temporary fix to give us access to exactly what's printed to console from Borealis
+    log_dir = "/data/borealis_logs"
+    for mod in modules.keys():
+        modules[mod] += f" 2>&1 | tee {log_dir}/{mod}.log"
 
-# Temporary fix to give us access to exactly what's printed to console from Borealis
-log_dir = "/data/borealis_logs"
-for mod in modules.keys():
-    modules[mod] += f" 2>&1 | tee {log_dir}/{mod}.log"
+    # Ready the command for adding a realtime window, if it is not disabled.
+    if args.realtime_off:
+        modules["realtime"] = ""
+    else:
+        modules["realtime"] = realtime_window.format(realtime=modules["realtime"])
 
-# Ready the command for adding a realtime window, if it is not disabled.
-if args.realtime_off:
-    modules["realtime"] = ""
-else:
-    modules["realtime"] = realtime_window.format(realtime=modules["realtime"])
+    # Add the commands to the script and write to file
+    screenrc = BOREALISSCREENRC.format(**modules)
+    screenrc_file = os.environ["BOREALISPATH"] + "/borealisscreenrc"
+    with open(screenrc_file, "w") as f:
+        f.write(screenrc)
 
-# Add the commands to the script and write to file
-screenrc = BOREALISSCREENRC.format(**modules)
-screenrc_file = os.environ["BOREALISPATH"] + "/borealisscreenrc"
-with open(screenrc_file, "w") as f:
-    f.write(screenrc)
+    # When using OpenSUSE 15.5, there is a file generated on boot in shared memory that must be kept
+    sp.call("find /dev/shm/* -type f -not -name 'sem.haveged_sem' -delete", shell=True)
+    # Clean up any residuals in shared memory and dead screens
+    sp.call(
+        "screen -ls | grep borealis | awk '{print $1}' | xargs -I{} screen -S {} -X quit",
+        shell=True,
+    )
 
-# When using OpenSUSE 15.5, there is a file generated on boot in shared memory that must be kept
-sp.call("find /dev/shm/* -type f -not -name 'sem.haveged_sem' -delete", shell=True)
-# Clean up any residuals in shared memory and dead screens
-sp.call(
-    "screen -ls | grep borealis | awk '{print $1}' | xargs -I{} screen -S {} -X quit",
-    shell=True,
-)
+    # Give the os a chance to free all previously used sockets, etc.
+    time.sleep(1)
 
-# Give the os a chance to free all previously used sockets, etc.
-time.sleep(1)
-
-# Lights, camera, action!
-screen_launch = "screen -S borealis -c " + screenrc_file
-sp.call(screen_launch, shell=True)
+    # Lights, camera, action!
+    screen_launch = "screen -S borealis -c " + screenrc_file
+    sp.call(screen_launch, shell=True)

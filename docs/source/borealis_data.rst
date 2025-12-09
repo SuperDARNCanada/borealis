@@ -50,19 +50,6 @@ Borealis file sizes can add up quickly to fill all available hard drive space, e
 data types are being generated. However, it is convenient and recommended to keep a backlog of lower level data
 products such as antennas_iq for a period of time. These files are useful for debugging hardware issues and reproducing RAWACF files.
 
-
-File Rotation
--------------
-
-In order to prevent system failure due to hard drives filling up, a method for deleting the oldest
-data files is employed for SuperDARN Canada radars. This is referred to as *rotating* the files.
-
-A utility script is scheduled via cron to check the filesystem that Borealis files are written to.
-If the filesystem usage is too high, it searches for and deletes the oldest files in a loop until
-the filesystem usage goes below the threshold. See the SuperDARN Canada `data flow repository
-<https://github.com/SuperDARNCanada/data_flow>`_ for more information.
-
-
 .. _current_file_types:
 
 Current version

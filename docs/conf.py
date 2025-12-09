@@ -29,6 +29,7 @@ sys.path.insert(0, BOREALISPATH)
 sys.path.insert(1, f"{BOREALISPATH}/src")
 sys.path.insert(2, f"{BOREALISPATH}/src/utils")
 sys.path.insert(3, f"{BOREALISPATH}/scheduler")
+sys.path.insert(3, f"{BOREALISPATH}/tests")
 sys.path.insert(4, os.environ["PATH"])
 
 # -- Pre-build configuration ----------------------------------------------
@@ -110,8 +111,7 @@ extensions = [
     "sphinx.ext.imgmath",
     "sphinx.ext.ifconfig",
     "sphinx.ext.viewcode",
-    "sphinxcontrib.programoutput",
-    "sphinxcontrib.autoprogram",
+    "sphinxarg.ext",
     "sphinx_favicon",
     "sphinx_tabs.tabs",
     "breathe",
@@ -215,6 +215,8 @@ html_theme = "furo"
 # documentation.
 html_theme_options = {
     "sidebar_hide_name": True,
+    "light_logo": "logo_light.png",
+    "dark_logo": "logo_dark.png",
 }
 
 html_context = {
@@ -233,12 +235,12 @@ html_context = {
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-html_logo = "source/img/logo.jpg"
+# html_logo = "source/img/logo/logo.png"
 
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
 # pixels large.
-html_favicon = "_static/favicon-32x32.png"
+html_favicon = "_static/thumbnail.png"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,

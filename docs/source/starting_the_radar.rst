@@ -8,26 +8,15 @@ Manual Start-up
 
 To start the radar, there is a script called ``steamed_hams.py``. The name of this
 script is a reference to a scene in an episode of The Simpsons in which Principal Skinner
-claims there is an aurora happening in his house. The script can be invoked as follows::
+claims there is an aurora happening in his house.
 
-    $BOREALISPATH/scripts/steamed_hams.py experiment_module {release,debug,pyprof,rawrf,engdebug} {common,discretionary,special} [-h] [--embargo] [--rawacf-format {hdf5,dmap}] [--realtime-off] [--kwargs ...]
+Usage
+~~~~~
 
-    positional arguments:
-      experiment_module     The name of the module in the experiments directory that contains your experiment class, e.g. `normalscan`
-      {release,debug,pyprof,rawrf,engdebug}
-                            Runtime mode.`release`: runs Python modules with `-O -u` for faster performance, generates antennas_iq and rawacf files.`debug`: runs `usrp_driver` module with `gdb`, limits performance to at most one pulse
-                            sequence per second.`pyprof`: runs Python modules with profiler and `usrp_driver` module with `gdb`.`rawrf`: generates rawrf data only, limits performance to at most one pulse sequence per second.`engdebug`:
-                            runs `usrp_driver` module with `gdb`, limits performance to at most one pulse sequence per second, and generates rawrf, intermediate filter stage, and antennas_iq data.
-      {common,discretionary,special}
-                            The type of scheduling time for this experiment run.
-
-    options:
-      -h, --help            show this help message and exit
-      --embargo             Embargo the file (makes the CPID negative)
-      --rawacf-format {hdf5,dmap}
-                            Format to use when writing rawacf files. Defaults to config file specification.
-      --realtime-off        Disable the realtime FITACF3 data server module
-      --kwargs ...          Keyword arguments for the experiment. Each must be formatted as `kw=val`
+.. argparse::
+   :module: scripts.steamed_hams
+   :func: steamed_hams_parser
+   :prog: steamed_hams.py
 
 An example invocation to run ``twofsound`` in ``release`` mode during ``common`` time would be::
 

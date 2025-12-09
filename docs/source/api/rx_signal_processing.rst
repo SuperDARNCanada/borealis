@@ -24,9 +24,8 @@ sequence is being processed.
 
    Diagram of Rx DSP data flow during decimation
 
-Starting the ``rx_signal_processing`` module::
-
-    python3 rx_signal_processing.py
+The ``rx_signal_processing`` module doesn't take any arguments, so it can be started
+like any python script.
 
 DSP Class
 ---------
