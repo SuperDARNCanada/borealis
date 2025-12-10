@@ -11,10 +11,17 @@ System Overview and Rack Setup
 Below is a recommended configuration in comparison to a common SuperDARN system, Note that the N200s
 are in custom made shelves, but shelves can also be purchased from National Instruments:
 
-.. figure:: img/system_setup/USRP-rack-rev6.png
+.. figure:: img/light/Borealis_rack.svg
    :width: 100%
    :alt: Block diagram of ROS and Borealis racks
    :align: center
+   :class: only-light
+
+.. figure:: img/dark/Borealis_rack.svg
+   :width: 100%
+   :alt: Block diagram of ROS and Borealis racks
+   :align: center
+   :class: only-dark
 
 Here is an actual rack configuration as installed by SuperDARN Canada at the Saskatoon (SAS)
 SuperDARN site. Note that space has been allowed between the rackmount items to allow for cable
@@ -58,7 +65,8 @@ This guide assumes set up of a brand new, unopened Ettus N200.
 Initial Test of the Unit
 ------------------------
 
-*Install Daughterboards*
+Install Daughterboards
+^^^^^^^^^^^^^^^^^^^^^^
 
 #. Open the unit and install the LFTX and LFRX daughtercards using hardware provided. The main USRP
    PCB is clearly marked with where to connect TX and RX daughterboards, and there is only one way
@@ -74,13 +82,19 @@ Initial Test of the Unit
    connector, and not the secondary SMA connector located on the motherboard labeled 'J507 CLK_REF
    2'.
 
-*Connect to the USRP*
+Connect to the USRP
+^^^^^^^^^^^^^^^^^^^
 
 #. USRPs have a default IP address of ``192.168.10.2``. Assign a computer network interface an
    address that can communicate in this subnet. Connect the USRP to the computer's network interface
    either directly or through one of the switches from the system specifications. Connect the USRP
-   power supply. **NOTE that if you have multiple N200s connected at once on the same subnet with
-   the same IP address, the behaviour is undefined, and weird problems will result**
+   power supply.
+
+   .. note::
+
+      If you have multiple N200s connected at once on the same subnet with the same IP address, the
+      behaviour is undefined, and weird problems will result.
+
 #. Verify the board powers on and is discoverable. The USRP should be discoverable by pinging
    ``192.168.10.2``. Ettus' USRP UHD library supplies a tool called ``uhd_usrp_probe`` which should
    also be able to detect the device. See software setup for notes on installing UHD. The USRP may
@@ -93,26 +107,29 @@ Initial Test of the Unit
    jumper on J510 is in the rightmost position connecting the front panel 10MHz as the system
    reference.
 
-*Test the USRP*
+Test the USRP
+^^^^^^^^^^^^^
 
-   Use the UHD utilities ``rx_samples_to_file``, ``tx_bursts`` and ``txrx_loopback_to_file`` to
-   verify the USRP works. Use the scope to see the transmit signal. The RX samples will be a binary
-   file that can be quickly read in a plotted with Numpy/Matplotlib. While testing, watch the front
-   panel LEDs to see that they work as expected.
+Use the UHD utilities ``rx_samples_to_file``, ``tx_bursts`` and ``txrx_loopback_to_file`` to
+verify the USRP works. Use the scope to see the transmit signal. The RX samples will be a binary
+file that can be quickly read in a plotted with Numpy/Matplotlib. While testing, watch the front
+panel LEDs to see that they work as expected.
 
-*Disassembly for Enclosure Modifications*
+Disassembly for Enclosure Modifications
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-   If the USRP is working correctly, the inner motherboard, fan, daughtercards and RF cables can
-   all be removed from the unit. Carefully peel the product sticker and store with the motherboard,
-   this contains the MAC address, SN and PN of the unit. All removed components and the sticker can
-   be stored in the anti-static bags that were supplied with the unit. The enclosure is ready for
-   machining the additional holes. Ensure that you note which way the fan was installed for
-   reinstallation later.
+If the USRP is working correctly, the inner motherboard, fan, daughtercards and RF cables can
+all be removed from the unit. Carefully peel the product sticker and store with the motherboard,
+this contains the MAC address, SN and PN of the unit. All removed components and the sticker can
+be stored in the anti-static bags that were supplied with the unit. The enclosure is ready for
+machining the additional holes. Ensure that you note which way the fan was installed for
+reinstallation later.
 
 Custom Enclosure Modifications
 ------------------------------
 
-*The custom machining involves the following machining steps*
+Machining Steps
+^^^^^^^^^^^^^^^
 
 #. Five extra SMA holes that are 'D' shaped to fit most standard SMA bulkhead connectors. Four of
    these holes are on the back of the N200, and one is on the front, in line with the two existing
@@ -130,33 +147,35 @@ Installing the Custom-Made TXIO Board
    the product sticker back in place on the rear of the unit. There are slight indentations in the
    case to indicate where the product sticker goes. Connect RXA to port RF1, connect RXB to port
    RF2, and connect TXA to the additional front panel hole that was added.
-#. Install the LEDs and their clips
-    #. Insert the LED clips from the front of the N200.
-    #. Insert the LEDs from the back into their respective clips. The order of the LED install
-       patterns from left to right are: TX only indicator (RED), IDLE indicator (YELLOW), RX only
-       indicator (GREEN) the TR indicator (BLUE). Push from both sides (on the LED and the clip)
-       until the LED snaps into place.
-    #. Slide the spacers over the LEDs from the back onto the clips. These spacers will hold the
-       clips in place and prevent LEDs from popping back inside the N200 when pushed from the front.
-       To make it easier to fit the spacers on the clips, stretch the spacers out to a slightly
-       larger diameter. The easiest way to do this is to push the spacer onto a steel alignment
-       punch using a 1/4" washer after warming up the spacer with a heat gun.
-    #. Optional: add labels to each LED.
+#. Install the LEDs and their clips.
 
-    .. figure:: img/txio/txio_leds.jpg
-       :width: 50%
-       :alt: LEDs installed with spacers
-       :align: center
+   #. Insert the LED clips from the front of the N200.
+   #. Insert the LEDs from the back into their respective clips. The order of the LED install
+      patterns from left to right are: TX only indicator (RED), IDLE indicator (YELLOW), RX only
+      indicator (GREEN) the TR indicator (BLUE). Push from both sides (on the LED and the clip)
+      until the LED snaps into place.
+   #. Slide the spacers over the LEDs from the back onto the clips. These spacers will hold the
+      clips in place and prevent LEDs from popping back inside the N200 when pushed from the front.
+      To make it easier to fit the spacers on the clips, stretch the spacers out to a slightly
+      larger diameter. The easiest way to do this is to push the spacer onto a steel alignment
+      punch using a 1/4" washer after warming up the spacer with a heat gun.
+   #. Optional: add labels to each LED.
+
+   .. figure:: img/txio/txio_leds.jpg
+      :width: 50%
+      :alt: LEDs installed with spacers
+      :align: center
 
 #. Install the fan, making sure to re-install it the same way it was originally installed.
 
-    .. figure:: img/txio/txio_fan_direction.jpg
-       :width: 50%
-       :alt: Arrows indicate fan rotation and air flow direction
-       :align: center
+   .. figure:: img/txio/txio_fan_direction.jpg
+      :width: 50%
+      :alt: Arrows indicate fan rotation and air flow direction
+      :align: center
 
 
-*Pre-Assemble the TXIO board before installation into the N200*
+Pre-Assemble the TXIO board before installation into the N200
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 #. Begin by connecting eight 0.1" female-female jumper cables to pins 1-4 and 6-9 of the D-sub
    connector. The other ends of these wires connects to header J2 on the TXIO board
@@ -209,9 +228,12 @@ Installing the Custom-Made TXIO Board
    ends will connect to the LEDs already installed in the N200 case. There is no need to connect
    anything to the 4 rightmost pins on J3, these are expansion headers and two are connected (label
    'OUT') to the leftover open collector pins on the LED driver chip U5 (SN7406D), the other two
-   (labels '_0' and '_1') are connected to the 5V rail via pullup resistors R5 and R6. **NOTE** If
-   you use your own voltage supply with the open-collector outputs, be aware that the maximum
-   voltage is 30V, and the maximum current sink is 40mA. See the SN7406D datasheet for more details.
+   (labels '_0' and '_1') are connected to the 5V rail via pullup resistors R5 and R6.
+
+   .. note::
+
+      If you use your own voltage supply with the open-collector outputs, be aware that the maximum
+      voltage is 30V, and the maximum current sink is 40mA. See the SN7406D datasheet for more details.
 
    +--------------+-------------+----------------+
    | J3 Pin label | Wire Colour | LED Connection |
@@ -233,7 +255,8 @@ Installing the Custom-Made TXIO Board
    | BLU          | Purple      | Blue+          |
    +--------------+-------------+----------------+
 
-    **NOTE** '-' means cathode, '+' means anode
+   .. note::
+      '-' means cathode, '+' means anode
 
 #. Connect 10 0.1" female to female jumper wires to J1, the other ends will connect to the LFRX
    daughterboard pin headers.
@@ -281,13 +304,18 @@ Installing the Custom-Made TXIO Board
    The TXIO board uses the same size and style of screw that the N200 motherboard and daughtercards
    do.
 
-    - Install the DSUB connector with the provided standoff screws. **NOTE** some models of DSUB
-      will have split lock washers, but we've found that the thickness of the N200 case is too thick
-      to use them. The DSUB standoff screws are notoriously easy to snap as well, so be careful.
-    - Install the 4x SMA female bulkhead cables at the back of the N200, when facing the rear of the
+   #. Install the DSUB connector with the provided standoff screws.
+
+      .. note::
+
+         Some models of DSUB will have split lock washers, but we've found that the thickness of the
+         N200 case is too thick to use them. The DSUB standoff screws are notoriously easy to snap as
+         well, so be careful.
+
+   #. Install the 4x SMA female bulkhead cables at the back of the N200, when facing the rear of the
       N200 case the order from left to right is: J4, J5, J6, J7 (the same order as on the PCB, so no
       wires should cross each-other).
-    - Finally, connect the LFRX jumper wires from J1 and LED wires from J3 to complete the
+   #. Finally, connect the LFRX jumper wires from J1 and LED wires from J3 to complete the
       installation.
 
    .. figure:: img/system_setup/n200_back_labelled.png
@@ -296,133 +324,22 @@ Installing the Custom-Made TXIO Board
       :align: center
 
 
-TXIO OUTPUT TESTS
------------------
-
-#. Follow the testing procedure below to run a simple test of the TXIO inputs and outputs. There are
-   two types of tests, a single ended output test which tests the SMA outputs and LEDs, and a
-   loopback test which tests the differential signal outputs and inputs without an expensive
-   differential probe. Reference the above image of the rear of the N200 for pinouts.
-
-    #. Connect a needle probe to channel one of your oscilloscope and set it to trigger on the
-       rising edge of channel one.
-
-    #. Connect a needle probe to channel two of your oscilloscope, to be used in later tests.
-
-    #. Run ``test_txio_gpio.py`` located in ``borealis/tests/test_rx_tx/test_txio_gpio/``. Usage is
-       as follows (assuming default IP address):::
-
-        python3 test_txio_gpio.py 192.168.10.2
-
-    #. When prompted to enter the pins corresponding to the TXIO signals, press enter to accept the
-       default pin settings. This will begin the tests.
-
-    #. Insert the needle probe into the SMA output corresponding to RXo, this should be the
-       right-most SMA output when facing the N200 from the back.
-
-        #. Verify that the GREEN LED is flashing, and all others are unlit.
-        #. Verify that the scope signal is the inverse of the pattern flashed by the GREEN front
-           LED.
-        #. Then, proceed to the next test (CTRL+C, then enter "y").
-
-    #. Insert the needle probe into the SMA output corresponding to TXo, this should be the second
-       SMA output from the left when facing the N200 from the back.
-
-        #. Verify that the RED and BLUE LEDs are flashing together, and both others are unlit.
-        #. Verify that the scope signal is the inverse of the pattern flashed by the RED and BLUE
-           front LEDs.
-        #. Then, proceed to the next test (CTRL+C, then enter "y").
-
-    #. Insert the needle probe into the SMA output corresponding to TR, this should be the left-most
-       SMA output when facing the N200 from the back. **NOTE that you will not move on to the next
-       test until you verify the TR SMA, TR+ and TR- signals on the oscilloscope (three tests in
-       total).**
-
-        #. Verify that the BLUE and GREEN LEDs are flashing together, and both others are unlit.
-        #. Verify that the scope signal is the inverse of the pattern flashed by the BLUE and GREEN
-           front LEDs.
-        #. Do NOT move to the next test yet.
-
-    #. Insert the needle probe into the hole corresponding to pin 7 of the D-Sub connector (TR+,
-       yellow wire, J2 pin 10).
-
-        #. Verify that the scope signal is following the pattern flashed by the BLUE and GREEN front
-           LEDs.
-        #. Do NOT move to the next test yet.
-
-    #. Insert the needle probe into the hole corresponding to pin 2 of the D-Sub connector (TR-,
-       orange wire, J2 pin 8).
-
-        #. Verify that the scope signal is the inverse of the pattern flashed by the BLUE and GREEN
-           front LEDs.
-        #. Then, proceed to the next test (CTRL+C, then enter "y").
-
-    #. Insert the needle probe into SMA output corresponding to IDLE, this should be the third SMA
-       output from the left when facing the N200 from the back.
-
-        #. Verify that the YELLOW LED is flashing, and all others are unlit.
-        #. Verify that the scope signal is the inverse of the pattern flashed by the YELLOW front
-           LED.
-        #. Then, proceed to the next test (CTRL+C, then enter "y").
-
-    #. Insert the needle probe into the hole corresponding to pin 8 of the D-Sub (TM+, green wire,
-       J2 pin 4)
-
-        #. Insert the needle probe from the oscilloscope channel two into the hole corresponding to
-           pin 3 of the D-Sub (TM-, blue wire, J2 pin 2).
-        #. Verify that the scope signals for channel 1 and 2 are showing opposing pulses
-           approximately 1 second in width, with a 2 second period (50% duty cycle). In other words,
-           they are 180 degrees out of phase.
-        #. Do NOT move to the next test yet.
-
-    #. To properly perform the loopback tests of the differential signals, connect the D-Sub pins to
-       each other in the following configuration:
-
-        #. Pin 6 to pin 7 - AGC+ to TR+, Red wire to Yellow wire
-        #. Pin 1 to pin 2 - AGC- to TR-, Brown wire to Orange wire
-        #. Pin 8 to pin 9 - TM+ to LP+, Green wire to Purple wire
-        #. Pin 3 to pin 4 - TM- to LP-, Blue wire to Grey wire
-
-    #. The first test is a loopback test which uses the TR differential signal output to test the
-       AGC status input. If this test passes you can be confident that the entire path through the
-       differential driver and receiver works properly. It will alternate between setting and
-       clearing the TR signal. Move to this test with CTRL+C + "y".
-
-        #. Verify the hex digit printed by the script is ``0x20`` when the output pin is high.
-        #. Verify the hex digit printed by the script is ``0x800`` when the output pin is low.
-        #. If you see ``0xa20`` or ``0xa00`` during this test, verify the loop-back connections are
-           in place
-        #. Then, proceed to the next test (CTRL+C, then enter "y")
-
-    #. The second test is a loopback test which uses the TM differential signal output to test the
-       Low Power (LP) status input. If this test passes you can be confident that the entire path
-       through the differential driver and receiver works properly. It will alternate between
-       setting and clearning the TM signal.
-
-        #. Verify the hex digit printed by the script is ``0x2000`` when the output pin is high.
-        #. Verify the hex digit printed by the script is ``0x200`` when the output pin is low.
-        #. If you see ``0x2a00`` or ``0xa00`` during this test, verify the loop-back connections are
-           in place
-        #. Press CTRL+C, then enter "y" to end the tests.
-
-    #. This concludes the tests! If any of these signal output tests failed, additional
-       troubleshooting is needed. To check the entire logic path of each signal, follow the testing
-       procedures found in the TXIO notes document.
-
-#. Install enclosure cover lid back in place, ensuring that no wires are pinched.
-
 Configuring the Unit for Borealis
 ---------------------------------
 
 1. Use UHD utility ``usrp_burn_mb_eeprom`` to assign a unique IP address for the unit. Label the unit
-   with the device IP address. **NOTE Recommended IP addresses are 192.168.10.100 - 116 for the
-   N200s (116 is the spare), 192.168.10.130-132 for the octoclocks (.131 is for the GPS octoclock),
-   then 192.168.10.60 for the borealis computer’s 10G interface (or some other IP address in the
-   same 192.168.10 subnet that is above 192.168.10.3, which is the default for octoclocks from the
-   factory)**::
+   with the device IP address::
 
-       cd <install path>/lib/uhd/utils
+      cd <install path>/lib/uhd/utils
        ./usrp_burn_mb_eeprom --args="addr=<current ip> --values="ip_addr=<new ip>"
+
+   .. note::
+
+      Recommended IP addresses are ``192.168.10.100-116`` for the N200s (116 is the spare),
+      ``192.168.10.130-132`` for the octoclocks (``.131`` is for the GPS octoclock),
+      then ``192.168.10.60`` for the borealis computer’s 10G interface (or some other IP address in the
+      same ``192.168.10.X`` subnet that is above ``192.168.10.3``, which is the default for octoclocks from the
+      factory.
 
 2. The device should be configured and ready for use.
 
@@ -436,8 +353,10 @@ and the low-noise amplifiers selected for pre-amplification (Mini-Circuits ZFL-5
 15V, with max 60mA draw. The cable from the LPTR (low power transmit/receive) switch to the bulkhead
 on the transmitter can be replaced with a couple of cables to and from a filter and pre-amp.
 
-Note that existing channel filters (typically custom 8-20MHz filters) should be placed ahead of the
-pre-amps in line to avoid amplifying noise.
+.. note::
+
+   Existing channel filters (typically custom 8-20MHz filters) should be placed ahead of the
+   pre-amps in the RF path to avoid amplifying noise.
 
 It is also recommended to install all channels the same for all main array channels to avoid varying
 electrical path lengths in the array which will affect beamformed data.
@@ -450,7 +369,7 @@ Control Computer
 ----------------
 
 Borealis requires a high-performance computer to operate. See :ref:`Borealis Control Computer<parts>`
-for the full computer specifications. Follow the manuals for the motherboard purchased to 
+for the full computer specifications. Follow the manuals for the motherboard purchased to
 assemble the computer. Notes on building a Borealis computer:
 
 - Update the BIOS when working with a new motherboard
@@ -505,8 +424,10 @@ distribution unit.
 The COM ports on off-the-shelf motherboards are typically 0.1" spaced header pins, in a shrouded
 connector. This means that you can use one of the 0.1" female-female jumper cables from the N200
 assembly steps, cut it in half and solder the bare wire end to the coaxial cable stripped wire ends.
-Note that the *centre conductor* is attached to the *DCD* pin and the *braid* is connected to the
-*GND* pin.
+
+.. note::
+
+   The *centre conductor* is attached to the *DCD* pin and the *braid* is connected to the *GND* pin.
 
 .. figure:: img/system_setup/pps_ntp_1.jpg
    :width: 40%
