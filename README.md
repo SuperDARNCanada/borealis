@@ -1,8 +1,9 @@
-Borealis - A control system for USRP based digital radars
-=========================================================
+![Borealis Logo](docs/source/img/logo/logo_dark.png)
+
+
+A control system for USRP based digital radars
+==============================================
 
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-
-![Borealis Logo](docs/source/img/logo/logo_dark.png)
 
 Documentation is available here: https://borealis.readthedocs.io/en/latest/
