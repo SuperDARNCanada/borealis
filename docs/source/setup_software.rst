@@ -215,16 +215,16 @@ Borealis (recommended name: radar).
     cd $BOREALISPATH
     sudo -E python3 scripts/install_radar_deps.py [radar code] $BOREALISPATH --python-version=3.12 2>&1
 
-   **Notes:**
+   .. note::
 
-   - You need ``python3`` installed before you can run this script.
-   - The radar abbreviation should be the 3 letter radar code such as 'sas', 'rkn' or 'inv'.
-   - This script can be modified to add the package manager of a different distribution if it
-     doesn't exist yet.
-   - If UHD does not configure correctly, an improper Boost installation or library naming
-     convention is the likely reason. This script makes an attempt to correctly install Boost and
-     create symbolic links to the Boost C++ libraries UHD (USRP Hardware Driver) understands.
-   - If you do not have CUDA installed, pass the ``--no-cuda`` flag as an option.
+      - You need ``python3`` installed before you can run this script.
+      - The radar abbreviation should be the 3 letter radar code such as 'sas', 'rkn' or 'inv'.
+      - This script can be modified to add the package manager of a different distribution if it
+        doesn't exist yet.
+      - If UHD does not configure correctly, an improper Boost installation or library naming
+        convention is the likely reason. This script makes an attempt to correctly install Boost and
+        create symbolic links to the Boost C++ libraries UHD (USRP Hardware Driver) understands.
+      - If you do not have CUDA installed, pass the ``--no-cuda`` flag as an option.
 
 #. Once all dependencies are resolved, use ``scons`` to compile the C++ code and build the system.
    ``SCONSFLAGS`` variable can be added to ``.profile`` to hold any flags such as ``-j`` for
@@ -234,11 +234,15 @@ Borealis (recommended name: radar).
     scons -c          # If first time building, run to reset project state.
     scons release     # Can also run `scons debug`
 
-#. Edit ``/etc/security/limits.conf`` (as root) and add the following line that allows UHD to set
-   thread priority. UHD automatically tries to boost its thread scheduling priority, so it will fail
-   if the user executing UHD doesn't have permission. ::
+#. Edit ``/etc/security/limits.conf`` (as root) to add the following lines.
+   The first line allows UHD to set thread priority. UHD automatically tries to boost its thread scheduling priority, so it will fail
+   if the user executing UHD doesn't have permission.
+   The second line removes limits on the amount of page-locked memory and shared memory that a process can allocate
+   for the ``radar`` user, which we use to prevent the ringbuffer from being swapped to disk. Switch ``radar`` with the user that
+   will run borealis on your computer::
 
-    @users - rtprio 99
+      @users - rtprio 99
+      radar - memlock unlimited
 
 #. *Optional:* Configure PPS signal input. A PPS signal is used to discipline NTP and improve timing
    to within microseconds - see :ref:`NTP Discipline with PPS<ntp-hardware>` for more info. This
