@@ -1,12 +1,8 @@
-#!/usr/bin/python3
-
 """
 data_write package
 ~~~~~~~~~~~~~~~~~~
 This package contains utilities to parse packets containing antennas_iq data, bfiq
 data, rawacf data, etc. and write that data to HDF5 or DMAP files.
-
-:copyright: 2017 SuperDARN Canada
 """
 
 # built-in
@@ -172,7 +168,9 @@ class DataWrite:
         start = time.perf_counter()
 
         # Format the name and location for the dataset
-        time_now = datetime.datetime.utcfromtimestamp(data_parsing.timestamps[0])
+        time_now = datetime.datetime.fromtimestamp(
+            data_parsing.timestamps[0], datetime.timezone.utc
+        )
         today_string = time_now.strftime("%Y%m%d")
         self.timestamp = time_now.strftime("%Y%m%d-%H%M-%S.%f")
         self.dataset_directory = f"{self.options.data_directory}/{today_string}"
@@ -323,11 +321,11 @@ class DataWrite:
 
                 all_slice_data[rx_channel.slice_id] = parameters
 
-        if write_rawacf and len(data_parsing.mainacfs_available) > 0:
+        if write_rawacf and len(data_parsing.main_acf_slices) > 0:
             self._write_correlations(all_slice_data, data_parsing)
         if write_bfiq and data_parsing.bfiq_available:
             self._write_bfiq_params(all_slice_data, data_parsing)
-        if write_antenna_iq and data_parsing.antenna_iq_available:
+        if write_antenna_iq and data_parsing.antennas_iq_available:
             self._write_antenna_iq_params(all_slice_data, data_parsing)
         if data_parsing.rawrf_available:
             if write_raw_rf:
@@ -382,11 +380,15 @@ class DataWrite:
             num_lags = slice_data.lag_numbers.shape[0]
 
             # First range offset in samples
-            sample_off = slice_data.first_range_rtt * 1e-6 * slice_data.rx_sample_rate
+            sample_off = int(
+                round(slice_data.first_range_rtt * 1e-6 * slice_data.rx_sample_rate)
+            )
             sample_off = np.uint32(sample_off)
 
             # Find sample number which corresponds with second pulse in sequence
-            tau_in_samples = slice_data.tau_spacing * 1e-6 * slice_data.rx_sample_rate
+            tau_in_samples = int(
+                round(slice_data.tau_spacing * 1e-6 * slice_data.rx_sample_rate)
+            )
             second_pulse_sample_num = (
                 np.uint32(tau_in_samples) * slice_data.pulses[1] - sample_off - 1
             )
@@ -413,20 +415,16 @@ class DataWrite:
 
         for slice_num in main_acfs:
             slice_data = aveperiod_data[slice_num]
-            if slice_num in parsed_data.mainacfs_available:
-                slice_data.main_acfs = find_expectation_value(
-                    main_acfs[slice_num]["data"]
-                )
+            if slice_num in parsed_data.main_acf_slices:
+                slice_data.main_acfs = find_expectation_value(main_acfs[slice_num])
         for slice_num in xcfs:
             slice_data = aveperiod_data[slice_num]
-            if slice_num in parsed_data.xcfs_available:
-                slice_data.xcfs = find_expectation_value(xcfs[slice_num]["data"])
+            if slice_num in parsed_data.xcf_slices:
+                slice_data.xcfs = find_expectation_value(xcfs[slice_num])
         for slice_num in intf_acfs:
             slice_data = aveperiod_data[slice_num]
-            if slice_num in parsed_data.intfacfs_available:
-                slice_data.intf_acfs = find_expectation_value(
-                    intf_acfs[slice_num]["data"]
-                )
+            if slice_num in parsed_data.intf_acf_slices:
+                slice_data.intf_acfs = find_expectation_value(intf_acfs[slice_num])
 
         all_slice_data = {}
         for slice_num, slice_data in aveperiod_data.items():
@@ -464,11 +462,11 @@ class DataWrite:
             all_data = []
             num_antenna_arrays = 1
             slice_data.antenna_arrays = ["main"]
-            all_data.append(bfiq[slice_num]["main_data"])
-            if "intf_data" in bfiq[slice_num]:
+            all_data.append(bfiq[slice_num]["main"])
+            if "intf" in bfiq[slice_num]:
                 num_antenna_arrays += 1
                 slice_data.antenna_arrays.append("intf")
-                all_data.append(bfiq[slice_num]["intf_data"])
+                all_data.append(bfiq[slice_num]["intf"])
 
             slice_data.bfiq_data = np.stack(all_data, axis=0)
             sample_timing_s = (
@@ -508,9 +506,9 @@ class DataWrite:
                 stage_data = aveperiod_data[slice_num]
 
                 data = []
-                for k, data_dict in antenna_iq[slice_num][stage].items():
+                for k, data_array in antenna_iq[slice_num][stage].items():
                     if np.any(stage_data.rx_antennas == k):
-                        data.append(data_dict["data"])
+                        data.append(data_array)
 
                 stage_data.antennas_iq_data = np.stack(data, axis=0)
                 sample_timing_s = (
@@ -632,7 +630,11 @@ def main():
 
     log.debug("socket connected")
 
-    aggregator = Aggregator(options=options)
+    aggregator = Aggregator(
+        num_main_antennas=options.main_antenna_count,
+        rx_main_antennas=options.rx_main_antennas,
+        rx_intf_antennas=options.rx_intf_antennas,
+    )
 
     current_experiment = None
     data_write = None
@@ -738,7 +740,11 @@ def main():
                         )
                         thread.daemon = True
                         thread.start()
-                        aggregator = Aggregator(options=options)
+                        aggregator = Aggregator(
+                            num_main_antennas=options.main_antenna_count,
+                            rx_main_antennas=options.rx_main_antennas,
+                            rx_intf_antennas=options.rx_intf_antennas,
+                        )
 
                 first_time = False
 

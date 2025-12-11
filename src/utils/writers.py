@@ -1,6 +1,5 @@
 """
-Classes for writing Borealis data to file. The different classes contain
-methods for writing to different file formats.
+Classes for writing Borealis data to disk in different file formats.
 """
 
 import dmap
@@ -17,17 +16,17 @@ class DMAPWriter:
     """
 
     @staticmethod
-    def write_record(filename: str, slice_data: SliceData, dt_str: str, file_type: str):
+    def write_record(filename: str, slice_data: SliceData, _: str, file_type: str):
         """
-        Write out data to a DMAP file. If the file already exists it will be overwritten.
+        Write out data to a DMAP file.
 
         :param  filename:   Name of the file to write to
         :type   filename:   str
-        :param  slice_data: Data to write out to the file.
+        :param  slice_data: Data to write out to the file
         :type   slice_data: SliceData
-        :param  dt_str:     A datetime timestamp of the first transmission time in the record
-        :type   dt_str:     str
-        :param  file_type:  Type of file to write.
+        :param  _:          unused
+        :type   _:          str
+        :param  file_type:  Type of file to write
         :type   file_type:  str
         """
 
@@ -50,11 +49,11 @@ class HDF5Writer:
 
         :param  filename:   Name of the file to write to
         :type   filename:   str
-        :param  slice_data: Data to write out to the HDF5 file.
+        :param  slice_data: Data to write out to the HDF5 file
         :type   slice_data: SliceData
         :param  dt_str:     A datetime timestamp of the first transmission time in the record
         :type   dt_str:     str
-        :param  file_type:  Type of file to write.
+        :param  file_type:  Type of file to write
         :type   file_type:  str
         """
         with h5py.File(filename, "a") as f:

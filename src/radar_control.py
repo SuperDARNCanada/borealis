@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 """
 radar_control process
 ~~~~~~~~~~~~~~~~~~~~~
@@ -7,14 +5,11 @@ Radar_control is the process that runs the radar (sends pulses to the driver wit
 timing information and sends processing information to the signal processing process).
 Experiment_handler provides the experiment for radar_control to run. It iterates
 through the interface_class_base objects to control the radar.
-
-:copyright: 2018 SuperDARN Canada
-:author: Marci Detwiller
 """
 
 import argparse
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import reduce
 import mmap
 import os
@@ -84,8 +79,8 @@ class RadctrlParameters:
     num_sequences: int = 0
     last_sequence_num: int = 0
     sequence_index: int = 0
-    start_time: datetime = datetime.utcnow()
-    averaging_period_start_time: datetime = datetime.utcnow()
+    start_time: datetime = datetime.now(timezone.utc)
+    averaging_period_start_time: datetime = datetime.now(timezone.utc)
     averaging_period_time: timedelta = timedelta(seconds=0)
     debug_samples: list = field(default_factory=list)
     pulse_transmit_data_tracker: dict = field(default_factory=dict)
@@ -335,7 +330,9 @@ def create_dsp_message(radctrl_params):
         # Send the translational frequencies to dsp in order to bandpass filter correctly.
         freq_khz = slice_dict[slice_id].freq
         if isinstance(freq_khz, list):
-            freq_khz = freq_khz[slice_dict[slice_id].freq_order[radctrl_params.aveperiod.beam_iter]]
+            freq_khz = freq_khz[
+                slice_dict[slice_id].freq_order[radctrl_params.aveperiod.beam_iter]
+            ]
         rx_chan.rx_freq = freq_khz * 1.0e3
         rx_chan.num_ranges = slice_dict[slice_id].num_ranges
         rx_chan.first_range = slice_dict[slice_id].first_range
@@ -388,7 +385,7 @@ def make_next_samples(radctrl_params):
     ] = sqn
 
     if TIME_PROFILE:
-        new_sequence_time = datetime.utcnow() - radctrl_params.start_time
+        new_sequence_time = datetime.now(timezone.utc) - radctrl_params.start_time
         log.verbose(
             "make new sequence time",
             time=new_sequence_time,
@@ -564,7 +561,7 @@ def round_up_time(dt=None, round_to=60):
     """
     Round a datetime object to any time-lapse in seconds
 
-    :param dt: datetime.datetime object, default now.
+    :param dt: datetime object, default now.
     :param round_to: Closest number of seconds to round to, default 1 minute.
     :author: Thierry Husson 2012 - Use it as you want but don't blame me.
     :modified: K.Kotyk 2019
@@ -573,9 +570,9 @@ def round_up_time(dt=None, round_to=60):
     """
 
     if dt is None:
-        dt = datetime.utcnow()
+        dt = datetime.now(timezone.utc)
     midnight = dt.replace(hour=0, minute=0, second=0)
-    seconds = (dt.replace(tzinfo=None) - midnight).seconds
+    seconds = (dt - midnight).seconds
     rounding = (seconds + round_to / 2) // round_to * round_to
     result = dt + timedelta(0, rounding - seconds, -dt.microsecond)
 
@@ -638,12 +635,12 @@ def cfs_block(ave_params, cfs_sockets, pulse_buffer):
     beam = aveperiod.beam_iter
     if not (
         aveperiod.last_cfs_set_time[beam]
-        < datetime.utcnow() - timedelta(seconds=aveperiod.cfs_stable_time)
+        < datetime.now(timezone.utc) - timedelta(seconds=aveperiod.cfs_stable_time)
         or aveperiod.cfs_always_run
     ):
         return
 
-    aveperiod.last_cfs_set_time[beam] = datetime.utcnow()
+    aveperiod.last_cfs_set_time[beam] = datetime.now(timezone.utc)
 
     # Only let CFS run after the user set stable time has
     # passed to prevent CFS from switching freqs too quickly
@@ -812,7 +809,7 @@ def main(exp_name, scheduling_mode, embargo, **kwargs):
                 and not wait_for_first_scanbound
             ):
                 # On first integration, determine current averaging period and set scan_iter to it
-                now = datetime.utcnow()
+                now = datetime.now(timezone.utc)
                 current_minute = now.replace(second=0, microsecond=0)
                 scan_iter = next(
                     (
@@ -844,7 +841,7 @@ def main(exp_name, scheduling_mode, embargo, **kwargs):
                 if first_aveperiod:
                     # On the very first averaging period of Borealis starting, calculate the start minute
                     # align scanbound reference time to find when to start
-                    now = datetime.utcnow()
+                    now = datetime.now(timezone.utc)
                     dt = now.replace(second=0, microsecond=0)
                     if dt + timedelta(seconds=scan.scanbound[scan_iter]) >= now:
                         start_minute = dt
@@ -883,14 +880,14 @@ def main(exp_name, scheduling_mode, embargo, **kwargs):
                 # If there are multiple aveperiods in a scan they are alternated (AVEPERIOD interfaced)
                 aveperiod = scan.aveperiods[scan.aveperiod_iter]
                 if TIME_PROFILE:
-                    time_start_of_aveperiod = datetime.utcnow()
+                    time_start_of_aveperiod = datetime.now(timezone.utc)
 
                 log.debug("new averaging period")
 
                 # All phases are set up for this averaging period for the beams required.
                 # Time to start averaging in the below loop.
                 if not scan.scanbound:
-                    averaging_period_start_time = datetime.utcnow()  # ms
+                    averaging_period_start_time = datetime.now(timezone.utc)  # ms
                     log.verbose(
                         "averaging period start time",
                         time=averaging_period_start_time,
@@ -906,7 +903,7 @@ def main(exp_name, scheduling_mode, embargo, **kwargs):
                         beam_scanbound = start_minute + timedelta(
                             seconds=scan.scanbound[scan_iter]
                         )
-                        time_diff = beam_scanbound - datetime.utcnow()
+                        time_diff = beam_scanbound - datetime.now(timezone.utc)
                         if time_diff.total_seconds() > 0:
                             if first_aveperiod:
                                 log.verbose(
@@ -928,15 +925,16 @@ def main(exp_name, scheduling_mode, embargo, **kwargs):
                             time.sleep(time_diff.total_seconds())
                         else:
                             # TODO: This will be wrong if the start time is in the past.
-                            # TODO: maybe use datetime.utcnow() like below instead of beam_scanbound
-                            #       when the avg period should have started?
+                            # TODO: maybe use datetime.now(timezone.utc) like below
+                            #       instead of beam_scanbound when the avg period should have
+                            #       started?
                             log.debug(
                                 "expected avg period start time",
                                 scan_iter=scan_iter,
                                 beam_scanbound=beam_scanbound,
                             )
 
-                        averaging_period_start_time = datetime.utcnow()
+                        averaging_period_start_time = datetime.now(timezone.utc)
                         log.verbose(
                             "avg period start time",
                             time=averaging_period_start_time,
@@ -1005,7 +1003,9 @@ def main(exp_name, scheduling_mode, embargo, **kwargs):
                 log.verbose("avg period slice and beam number", slice_and_beam=msg)
 
                 if TIME_PROFILE:
-                    aveperiod_prep_time = datetime.utcnow() - time_start_of_aveperiod
+                    aveperiod_prep_time = (
+                        datetime.now(timezone.utc) - time_start_of_aveperiod
+                    )
                     log.verbose(
                         "time to prep aveperiod",
                         time=aveperiod_prep_time,
@@ -1043,7 +1043,7 @@ def main(exp_name, scheduling_mode, embargo, **kwargs):
 
                     for sequence_index, sequence in enumerate(aveperiod.sequences):
                         # Alternating sequences if there are multiple in the averaging_period
-                        ave_params.start_time = datetime.utcnow()
+                        ave_params.start_time = datetime.now(timezone.utc)
                         ave_params.sequence = sequence
                         ave_params.sequence_index = sequence_index
 
@@ -1130,7 +1130,7 @@ def main(exp_name, scheduling_mode, embargo, **kwargs):
                             time.sleep(1)
 
                 if TIME_PROFILE:
-                    avg_period_end_time = datetime.utcnow()
+                    avg_period_end_time = datetime.now(timezone.utc)
                     log.verbose(
                         "avg period end time",
                         time=avg_period_end_time,
@@ -1163,7 +1163,9 @@ def main(exp_name, scheduling_mode, embargo, **kwargs):
                 seqnum_start += ave_params.num_sequences
 
                 if TIME_PROFILE:
-                    time_to_finish_aveperiod = datetime.utcnow() - avg_period_end_time
+                    time_to_finish_aveperiod = (
+                        datetime.now(timezone.utc) - avg_period_end_time
+                    )
                     log.verbose(
                         "time to finish avg period",
                         time=time_to_finish_aveperiod,
@@ -1179,35 +1181,39 @@ def main(exp_name, scheduling_mode, embargo, **kwargs):
                     scan.aveperiod_iter = 0
 
 
+def radctrl_parser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "experiment_module",
+        help="The name of the module in the experiment_prototype package that contains "
+        "your Experiment class, e.g. normalscan",
+    )
+    parser.add_argument(
+        "scheduling_mode_type",
+        help="The type of scheduling time for this experiment run, e.g. common, "
+        "special, or discretionary.",
+    )
+    parser.add_argument(
+        "--embargo",
+        action="store_true",
+        help="Embargo the file (makes the CPID negative)",
+    )
+    parser.add_argument(
+        "--kwargs",
+        nargs="+",
+        default="",
+        help="Keyword arguments for the experiment. Each must be formatted as kw=val",
+    )
+    return parser
+
+
 if __name__ == "__main__":
     from utils import log_config
 
     log = log_config.log()
     log.info("RADAR_CONTROL BOOTED")
     try:
-        parser = argparse.ArgumentParser()
-        parser.add_argument(
-            "experiment_module",
-            help="The name of the module in the experiment_prototype package that contains "
-            "your Experiment class, e.g. normalscan",
-        )
-        parser.add_argument(
-            "scheduling_mode_type",
-            help="The type of scheduling time for this experiment run, e.g. common, "
-            "special, or discretionary.",
-        )
-        parser.add_argument(
-            "--embargo",
-            action="store_true",
-            help="Embargo the file (makes the CPID negative)",
-        )
-        parser.add_argument(
-            "--kwargs",
-            nargs="+",
-            default="",
-            help="Keyword arguments for the experiment. Each must be formatted as kw=val",
-        )
-        args = parser.parse_args()
+        args = radctrl_parser().parse_args()
         # parse kwargs and pass to experiment
         parsed_kwargs = {}
         for element in args.kwargs:

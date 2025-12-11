@@ -1,5 +1,3 @@
-#!/usr/bin/python
-
 """
 sequences
 ~~~~~~~~~
@@ -196,9 +194,7 @@ class Sequence(InterfaceClassBase):
             exp_slice = self.slice_dict[slice_id]
 
             # Now we set up the phases for receive side
-            self.rx_beam_phases[slice_id] = self.build_rx_phases(
-                slice_id, exp_slice
-            )
+            self.rx_beam_phases[slice_id] = self.build_rx_phases(slice_id, exp_slice)
 
             # Set up the tx pulses if transmitting
             self.tx_main_phase_shifts[slice_id] = self.build_tx_phases(
@@ -452,9 +448,7 @@ class Sequence(InterfaceClassBase):
         if self.align_sequences:
             log.info("aligning sequences to 0.1 s boundaries.")
 
-    def build_rx_phases(
-        self, slice_id: int, exp_slice: ExperimentSlice
-    ):
+    def build_rx_phases(self, slice_id: int, exp_slice: ExperimentSlice):
         """
         Builds the phase shifts for each antenna, for each beam.
 
@@ -544,7 +538,10 @@ class Sequence(InterfaceClassBase):
         return phases, channel_indices
 
     def build_tx_phases(
-        self, slice_id: int, exp_slice: ExperimentSlice, freqs: Union[float, list[float]]
+        self,
+        slice_id: int,
+        exp_slice: ExperimentSlice,
+        freqs: Union[float, list[float]],
     ):
         """
         Builds the basic pulse IQ samples for this slice, and the complex phases
@@ -618,7 +615,11 @@ class Sequence(InterfaceClassBase):
 
         # has shape [num_freqs, num_beams, num_tx_channels]
         tx_phases = np.zeros(
-            (tx_main_phase_shift.shape[0], tx_main_phase_shift.shape[1], len(self.tx_main_antennas)),
+            (
+                tx_main_phase_shift.shape[0],
+                tx_main_phase_shift.shape[1],
+                len(self.tx_main_antennas),
+            ),
             dtype=tx_main_phase_shift.dtype,
         )
 
