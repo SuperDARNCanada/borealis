@@ -1,0 +1,138 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0" version="29.2.1">
+  <diagram name="Page-1" id="_xrkYdbGK5Mdoh6KFPHV">
+    <mxGraphModel dx="1188" dy="663" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="1" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="sRXgNcvU3bozDDU84NM_-3" parent="1" style="sketch=0;html=1;pointerEvents=1;dashed=0;fillColor=none;strokeColor=none;strokeWidth=2;verticalLabelPosition=bottom;verticalAlign=top;align=center;outlineConnect=0;shape=mxgraph.cisco.wireless.antenna;" value="antenna&lt;br&gt;`0`" vertex="1">
+          <mxGeometry height="64" width="50" x="30" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="sRXgNcvU3bozDDU84NM_-5" parent="1" style="sketch=0;html=1;pointerEvents=1;dashed=0;fillColor=none;strokeColor=none;strokeWidth=2;verticalLabelPosition=bottom;verticalAlign=top;align=center;outlineConnect=0;shape=mxgraph.cisco.wireless.antenna;" value="antenna&lt;br&gt;`1`" vertex="1">
+          <mxGeometry height="64" width="50" x="80" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="sRXgNcvU3bozDDU84NM_-6" parent="1" style="sketch=0;html=1;pointerEvents=1;dashed=0;fillColor=none;strokeColor=none;strokeWidth=2;verticalLabelPosition=bottom;verticalAlign=top;align=center;outlineConnect=0;shape=mxgraph.cisco.wireless.antenna;" value="`...`" vertex="1">
+          <mxGeometry height="64" width="50" x="130" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="sRXgNcvU3bozDDU84NM_-7" parent="1" style="sketch=0;html=1;pointerEvents=1;dashed=0;fillColor=none;strokeColor=none;strokeWidth=2;verticalLabelPosition=bottom;verticalAlign=top;align=center;outlineConnect=0;shape=mxgraph.cisco.wireless.antenna;" value="" vertex="1">
+          <mxGeometry height="64" width="50" x="180" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="sRXgNcvU3bozDDU84NM_-8" parent="1" style="sketch=0;html=1;pointerEvents=1;dashed=0;fillColor=none;strokeColor=none;strokeWidth=2;verticalLabelPosition=bottom;verticalAlign=top;align=center;outlineConnect=0;shape=mxgraph.cisco.wireless.antenna;" value="" vertex="1">
+          <mxGeometry height="64" width="50" x="230" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="sRXgNcvU3bozDDU84NM_-9" parent="1" style="sketch=0;html=1;pointerEvents=1;dashed=0;fillColor=none;strokeColor=none;strokeWidth=2;verticalLabelPosition=bottom;verticalAlign=top;align=center;outlineConnect=0;shape=mxgraph.cisco.wireless.antenna;" value="" vertex="1">
+          <mxGeometry height="64" width="50" x="280" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="sRXgNcvU3bozDDU84NM_-10" parent="1" style="sketch=0;html=1;pointerEvents=1;dashed=0;fillColor=none;strokeColor=none;strokeWidth=2;verticalLabelPosition=bottom;verticalAlign=top;align=center;outlineConnect=0;shape=mxgraph.cisco.wireless.antenna;" value="" vertex="1">
+          <mxGeometry height="64" width="50" x="330" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="sRXgNcvU3bozDDU84NM_-11" parent="1" style="sketch=0;html=1;pointerEvents=1;dashed=0;fillColor=none;strokeColor=none;strokeWidth=2;verticalLabelPosition=bottom;verticalAlign=top;align=center;outlineConnect=0;shape=mxgraph.cisco.wireless.antenna;" value="" vertex="1">
+          <mxGeometry height="64" width="50" x="380" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="sRXgNcvU3bozDDU84NM_-12" parent="1" style="sketch=0;html=1;pointerEvents=1;dashed=0;fillColor=none;strokeColor=none;strokeWidth=2;verticalLabelPosition=bottom;verticalAlign=top;align=center;outlineConnect=0;shape=mxgraph.cisco.wireless.antenna;" value="" vertex="1">
+          <mxGeometry height="64" width="50" x="430" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="sRXgNcvU3bozDDU84NM_-13" parent="1" style="sketch=0;html=1;pointerEvents=1;dashed=0;fillColor=none;strokeColor=none;strokeWidth=2;verticalLabelPosition=bottom;verticalAlign=top;align=center;outlineConnect=0;shape=mxgraph.cisco.wireless.antenna;" value="`...`" vertex="1">
+          <mxGeometry height="64" width="50" x="480" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="sRXgNcvU3bozDDU84NM_-14" parent="1" style="sketch=0;html=1;pointerEvents=1;dashed=0;fillColor=none;strokeColor=none;strokeWidth=2;verticalLabelPosition=bottom;verticalAlign=top;align=center;outlineConnect=0;shape=mxgraph.cisco.wireless.antenna;" value="antenna &lt;br&gt;`n`" vertex="1">
+          <mxGeometry height="64" width="50" x="530" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="sRXgNcvU3bozDDU84NM_-15" parent="1" style="sketch=0;html=1;pointerEvents=1;dashed=0;fillColor=none;strokeColor=none;strokeWidth=2;verticalLabelPosition=bottom;verticalAlign=top;align=center;outlineConnect=0;shape=mxgraph.cisco.wireless.antenna;" value="`...`" vertex="1">
+          <mxGeometry height="64" width="50" x="580" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="sRXgNcvU3bozDDU84NM_-16" parent="1" style="sketch=0;html=1;pointerEvents=1;dashed=0;fillColor=none;strokeColor=none;strokeWidth=2;verticalLabelPosition=bottom;verticalAlign=top;align=center;outlineConnect=0;shape=mxgraph.cisco.wireless.antenna;" value="" vertex="1">
+          <mxGeometry height="64" width="50" x="630" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="sRXgNcvU3bozDDU84NM_-17" parent="1" style="sketch=0;html=1;pointerEvents=1;dashed=0;fillColor=none;strokeColor=none;strokeWidth=2;verticalLabelPosition=bottom;verticalAlign=top;align=center;outlineConnect=0;shape=mxgraph.cisco.wireless.antenna;" value="" vertex="1">
+          <mxGeometry height="64" width="50" x="680" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="sRXgNcvU3bozDDU84NM_-18" parent="1" style="sketch=0;html=1;pointerEvents=1;dashed=0;fillColor=none;strokeColor=none;strokeWidth=2;verticalLabelPosition=bottom;verticalAlign=top;align=center;outlineConnect=0;shape=mxgraph.cisco.wireless.antenna;" value="" vertex="1">
+          <mxGeometry height="64" width="50" x="730" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="sRXgNcvU3bozDDU84NM_-19" parent="1" style="sketch=0;html=1;pointerEvents=1;dashed=0;fillColor=none;strokeColor=none;strokeWidth=2;verticalLabelPosition=bottom;verticalAlign=top;align=center;outlineConnect=0;shape=mxgraph.cisco.wireless.antenna;" value="antenna &lt;br&gt;`N`" vertex="1">
+          <mxGeometry height="64" width="50" x="780" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="sRXgNcvU3bozDDU84NM_-21" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;endFill=1;fillColor=#60a917;strokeColor=#2D7600;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="380" y="614" as="sourcePoint" />
+            <mxPoint x="380" y="380" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sRXgNcvU3bozDDU84NM_-22" connectable="0" parent="sRXgNcvU3bozDDU84NM_-21" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="boresight&lt;br&gt;&lt;div&gt;direction&amp;nbsp;&lt;/div&gt;&lt;div&gt;`y`&lt;/div&gt;" vertex="1">
+          <mxGeometry relative="1" x="0.9376" y="-1" as="geometry">
+            <mxPoint x="-1" y="-37" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sRXgNcvU3bozDDU84NM_-23" edge="1" parent="1" style="endArrow=none;html=1;rounded=0;fillColor=#1ba1e2;strokeColor=#006EAF;strokeWidth=2;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="5" y="700" as="sourcePoint" />
+            <mxPoint x="805" y="400" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sRXgNcvU3bozDDU84NM_-25" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="Reference plane wave" vertex="1">
+          <mxGeometry height="30" width="60" x="550" y="440" as="geometry" />
+        </mxCell>
+        <mxCell id="sRXgNcvU3bozDDU84NM_-26" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="725" y="430" as="sourcePoint" />
+            <mxPoint x="754" y="509" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sRXgNcvU3bozDDU84NM_-27" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="Propagation direction" vertex="1">
+          <mxGeometry height="30" width="60" x="763" y="490" as="geometry" />
+        </mxCell>
+        <mxCell id="sRXgNcvU3bozDDU84NM_-28" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;fillColor=#fa6800;strokeColor=#C73500;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="533" y="502" as="sourcePoint" />
+            <mxPoint x="556" y="559" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sRXgNcvU3bozDDU84NM_-29" connectable="0" parent="sRXgNcvU3bozDDU84NM_-28" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];labelBackgroundColor=none;" value="&lt;span style=&quot;color: light-dark(rgb(0, 0, 0), rgb(255, 128, 0));&quot;&gt;$$d_n$$&lt;br&gt;&lt;/span&gt;" vertex="1">
+          <mxGeometry relative="1" x="-0.263" y="-2" as="geometry">
+            <mxPoint x="15" y="6" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sRXgNcvU3bozDDU84NM_-33" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;endFill=1;fillColor=#60a917;strokeColor=#2D7600;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="380" y="614" as="sourcePoint" />
+            <mxPoint x="850.6896551724138" y="614" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sRXgNcvU3bozDDU84NM_-34" connectable="0" parent="sRXgNcvU3bozDDU84NM_-33" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="$$x$$" vertex="1">
+          <mxGeometry relative="1" x="0.9376" y="-1" as="geometry">
+            <mxPoint x="24" y="-1" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sRXgNcvU3bozDDU84NM_-35" edge="1" parent="1" style="endArrow=none;html=1;rounded=0;endFill=0;dashed=1;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="725" y="490" as="sourcePoint" />
+            <mxPoint x="725" y="370" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sRXgNcvU3bozDDU84NM_-37" edge="1" parent="1" style="endArrow=none;html=1;rounded=0;endFill=0;dashed=1;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="670" y="430" as="sourcePoint" />
+            <mxPoint x="780" y="430" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sRXgNcvU3bozDDU84NM_-38" parent="1" style="verticalLabelPosition=bottom;verticalAlign=top;html=1;shape=mxgraph.basic.arc;startAngle=0.44500312123743074;endAngle=0.5;fillColor=#1ba1e2;fontColor=#ffffff;strokeColor=#006EAF;" value="" vertex="1">
+          <mxGeometry height="40" width="40" x="705" y="410" as="geometry" />
+        </mxCell>
+        <mxCell id="sRXgNcvU3bozDDU84NM_-40" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;span style=&quot;color: light-dark(rgb(0, 0, 0), rgb(27, 161, 226));&quot;&gt;$$\theta$$&lt;/span&gt;" vertex="1">
+          <mxGeometry height="10" width="7" x="728" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="sRXgNcvU3bozDDU84NM_-41" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;endFill=1;fillColor=#60a917;strokeColor=#2D7600;startArrow=classic;startFill=1;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="307" y="613.31" as="sourcePoint" />
+            <mxPoint x="357" y="613.31" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sRXgNcvU3bozDDU84NM_-42" connectable="0" parent="sRXgNcvU3bozDDU84NM_-41" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="`L`" vertex="1">
+          <mxGeometry relative="1" x="0.9376" y="-1" as="geometry">
+            <mxPoint x="-25" y="9" as="offset" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

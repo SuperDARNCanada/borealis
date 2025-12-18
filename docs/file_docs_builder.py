@@ -12,7 +12,7 @@ sys.path.append(str(Path(__file__).resolve().parents[1]) + "/src/utils/")
 from file_formats import SliceData
 
 
-field_format = ":{name}: {description}\n\n" "{metadata}"
+field_format = ":{name}: {description}\n\n{metadata}"
 metadata_format = "   * {key}: ``{value}``\n"
 
 
@@ -20,13 +20,13 @@ def generate_for_file(file_type: str):
     preamble = copy.deepcopy(SliceData.__doc__).split("\n")[3:]
     preamble = "\n".join(preamble)
     docstring = (
-        f".. _{file_type}:\n\n"
-        f"{'-'*len(file_type)}\n"
-        f"{file_type.lower()}\n"
-        f"{'-'*len(file_type)}\n"
+        # f".. _{file_type}:\n\n"
+        # f"{'-'*len(file_type)}\n"
+        # f"{file_type.lower()}\n"
+        # f"{'='*len(file_type)}\n\n"
         f"{preamble}\n\n"
-        f"Fields\n"
-        f"------\n"
+        # f"Fields\n"
+        # f"------\n"
     )
 
     for f in fields(SliceData):
@@ -48,7 +48,7 @@ def generate_for_file(file_type: str):
 
 
 def write_rst_file(outdir: str, file_type: str):
-    outfile = f"{outdir}/{file_type}.rst"
+    outfile = f"{outdir}/{file_type}.txt"
 
     with open(outfile, "w") as ofile:
         ofile.write(generate_for_file(file_type))
@@ -56,7 +56,7 @@ def write_rst_file(outdir: str, file_type: str):
 
 def main():
     file_types = ["antennas_iq", "bfiq", "rawacf", "rawrf"]
-    outdir = "source/"
+    outdir = "source/file_types/"
     for ftype in file_types:
         write_rst_file(outdir, ftype)
 

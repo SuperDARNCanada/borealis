@@ -10,32 +10,22 @@ Utilities for working with scd files
 import os
 import datetime as dt
 import shutil
+import subprocess as sp
 import sys
 from typing_extensions import Annotated, Union, Literal, Self, Optional
 
 from pydantic.dataclasses import dataclass
-from pydantic import field_validator, Field, model_validator
+from pydantic import field_validator, Field, model_validator, ConfigDict
 
 borealis_path = os.environ["BOREALISPATH"]
 sys.path.append(f"{borealis_path}/tests/experiments")
-import experiment_unittests
 
 
-class LineConfig:
-    """
-    This class configures pydantic options for ScheduleLine.
-
-    validate_assignment: Whether to run all validators for a field whenever field is changed (init or after init)
-    extra: Whether to allow extra fields not defined when instantiating
-    arbitrary_types_allowed: Whether to allow arbitrary types like user-defined classes (e.g. Options, DecimationScheme)
-    """
-
-    validate_assignment = True
-    extra = "allow"
-    arbitrary_types_allowed = False
-
-
-@dataclass(config=LineConfig)
+@dataclass(
+    config=ConfigDict(
+        validate_assignment=True, extra="allow", arbitrary_types_allowed=False
+    )
+)
 class ScheduleLine:
     timestamp: dt.datetime
     duration: Union[str, dt.timedelta]
@@ -111,26 +101,31 @@ class ScheduleLine:
         """
 
         args = [
-            "--site_id",
             site_id,
             "--experiments",
             self.experiment,
-            "--kwargs",
-            " ".join(self.kwargs),
-            "--module",
-            "experiment_unittests",
         ]
-        test_program = experiment_unittests.run_tests(
-            args, buffer=True, print_results=False
-        )
-        if (
-            len(test_program.result.failures) != 0
-            or len(test_program.result.errors) != 0
-        ):
+
+        if len(self.kwargs) > 0:
+            args.extend(
+                [
+                    "--kwargs",
+                    " ".join(self.kwargs),
+                ]
+            )
+        try:
+            sp.run(
+                [
+                    "python3",
+                    f"{os.environ['BOREALISPATH']}/tests/experiments/test_as_site.py",
+                ]
+                + args,
+                check=True,
+            )
+        except sp.CalledProcessError as e:
             raise ValueError(
                 "Experiment could not be scheduled due to errors in experiment.\n"
-                f"Errors: {test_program.result.errors}\n"
-                f"Failures: {test_program.result.failures}"
+                + str(e)
             )
 
     @classmethod
@@ -189,7 +184,7 @@ def get_next_month_from_date(date=None):
         TYPE: datetime object.
     """
     if date is None:
-        date = dt.datetime.utcnow()
+        date = dt.datetime.now(dt.timezone.utc)
 
     counter = 1
     new_date = date + dt.timedelta(days=counter)

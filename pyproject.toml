@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "borealis"
-version = "1.0"
+dynamic = ["version"]
 description = "SuperDARN Digital Radar System"
 readme = "README.md"
 authors = [{name = "SuperDARN Canada"}]
@@ -26,12 +26,28 @@ dependencies = [
     "zmq",
 ]
 
+[tool.setuptools.dynamic]
+version = {attr = "src.__version__"}
+
 [project.optional-dependencies]
 gpu = ["cupy"]
 dev = [
     "ruff",
     "pre-commit",
-    "jupyter"
+    "jupyter",
+]
+doc = [
+    "breathe",
+    "docutils==0.21",
+    "furo==2025.09.25",
+    "latex",
+    "myst_parser",
+    "sphinx==8.2.2",
+    "sphinx-argparse",
+    "sphinx-favicon",
+    "sphinx-tabs",
+    "sphinxcontrib-autoprogram",
+    "sphinxcontrib-programoutput",
 ]
 
 [project.urls]
@@ -43,7 +59,7 @@ restart_borealis = "scripts.restart_borealis:main"
 
 [tool.setuptools.packages.find]
 where = ["borealis", "build"]
-exclude = ["usrp_drivers", "src.borealis_experiments.testing_archive*"]
+exclude = ["usrp_drivers", "src.borealis_experiments.tests*"]
 
 [tool.ruff]
 include = [
@@ -55,8 +71,8 @@ include = [
     "**/pyproject.toml"
 ]
 extend-exclude = [
-    "src/borealis_experiments/**/*.py",
     "tests/archive/**/*",
+    "src/borealis_experiments/archive/*.py"
 ]
 
 [tool.ruff.lint]

@@ -1,4 +1,5 @@
 /*Copyright 2016 SuperDARN*/
+#include <errno.h>
 #include <stdint.h>
 #include <sys/mman.h>
 #include <unistd.h>
@@ -261,8 +262,10 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
 
   SharedMemoryHandler pulse_buf(driver_options.get_pulse_buffer_name());
   pulse_buf.create_shr_mem(total_pbuf_size);
-  mlock(pulse_buf.get_shrmem_addr(), total_pbuf_size);
-
+  if (mlock(pulse_buf.get_shrmem_addr(), total_pbuf_size) != 0) {
+    std::cout << "Failed to mlock pulse buffer of size " << total_pbuf_size
+              << "; error " << errno << " " << strerror(errno) << std::endl;
+  }
   std::vector<std::complex<float> *> pulse_buffer_starts;
   for (uint32_t i = 0; i < tx_channels.size(); i++) {
     auto p_ptr =
@@ -692,7 +695,13 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d,
   auto total_rbuf_size =
       receive_channels.size() * ringbuffer_size * sizeof(std::complex<float>);
   shrmem.create_shr_mem(total_rbuf_size);
-  mlock(shrmem.get_shrmem_addr(), total_rbuf_size);
+
+  // Attempt to page-lock memory to ensure fast transfer to GPU
+
+  if (mlock(shrmem.get_shrmem_addr(), total_rbuf_size) != 0) {
+    std::cout << "Failed to mlock ringbuffer of size " << total_rbuf_size
+              << "; error " << errno << " " << strerror(errno) << std::endl;
+  }
 
   std::vector<std::complex<float> *> buffer_ptrs_start;
 
