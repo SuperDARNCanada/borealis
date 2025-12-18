@@ -11,6 +11,7 @@ The Simpsons, Season 7 Episode 21
 """
 
 import argparse
+import fcntl
 import sys
 import subprocess as sp
 import os
@@ -154,15 +155,10 @@ def steamed_hams_parser():
     return parser
 
 
-# Check if steamed_hams.py is already running
-output = sp.check_output(["pgrep", "-f", "steamed_hams.py"]).strip()
-pids = [int(pid) for pid in output.split()]
-pids.remove(os.getpid())  # Remove pid of current steamed_hams.py call
-if pids:
-    # If any pids are remaining, steamed_hams.py is already running
-    print("Script steamed_hams.py is already running. Exiting...")
-    sys.exit(-1)
-
+# Ensure that only one copy of steamed_hams.py runs at a time
+lock_file = "/tmp/.steamed_hams"
+lock_f = open(lock_file, "w")
+retval = fcntl.flock(lock_f, fcntl.LOCK_EX | fcntl.LOCK_NB)
 
 parser = steamed_hams_parser()
 args = parser.parse_args()
