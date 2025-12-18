@@ -201,7 +201,7 @@ if __name__ == "__main__":
 
     # Bypass the python wrapper to run cuda-gdb
     if mode == "debug":
-        modules["usrp_driver"] = f"source mode {mode}; {c_debug_opts} usrp_driver"
+        modules["usrp_driver"] = f"{c_debug_opts} build/{mode}/bin/usrp_driver"
 
     # Temporary fix to give us access to exactly what's printed to console from Borealis
     log_dir = "/data/borealis_logs"
