@@ -24,12 +24,13 @@
 #
 # Check the status with
 # `[sudo] systemctl status local_scd_server.service`
+#
 [Unit]
 Description=Borealis Scheduling Server
 
 [Service]
 User=radman
-ExecStart=/home/radman/borealis/scheduler/local_scd_server.daemon
+ExecStart=%h/borealis/scheduler/local_scd_server.daemon
 Restart=always
 
 [Install]

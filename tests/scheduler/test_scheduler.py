@@ -13,8 +13,7 @@ import os
 from pathlib import Path
 import sys
 import tempfile
-import datetime
-import subprocess as sp
+import datetime as dt
 import re
 
 from pydantic import ValidationError
@@ -30,7 +29,8 @@ else:
 sys.path.append(BOREALISPATH)
 
 from scheduler import scd_utils
-from scheduler import local_scd_server, remote_server
+from scheduler import central_scd_server
+from scheduler.scd_utils import ScheduleError
 
 
 class TestSchedulerUtils(unittest.TestCase):
@@ -56,7 +56,7 @@ class TestSchedulerUtils(unittest.TestCase):
         self.yyyymmdd = "20221014"
         self.hhmm = "12:34"
         self.dt = "20221011 00:00"
-        self.dur = datetime.timedelta(minutes=120)
+        self.dur = dt.timedelta(minutes=120)
         self.prio = 10
         self.exp = "normalscan"
         self.mode = "common"
@@ -65,18 +65,14 @@ class TestSchedulerUtils(unittest.TestCase):
         self.no_perms_file = self.no_perms.name
         os.chmod(self.no_perms_file, 0o000)
         self.no_perms.close()
-        time_of_interest = datetime.datetime(
-            2000, 1, 1, 6, 30, tzinfo=datetime.timezone.utc
-        )
-        time_of_interest2 = datetime.datetime(
-            2022, 4, 5, 16, 56, tzinfo=datetime.timezone.utc
-        )
+        time_of_interest = dt.datetime(2000, 1, 1, 6, 30, tzinfo=dt.timezone.utc)
+        time_of_interest2 = dt.datetime(2022, 4, 5, 16, 56, tzinfo=dt.timezone.utc)
         self.linedict = {
             "timestamp": time_of_interest,
             "priority": 0,
             "experiment": "normalscan",
             "scheduling_mode": "common",
-            "duration": datetime.timedelta(minutes=60),
+            "duration": dt.timedelta(minutes=60),
             "kwargs": list(),
             "embargo": False,
         }
@@ -86,7 +82,7 @@ class TestSchedulerUtils(unittest.TestCase):
             "priority": 15,
             "experiment": "twofsound",
             "scheduling_mode": "discretionary",
-            "duration": datetime.timedelta(minutes=360),
+            "duration": dt.timedelta(minutes=360),
             "kwargs": ["freq1=10500", "freq2=13100"],
             "embargo": False,
         }
@@ -101,6 +97,12 @@ class TestSchedulerUtils(unittest.TestCase):
         """
         print("Method: ", self._testMethodName)
 
+    def tearDown(self):
+        """
+        Called after every test_* method
+        """
+        scd_utils.SCDUtils.clear_atq()
+
     # get_next_month_from_date tests
     def test_wrong_type(self):
         """
@@ -114,14 +116,14 @@ class TestSchedulerUtils(unittest.TestCase):
         """
         Test getting the next month from a given date
         """
-        date = datetime.datetime(2022, 1, 2)
-        date2 = datetime.datetime(2022, 2, 1)
+        date = dt.datetime(2022, 1, 2)
+        date2 = dt.datetime(2022, 2, 1)
         self.assertEqual(scd_utils.get_next_month_from_date(date), date2)
-        date = datetime.datetime(2022, 12, 13)
-        date2 = datetime.datetime(2023, 1, 1)
+        date = dt.datetime(2022, 12, 13)
+        date2 = dt.datetime(2023, 1, 1)
         self.assertEqual(scd_utils.get_next_month_from_date(date), date2)
-        date = datetime.datetime(2022, 12, 5)
-        date2 = datetime.datetime(2023, 1, 1)
+        date = dt.datetime(2022, 12, 5)
+        date2 = dt.datetime(2023, 1, 1)
         self.assertEqual(scd_utils.get_next_month_from_date(date), date2)
 
     # create_line tests
@@ -249,7 +251,7 @@ class TestSchedulerUtils(unittest.TestCase):
         """
         exp = "non-existent_Experiment"
         scdu = scd_utils.SCDUtils(self.good_scd_file, self.site_id)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ScheduleError):
             line = scdu.create_line(
                 self.yyyymmdd,
                 self.hhmm,
@@ -260,6 +262,7 @@ class TestSchedulerUtils(unittest.TestCase):
                 self.kwargs,
             )
             line.test(self.site_id)
+
         exp = None
         with self.assertRaises(ValidationError):
             line = scdu.create_line(
@@ -683,7 +686,9 @@ class TestSchedulerUtils(unittest.TestCase):
         scd_file = tempfile.NamedTemporaryFile(mode="w+t", delete=False)
         scdu = scd_utils.SCDUtils(scd_file.name, self.site_id)
         scd_file.close()
-        with self.assertRaisesRegex(ValueError, "Priority already exists at this time"):
+        with self.assertRaisesRegex(
+            ScheduleError, "Priority already exists at this time"
+        ):
             scdu.add_line(
                 self.yyyymmdd,
                 self.hhmm,
@@ -699,7 +704,7 @@ class TestSchedulerUtils(unittest.TestCase):
                 "twofsound",
                 "special",
                 self.prio,
-                datetime.timedelta(minutes=1440),
+                dt.timedelta(minutes=1440),
                 self.kwargs,
             )
 
@@ -898,7 +903,7 @@ class TestSchedulerUtils(unittest.TestCase):
             scd_file.write(line)
         scd_file.close()
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ScheduleError):
             scdu.remove_line(
                 self.yyyymmdd,
                 self.hhmm,
@@ -912,16 +917,12 @@ class TestSchedulerUtils(unittest.TestCase):
     # get_relevant_lines tests
     def test_incorrect_datetime_fmt(self):
         """
-        Test trying to input an incorrect datetime string, should raise ValueError or TypeError
+        Test trying to input an incorrect datetime object, should raise TypeError
         """
         scdu = scd_utils.SCDUtils(self.good_scd_file, self.site_id)
 
-        with self.assertRaises(ValueError):
-            scdu.get_relevant_lines("202", "blah")
         with self.assertRaises(TypeError):
-            scdu.get_relevant_lines("20225555", None)
-        with self.assertRaises(TypeError):
-            scdu.get_relevant_lines(5, "5890")
+            scdu.get_relevant_lines(dt.datetime(2020, 1, 1))  # not timezone-aware
 
     def test_empty_file(self):
         """
@@ -933,7 +934,10 @@ class TestSchedulerUtils(unittest.TestCase):
         scd_file.close()
         scdu = scd_utils.SCDUtils(scd_file.name, self.site_id)
         self.assertEqual(
-            scdu.get_relevant_lines("20061101", "00:00"), [scdu.scd_default]
+            scdu.get_relevant_lines(
+                dt.datetime(2006, 11, 1, 0, 0, tzinfo=dt.timezone.utc)
+            ),
+            [scdu.scd_default],
         )
 
     def test_empty_file_w_default(self):
@@ -945,7 +949,9 @@ class TestSchedulerUtils(unittest.TestCase):
         scd_file.close()
         scdu = scd_utils.SCDUtils(scd_file.name, self.site_id)
         self.assertEqual(
-            scdu.get_relevant_lines("19991101", "00:00"),
+            scdu.get_relevant_lines(
+                dt.datetime(1999, 11, 1, 0, 0, tzinfo=dt.timezone.utc)
+            ),
             [
                 scdu.create_line(
                     "20000101", "00:00", "normalscan", "common", 0, "-", list()
@@ -958,7 +964,8 @@ class TestSchedulerUtils(unittest.TestCase):
         Test trying to get relevant lines from a file with all lines in the past
         """
         scdu = scd_utils.SCDUtils(self.good_scd_file, self.site_id)
-        lines = scdu.get_relevant_lines("21001113", "00:00")
+        time_of_interest = dt.datetime(2100, 11, 13, 0, 0, tzinfo=dt.timezone.utc)
+        lines = scdu.get_relevant_lines(time_of_interest)
         self.assertEqual(len(lines), 1)
 
     def test_one_line_relevant(self):
@@ -970,10 +977,14 @@ class TestSchedulerUtils(unittest.TestCase):
         test_exp_line = "20200917 00:00 89 19 ulfscan common\n"
         scd_file.write(test_exp_line)
         scd_file.close()
-        lines = scdu.get_relevant_lines("20200916", "23:59")
+        time_of_interest = dt.datetime.strptime("20200916 23:59", self.scd_dt_fmt)
+        time_of_interest = dt.datetime.combine(
+            time_of_interest.date(), time_of_interest.time(), dt.timezone.utc
+        )
+        lines = scdu.get_relevant_lines(time_of_interest)
         self.assertEqual(len(lines), 1)
         self.assertEqual(lines[0].priority, 19)
-        self.assertEqual(lines[0].duration, datetime.timedelta(minutes=89))
+        self.assertEqual(lines[0].duration, dt.timedelta(minutes=89))
         self.assertEqual(lines[0].experiment, "ulfscan")
         self.assertEqual(lines[0].scheduling_mode, "common")
 
@@ -992,7 +1003,11 @@ class TestSchedulerUtils(unittest.TestCase):
         for test_line in test_scd_lines:
             scd_file.write(test_line)
         scd_file.close()
-        lines = scdu.get_relevant_lines("20200921", "00:01")
+        time_of_interest = dt.datetime.strptime("20200921 00:01", self.scd_dt_fmt)
+        time_of_interest = dt.datetime.combine(
+            time_of_interest.date(), time_of_interest.time(), dt.timezone.utc
+        )
+        lines = scdu.get_relevant_lines(time_of_interest)
         self.assertEqual(len(lines), 3)
 
         # Should be the second line from test_scd_lines
@@ -1007,7 +1022,7 @@ class TestSchedulerUtils(unittest.TestCase):
         self.assertEqual(lines[1].scheduling_mode, "common")
         self.assertEqual(lines[1].kwargs, ["freq=10500"])
 
-        self.assertEqual(lines[2].duration, datetime.timedelta(minutes=60))
+        self.assertEqual(lines[2].duration, dt.timedelta(minutes=60))
         self.assertEqual(lines[2].priority, 2)
         self.assertEqual(lines[2].experiment, "politescan")
         self.assertEqual(lines[2].scheduling_mode, "special")
@@ -1027,7 +1042,9 @@ class TestSchedulerUtils(unittest.TestCase):
         for test_line in test_scd_lines:
             scd_file.write(test_line)
         scd_file.close()
-        lines = scdu.get_relevant_lines("20200917", "00:00")
+        lines = scdu.get_relevant_lines(
+            dt.datetime(2020, 9, 17, tzinfo=dt.timezone.utc)
+        )
         self.assertEqual(len(lines), 4)
 
         self.assertEqual(lines[0].duration, "-")
@@ -1043,7 +1060,7 @@ class TestSchedulerUtils(unittest.TestCase):
         self.assertEqual(lines[2].experiment, "twofsound")
         self.assertEqual(lines[2].scheduling_mode, "common")
         self.assertEqual(lines[2].kwargs, ["freq=10500"])
-        self.assertEqual(lines[3].duration, datetime.timedelta(minutes=60))
+        self.assertEqual(lines[3].duration, dt.timedelta(minutes=60))
         self.assertEqual(lines[3].priority, 2)
         self.assertEqual(lines[3].experiment, "politescan")
         self.assertEqual(lines[3].scheduling_mode, "special")
@@ -1063,7 +1080,9 @@ class TestSchedulerUtils(unittest.TestCase):
         for test_line in test_scd_lines:
             scd_file.write(test_line)
         scd_file.close()
-        lines = scdu.get_relevant_lines("20200916", "00:00")
+        lines = scdu.get_relevant_lines(
+            dt.datetime(2020, 9, 16, tzinfo=dt.timezone.utc)
+        )
         self.assertEqual(len(lines), 4)
 
         self.assertEqual(lines[0].duration, "-")
@@ -1079,7 +1098,7 @@ class TestSchedulerUtils(unittest.TestCase):
         self.assertEqual(lines[2].experiment, "twofsound")
         self.assertEqual(lines[2].scheduling_mode, "common")
         self.assertEqual(lines[2].kwargs, ["freq=10500"])
-        self.assertEqual(lines[3].duration, datetime.timedelta(minutes=60))
+        self.assertEqual(lines[3].duration, dt.timedelta(minutes=60))
         self.assertEqual(lines[3].priority, 2)
         self.assertEqual(lines[3].experiment, "politescan")
         self.assertEqual(lines[3].scheduling_mode, "special")
@@ -1088,11 +1107,9 @@ class TestSchedulerUtils(unittest.TestCase):
         """
         Use a time-of-interest that is far in the future so there is only one relevant line (should be last line)
         """
-        time_of_interest = datetime.datetime(2050, 11, 14, 0, 1)
+        time_of_interest = dt.datetime(2050, 11, 14, 0, 1, tzinfo=dt.timezone.utc)
         scdu = scd_utils.SCDUtils(self.good_scd_file, self.site_id)
-        lines = scdu.get_relevant_lines(
-            time_of_interest.strftime("%Y%m%d"), time_of_interest.strftime("%H:%M")
-        )
+        lines = scdu.get_relevant_lines(time_of_interest)
         self.assertEqual(
             [str(line).strip() for line in lines],
             ["20220929 12:00 - 0 normalscan common"],
@@ -1102,23 +1119,21 @@ class TestSchedulerUtils(unittest.TestCase):
         """
         Use a time-of-interest that is far in the future with an SCD file without any inf duration lines
         """
-        time_of_interest = datetime.datetime(2050, 11, 14, 0, 1)
+        time_of_interest = dt.datetime(2050, 11, 14, 0, 1, tzinfo=dt.timezone.utc)
         scdfile = tempfile.NamedTemporaryFile(mode="w+t", delete=False)
         scdfile.write(
             "20220929 12:00 360 0 normalscan common"
         )  # A 360 minute duration line
         scdfile.close()
         scdu = scd_utils.SCDUtils(scdfile.name, self.site_id)
-        lines = scdu.get_relevant_lines(
-            time_of_interest.strftime("%Y%m%d"), time_of_interest.strftime("%H:%M")
-        )
+        lines = scdu.get_relevant_lines(time_of_interest)
         self.assertEqual(lines, [])
 
     def test_one_prev_relevant_line(self):
         """
         Use a time-of-interest that is far in the future with an SCD file with one inf duration line in the past
         """
-        time_of_interest = datetime.datetime(2050, 11, 14, 0, 1)
+        time_of_interest = dt.datetime(2050, 11, 14, 0, 1, tzinfo=dt.timezone.utc)
         scdfile = tempfile.NamedTemporaryFile(mode="w+t", delete=False)
         scdfile.write(
             "20210903 00:00 - 0 twofsound common\n"
@@ -1131,9 +1146,7 @@ class TestSchedulerUtils(unittest.TestCase):
         )  # A 60 minute duration line
         scdfile.close()
         scdu = scd_utils.SCDUtils(scdfile.name, self.site_id)
-        lines = scdu.get_relevant_lines(
-            *time_of_interest.strftime("%Y%m%d %H:%M").split()
-        )
+        lines = scdu.get_relevant_lines(time_of_interest)
         self.assertEqual(
             [str(line).strip() for line in lines],
             ["20210903 00:00 - 0 twofsound common"],
@@ -1143,7 +1156,7 @@ class TestSchedulerUtils(unittest.TestCase):
         """
         Test trying to get relevant lines from a file with one line in the future but no infinite duration lines
         """
-        time_of_interest = datetime.datetime(2020, 9, 25, 0, 1)
+        time_of_interest = dt.datetime(2020, 9, 25, 0, 1, tzinfo=dt.timezone.utc)
         scd_file = tempfile.NamedTemporaryFile(mode="w+t", delete=False)
         scdu = scd_utils.SCDUtils(scd_file.name, self.site_id)
         test_scd_lines = [
@@ -1155,77 +1168,49 @@ class TestSchedulerUtils(unittest.TestCase):
         for test_line in test_scd_lines:
             scd_file.write(test_line)
         scd_file.close()
-        lines = scdu.get_relevant_lines(
-            *time_of_interest.strftime("%Y%m%d %H:%M").split()
-        )
+        lines = scdu.get_relevant_lines(time_of_interest)
         self.assertEqual(len(lines), 1)
         self.assertEqual(str(lines[0]).strip(), test_scd_lines[-1].strip())
-
-
-class TestRemoteServer(unittest.TestCase):
-    """
-    unittest class to test the remote server module.
-    All test methods must begin with the word 'test' to be run
-    """
-
-    def __init__(self, *args, **kwargs):
-        """
-        Init some reused variables
-        """
-        super().__init__(*args, **kwargs)
-
-        self.site_id = "lab"
-        self.good_config = f"{os.environ['BOREALISPATH']}/config/sas/sas_config.ini"
-        self.good_scd_file = (
-            f"{os.environ['BOREALISPATH']}/tests/scheduler/good_scd_file.scd"
-        )
-        self.maxDiff = None
-
-    def setUp(self):
-        """
-        Called before every test_* method
-        """
-        print("Method: ", self._testMethodName)
 
     def test_schedule_resolution(self):
         """
         Test that overlapping schedule lines are properly resolved.
         """
-        time_of_interest = datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc)
+        time_of_interest = dt.datetime(2000, 1, 1, tzinfo=dt.timezone.utc)
         line = scd_utils.ScheduleLine(
             experiment="A",
             scheduling_mode="common",
-            timestamp=datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc),
-            duration=datetime.timedelta(days=1),
+            timestamp=dt.datetime(2000, 1, 1, tzinfo=dt.timezone.utc),
+            duration=dt.timedelta(days=1),
             priority=10,
         )
-        scd = remote_server.resolve_schedule([line], time_of_interest)
+        scd = scd_utils.SCDUtils.resolve_schedule([line], time_of_interest)
         self.assertEqual(scd[0], line)
 
         line2 = scd_utils.ScheduleLine(
             experiment="B",
             scheduling_mode="common",
-            timestamp=datetime.datetime(
-                2000, 1, 1, tzinfo=datetime.timezone.utc
-            ),  # same timestamp
-            duration=datetime.timedelta(days=2),
+            timestamp=dt.datetime(2000, 1, 1, tzinfo=dt.timezone.utc),  # same timestamp
+            duration=dt.timedelta(days=2),
             priority=5,
         )
-        scd = remote_server.resolve_schedule([line, line2], time_of_interest)
+        scd = scd_utils.SCDUtils.resolve_schedule([line, line2], time_of_interest)
         self.assertEqual(scd[0], line)
         self.assertEqual(scd[1].experiment, line2.experiment)
-        self.assertEqual(scd[1].duration, datetime.timedelta(days=1))
+        self.assertEqual(scd[1].duration, dt.timedelta(days=1))
 
         line3 = scd_utils.ScheduleLine(
             experiment="C",
             scheduling_mode="common",
-            timestamp=datetime.datetime(
-                2000, 2, 1, tzinfo=datetime.timezone.utc
+            timestamp=dt.datetime(
+                2000, 2, 1, tzinfo=dt.timezone.utc
             ),  # one month later
-            duration=datetime.timedelta(days=1),
+            duration=dt.timedelta(days=1),
             priority=5,
         )
-        scd = remote_server.resolve_schedule([line, line2, line3], time_of_interest)
+        scd = scd_utils.SCDUtils.resolve_schedule(
+            [line, line2, line3], time_of_interest
+        )
         self.assertEqual(scd[0], line)
         self.assertEqual(scd[1].experiment, "B")
         self.assertEqual(scd[2], line3)
@@ -1233,18 +1218,18 @@ class TestRemoteServer(unittest.TestCase):
         line4 = scd_utils.ScheduleLine(
             experiment="D",
             scheduling_mode="common",
-            timestamp=datetime.datetime(
-                1999, 12, 31, tzinfo=datetime.timezone.utc
+            timestamp=dt.datetime(
+                1999, 12, 31, tzinfo=dt.timezone.utc
             ),  # one day early
             duration="-",  # infinite
             priority=0,
         )
-        scd = remote_server.resolve_schedule(
+        scd = scd_utils.SCDUtils.resolve_schedule(
             [line, line2, line3, line4], time_of_interest
         )
         self.assertEqual(len(scd), 6)
         self.assertEqual(scd[0].experiment, line4.experiment)
-        self.assertEqual(scd[0].duration, datetime.timedelta(days=1))
+        self.assertEqual(scd[0].duration, dt.timedelta(days=1))
         self.assertEqual(scd[1], line)
         self.assertEqual(scd[2].experiment, line2.experiment)
         self.assertEqual(
@@ -1252,34 +1237,30 @@ class TestRemoteServer(unittest.TestCase):
         )  # line4 infinite so it fills in the gaps
         self.assertEqual(scd[4], line3)
         self.assertEqual(scd[5].experiment, line4.experiment)
-        scd2 = remote_server.resolve_schedule(
+        scd2 = scd_utils.SCDUtils.resolve_schedule(
             [line4, line2, line, line3], time_of_interest
         )
         self.assertEqual(scd, scd2)  # ensure order of input list doesn't matter
 
         # Check that the schedule resolves correctly even if we are in the middle of a finite line
         # Should chop out line4 being scheduled before `new_time_of_interest`
-        new_time_of_interest = datetime.datetime(
-            2000, 1, 1, 12, tzinfo=datetime.timezone.utc
-        )
-        scd3 = remote_server.resolve_schedule(
+        new_time_of_interest = dt.datetime(2000, 1, 1, 12, tzinfo=dt.timezone.utc)
+        scd3 = scd_utils.SCDUtils.resolve_schedule(
             [line4, line2, line, line3], new_time_of_interest
         )
         self.assertEqual(len(scd3), 5)
         self.assertEqual(scd3[0].experiment, line.experiment)
-        self.assertEqual(scd3[0].duration, datetime.timedelta(days=1))
+        self.assertEqual(scd3[0].duration, dt.timedelta(days=1))
         self.assertEqual(scd3[1].experiment, line2.experiment)
 
         line5 = scd_utils.ScheduleLine(
             experiment="E",
             scheduling_mode="common",
-            timestamp=datetime.datetime(
-                2000, 1, 1, 12, tzinfo=datetime.timezone.utc
-            ),  # noon
+            timestamp=dt.datetime(2000, 1, 1, 12, tzinfo=dt.timezone.utc),  # noon
             priority=5,
-            duration=datetime.timedelta(hours=6),  # entirely during experiment A
+            duration=dt.timedelta(hours=6),  # entirely during experiment A
         )
-        scd = remote_server.resolve_schedule(
+        scd = scd_utils.SCDUtils.resolve_schedule(
             [line, line2, line3, line4, line5], time_of_interest
         )
         self.assertEqual(
@@ -1289,18 +1270,18 @@ class TestRemoteServer(unittest.TestCase):
         line6 = scd_utils.ScheduleLine(
             experiment="F",
             scheduling_mode="common",
-            timestamp=datetime.datetime(1999, 12, 31, tzinfo=datetime.timezone.utc),
+            timestamp=dt.datetime(1999, 12, 31, tzinfo=dt.timezone.utc),
             duration="-",
             priority=0,
         )
         # Test that for equal lines, the one later in the schedule list is kept
-        scd = remote_server.resolve_schedule(
+        scd = scd_utils.SCDUtils.resolve_schedule(
             [line, line2, line3, line4, line5, line6], time_of_interest
         )
         self.assertEqual(
             len([x for x in scd if x.experiment == "D"]), 0
         )  # experiment D missing, superseded by F
-        scd = remote_server.resolve_schedule(
+        scd = scd_utils.SCDUtils.resolve_schedule(
             [line, line2, line3, line5, line6, line4], time_of_interest
         )
         self.assertEqual(
@@ -1308,13 +1289,13 @@ class TestRemoteServer(unittest.TestCase):
         )  # experiment F missing, superseded by D
 
         line7 = scd_utils.ScheduleLine(
-            timestamp=datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc),
-            duration=datetime.timedelta(days=1),
+            timestamp=dt.datetime(2000, 1, 1, tzinfo=dt.timezone.utc),
+            duration=dt.timedelta(days=1),
             experiment="G",
             priority=10,
             scheduling_mode="common",
         )
-        scd = remote_server.resolve_schedule([line, line7], time_of_interest)
+        scd = scd_utils.SCDUtils.resolve_schedule([line, line7], time_of_interest)
         self.assertEqual(len(scd), 1)
         self.assertEqual(scd[0], line7)
 
@@ -1324,9 +1305,7 @@ class TestRemoteServer(unittest.TestCase):
         Test creating atq commands from scd lines
         """
         # Atq commands are: [command to run] | at [now+ x minute | -t %Y%m%d%H%M]
-        time_of_interest = datetime.datetime(
-            2022, 9, 8, 12, 34, tzinfo=datetime.timezone.utc
-        )
+        time_of_interest = dt.datetime(2022, 9, 8, 12, 34, tzinfo=dt.timezone.utc)
 
         scd_line = scd_utils.ScheduleLine(
             timestamp=time_of_interest,
@@ -1335,7 +1314,7 @@ class TestRemoteServer(unittest.TestCase):
             priority=0,
             scheduling_mode="common",
         )
-        atq_str = remote_server.format_to_atq(scd_line)
+        atq_str = scd_line.format_to_atq()
         self.assertEqual(
             atq_str,
             f"echo 'screen -d -m -S starter {os.environ['BOREALISPATH']}/scripts/steamed_hams.py "
@@ -1343,19 +1322,17 @@ class TestRemoteServer(unittest.TestCase):
             "at -t 202209081234",
         )
         scd_line.experiment = "exp"
-        atq_str = remote_server.format_to_atq(scd_line, True)
+        atq_str = scd_line.format_to_atq(True)
         self.assertEqual(
             atq_str,
             f"echo 'screen -d -m -S starter {os.environ['BOREALISPATH']}/scripts/steamed_hams.py "
             "exp release common' | "
             "at now + 1 minute",
         )
-        time_of_interest = datetime.datetime(
-            2019, 4, 3, 9, 56, tzinfo=datetime.timezone.utc
-        )
+        time_of_interest = dt.datetime(2019, 4, 3, 9, 56, tzinfo=dt.timezone.utc)
         scd_line.timestamp = time_of_interest
         scd_line.kwargs = ["this", "is", "the", "kwargs"]
-        atq_str = remote_server.format_to_atq(scd_line)
+        atq_str = scd_line.format_to_atq()
         self.assertEqual(
             atq_str,
             f"echo 'screen -d -m -S starter {os.environ['BOREALISPATH']}/scripts/steamed_hams.py "
@@ -1364,7 +1341,6 @@ class TestRemoteServer(unittest.TestCase):
         )
 
     # timeline_to_atq tests
-
     @unittest.skip
     def test_empty_timeline_to_atq(self):
         """
@@ -1383,11 +1359,7 @@ class TestRemoteServer(unittest.TestCase):
         The function should create a backup atq file with all current and future jobs
         timeline is a list of events, which are dicts with 'time', 'experiment', 'scheduling_mode', 'kwargs_string'
         """
-        get_atq_cmd = (
-            "for j in $(atq | sort -k6,6 -k3,3M -k4,4 -k5,5 |cut -f 1); "
-            'do atq |grep -P "^$j\t"; at -c "$j" | tail -n 2; done'
-        )
-        current_atq = sp.check_output(get_atq_cmd, shell=True)
+        current_atq = scd_utils.SCDUtils.get_atq()
         print(f"Current atq: {current_atq}")
 
         # Remove any existing atq backups directory
@@ -1402,18 +1374,16 @@ class TestRemoteServer(unittest.TestCase):
         # function with this empty list should not fail, and shouldn't change the atq
         timeline_list = []
         site_id = os.environ["RADAR_ID"]
-        time_of_interest = datetime.datetime(2022, 11, 14, 3, 30)
-        backup_time = time_of_interest.strftime("%Y.%m.%d.%H.%M")
-        atq_command = remote_server.timeline_to_atq(
-            timeline_list, scd_dir, time_of_interest, site_id
-        )
+        time_of_interest = dt.datetime(2022, 11, 14, 3, 30, tzinfo=dt.timezone.utc)
+        backup_time = time_of_interest.strftime("%Y%m%d-%H%M")
+        atq_command = scd_utils.SCDUtils.timeline_to_atq(timeline_list)
+
         print(f"Final atq: {atq_command}")
         self.assertEqual(current_atq, atq_command)
         self.assertTrue(os.path.exists(atq_dir))
         self.assertTrue(os.path.exists(f"{atq_dir}/{backup_time}.{site_id}.atq"))
         shutil.rmtree(atq_dir)
 
-    @unittest.skip
     def test_timeline_to_atq(self):
         """
         Test converting a timeline to atq command string
@@ -1431,75 +1401,45 @@ class TestRemoteServer(unittest.TestCase):
         The function should create a backup atq file with all current and future jobs
         timeline is a list of events, which are dicts with 'time', 'experiment', 'scheduling_mode', 'kwargs_string'
         """
-        # Remove any existing atq backups directory
-        scd_dir = f"{os.environ['BOREALISPATH']}/tests/scheduler/"
-        atq_dir = f"{scd_dir}/atq_backups/"
-        try:
-            shutil.rmtree(atq_dir)
-        except FileNotFoundError:
-            pass
 
-        t1 = datetime.datetime(2099, 10, 9, 5, 30)
-        t2 = datetime.datetime(2099, 10, 10, 0, 30)
-        t3 = datetime.datetime(2099, 10, 11, 8, 0)
+        t1 = dt.datetime(2099, 10, 9, 5, 30, tzinfo=dt.timezone.utc)
+        t2 = dt.datetime(2099, 10, 10, 0, 30, tzinfo=dt.timezone.utc)
+        t3 = dt.datetime(2099, 10, 11, 8, 0, tzinfo=dt.timezone.utc)
 
         # Of the three timeline events, the first will be considered the 'first event' in format_to_atq,
         # which means it gets scheduled NOW
         events = [
-            {
-                "time": t1,
-                "experiment": "politescan",
-                "scheduling_mode": "discretionary",
-                "kwargs_string": "-",
-            },
-            {
-                "time": t2,
-                "experiment": "normalscan",
-                "scheduling_mode": "special",
-                "kwargs_string": "hi=96",
-            },
-            {
-                "time": t3,
-                "experiment": "twofsound",
-                "scheduling_mode": "common",
-                "kwargs_string": "-",
-            },
+            scd_utils.ScheduleLine(t1, "-", "politescan", 0, "discretionary"),
+            scd_utils.ScheduleLine(t2, "-", "normalscan", 0, "special"),
+            scd_utils.ScheduleLine(t3, "-", "twofsound", 0, "common"),
         ]
-        site_id = os.environ["RADAR_ID"]
-        time_of_interest = datetime.datetime(2022, 11, 14, 3, 30)
-        backup_time = time_of_interest.strftime("%Y.%m.%d.%H.%M")
-        atq_commands = remote_server.timeline_to_atq(
-            events, scd_dir, time_of_interest, site_id
-        )
+        atq_commands = scd_utils.SCDUtils.timeline_to_atq(events)
+
+        borealis_path = os.environ["BOREALISPATH"]
+        user = borealis_path.split("/")[-2]
 
         # The atq should have the three events added, but the last one should have a date that is now + 1 minutes
-        now_plus_one_min = (
-            datetime.datetime.now() + datetime.timedelta(minutes=1)
-        ).strftime("%a %b %-d %H:%M:00 %Y")
+        now_plus_one_min = (dt.datetime.now() + dt.timedelta(minutes=1)).strftime(
+            "%a %b %-d %H:%M:00 %Y"
+        )
         new_atq = (
-            f"11\t{now_plus_one_min} a radar\nscreen -d -m -S starter "
-            "/home/radar/borealis/scripts/steamed_hams.py politescan release discretionary --kwargs_string -\n\n"
-            "12\tSat Oct 10 00:30:00 2099 a radar\nscreen -d -m -S starter "
-            "/home/radar/borealis/scripts/steamed_hams.py normalscan release special --kwargs_string hi=96\n\n"
-            "13\tSun Oct 11 08:00:00 2099 a radar\nscreen -d -m -S starter "
-            "/home/radar/borealis/scripts/steamed_hams.py twofsound release common --kwargs_string -\n\n"
+            f"11\t{now_plus_one_min} a {user}\nscreen -d -m -S starter "
+            f"{borealis_path}/scripts/steamed_hams.py politescan release discretionary\n\n"
+            f"12\tSat Oct 10 00:30:00 2099 a {user}\nscreen -d -m -S starter "
+            f"{borealis_path}/scripts/steamed_hams.py normalscan release special\n\n"
+            f"13\tSun Oct 11 08:00:00 2099 a {user}\nscreen -d -m -S starter "
+            f"{borealis_path}/scripts/steamed_hams.py twofsound release common\n\n"
         )
 
         # First remove the job numbers (matched by \d+), which are always before the tab character (\t)
-        new_commands = str(re.sub("\d+\t", "", new_atq)).split()
-        prev_commands = str(re.sub("\d+\t", "", atq_commands.decode("ascii"))).split()
+        new_commands = re.sub(r"\d+\t", "", new_atq).split()
+        prev_commands = re.sub(r"\d+\t", "", atq_commands.decode("utf-8")).split()
         self.assertEqual(prev_commands, new_commands)
-        self.assertTrue(os.path.exists(atq_dir))
-        self.assertTrue(os.path.exists(f"{atq_dir}/{backup_time}.{site_id}.atq"))
-
-        # Now remove the atq directory, remove the future at jobs submitted, and return
-        shutil.rmtree(atq_dir)
-        # TODO: Remove added jobs
 
 
-class TestLocalServer(unittest.TestCase):
+class TestCentralServer(unittest.TestCase):
     """
-    unittest class to test the local server module. All test methods must begin with the word 'test' to be run
+    unittest class to test the central_scd_server module. All test methods must begin with the word 'test' to be run.
     """
 
     def __init__(self, *args, **kwargs):
@@ -1531,7 +1471,7 @@ class TestLocalServer(unittest.TestCase):
             pass
         self.assertFalse(os.path.exists(swg_dir))
 
-        local_scd_server.SWG(scd_dir)
+        central_scd_server.SWG(scd_dir)
         self.assertTrue(os.path.exists(swg_dir))
         self.assertTrue(os.path.exists(swg_dir))
         # Remove the swg dir again
@@ -1545,7 +1485,7 @@ class TestLocalServer(unittest.TestCase):
         """
         scd_dir = f"{os.environ['BOREALISPATH']}/tests/scheduler/"
         swg_dir = scd_dir + "schedules/"
-        swg = local_scd_server.SWG(scd_dir)
+        swg = central_scd_server.SWG(scd_dir)
         self.assertTrue(os.path.exists(scd_dir))
         new = swg.new_swg_file_available()
         self.assertFalse(
@@ -1555,15 +1495,6 @@ class TestLocalServer(unittest.TestCase):
         shutil.rmtree(swg_dir)
         self.assertFalse(os.path.exists(swg_dir))
 
-    # pull_new_swg_file
-    # def test_swg_pull(self):  # Nothing to really test here
-    # """
-    # Test pulling new git files
-    # """
-    # scd_dir = f"{os.environ['BOREALISPATH']}/tests/scheduler/"
-    # swg = local_scd_server.SWG(scd_dir)
-    # self.assertTrue(os.path.exists(scd_dir))
-
     # parse_swg_to_scd
     def test_swg_dne(self):
         """
@@ -1572,8 +1503,8 @@ class TestLocalServer(unittest.TestCase):
         scd_dir = f"{os.environ['BOREALISPATH']}/tests/scheduler/"
         site_id = os.environ["RADAR_ID"]
 
-        modes = local_scd_server.EXPERIMENTS[site_id]
-        swg = local_scd_server.SWG(scd_dir)
+        modes = central_scd_server.EXPERIMENTS[site_id]
+        swg = central_scd_server.SWG(scd_dir)
 
         # Make sure to remove any existing test schedules dir that was just cloned
         try:
@@ -1596,17 +1527,17 @@ class TestLocalServer(unittest.TestCase):
         swg_dir = scd_dir + "schedules/"
 
         # Need to ensure we put in the current month to the schedule file and set first run to True
-        mm_yyyy = datetime.datetime.today().strftime("%B %Y")
-        yyyy = datetime.datetime.today().strftime("%Y")
-        yyyymm = datetime.datetime.today().strftime("%Y%m")
+        mm_yyyy = dt.datetime.today().strftime("%B %Y")
+        yyyy = dt.datetime.today().strftime("%Y")
+        yyyymm = dt.datetime.today().strftime("%Y%m")
         new_swg_file = f"{scd_dir}/schedules/{yyyy}/{yyyymm}"
         with open(swg_file, "r") as f:
             swg_data = f.read()
         with open(new_swg_file, "w") as f:
             f.write(mm_yyyy + swg_data)
 
-        modes = local_scd_server.EXPERIMENTS[site_id]
-        swg = local_scd_server.SWG(scd_dir)
+        modes = central_scd_server.EXPERIMENTS[site_id]
+        swg = central_scd_server.SWG(scd_dir)
         self.assertTrue(os.path.exists(scd_dir))
         self.assertTrue(os.path.exists(swg_file))
         self.assertTrue(os.path.exists(new_swg_file))
@@ -1629,9 +1560,9 @@ class TestLocalServer(unittest.TestCase):
         swg_dir = scd_dir + "schedules/"
 
         # Need to ensure we put in the current month to the schedule file and set first run to True
-        mm_yyyy = datetime.datetime.today().strftime("%B %Y")
-        yyyy = datetime.datetime.today().strftime("%Y")
-        yyyymm = datetime.datetime.today().strftime("%Y%m")
+        mm_yyyy = dt.datetime.today().strftime("%B %Y")
+        yyyy = dt.datetime.today().strftime("%Y")
+        yyyymm = dt.datetime.today().strftime("%Y%m")
         new_swg_file = f"{scd_dir}/schedules/{yyyy}/{yyyymm}.swg"
         with open(swg_file, "r") as f:
             swg_data = f.read()
@@ -1640,8 +1571,8 @@ class TestLocalServer(unittest.TestCase):
         with open(new_swg_file, "w") as f:
             f.write(f"{mm_yyyy}\n{swg_data}")
 
-        modes = local_scd_server.EXPERIMENTS[site_id]
-        swg = local_scd_server.SWG(scd_dir)
+        modes = central_scd_server.EXPERIMENTS[site_id]
+        swg = central_scd_server.SWG(scd_dir)
         self.assertTrue(os.path.exists(scd_dir))
         self.assertTrue(os.path.exists(swg_file))
         self.assertTrue(os.path.exists(new_swg_file))
@@ -1665,12 +1596,12 @@ class TestLocalServer(unittest.TestCase):
         swg_dir = scd_dir + "schedules/"
 
         # Need to ensure we put in the current month to the schedule file and set first run to True
-        mm_yyyy = datetime.datetime.today().strftime("%B %Y")
-        yyyy = datetime.datetime.today().strftime("%Y")
-        yyyymm = datetime.datetime.today().strftime("%Y%m")
+        mm_yyyy = dt.datetime.today().strftime("%B %Y")
+        yyyy = dt.datetime.today().strftime("%Y")
+        yyyymm = dt.datetime.today().strftime("%Y%m")
         new_swg_file = f"{swg_dir}/{yyyy}/{yyyymm}.swg"
-        modes = local_scd_server.EXPERIMENTS[site_id]
-        swg = local_scd_server.SWG(scd_dir)
+        modes = central_scd_server.EXPERIMENTS[site_id]
+        swg = central_scd_server.SWG(scd_dir)
 
         with open(swg_file, "r") as f:
             swg_data = f.read()
