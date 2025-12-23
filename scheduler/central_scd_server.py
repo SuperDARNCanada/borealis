@@ -2,7 +2,7 @@
 
 """
 central_scd_server.py
-~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
 Monitors for new SWG files and adds the SWG info to the scd if there is an update.
 
 :copyright: 2022 SuperDARN Canada
