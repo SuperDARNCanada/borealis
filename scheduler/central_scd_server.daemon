@@ -24,4 +24,4 @@ source "${HOME}/.bashrc"
 source "${SCHEDULING_ENV}/bin/activate"
 
 # Run the script
-python3 "${BOREALISPATH}/scheduler/local_scd_server.py"
+python3 "${BOREALISPATH}/scheduler/central_scd_server.py"

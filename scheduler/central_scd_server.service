@@ -14,23 +14,23 @@
 #   - variable ${BOREALISPATH} defined in either ${HOME}/.profile or ${HOME}/.bashrc
 #
 # This script should be run via a systemd daemon by placing this file in the following location:
-# `/usr/lib/systemd/system/local_scd_server.service`
+# `/usr/lib/systemd/system/central_scd_server.service`
 #
 # Then, enable the service to start on reboot with
-# `sudo systemctl enable local_scd_server.service`
+# `sudo systemctl enable central_scd_server.service`
 #
 # Start the service with
-# `sudo systemctl start local_scd_server.service`
+# `sudo systemctl start central_scd_server.service`
 #
 # Check the status with
-# `[sudo] systemctl status local_scd_server.service`
+# `[sudo] systemctl status central_scd_server.service`
 #
 [Unit]
 Description=Borealis Scheduling Server
 
 [Service]
 User=radman
-ExecStart=%h/borealis/scheduler/local_scd_server.daemon
+ExecStart=%h/borealis/scheduler/central_scd_server.daemon
 Restart=always
 
 [Install]

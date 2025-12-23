@@ -119,6 +119,8 @@ def make_schedule(scd_dir: str, site_id: str):
         tee_print(f"\n{start_time} - Scheduler booted", f)
         tee_print("Making schedule...", f)
 
+    backup_atq(time_of_interest, scd_dir, site_id)
+
     try:
         new_atq_str = scd_util.parse_and_schedule(time_of_interest)
         with open(log_file, "ab") as f:
@@ -144,10 +146,14 @@ def make_schedule(scd_dir: str, site_id: str):
         sp.call(command.split(), shell=True)
 
 
+def parser():
+    argparser = argparse.ArgumentParser(description="Schedules new SCD file entries")
+    argparser.add_argument("scd-dir", help="The scd working directory")
+    return argparser
+
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Schedules new SCD file entries")
-    parser.add_argument("scd-dir", help="The scd working directory")
-    args = parser.parse_args()
+    args = parser().parse_args()
 
     scd_dir = args.scd_dir
     site_id = os.environ["RADAR_ID"]

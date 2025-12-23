@@ -70,7 +70,7 @@ The latest release of Borealis includes several major software changes. These in
 * ``txdata``: this data product is no longer supported.
 * **Pulse sequence timing**: the first pulse in each sequence now will always start on a millisecond boundary.
 * **RX/TX center frequencies**: these can be automatically determined based on the slices of an experiment.
-* **Scheduling daemon**: for running ``local_scd_server.py`` persistently.
+* **Scheduling daemon**: for running ``central_scd_server.py`` persistently.
 * **Code style**: ``ruff`` tool used for linting/formatting.
 
 Limitations
