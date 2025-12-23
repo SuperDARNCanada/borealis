@@ -5,7 +5,7 @@ central_scd_server
 
 .. argparse::
    :module: scheduler.central_scd_server
-   :func: argparser
+   :func: parser
    :prog: central_scd_server.py
 
 
@@ -14,7 +14,7 @@ make_atq.py
 
 .. argparse::
    :module: scheduler.make_atq
-   :func: argparser
+   :func: parser
    :prog: make_atq.py
 
 
