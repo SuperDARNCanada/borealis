@@ -8,6 +8,7 @@ The Simpsons, Season 7 Episode 21
 """
 
 import argparse
+import fcntl
 import sys
 import subprocess as sp
 import os
@@ -75,7 +76,7 @@ def steamed_hams_parser():
     """
 
     parser = argparse.ArgumentParser(
-        usage="""steamed_hams.py experiment_module runtime_mode scheduling_mode [-h] [--embargo] [--rawacf-format {hdf5,dmap}] [--realtime-off] [--kwargs ...]""",
+        usage="""steamed_hams.py experiment_module run_mode scheduling_mode [-h] [--embargo] [--rawacf-format {hdf5,dmap}] [--realtime-off] [--kwargs ...]""",
         formatter_class=argparse.RawTextHelpFormatter,
     )
     parser.add_argument(
@@ -83,7 +84,7 @@ def steamed_hams_parser():
         help="The name of the module in the experiments directory that contains your experiment class, e.g. `normalscan`",
     )
     parser.add_argument(
-        "runtime_mode",
+        "run_mode",
         help="""Runtime mode.
         `release`: runs Python modules with `-O -u` for faster performance, generates antennas_iq and rawacf files.
         `debug`: runs `usrp_driver` module with `gdb`, limits performance to at most one pulse sequence per second.
@@ -124,6 +125,11 @@ def steamed_hams_parser():
 
 
 if __name__ == "__main__":
+    # Ensure that only one copy of steamed_hams.py runs at a time
+    lock_file = "/tmp/.steamed_hams"
+    lock_f = open(lock_file, "w")
+    retval = fcntl.flock(lock_f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+
     PYTHON_VERSION = os.environ["PYTHON_VERSION"]
 
     parser = steamed_hams_parser()
@@ -171,7 +177,7 @@ if __name__ == "__main__":
     # Configure python first, starting with options for each module
     options = {
         "brian": "",
-        "radar_control": f"{args.experiment_module} {args.scheduling_mode_type}",
+        "radar_control": f"{args.experiment_module} {args.scheduling_mode}",
         "data_write": f"{data_write_args}",
         "realtime": "",
         "rx_signal_processing": "",
@@ -195,7 +201,7 @@ if __name__ == "__main__":
 
     # Bypass the python wrapper to run cuda-gdb
     if mode == "debug":
-        modules["usrp_driver"] = f"source mode {mode}; {c_debug_opts} usrp_driver"
+        modules["usrp_driver"] = f"{c_debug_opts} build/{mode}/bin/usrp_driver"
 
     # Temporary fix to give us access to exactly what's printed to console from Borealis
     log_dir = "/data/borealis_logs"

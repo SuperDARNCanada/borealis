@@ -45,7 +45,7 @@ def main():
     args = driver_parser().parse_args()
 
     path = os.environ["BOREALISPATH"]
-    cmd = f"source {path}/mode {args.run_mode}; {args.c_debug_opts} usrp_driver"
+    cmd = f"{args.c_debug_opts} {path}/build/{args.run_mode}/bin/usrp_driver"
     log.debug("usrp_driver start command", command=cmd)
 
     # If you are here to work on the code below this comment I bid you good luck!
