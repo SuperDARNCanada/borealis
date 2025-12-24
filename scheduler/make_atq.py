@@ -18,12 +18,10 @@ for this setup is a file called ``.borealis.env`` defined in the user's home dir
 monitor-schedule.path::
 
    [Unit]
-   Description="Monitor ${HOME}/borealis_schedules/${RADAR_ID}.scd for changes"
+   Description="Monitor schedule file and update schedule when changed."
 
    [Path]
-   User=radar
-   EnvironmentFile=%h/.borealis.env
-   PathChanged=%h/borealis_schedules/${RADAR_ID}.scd
+   PathChanged=/home/radar/borealis_schedules/lab.scd
    Unit=schedule-radar.service
 
    [Install]
@@ -36,8 +34,9 @@ schedule-radar.service::
 
    [Service]
    User=radar
-   EnvironmentFile=%h/.borealis.env
-   ExecStart=${BOREALISPATH}/borealis_env${PYTHON_VERSION}/bin/python ${BOREALISPATH}/scheduler/make_atq.py %h/borealis_schedules/${RADAR_ID}.scd
+   Group=users
+   EnvironmentFile=/home/radar/.borealis.env
+   ExecStart=/bin/bash -c '${BOREALISPATH}/borealis_env${PYTHON_VERSION}/bin/python${PYTHON_VERSION} ${BOREALISPATH}/scheduler/make_atq.py /home/radar/borealis_schedules/'
 
    [Install]
    WantedBy=multi-user.target
@@ -139,8 +138,7 @@ def make_schedule(scd_dir: str, site_id: str):
         relevant_lines = scd_util.get_relevant_lines(time_of_interest)
         message = f"make_atq @ {site_id}: Failed to schedule {[str(x) for x in relevant_lines]}"
         command = f"""
-            curl --silent --header "Content-type: application/json"
-            --data "{{'text':{message}}}" "${{!SLACK_WEBHOOK_{site_id.upper()}}}"
+            curl --silent --header "Content-type: application/json" --data "{{'text':{message}}}" "${{!SLACK_WEBHOOK}}"
         """
 
         sp.call(command.split(), shell=True)
@@ -148,7 +146,7 @@ def make_schedule(scd_dir: str, site_id: str):
 
 def parser():
     argparser = argparse.ArgumentParser(description="Schedules new SCD file entries")
-    argparser.add_argument("scd-dir", help="The scd working directory")
+    argparser.add_argument("scd_dir", help="The scd working directory")
     return argparser
 
 

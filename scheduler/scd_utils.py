@@ -132,7 +132,7 @@ class ScheduleLine:
         try:
             sp.run(
                 [
-                    "python3",
+                    f"{os.environ['BOREALISPATH']}/borealis_env{os.environ['PYTHON_VERSION']}/bin/python3",
                     f"{os.environ['BOREALISPATH']}/tests/experiments/test_as_site.py",
                 ]
                 + args,

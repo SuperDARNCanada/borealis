@@ -1416,7 +1416,7 @@ class TestSchedulerUtils(unittest.TestCase):
         atq_commands = scd_utils.SCDUtils.timeline_to_atq(events)
 
         borealis_path = os.environ["BOREALISPATH"]
-        user = borealis_path.split("/")[-2]
+        user = os.environ["USER"]
 
         # The atq should have the three events added, but the last one should have a date that is now + 1 minutes
         now_plus_one_min = (dt.datetime.now() + dt.timedelta(minutes=1)).strftime(

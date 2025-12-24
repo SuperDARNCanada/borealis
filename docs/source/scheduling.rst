@@ -134,12 +134,10 @@ Here are the steps to configure scheduling:
 monitor-schedule.path::
 
    [Unit]
-   Description="Monitor ${HOME}/borealis_schedules/${RADAR_ID}.scd for changes"
+   Description="Monitor schedule file and update schedule when changed."
 
    [Path]
-   User=radar
-   EnvironmentFile=%h/.borealis.env
-   PathChanged=%h/borealis_schedules/${RADAR_ID}.scd
+   PathChanged=/home/radar/borealis_schedules/lab.scd
    Unit=schedule-radar.service
 
    [Install]
@@ -152,8 +150,9 @@ schedule-radar.service::
 
    [Service]
    User=radar
-   EnvironmentFile=%h/.borealis.env
-   ExecStart=${BOREALISPATH}/borealis_env${PYTHON_VERSION}/bin/python ${BOREALISPATH}/scheduler/make_atq.py %h/borealis_schedules/${RADAR_ID}.scd
+   Group=users
+   EnvironmentFile=/home/radar/.borealis.env
+   ExecStart=/bin/bash -c '${BOREALISPATH}/borealis_env${PYTHON_VERSION}/bin/python${PYTHON_VERSION} ${BOREALISPATH}/scheduler/make_atq.py /home/radar/borealis_schedules/'
 
    [Install]
    WantedBy=multi-user.target
