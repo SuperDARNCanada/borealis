@@ -434,7 +434,7 @@ class DataWrite:
             self._write_file(slice_data, two_hr_file_with_type, "rawacf")
 
             # Send rawacf data to realtime (if there is any)
-            all_slice_data[slice_num] = (self.timestamp, slice_data.to_dmap())
+            all_slice_data[slice_num] = slice_data.to_dmap()
         so.send_pyobj(
             self.realtime_socket, self.options.rt_to_dw_identity, all_slice_data
         )
