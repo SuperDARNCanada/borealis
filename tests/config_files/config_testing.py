@@ -502,10 +502,10 @@ class TestConfig(unittest.TestCase):
             "pulse_sequence": scf.SEQUENCE_7P,  # default
             "tau_spacing": scf.TAU_SPACING_7P,  # default
             "pulse_len": scf.PULSE_LEN_45KM,  # default
-            "num_ranges": 75,  # default
+            "num_ranges": scf.STD_NUM_RANGES,  # default
             "first_range": scf.STD_FIRST_RANGE,  # default
-            "intt": scf.INTT_7P,  # default
-            "beam_angle": scf.STD_16_BEAM_ANGLE,  # default
+            "intt": scf.INTT_MS,  # default
+            "beam_angle": scf.STD_BEAM_ANGLES,  # default
             "rx_beam_order": [0],  # smallest base case
             "tx_beam_order": [0],  # smallest base case
             "rx_main_antennas": [
@@ -554,10 +554,10 @@ class TestConfig(unittest.TestCase):
             "pulse_sequence": scf.SEQUENCE_7P,  # default
             "tau_spacing": scf.TAU_SPACING_7P,  # default
             "pulse_len": scf.PULSE_LEN_45KM,  # default
-            "num_ranges": 75,  # default
+            "num_ranges": scf.STD_NUM_RANGES,  # default
             "first_range": scf.STD_FIRST_RANGE,  # default
-            "intt": scf.INTT_7P,  # default
-            "beam_angle": scf.STD_16_BEAM_ANGLE,  # default
+            "intt": scf.INTT_MS,  # default
+            "beam_angle": scf.STD_BEAM_ANGLES,  # default
             "rx_beam_order": [0],  # smallest base case
             "tx_beam_order": [0],  # smallest base case
             "rx_intf_antennas": [
@@ -606,10 +606,10 @@ class TestConfig(unittest.TestCase):
             "pulse_sequence": scf.SEQUENCE_7P,  # default
             "tau_spacing": scf.TAU_SPACING_7P,  # default
             "pulse_len": scf.PULSE_LEN_45KM,  # default
-            "num_ranges": 75,  # default
+            "num_ranges": scf.STD_NUM_RANGES,  # default
             "first_range": scf.STD_FIRST_RANGE,  # default
-            "intt": scf.INTT_7P,  # default
-            "beam_angle": scf.STD_16_BEAM_ANGLE,  # default
+            "intt": scf.INTT_MS,  # default
+            "beam_angle": scf.STD_BEAM_ANGLES,  # default
             "rx_beam_order": [0],  # smallest base case
             "tx_beam_order": [0],  # smallest base case
             "tx_antennas": [
@@ -835,6 +835,46 @@ class TestConfig(unittest.TestCase):
             json.dump(config, f)
 
         MockOptions()  # should run without issue
+
+    def testNumBeamsInvalid(self):
+        """num_beams field zero or negative"""
+        with open(self.config_file, "r") as f:
+            config = json.load(f)
+
+        config["num_beams"] = 0
+        with open(self.config_file, "w") as f:
+            json.dump(config, f)
+        self.assertRaisesRegex(ValueError, "num_beams must be > 0", MockOptions)
+
+        config["num_beams"] = -1
+        with open(self.config_file, "w") as f:
+            json.dump(config, f)
+        self.assertRaisesRegex(ValueError, "num_beams must be > 0", MockOptions)
+
+    def testNumRangesInvalid(self):
+        """num_ranges field zero or negative"""
+        with open(self.config_file, "r") as f:
+            config = json.load(f)
+
+        config["num_ranges"] = 0
+        with open(self.config_file, "w") as f:
+            json.dump(config, f)
+        self.assertRaisesRegex(ValueError, "num_ranges must be > 0", MockOptions)
+
+        config["num_ranges"] = -1
+        with open(self.config_file, "w") as f:
+            json.dump(config, f)
+        self.assertRaisesRegex(ValueError, "num_ranges must be > 0", MockOptions)
+
+    def testScanDirection(self):
+        """scan_direction field invalid"""
+        with open(self.config_file, "r") as f:
+            config = json.load(f)
+
+        config["scan_direction"] = "backwards"  # expect "forward" or "reverse"
+        with open(self.config_file, "w") as f:
+            json.dump(config, f)
+        self.assertRaisesRegex(ValueError, "scan_direction", MockOptions)
 
 
 if __name__ == "__main__":

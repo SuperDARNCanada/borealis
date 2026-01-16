@@ -134,6 +134,9 @@ class Options:
     min_tau_spacing_length: float = field(
         init=False
     )  #: Minimum duration between pulses in a pulse sequence [μs]
+    num_beams: int = field(init=False)  #: Default number of beam directions to scan
+    num_ranges: int = field(init=False)  #: Default number of range gates
+    scan_direction: float = field(init=False)  #: Scan direction, "forward" meaning CCW and "reverse" meaning CW
 
     n200_addrs: list[str] = field(init=False)
     n200_count: int = field(init=False)
@@ -378,6 +381,10 @@ class Options:
         self.max_freq = float(raw_config["max_freq"])  # Hz
         self.min_pulse_length = float(raw_config["min_pulse_length"])  # us
         self.min_tau_spacing_length = float(raw_config["min_tau_spacing_length"])  # us
+        self.num_beams = int(raw_config["num_beams"])
+        self.num_ranges = int(raw_config["num_ranges"])
+        self.scan_direction = raw_config["scan_direction"]
+
         # Minimum pulse separation is the minimum before the experiment treats it as a single pulse
         # (transmitting zeroes or no receiving between the pulses) 125 us is approx two TX/RX times
         self.min_pulse_separation = float(raw_config["min_pulse_separation"])  # us
@@ -531,6 +538,13 @@ class Options:
         if len(self.rx_intf_antennas) > 0:
             if len(self.rx_intf_antennas) != len(set(self.rx_intf_antennas)):
                 raise ValueError("rx_intf_antennas has duplicate values")
+
+        if self.num_beams <= 0:
+            raise ValueError("num_beams must be > 0")
+        if self.num_ranges <= 0:
+            raise ValueError("num_ranges must be > 0")
+        if self.scan_direction not in ["forward", "reverse"]:
+            raise ValueError("scan_direction must be either `forward` or `reverse`")
 
         # TODO: Test that realtime_address and router_address are valid addresses
 
