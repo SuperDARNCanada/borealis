@@ -136,7 +136,7 @@ class Options:
     )  #: Minimum duration between pulses in a pulse sequence [μs]
     num_beams: int = field(init=False)  #: Default number of beam directions to scan
     num_ranges: int = field(init=False)  #: Default number of range gates
-    scan_direction: float = field(init=False)  #: Scan direction, "forward" meaning CCW and "reverse" meaning CW
+    scan_direction: float = field(init=False)  #: Scan direction, "forward" meaning CW and "reverse" meaning CCW
 
     n200_addrs: list[str] = field(init=False)
     n200_count: int = field(init=False)
