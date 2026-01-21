@@ -267,7 +267,7 @@ class SCDUtils:
         ).stdout
         if retval is None:
             retval = b""
-        return retval
+        return retval.decode('utf-8')
 
     def create_line(
         self,
@@ -677,7 +677,7 @@ class SCDUtils:
         :type   timeline:   list[ScheduleLine]
 
         :returns:   output of the executed atq command
-        :rtype:     bytes
+        :rtype:     str
         """
 
         cls.clear_atq()

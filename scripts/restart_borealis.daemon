@@ -15,19 +15,7 @@
 #     within .profile
 #   - RADAR_ID, BOREALISPATH, and PYTHON_VERSION defined in ~/.profile
 #
-# This script should be ran as a systemd daemon. An example .service file is shown below:
-# /usr/lib/systemd/system/restart_borealis.service
-# [Unit]
-# Description=Restart borealis daemon
-#
-# [Service]
-# User=radar
-# EnvironmentFile=%h/.borealis.env
-# ExecStart=${BOREALISPATH}/scripts/restart_borealis.daemon
-# Restart=always
-#
-# [Install]
-# WantedBy=multi-user.target
+# This script should be ran as a systemd daemon. See `restart_borealis.service`
 #
 # Reference: https://www.howtogeek.com/devops/how-to-send-a-message-to-slack-from-a-bash-script/
 

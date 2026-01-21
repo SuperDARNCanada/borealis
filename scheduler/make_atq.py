@@ -122,10 +122,10 @@ def make_schedule(scd_dir: str, site_id: str):
 
     try:
         new_atq_str = scd_util.parse_and_schedule(time_of_interest)
-        with open(log_file, "ab") as f:
-            f.write(log_msg_header.encode())
+        with open(log_file, "a") as f:
+            f.write(log_msg_header)
             f.write(new_atq_str)
-            f.write("\n".encode())
+            f.write("\n")
     except ScheduleError as e:
         logtime = time_of_interest.strftime("%c")
         error_msg = (

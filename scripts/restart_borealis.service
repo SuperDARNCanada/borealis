@@ -1,0 +1,13 @@
+# Place me at /usr/lib/systemd/system/restart_borealis.service
+# Modify the `User` field as necessary to match your system.
+[Unit]
+Description=Restart borealis daemon
+
+[Service]
+User=radar
+EnvironmentFile=%h/.borealis.env
+ExecStart=${BOREALISPATH}/scripts/restart_borealis.daemon
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

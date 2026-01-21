@@ -1433,7 +1433,7 @@ class TestSchedulerUtils(unittest.TestCase):
 
         # First remove the job numbers (matched by \d+), which are always before the tab character (\t)
         new_commands = re.sub(r"\d+\t", "", new_atq).split()
-        prev_commands = re.sub(r"\d+\t", "", atq_commands.decode("utf-8")).split()
+        prev_commands = re.sub(r"\d+\t", "", atq_commands).split()
         self.assertEqual(prev_commands, new_commands)
 
 
