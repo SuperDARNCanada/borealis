@@ -871,7 +871,7 @@ class TestConfig(unittest.TestCase):
         with open(self.config_file, "r") as f:
             config = json.load(f)
 
-        config["scan_direction"] = "backwards"  # expect "forward" or "reverse"
+        config["scan_direction"] = "forward"  # expect "clockwise" or "counterclockwise"
         with open(self.config_file, "w") as f:
             json.dump(config, f)
         self.assertRaisesRegex(ValueError, "scan_direction", MockOptions)
