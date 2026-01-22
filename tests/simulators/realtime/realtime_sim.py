@@ -6,15 +6,13 @@ Simulator for testing realtime.py. This script serves mock data to ``realtime.re
 and verifies that fitted data is received over a corresponding socket.
 """
 
-import json
 from pathlib import Path
 import pickle
 import sys
 import threading
 import time
-import zlib
 
-import dmap
+import pydarnio
 import zmq
 
 sys.path.append(str(Path(__file__).resolve().parents[3]))
@@ -56,7 +54,7 @@ if __name__ == "__main__":
 
     # Load in a record of data
     infile = str(Path(__file__).resolve().parent) + "/20240912.1905.41.sas.a.rawacf"
-    rawacf_data = {0: (0.0, dmap.read_rawacf(infile))}
+    rawacf_data = {0: pydarnio.read_rawacf(infile, mode='strict')}
 
     for i in range(
         5
@@ -67,7 +65,7 @@ if __name__ == "__main__":
 
         # Get the fitacf data back from realtime_sim
         recvd_data = fitacf_sink.recv()
-        fitacf_data = json.loads(zlib.decompress(recvd_data).decode("utf-8"))
+        fitacf_data = pydarnio.read_fitacf(recvd_data, mode='strict')
 
         # Log the data to the console
         log.info("fitacf data received")
