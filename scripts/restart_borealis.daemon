@@ -15,30 +15,21 @@
 #     within .profile
 #   - RADAR_ID, BOREALISPATH, and PYTHON_VERSION defined in ~/.profile
 #
-# This script should be ran as a systemd daemon. An example .service file is shown below:
-# /usr/lib/systemd/system/restart_borealis.service
-# [Unit]
-# Description=Restart borealis daemon
-#
-# [Service]
-# User=radar
-# ExecStart=/home/radar/borealis/scripts/restart_borealis.daemon
-# Restart=always
-#
-# [Install]
-# WantedBy=multi-user.target
+# This script should be ran as a systemd daemon. See `restart_borealis.service`
 #
 # Reference: https://www.howtogeek.com/devops/how-to-send-a-message-to-slack-from-a-bash-script/
 
 ###################################################################################################
 
 source "${HOME}/.profile"   # Source BOREALISPATH, RADAR_ID, PYTHON_VERSION, and SLACK_WEBHOOK
-source "${BOREALISPATH}/borealis_env${PYTHON_VERSION}/bin/activate"
 
 readonly THRESHOLD=3     # Number of consecutive Borealis restarts before sending alert
 readonly INTERVAL=300    # Time in seconds between restart_borealis.py calls
 
-readonly LOGFILE="${HOME}/logs/restart_borealis.log"
+# Create log file. New file created daily
+readonly LOGGING_DIR="${HOME}/logs/restart_borealis/$(date +%Y/%m)"
+mkdir --parents $LOGGING_DIR
+readonly LOGFILE="${LOGGING_DIR}/$(date +%Y%m%d).restart_borealis.log"
 
 ###################################################################################################
 
@@ -49,7 +40,7 @@ printf "\n$TIMESTAMP Daemon $0 starting on $(hostname) for ${RADAR_ID}\n"
 
 restarts=0  # Number of consecutive restarts
 while true; do
-    python3 /home/radar/borealis/scripts/restart_borealis.py --restart-after-seconds $INTERVAL
+    ${BOREALISPATH}/borealis_env${PYTHON_VERSION}/bin/python3 /home/radar/borealis/scripts/restart_borealis.py --restart-after-seconds $INTERVAL
     retval=$?
     if [[ $retval -eq 0 ]]; then
         restarts=0

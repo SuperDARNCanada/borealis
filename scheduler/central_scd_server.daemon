@@ -15,7 +15,7 @@
 #   - variable ${BOREALISPATH} defined in either ${HOME}/.profile or ${HOME}/.bashrc
 #
 # This script should be run via a systemd service in the following location:
-# `/usr/lib/systemd/system/local_scd_server.service`
+# `/usr/lib/systemd/system/central_scd_server.service`
 
 # Source our environment
 source "${HOME}/.scheduler"
@@ -24,4 +24,4 @@ source "${HOME}/.bashrc"
 source "${SCHEDULING_ENV}/bin/activate"
 
 # Run the script
-python3 "${BOREALISPATH}/scheduler/local_scd_server.py"
+python3 "${BOREALISPATH}/scheduler/central_scd_server.py"

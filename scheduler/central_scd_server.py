@@ -1,8 +1,8 @@
 #!/usr/bin/python3
 
 """
-local_scd_server.py
-~~~~~~~~~~~~~~~~~~~
+central_scd_server.py
+~~~~~~~~~~~~~~~~~~~~~
 Monitors for new SWG files and adds the SWG info to the scd if there is an update.
 
 :copyright: 2022 SuperDARN Canada
@@ -99,6 +99,8 @@ class SWG(object):
     def __init__(self, scd_dir):
         super().__init__()
         self.scd_dir = scd_dir
+
+        os.makedirs(self.scd_dir, exist_ok=True)
 
         # Determine if the git repo for schedules exists, and clone it if it doesn't
         try:
@@ -242,26 +244,30 @@ class SWG(object):
         return parsed_params
 
 
-def main():
-    """ """
-    parser = argparse.ArgumentParser(
+def parser():
+    argparser = argparse.ArgumentParser(
         description="Automatically schedules new events from the SWG"
     )
-    parser.add_argument("--scd-dir", required=False, help="The scd working directory")
-    parser.add_argument(
+    argparser.add_argument(
+        "--scd-dir", required=False, help="The scd working directory"
+    )
+    argparser.add_argument(
         "--force",
         action="store_true",
         help="Force an update to the schedules for the next month",
     )
-    parser.add_argument(
+    argparser.add_argument(
         "--first-run",
         action="store_true",
         help="This will generate the first set of schedule files if running on a fresh directory. "
         "If the next month schedule is available, you will need to roll back the SWG schedule "
         "folder back to the last commit before running in continuous operation.",
     )
+    return argparser
 
-    args = parser.parse_args()
+
+def main():
+    args = parser().parse_args()
 
     scd_dir = os.environ.get("LOCAL_SCHEDULE_DIR", args.scd_dir)
     scd_logs = scd_dir + "/logs"
@@ -278,8 +284,10 @@ def main():
 
     force_next_month = args.force
 
-    current_time = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-    print(f"{current_time} - Starting local_scd_server.py...")
+    current_time = datetime.datetime.now(datetime.timezone.utc).strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
+    print(f"{current_time} - Starting central_scd_server.py...")
 
     if args.first_run:
         # Create the .scd files for each site if running for first time
@@ -290,7 +298,9 @@ def main():
 
     while True:
         if swg.new_swg_file_available() or args.first_run or force_next_month:
-            current_time = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+            current_time = datetime.datetime.now(datetime.timezone.utc).strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
             print(f"{current_time} - New swg file available")
 
             swg.pull_new_swg_file()

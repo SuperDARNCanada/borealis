@@ -7,8 +7,10 @@ Utilities for working with scd files
 :copyright: 2019 SuperDARN Canada
 """
 
-import os
+import bisect
+import copy
 import datetime as dt
+import os
 import shutil
 import subprocess as sp
 import sys
@@ -19,6 +21,14 @@ from pydantic import field_validator, Field, model_validator, ConfigDict
 
 borealis_path = os.environ["BOREALISPATH"]
 sys.path.append(f"{borealis_path}/tests/experiments")
+
+
+class ScheduleError(Exception):
+    """
+    Error in the schedule.
+    """
+
+    pass
 
 
 @dataclass(
@@ -52,16 +62,22 @@ class ScheduleLine:
         )
         return line
 
-    def format_to_atq(self):
+    def format_to_atq(self, first_event_flag=False):
         call = (
-            f"{self.experiment}"
+            f"echo 'screen -d -m -S starter {borealis_path}/scripts/steamed_hams.py"
+            f" {self.experiment}"
             f" release"
             f" {self.scheduling_mode}"
             f"{' --embargo' if self.embargo else ''}"
             f"{' --rawacf-format=' + self.rawacf_format if self.rawacf_format is not None else ''}"
-            f"{' --kwargs ' + ' '.join(self.kwargs) if len(self.kwargs) > 0 else ''}"
+            f"{' --kwargs ' + ' '.join(self.kwargs) if len(self.kwargs) > 0 else ''}'"
         )
-        return call
+
+        if first_event_flag:
+            cmd_str = call + " | at now + 1 minute"
+        else:
+            cmd_str = call + self.timestamp.strftime(" | at -t %Y%m%d%H%M")
+        return cmd_str
 
     @field_validator("duration")
     @classmethod
@@ -116,14 +132,14 @@ class ScheduleLine:
         try:
             sp.run(
                 [
-                    "python3",
+                    f"{os.environ['BOREALISPATH']}/borealis_env{os.environ['PYTHON_VERSION']}/bin/python3",
                     f"{os.environ['BOREALISPATH']}/tests/experiments/test_as_site.py",
                 ]
                 + args,
                 check=True,
             )
         except sp.CalledProcessError as e:
-            raise ValueError(
+            raise ScheduleError(
                 "Experiment could not be scheduled due to errors in experiment.\n"
                 + str(e)
             )
@@ -200,8 +216,24 @@ class SCDUtils:
     Contains utilities for working with SCD files. SCD files are schedule files for Borealis.
     """
 
-    """String format for parsing and writing datetimes"""
     scd_dt_fmt = "%Y%m%d %H:%M"
+    """String format for parsing and writing datetimes"""
+
+    clear_command = "for i in `atq | awk '{print $1}'`;do atrm $i;done"
+    """Clear the atq."""
+
+    get_atq_cmd = """
+        for j in $(atq | sort -k6,6 -k3,3M -k4,4 -k5,5 | cut -f 1); do
+           atq |grep -P "^$j\t";
+           at -c "$j" | tail -n 2;
+        done
+    """
+    """
+    This command is basically: for j in atq job number, print job num, time and command
+    More detail: sort the atq first by year, then month name ('-M flag), then day of month
+    Then hour, minute and second. Finally, just get the atq index (job #) in first column
+    then, iterate through all jobs in the atq, list them to standard output, get the last 2 lines
+    """
 
     def __init__(self, scd_filename, site_id):
         """
@@ -217,6 +249,25 @@ class SCDUtils:
         self.scd_default = self.create_line(
             "20000101", "00:00", "normalscan", "common", 0, "-", []
         )
+
+    @classmethod
+    def clear_atq(cls):
+        """
+        Remove all scheduled commands in the ``atq``.
+        """
+        sp.call(cls.clear_command, shell=True)
+
+    @classmethod
+    def get_atq(cls):
+        """
+        Retrieve all scheduled commands in the ``atq``.
+        """
+        retval = sp.run(
+            cls.get_atq_cmd, capture_output=True, check=True, shell=True
+        ).stdout
+        if retval is None:
+            retval = b""
+        return retval.decode('utf-8')
 
     def create_line(
         self,
@@ -376,13 +427,12 @@ class SCDUtils:
                 for line in scd_lines
             ]
         ):
-            raise ValueError("Priority already exists at this time")
+            raise ScheduleError("Priority already exists at this time")
 
         try:
             new_line.test(self.site_id)
-        except ValueError as e:
-            raise ValueError("Unable to add line:\n", str(e))
-
+        except ScheduleError as e:
+            raise ScheduleError("Unable to add line:\n", str(e))
         scd_lines.append(new_line)
 
         # sort priorities in reverse so that they are descending order. Then sort everything by timestamp
@@ -445,11 +495,11 @@ class SCDUtils:
         if line_to_rm in scd_lines:
             scd_lines.remove(line_to_rm)
         else:
-            raise ValueError("Line does not exist in SCD")
+            raise ScheduleError("Line does not exist in SCD")
 
         self.write_scd(scd_lines)
 
-    def get_relevant_lines(self, yyyymmdd, hhmm):
+    def get_relevant_lines(self, time_of_interest: dt.datetime):
         """
         Gets the currently scheduled and future lines given a supplied time. If the provided time is
         equal to a scheduled line time, it provides that line and all future lines. If the provided
@@ -457,25 +507,14 @@ class SCDUtils:
         haven't ended yet, plus the most recently timestamped infinite-duration line, plus all future
         lines. If the provided time is before any lines in the schedule, it provides all schedule lines.
 
-        :param  yyyymmdd:   year/month/day string.
-        :type   yyyymmdd:   str
-        :param  hhmm:       hour/minute string.
-        :type   hhmm:       str
+        :param  time_of_interest: Current time
+        :type   time_of_interest: dt.datetime
 
-        :returns:   List of relevant dicts of line info.
-        :rtype:     list(dict)
+        :returns:   List of relevant lines.
+        :rtype:     list[ScheduleLine]
 
-        :raises ValueError: If datetime could not be created from supplied arguments.
-        :raises IndexError: If schedule file is empty
+        :raises ScheduleError: If schedule file is empty.
         """
-
-        try:
-            # create datetime from args to see if valid
-            time = dt.datetime.strptime(yyyymmdd + " " + hhmm, self.scd_dt_fmt).replace(
-                tzinfo=dt.timezone.utc
-            )
-        except ValueError:
-            raise ValueError("Can not create datetime from supplied formats")
 
         scd_lines = self.read_scd()
 
@@ -484,12 +523,12 @@ class SCDUtils:
         scd_lines = sorted(scd_lines, key=lambda x: x.timestamp)
 
         if not scd_lines:
-            raise IndexError("Schedule file is empty. No lines can be returned")
+            raise ScheduleError("Schedule file is empty. No lines can be returned")
 
         relevant_lines = []
         past_infinite_line_added = False
         for line in reversed(scd_lines):
-            if line.timestamp >= time:
+            if line.timestamp >= time_of_interest:
                 relevant_lines.append(line)
             else:
                 # Include the most recent infinite line
@@ -499,9 +538,178 @@ class SCDUtils:
                         past_infinite_line_added = True
                 else:
                     # If the line ends after the current time, include the line
-                    if line.timestamp + line.duration >= time:
+                    if line.timestamp + line.duration >= time_of_interest:
                         relevant_lines.append(line)
 
         # Put the lines into chronological order (oldest to newest)
         relevant_lines.reverse()
         return relevant_lines
+
+    @staticmethod
+    def resolve_schedule(scd_lines, time_of_interest):
+        """
+        Creates a true timeline from the scd lines, accounting for priority and duration of each line.
+        Will reorder and add breaks to lines to account for differing priorities and durations. Keep the
+        same line format.
+
+        :param  scd_lines:          All lines to schedule
+        :type   scd_lines:          list[ScheduleLine]
+        :param  time_of_interest:   Time to use when finding all schedule lines that should run (i.e. now and in the future)
+        :type   time_of_interest:   dt.datetime
+
+        :returns: All distinct scheduling events, in chronological order
+        :rtype: list[ScheduleLine]
+        """
+
+        def reduce_intervals(current_list: list[tuple], value: tuple):
+            """
+            current_list: (start, end) tuples that are sorted, with no overlaps (i.e. start[k] > end[k-1])
+            value: (start, end) tuple
+            Finds the new master list of (start, end) tuples with inclusion of value, and the list of (start, end) times
+            that value filled in.
+
+            E.g. current_list = [(0, 1), (2, 3), (5, 6)], value = (1, 3), output = [(0, 3), (5, 6)] and [(1, 2)]
+            e.g. current_list = [(0, 1), (2, 3), (5, 6)], value = (0, 7), output = [(0, 7)] and [(1, 2), (3, 5), (6, 7)]
+            """
+            start_times = [x[0] for x in current_list]
+            end_times = [x[1] for x in current_list]
+            # finds index such that all items <= are to the left
+            start_idx = bisect.bisect(start_times, value[0])
+            end_idx = bisect.bisect(end_times, value[1])
+            if end_idx < start_idx:
+                # occurs if value is completely contained by an element of current_list
+                # e.g. current_list = [(1, 4)], value = (2, 3), start_idx = 1, end_idx = 0
+                return current_list, []
+
+            # bisect_left() finds the index such that all items < are to the left (equal values to the right)
+            item_idx = bisect.bisect_left(start_times, value[0])
+            reduced_list = current_list[:item_idx] + current_list[end_idx:]
+            enclosed_times = current_list[item_idx:end_idx]  # rest of current_list
+
+            # e.g. current_list = [(0, 1), (2, 3), (5, 6)] and value = (1, 3) so item_idx = 1, end_idx = 2
+            # then reduced_list = [(0, 1), (5, 6)] and enclosed_times = [(2, 3)]
+            reduced_list.insert(item_idx, value)  # now [(0, 1), (1, 3), (5, 6)]
+            times_filled = [value]
+            if (
+                item_idx > 0
+                and reduced_list[item_idx - 1][1] >= reduced_list[item_idx][0]
+            ):
+                # have to combine elements (0, 1) and (1, 3) into (0, 3), so reduced_list = [(0, 3), (5, 6)]
+                val = reduced_list.pop(item_idx)
+                times_filled[0] = (
+                    reduced_list[item_idx - 1][1],
+                    val[1],
+                )  # truncate the start
+                reduced_list[item_idx - 1] = (
+                    reduced_list[item_idx - 1][0],
+                    times_filled[0][1],
+                )
+                item_idx -= 1
+            if (
+                item_idx < len(reduced_list) - 1
+                and reduced_list[item_idx + 1][0] <= value[1]
+            ):
+                # e.g. reduced_list = [(0, 1), (1, 2)] with item_idx = 0, want result of [(0, 2)]
+                val = reduced_list.pop(item_idx + 1)
+                times_filled[0] = (times_filled[0][0], val[0])  # truncate at the end
+                reduced_list[item_idx] = (reduced_list[item_idx][0], val[1])
+
+            # now have to split times_filled with all the items that were fully enclosed by it
+            # e.g. enclosed_times = [(2, 3)], times_filled starts as [(1, 3)], we want to remove
+            # enclosed_times from times_filled. Thus, a result of [(1, 2)]
+            for x in enclosed_times:
+                if x[0] < times_filled[-1][1]:
+                    # block starts before values run ends
+                    end_val = times_filled.pop()
+                    if end_val[0] < x[0]:
+                        # Add in the first bit of end_val before this enclosed block starts
+                        times_filled.append((end_val[0], x[0]))
+                    if end_val[1] > x[1]:
+                        # Add in the rest of end_val after this enclosed block ends
+                        times_filled.append((x[1], end_val[1]))
+
+            return reduced_list, times_filled
+
+        sorted_lines = sorted(scd_lines, key=lambda x: x.timestamp)
+        sorted_lines.reverse()
+        sorted_lines.sort(key=lambda x: x.priority, reverse=True)
+        # at this stage, lines are sorted by priority, then by reverse timestamp for equal priority,
+        # then for two lines with equal priority and timestamp, by reverse order in the schedule file.
+
+        scheduled = []  # list of ScheduleLine objects, with no overlap between them
+        scheduled_times = []  # complete list of (start, end) times that have an experiment scheduled
+        for line in sorted_lines:
+            start = line.timestamp
+            if line.duration == "-":
+                end = dt.datetime.max.replace(tzinfo=dt.timezone.utc)
+            else:
+                end = start + line.duration
+
+            scheduled_times, times_for_line = reduce_intervals(
+                scheduled_times, (start, end)
+            )
+            for block in times_for_line:
+                new_line = copy.deepcopy(line)
+                new_line.duration = block[1] - block[0]
+                new_line.timestamp = block[0]
+                scheduled.append(new_line)
+        scheduled.sort(key=lambda x: x.timestamp)
+
+        # If there are multiple events scheduled that start in the past, then remove all but the most recent one.
+        # E.g. there's a past infinite line, and you're in the middle of a finite experiment line. This would have
+        # both the infinite and finite lines starting in the past, so we want to throw out the infinite one since the
+        # finite one supersedes it
+        in_past = [x for x in scheduled if x.timestamp < time_of_interest]
+        if len(in_past) > 1:
+            scheduled = scheduled[len(in_past) - 1 :]
+
+        return scheduled
+
+    @classmethod
+    def timeline_to_atq(cls, timeline: list[ScheduleLine]):
+        """
+        Converts the created timeline to actual atq commands.
+
+        Remove old events and then schedule everything recent. The first entry should be the currently running event,
+        so it gets scheduled immediately.
+
+        :param  timeline:   A list holding all timeline events.
+        :type   timeline:   list[ScheduleLine]
+
+        :returns:   output of the executed atq command
+        :rtype:     str
+        """
+
+        cls.clear_atq()
+
+        atq = []
+        first_event = True
+        for event in timeline:
+            atq_call = event.format_to_atq(first_event)
+            atq.append(atq_call)
+            first_event = False
+        for cmd in atq:
+            sp.call(cmd, shell=True)
+
+        return cls.get_atq()
+
+    def parse_and_schedule(self, time_of_interest: dt.datetime = None):
+        """
+        Parses the schedule file, and schedules all relevant lines using ``at``.
+
+        :param time_of_interest: Current time.
+        :type  time_of_interest: dt.Datetime
+
+        :raises ScheduleError: if any of the relevant schedule lines are invalid, or the schedule file is empty.
+        """
+        if time_of_interest is None:
+            time_of_interest = dt.datetime.now(dt.timezone.utc)
+
+        relevant_lines = self.get_relevant_lines(time_of_interest)
+        for i, line in enumerate(relevant_lines):
+            line.test(self.site_id)
+
+        timeline = self.resolve_schedule(relevant_lines, time_of_interest)
+        new_atq_str = self.timeline_to_atq(timeline)
+
+        return new_atq_str

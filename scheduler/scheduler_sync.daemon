@@ -37,7 +37,7 @@
 #       - SCHEDULER_DEST (example: username@host)
 #       - LOCAL_SCHEDULE_DIR (example: /home/radman/borealis_schedules)
 #       - REMOTE_SCHEDULE_DIR (example: /home/radar/borealis_schedules)
-#   - SLACK_WEBHOOK_[RADAR_ID] defined in ${HOME}/.profile, where RADAR_ID is SAS, PGR, etc.
+#       - SLACK_WEBHOOK_SCHEDULER
 #
 # Parameter RADAR_NAME: [sas, pgr, rkn, inv, cly]_[bore, main] e.g. sas_bore or inv_main
 
@@ -83,7 +83,7 @@ mkdir --parents "${LOG_DIR}"
 readonly LOGFILE="${LOG_DIR}/${script_name}_${RADAR_NAME}.log"
 
 # Define Slack webhook to send alert
-readonly SLACK_WEBHOOK="SLACK_WEBHOOK_${RADAR_ID^^}"
+readonly SLACK_WEBHOOK="SLACK_WEBHOOK_SCHEDULER"
 readonly MAX_ATTEMPTS=3  # Number of attempts before sending alert
 
 readonly TMP_FILE="/tmp/sync_${RADAR_NAME}.md5"

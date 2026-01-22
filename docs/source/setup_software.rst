@@ -15,7 +15,7 @@ Borealis (recommended name: radar).
 #. Once the desired Linux operating system is installed on your computer, there are a few system
    settings that should be configured before installing any software.
 
-   #. **Network Card Configuration:** Configure one of the 10G interfaces to the same subnet at the 
+   #. **Network Card Configuration:** Configure one of the 10G interfaces to the same subnet at the
       USRP devices - 192.168.10.x. The recommended 10G network card interface is as follows:
 
       - 10G interface 1: 192.168.1.x/24 (Interface for all other devices)
@@ -178,13 +178,21 @@ Borealis (recommended name: radar).
 
     sudo tuned-adm profile_info
 
-#. Add an environment variable in ``~/.profile`` called ``BOREALISPATH`` that points to the cloned
-   Borealis git repository. For example **(NOTE the extra '/')**: ::
+#. Create a .env file for the relevant Borealis environment variables. For example, in the home directory we define
+   ``.borealis.env`` **(NOTE the extra '/' in BOREALISPATH)** ::
 
-    echo "export BOREALISPATH=/home/radar/borealis/" >> ~/.profile
-    source .profile
+    BOREALISPATH=/home/radar/borealis/
+    RADAR_ID=sas
+    PYTHON_VERSION=3.11
 
-   Verify the ``BOREALISPATH`` environment variable exists: ::
+#. Modify ``~/.profile`` to load the .env file with::
+
+    set -a  # automatically export all variables
+    source .borealis.env
+    set +a
+
+   Then, source the variables into your environment with ``source .profile``. Verify the ``BOREALISPATH`` environment
+   variable exists::
 
     env | grep BOREALISPATH
 
@@ -377,11 +385,11 @@ Borealis (recommended name: radar).
         14751	Fri Oct 11 00:00:00 2024 a radar
 
    #. To check that the radar is operating, run ``screen -r borealis`` to view the live output of
-      all Borealis processes
+      all Borealis processes.
 
 #. Configure and install the automatic Borealis restart daemon, ``restart_borealis.service``. Follow
    the steps outlined here to install and start the system service: :ref:`Automated Restarts <automated-restarts>`.
-   This daemon will automatically start the radar after five minutes, following the radar schedule. 
+   This daemon will automatically start the radar after five minutes, following the radar schedule.
    To verify that the daemon is working:
 
    - Check ``systemctl status restart_borealis.service`` that the system service is running
@@ -391,7 +399,7 @@ Borealis (recommended name: radar).
    is used. Borealis computers have occasionally utilized swap when RAM was still available, which
    greatly slows down Borealis resulting in very low sequence counts. To make this adjustment:
 
-   #. Add ``vm.swappiness=10`` to ``/etc/sysctl.conf``. This changes the swap frequency from the 
+   #. Add ``vm.swappiness=10`` to ``/etc/sysctl.conf``. This changes the swap frequency from the
       default 60% to 10%.
 
    #. Run the following commands: ::
@@ -400,9 +408,9 @@ Borealis (recommended name: radar).
        sudo swapoff -a
        sudo swapon -a
 
-#. *Optional:* Configure the radar to operate in conjunction with a Uninterruptible Power Supply 
-   using ``apcupsd``. Follow the steps outlined here: :ref:`UPS & Power Outages <ups-power-outages>`. 
-   The scripts defined within ``borealis/scripts/apcupsd/`` can be used to turn the radar off/on 
+#. *Optional:* Configure the radar to operate in conjunction with a Uninterruptible Power Supply
+   using ``apcupsd``. Follow the steps outlined here: :ref:`UPS & Power Outages <ups-power-outages>`.
+   The scripts defined within ``borealis/scripts/apcupsd/`` can be used to turn the radar off/on
    when the UPS goes on battery.
 
 #. Install necessary software to transfer, convert, and test data: ::
