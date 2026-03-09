@@ -688,10 +688,10 @@ class ExperimentSlice:
         for index in range(0, len(antenna_pattern)):
             if index == 0:
                 array = "main"
-                antenna_num = len(options.rx_main_antennas)
+                antenna_num = len(options.main_antenna_locations)
             else:
                 array = "interferometer"
-                antenna_num = len(options.rx_intf_antennas)
+                antenna_num = len(options.intf_antenna_locations)
             if not isinstance(antenna_pattern[index], np.ndarray):
                 raise ValueError(
                     f"Slice {info.data['slice_id']} {array} array rx antenna pattern return is "
