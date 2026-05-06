@@ -76,21 +76,24 @@ us that the radar likely has a problem requiring manual intervention. For more i
 integrating Slack alerts, see `here
 <https://www.howtogeek.com/devops/how-to-send-a-message-to-slack-from-a-bash-script/>`__.
 
-To set up the daemon using ``systemd``, add a ``.service`` file within ``/usr/lib/systemd/system/``
-(for openSUSE). For example, ::
+To set up the daemon using ``systemd``:
 
-    [Unit]
-    Description=Restart borealis daemon
+#. Copy ``borealis/scripts/restart_borealis.daemon`` to ``/usr/local/bin/``. Ensure the file can be
+   executed by the radar operating user (i.e. ``radar``). 
 
-    [Service]
-    User=radar
-    ExecStart=/home/radar/borealis/scripts/restart_borealis.daemon
-    Restart=always
+#. Copy ``borealis/scripts/restart_borealis.service`` to ``/usr/lib/systemd/``. Modify the user specified
+   in the service file to match the radar operating user. The service file is shown below:
 
-    [Install]
-    WantedBy=multi-user.target
+   ..  literalinclude:: ../../scripts/restart_borealis.service
+       :linenos:
+       :language: 
+       :caption: restart_borealis.service
 
-Then, ``enable`` and ``start`` the daemon using the ``systemctl`` commands.
+#. Enable and start the service: ::
+
+      sudo systemctl enable restart_borealis.service
+      sudo systemctl start restart_borealis.service
+      systemctl status restart_borealis.service
 
 Alternatively, ``restart_borealis.py`` can be run via ``crontab``, as shown below: ::
 
