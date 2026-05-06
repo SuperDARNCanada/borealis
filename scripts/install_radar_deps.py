@@ -5,7 +5,7 @@ install_radar_deps
 ~~~~~~~~~~~~~~~~~~
 Installation script for Borealis utilities.
 NOTE: This script has been tested on:
-    OpenSUSE Leap 15.5
+    OpenSUSE Leap 16.0
     Ubuntu 19.10
     Ubuntu 20.04
 
@@ -120,6 +120,7 @@ def install_packages(distro: str, dev: bool = True):
         "python3-mako",  # Required for UHD
         "cmake",
         "pps-tools",
+        "cronie",  # Required for crontab
     ]
 
     variant_packages = [
@@ -144,6 +145,7 @@ def install_packages(distro: str, dev: bool = True):
     opensuse_packages = [
         "kernel-devel",
         "libboost_*_66_0",
+        "libboost_system-devel",
         "uhd-devel",
         "uhd-utils",
         "uhd-firmware",
@@ -406,8 +408,8 @@ def main():
     )
     parser.add_argument(
         "--python-version",
-        help="The version of Python to use for the installation. Default 3.9",
-        default="3.9",
+        help="The version of Python to use for the installation. Default 3.13",
+        default="3.13",
     )
     parser.add_argument(
         "--no-cuda",
