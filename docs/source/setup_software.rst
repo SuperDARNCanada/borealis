@@ -57,7 +57,7 @@ Borealis (recommended name: radar).
 
     sudo zypper install nvidia-video-G06 nvidia-gl-G06 nvidia-compute-utils-G06 nvidia-open
 
-   For Leap 15.6: ::
+   For Leap 15.6 and Leap 16.0: ::
 
     sudo zypper install nvidia-open-driver-G06-signed-kmp-meta
 
@@ -75,7 +75,7 @@ Borealis (recommended name: radar).
    version of CUDA installed is appropriate for your GPU and works with your installed NVIDIA
    drivers.
 
-   The following commands work to install CUDA on OpenSUSE Leap 15.6: ::
+   The following commands work to install CUDA on OpenSUSE Leap 15.6 and Leap 16.0: ::
 
     sudo zypper install -y kernel-<variant>-devel=<version>
     sudo usermod -a -G video <username>
@@ -183,7 +183,7 @@ Borealis (recommended name: radar).
 
     BOREALISPATH=/home/radar/borealis/
     RADAR_ID=sas
-    PYTHON_VERSION=3.11
+    PYTHON_VERSION=3.13
 
 #. Modify ``~/.profile`` to load the .env file with::
 
@@ -249,7 +249,7 @@ Borealis (recommended name: radar).
    for the ``radar`` user, which we use to prevent the ringbuffer from being swapped to disk. Switch ``radar`` with the user that
    will run borealis on your computer::
 
-      @users - rtprio 99
+      radar - rtprio 99
       radar - memlock unlimited
 
 #. *Optional:* Configure PPS signal input. A PPS signal is used to discipline NTP and improve timing
@@ -297,10 +297,20 @@ Borealis (recommended name: radar).
         radar@sasbore206:~> cat /sys/class/pps/pps0/path
         /dev/ttyS0
 
-   #. Now add the GPS disciplined NTP lines to the root ``crontab`` on reboot using the
-      ttySx you have your PPS connected to. This will attach the PPS signal on reboot. ::
+   #. Now create a small bash script that contains all commands needed to connect the GPS disciplined NTP line to
+      the /dev/pps[X] line. This script will be used by chrony to configure the PPS line automatically when the 
+      computer is turned on. Example script:
 
-        @reboot /sbin/modprobe pps_ldisc && /usr/sbin/ldattach PPS /dev/ttyS[X]
+        .. code-block:: bash
+
+             #!/bin/bash
+             /sbin/modprobe pps_ldisc
+             /usr/sbin/ldattach PPS /dev/ttyS[X]
+             sleep 1
+
+      Save this file as ``/usr/local/bin/pps-init.sh`` (for example) and ensure the file is executable. The 
+      ``sleep 1`` command ensures that the correct `/dev/pps[X]` device is created before chrony tries to connect 
+      to it.
 
 #. Install and configure Network Time Protocol (NTP) via the built-in chrony package. chrony
    is an implementation of NTP native to OpenSUSE and Ubuntu that can be disciplined by an external
@@ -324,11 +334,14 @@ Borealis (recommended name: radar).
             logdir /var/log/chrony
             log measurements statistics tracking
 
-   #. *Optional:* To let chrony access the PPS device, add the following to the ``chronyd.service``
+   #. *Optional:* To configure chrony with PPS, add the following lines to the ``chronyd.service``
       file: ::
 
         [Service]
-        DeviceAllow=/dev/pps0 rwm
+        DeviceAllow=/dev/ttyS[X] rwm
+        DeviceAllow=/dev/pps[X] rwm
+        ExecStartPre=/usr/local/bin/pps-init.sh  # Modify if script name is different
+        ProtectKernelModules=no  # Ensure that this setting isn't "yes" elsewhere in the file
 
    #. Start ``chronyd``: ::
 
@@ -344,6 +357,23 @@ Borealis (recommended name: radar).
         ^- tick.usask.ca                 1  10   377   493   +921us[ +929us] +/-   16ms
         ^- tock.usask.ca                 1  10   377   554   -795us[ -788us] +/-   15ms
         ^- ntp1.yyz.ca.hojmark.net       2  10   377   228  -7684us[-7680us] +/-   62ms
+
+   #. *Optional:* If PPS is not working with chrony, ``chronyc sources`` will look similar to below, 
+      with an "x" next to PPS: ::
+
+        MS Name/IP address         Stratum Poll Reach LastRx Last sample
+        ===============================================================================
+        #x PPS                           0   4     7     9   +465ms[ +465ms] +/-  376ns
+        ^- tick.usask.ca                 1  10   377   493   +921us[ +929us] +/-   16ms
+        ^* tock.usask.ca                 1  10   377   554   -795us[ -788us] +/-   15ms
+
+      In this situation, the PPS signal is offset from the expected clock by 465 ms. To account for 
+      this, modify the PPS line in ``/etc/chrony.conf`` as shown below. Adjust the offset to match
+      what is shown in the ``chronyc sources`` table. ::
+
+        refclock PPS /dev/ppsx refid PPS offset 0.465
+
+      After restarting chrony, the sample should be in the microsecond range, instead of milliseconds.
 
 #. If you're building Borealis for a non U of S radar, use one of the U of S ``[radar
    code]_config.ini`` files (located in ``borealis/config/[radar code]``) as a template, or follow
