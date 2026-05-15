@@ -28,7 +28,7 @@ if [[ -f $FLAG_FILE ]]; then
         # attempting to run the radar after power is restored)
         msg=$(systemctl is-enabled restart_borealis.service)
         retval=$?
-        if [[ $retval -eq 1 ]]; then
+        if [[ $retval -ne 0 ]]; then
           # The restart_borealis service will start the radar if it isn't already running and handle
           # any further restarts.
           systemctl restart restart_borealis.service
