@@ -52,31 +52,26 @@ def realtime_server(recv_socket, server_socket):
             rawacf_pickled = so.recv_bytes_from_any_iden(
                 recv_socket
             )  # This is blocking
+
+            rawacf_data = pickle.loads(rawacf_pickled)
+            # this will be a dict keyed by slice ID, values are dicts of (timestamp, [DMAP data dicts])
+            slice_ids = sorted(list(rawacf_data.keys()))
+            fitted_recs = fit_record(rawacf_data[slice_ids[0]])
+            # Only fit the first slice of any that are SEQUENCE or CONCURRENT interfaced.
+
+            data_to_send = pydarnio.write_fitacf(fitted_recs)
+            publishable_data = bz2.compress(data_to_send)
+
+            # Serve the data over the websocket. This is non-blocking in a background thread that zmq handles
+            server_socket.send(publishable_data)
+
         except (zmq.ContextTerminated, zmq.ZMQError):  # No way to recover from this
             recv_socket.close()
             server_socket.close()
             return
-
-        rawacf_data = pickle.loads(rawacf_pickled)
-        # this will be a dict keyed by slice ID, values are dicts of (timestamp, [DMAP data dicts])
-
-        slice_ids = sorted(list(rawacf_data.keys()))
-        try:
-            fitted_recs = fit_record(rawacf_data[slice_ids[0]])
-            # Only fit the first slice of any that are SEQUENCE or CONCURRENT interfaced.
         except Exception as err:
             log.critical("error processing record", exception=err)
             continue
-
-        data_to_send = pydarnio.write_fitacf(fitted_recs)
-        publishable_data = bz2.compress(data_to_send)
-        try:
-            # Serve the data over the websocket. This is non-blocking in a background thread that zmq handles
-            server_socket.send(publishable_data)
-        except (zmq.ContextTerminated, zmq.ZMQError):  # No way to recover from this
-            recv_socket.close()
-            server_socket.close()
-            return
 
 
 if __name__ == "__main__":
