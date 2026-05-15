@@ -24,9 +24,15 @@ if [[ -f $FLAG_FILE ]]; then
                 pkill -9 -P "$PID"
         fi
 
-        # The restart_borealis service will start the radar if it isn't already running and handle
-        # any further restarts.
-        systemctl restart restart_borealis.service
+        # only restart this service if it is enabled (prevents multiple computers from
+        # attempting to run the radar after power is restored)
+        msg=$(systemctl is-enabled restart_borealis.service)
+        retval=$?
+        if [[ $retval -eq 1 ]]; then
+          # The restart_borealis service will start the radar if it isn't already running and handle
+          # any further restarts.
+          systemctl restart restart_borealis.service
+        fi
 
         # Clean up temporary files
         rm $PID_FILE
