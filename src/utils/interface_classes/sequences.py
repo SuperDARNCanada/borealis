@@ -32,6 +32,8 @@ from utils.experiment_slice import ExperimentSlice
 from utils.exceptions import ExperimentException
 from utils.signals import get_samples, get_phase_shift, basic_pulse_phase_offset
 
+from src.utils import calibration
+
 # Obtain the module name that imported this log_config
 caller = Path(inspect.stack()[-1].filename)
 module_name = caller.name.split(".")[0]
@@ -150,6 +152,9 @@ class Sequence(InterfaceClassBase):
         self.tx_main_antennas = self.transmit_metadata["tx_main_antennas"]
         self.rx_main_antennas = self.transmit_metadata["rx_main_antennas"]
         self.rx_intf_antennas = self.transmit_metadata["rx_intf_antennas"]
+        self.tx_cals = self.transmit_metadata["tx_cals"]
+        self.rx_cals = self.transmit_metadata["rx_cals"]
+        self.antenna_cals = self.transmit_metadata["antenna_cals"]
 
         self.basic_slice_pulses = {}
         self.rx_beam_phases = {}
@@ -520,6 +525,19 @@ class Sequence(InterfaceClassBase):
             )
         # rx_phase_shift has shape [num_freqs, num_beam_angles, num_antennas]
 
+        for channel, cable_len in self.rx_cals.channels.items():
+            # "remove" the cable length by adjusting phase
+            chan = int(channel)
+            rx_cal = calibration.cable_len_to_elec_len(
+                cable_len, self.rx_cals.cable_velocity, freqs
+            )
+            ant_cal = calibration.cable_len_to_elec_len(
+                cable_len, self.antenna_cals.cable_velocity, freqs
+            )
+            # shapes of rx_cal, ant_cal are [num_freqs]
+            total_cal = np.array(rx_cal) + np.array(ant_cal)
+            rx_phase_shift[:, :, chan] *= np.exp(-1j * total_cal[:, np.newaxis])
+
         # channel_indices = the index of the antennas for this slice within the list of all physical antennas.
         # E.g. all_antennas = [1, 2, 3]
         #      slice_antennas = [1, 3]
@@ -609,6 +627,18 @@ class Sequence(InterfaceClassBase):
                 main_antenna_locations[:, 0],
             )
         # tx_main_phase_shift has shape [num_freqs, num_beams_angles, num_antennas]
+
+        for channel, cable_len in self.tx_cals.channels.items():
+            # "remove" the cable length by adjusting phase
+            tx_cal = calibration.cable_len_to_elec_len(
+                cable_len, self.tx_cals.cable_velocity, freqs
+            )
+            ant_cal = calibration.cable_len_to_elec_len(
+                cable_len, self.antenna_cals.cable_velocity, freqs
+            )
+            # shapes of tx_cal, ant_cal are [num_freqs]
+            total_cal = np.array(tx_cal) + np.array(ant_cal)
+            tx_main_phase_shift[:, :, channel] *= np.exp(-1j * total_cal[:, np.newaxis])
 
         # The antennas used for transmitting this slice
         slice_tx_antennas = exp_slice.tx_antennas

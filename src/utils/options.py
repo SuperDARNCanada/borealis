@@ -13,6 +13,7 @@ detailed descriptions of each configuration option.
 import os
 import json
 import numpy as np
+import tomllib
 from dataclasses import dataclass, field
 
 
@@ -136,7 +137,9 @@ class Options:
     )  #: Minimum duration between pulses in a pulse sequence [μs]
     num_beams: int = field(init=False)  #: Default number of beam directions to scan
     num_ranges: int = field(init=False)  #: Default number of range gates
-    scan_direction: str = field(init=False)  #: Scan direction, "clockwise" or "counterclockwise"
+    scan_direction: str = field(
+        init=False
+    )  #: Scan direction, "clockwise" or "counterclockwise"
 
     n200_addrs: list[str] = field(init=False)
     n200_count: int = field(init=False)
@@ -193,6 +196,14 @@ class Options:
     default_freq: int = field(init=False)
     restricted_ranges: list[tuple[int, int]] = field(init=False)
 
+    # calibration values
+    rx_cals: dict = field(init=False)
+    # Receive path calibration values
+    tx_cals: dict = field(init=False)
+    # Transmit path calibration values
+    antenna_cals: dict = field(init=False)
+    # Shared (transmit and receive) path calibration values (i.e. antenna and feedline)
+
     # ZMQ Identities
     brian_to_driver_identity: str = "BRIAN_DRIVER_IDEN"
     brian_to_dspbegin_identity: str = "BRIAN_DSPBEGIN_IDEN"
@@ -236,6 +247,7 @@ class Options:
         self._parse_config()  # Parse info from config file
         self._parse_hdw()  # Parse info from hdw file
         self._parse_restrict()  # Parse info from restrict.dat file
+        self._parse_calibrations()  # Parse info from calibration.toml file
         self._verify_options()  # Check that all parsed values are valid
 
     def _parse_config(self):
@@ -521,6 +533,23 @@ class Options:
             restricted_range = tuple(splitup)
             self.restricted_ranges.append(restricted_range)
 
+    def _parse_calibrations(self):
+        """
+        Parse the fields from the calibration.toml file.
+        """
+        # Read in calibration.toml
+        path = (
+            f'{os.environ["BOREALISPATH"]}/config/'
+            f'{os.environ["RADAR_ID"]}/'
+            f'calibration.toml'
+        )
+        with open(path, "rb") as f:
+            calibration_file = tomllib.load(f)
+
+        self.tx_cals = calibration_file["tx"]
+        self.rx_cals = calibration_file["rx"]
+        self.antenna_cals = calibration_file["antenna"]
+
     def _verify_options(self):
         if self.site_id != os.environ["RADAR_ID"]:
             errmsg = f'site_id {self.site_id} is different from RADAR_ID {os.environ["RADAR_ID"]}'
@@ -532,9 +561,27 @@ class Options:
         if len(self.rx_main_antennas) > 0:
             if len(self.rx_main_antennas) != len(set(self.rx_main_antennas)):
                 raise ValueError("rx_main_antennas has duplicate values")
+            if set(self.rx_main_antennas) != {
+                int(k.split("_")[1]) for k in self.rx_cals.keys()
+            }:
+                raise ValueError(
+                    "rx calibration channels don't match rx_main_antennas from config file"
+                )
+            if set(self.rx_main_antennas) != {
+                int(k.split("_")[1]) for k in self.antenna_cals.keys()
+            }:
+                raise ValueError(
+                    "antenna calibration channels don't match rx_main_antennas from config file"
+                )
         if len(self.tx_main_antennas) > 0:
             if len(self.tx_main_antennas) != len(set(self.tx_main_antennas)):
                 raise ValueError("tx_main_antennas has duplicate values")
+            if set(self.tx_main_antennas) != {
+                int(k.split("_")[1]) for k in self.tx_cals.keys()
+            }:
+                raise ValueError(
+                    "tx calibration channels don't match tx_main_antennas from config file"
+                )
         if len(self.rx_intf_antennas) > 0:
             if len(self.rx_intf_antennas) != len(set(self.rx_intf_antennas)):
                 raise ValueError("rx_intf_antennas has duplicate values")
@@ -544,7 +591,9 @@ class Options:
         if self.num_ranges <= 0:
             raise ValueError("num_ranges must be > 0")
         if self.scan_direction not in ["clockwise", "counterclockwise"]:
-            raise ValueError("scan_direction must be either `clockwise` or `counterclockwise`")
+            raise ValueError(
+                "scan_direction must be either `clockwise` or `counterclockwise`"
+            )
 
         # TODO: Test that realtime_address and router_address are valid addresses
 
