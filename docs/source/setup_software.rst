@@ -98,10 +98,25 @@ Borealis (recommended name: radar).
    doing research. **NOTE: Overclocking is no longer suggested, as the increase performance comes
    at the cost of reliability**
 
-#. Within BIOS configure the computer to always boot when connected to power. The computer should
-   come back online when AC power is restored to the computer following a power outage. This setting
-   is typically referred to as *Restore on AC/Power Loss* or *AC Power Recovery* or something
-   similar.
+#. Configure the computer to always remain powered on. This is done in two ways:
+
+   #. Within BIOS configure the computer to always boot when connected to power. The computer should
+      come back online when AC power is restored to the computer following a power outage. This setting
+      is typically referred to as *Restore on AC/Power Loss* or *AC Power Recovery* or something
+      similar.
+
+   #. Ensure that the computer doesn't automatically hibernate or go to sleep. In OpenSUSE 16.0, the
+      default setting when a user isn't actively logged in is to hibernate, after which the computer
+      cannot be accessed via ``ssh``. To prevent this, create a ``sleep.conf`` file within 
+      ``/etc/systemd/sleep.conf.d/`` (or wherever your ``sleep.conf.d/`` is located) containing the
+      following lines: ::
+
+       [Sleep]
+       AllowSuspend=no
+       AllowHibernation=no
+       AllowHybridSleep=no
+       AllowSuspendThenHibernate=no
+
 
 #. Configure the following computer settings to run each time the computer reboots. This can be done
    via root crontab, as these commands are not persistent. Example root crontab for multiple
