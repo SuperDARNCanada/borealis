@@ -5,8 +5,7 @@ Description=Restart borealis daemon
 
 [Service]
 User=radar
-EnvironmentFile=%h/.borealis.env
-ExecStart=${BOREALISPATH}/scripts/restart_borealis.daemon
+ExecStart=/usr/local/bin/restart_borealis.daemon
 Restart=always
 
 [Install]
