@@ -86,7 +86,7 @@ To set up the daemon using ``systemd``:
 
    ..  literalinclude:: ../../scripts/restart_borealis.service
        :linenos:
-       :language: 
+       :language: ini
        :caption: restart_borealis.service
 
 #. Enable and start the service: ::
