@@ -109,14 +109,15 @@ Borealis (recommended name: radar).
       default setting when a user isn't actively logged in is to hibernate, after which the computer
       cannot be accessed via ``ssh``. To prevent this, create a ``sleep.conf`` file within 
       ``/etc/systemd/sleep.conf.d/`` (or wherever your ``sleep.conf.d/`` is located) containing the
-      following lines: ::
+      following lines: 
 
-       [Sleep]
-       AllowSuspend=no
-       AllowHibernation=no
-       AllowHybridSleep=no
-       AllowSuspendThenHibernate=no
-
+      ```ini
+      [Sleep]
+      AllowSuspend=no
+      AllowHibernation=no
+      AllowHybridSleep=no
+      AllowSuspendThenHibernate=no
+      ```
 
 #. Configure the following computer settings to run each time the computer reboots. This can be done
    via root crontab, as these commands are not persistent. Example root crontab for multiple
