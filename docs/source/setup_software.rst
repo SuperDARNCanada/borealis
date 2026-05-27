@@ -111,11 +111,11 @@ Borealis (recommended name: radar).
       ``/etc/systemd/sleep.conf.d/`` (or wherever your ``sleep.conf.d/`` is located) containing the
       following lines: ::
 
-      [Sleep]
-      AllowSuspend=no
-      AllowHibernation=no
-      AllowHybridSleep=no
-      AllowSuspendThenHibernate=no
+       [Sleep]
+       AllowSuspend=no
+       AllowHibernation=no
+       AllowHybridSleep=no
+       AllowSuspendThenHibernate=no
 
 #. Configure the following computer settings to run each time the computer reboots. This can be done
    via root crontab, as these commands are not persistent. Example root crontab for multiple
