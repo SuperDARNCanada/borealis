@@ -26,7 +26,7 @@ SWG_GIT_REPO = "https://github.com/SuperDARN/schedules.git"
 EXPERIMENTS = {
     "sas": {
         "common_time": "twofsound",
-        "discretionary_time": "twofsound",
+        "discretionary_time": "full_fov",
         "htr_common_time": "twofsound",
         "themis_time": "themisscan",
         "special_time_normal": "twofsound",
@@ -37,7 +37,7 @@ EXPERIMENTS = {
     },
     "pgr": {
         "common_time": "twofsound",
-        "discretionary_time": "twofsound",
+        "discretionary_time": "full_fov",
         "htr_common_time": "twofsound",
         "themis_time": "themisscan",
         "special_time_normal": "twofsound",
@@ -48,7 +48,7 @@ EXPERIMENTS = {
     },
     "rkn": {
         "common_time": "twofsound",
-        "discretionary_time": "twofsound",
+        "discretionary_time": "full_fov",
         "htr_common_time": "twofsound",
         "themis_time": "themisscan",
         "special_time_normal": "twofsound",
@@ -59,7 +59,7 @@ EXPERIMENTS = {
     },
     "inv": {
         "common_time": "twofsound",
-        "discretionary_time": "twofsound",
+        "discretionary_time": "full_fov",
         "htr_common_time": "twofsound",
         "themis_time": "themisscan",
         "special_time_normal": "twofsound",
@@ -70,7 +70,7 @@ EXPERIMENTS = {
     },
     "cly": {
         "common_time": "twofsound",
-        "discretionary_time": "twofsound",
+        "discretionary_time": "full_fov",
         "htr_common_time": "twofsound",
         "themis_time": "themisscan",
         "special_time_normal": "twofsound",
@@ -81,7 +81,7 @@ EXPERIMENTS = {
     },
     "lab": {
         "common_time": "twofsound",
-        "discretionary_time": "twofsound",
+        "discretionary_time": "full_fov",
         "htr_common_time": "twofsound",
         "themis_time": "themisscan",
         "special_time_normal": "twofsound",
