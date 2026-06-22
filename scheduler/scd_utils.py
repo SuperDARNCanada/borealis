@@ -137,11 +137,14 @@ class ScheduleLine:
                 ]
                 + args,
                 check=True,
+                stderr=sp.PIPE,
             )
         except sp.CalledProcessError as e:
             raise ScheduleError(
                 "Experiment could not be scheduled due to errors in experiment.\n"
                 + str(e)
+                + "\n\n"
+                + e.stderr.decode("utf-8")
             )
 
     @classmethod

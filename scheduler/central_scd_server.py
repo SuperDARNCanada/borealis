@@ -93,7 +93,7 @@ EXPERIMENTS = {
 }
 
 
-class SWG(object):
+class SWG:
     """Holds the data needed for processing a SWG file."""
 
     def __init__(self, scd_dir):

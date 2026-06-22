@@ -279,6 +279,9 @@ def main():
     args = parser.parse_args()
 
     options = Options()
+    if not os.path.exists(options.log_directory):
+        raise RuntimeError(f"log_directory {options.log_directory} does not exist")
+
     threads = [
         threading.Thread(
             target=router, args=(options,), kwargs={"realtime_off": args.realtime_off}
