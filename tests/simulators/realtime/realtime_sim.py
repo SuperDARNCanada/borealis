@@ -47,6 +47,7 @@ if __name__ == "__main__":
     fitacf_sink = context.socket(zmq.SUB)
     fitacf_sink.connect("inproc://fitacf_server")
     fitacf_sink.setsockopt(zmq.SUBSCRIBE, b"")  # Receive all messages
+    fitacf_sink.setsockopt(zmq.RCVTIMEO, 2000)  # timeout after 2000 ms
 
     log.info("Starting simulator thread...")
     thread = threading.Thread(target=realtime_sim, args=(context,), daemon=True)
@@ -54,7 +55,7 @@ if __name__ == "__main__":
 
     # Load in a record of data
     infile = str(Path(__file__).resolve().parent) + "/20240912.1905.41.sas.a.rawacf"
-    rawacf_data = {0: pydarnio.read_rawacf(infile, mode='strict')}
+    rawacf_data = {0: pydarnio.read_rawacf(infile, mode="strict")}
 
     for i in range(
         5
@@ -65,7 +66,7 @@ if __name__ == "__main__":
 
         # Get the fitacf data back from realtime_sim
         recvd_data = fitacf_sink.recv()
-        fitacf_data = pydarnio.read_fitacf(recvd_data, mode='strict')
+        fitacf_data = pydarnio.read_fitacf(recvd_data, mode="strict")
 
         # Log the data to the console
         log.info("fitacf data received")

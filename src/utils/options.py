@@ -136,7 +136,9 @@ class Options:
     )  #: Minimum duration between pulses in a pulse sequence [μs]
     num_beams: int = field(init=False)  #: Default number of beam directions to scan
     num_ranges: int = field(init=False)  #: Default number of range gates
-    scan_direction: str = field(init=False)  #: Scan direction, "clockwise" or "counterclockwise"
+    scan_direction: str = field(
+        init=False
+    )  #: Scan direction, "clockwise" or "counterclockwise"
 
     n200_addrs: list[str] = field(init=False)
     n200_count: int = field(init=False)
@@ -213,7 +215,10 @@ class Options:
     dsp_cfs_identity: str = "DSP_CFS_IDEN"
     dw_to_dsp_identity: str = "DW_DSP_IDEN"
     dw_to_radctrl_identity: str = "DW_RADCTRL_IDEN"
-    dw_to_rt_identity: str = "DW_RT_IDEN"
+    dw_to_rt_antennas_iq_identity: str = "DW_RT_ANTENNAS_IQ_IDEN"
+    dw_to_rt_bfiq_identity: str = "DW_RT_BFIQ_IDEN"
+    dw_to_rt_rawacf_identity: str = "DW_RT_RAWACF_IDEN"
+    dw_to_rt_fitacf_identity: str = "DW_RT_FITACF_IDEN"
     dw_cfs_identity: str = "DW_CFS_IDEN"
     exphan_to_dsp_identity: str = "EXPHAN_DSP_IDEN"
     exphan_to_radctrl_identity: str = "EXPHAN_RADCTRL_IDEN"
@@ -544,7 +549,9 @@ class Options:
         if self.num_ranges <= 0:
             raise ValueError("num_ranges must be > 0")
         if self.scan_direction not in ["clockwise", "counterclockwise"]:
-            raise ValueError("scan_direction must be either `clockwise` or `counterclockwise`")
+            raise ValueError(
+                "scan_direction must be either `clockwise` or `counterclockwise`"
+            )
 
         # TODO: Test that realtime_address and router_address are valid addresses
 
