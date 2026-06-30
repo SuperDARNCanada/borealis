@@ -30,7 +30,7 @@ In another process::
 :todo: log.debug all functions
 """
 
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, Tuple
 import zmq
 import pickle
 
@@ -64,8 +64,11 @@ def create_sockets(
 
 
 def recv_string(
-    socket: zmq.Socket, sender_identity: str, log: Optional[Any] = None
-) -> Optional[str]:
+    socket: zmq.Socket,
+    sender_identity: str,
+    log: Optional[Any] = None,
+    with_header: bool = False,
+) -> Union[str, Tuple[bytes, str]]:
     """
     Receives data from a socket and verifies it comes from the correct sender.
 
@@ -75,12 +78,14 @@ def recv_string(
     :type       sender_identity:    str
     :param      log:                A logging object
     :type       log:                Optional[Any]
+    :param      with_header:        Flag to return message header
+    :type       with_header:        bool
 
-    :returns:   Received data
-    :rtype:     String or None
+    :returns:   Received data, possibly with a header
+    :rtype:     Union[str, Tuple[bytes, str]]
     """
 
-    receiver_identity, _, data = socket.recv_multipart()
+    receiver_identity, header, data = socket.recv_multipart()
     if receiver_identity != sender_identity.encode("utf-8"):
         if log is not None:
             log.error(
@@ -91,10 +96,17 @@ def recv_string(
         raise ValueError(
             f"Message did not come from expected source. Origin: {receiver_identity}\tExpected: {sender_identity}"
         )
-    return data.decode("utf-8")
+    data = data.decode("utf-8")
+
+    if with_header:
+        return header, data
+    else:
+        return data
 
 
-def send_string(socket: zmq.Socket, receiver_identity: str, msg: str):
+def send_string(
+    socket: zmq.Socket, receiver_identity: str, msg: str, header: Optional[str] = None
+):
     """
     Sends data to another identity.
 
@@ -104,14 +116,23 @@ def send_string(socket: zmq.Socket, receiver_identity: str, msg: str):
     :type   receiver_identity:  str
     :param  msg:                The data message to send
     :type   msg:                str
+    :param  header:             An optional header for the message
+    :type   header:             str
     """
-    frames = [receiver_identity.encode("utf-8"), b"", msg.encode("utf-8")]
+    if header is None:
+        header = b""
+    else:
+        header = header.encode("utf-8")
+    frames = [receiver_identity.encode("utf-8"), header, msg.encode("utf-8")]
     socket.send_multipart(frames)
 
 
 def recv_bytes(
-    socket: zmq.Socket, sender_identity: str, log: Optional[Any] = None
-) -> Optional[bytes]:
+    socket: zmq.Socket,
+    sender_identity: str,
+    log: Optional[Any] = None,
+    with_header: bool = False,
+) -> Optional[Union[bytes, Tuple[bytes, bytes]]]:
     """
     Receives data from a socket and verifies it comes from the correct sender.
 
@@ -121,11 +142,13 @@ def recv_bytes(
     :type       sender_identity:    str
     :param      log:                A logging object
     :type       log:                Optional[Any]
+    :param      with_header:        Flag to return message header
+    :type       with_header:        bool
 
     :returns:   Received data
     :rtype:     Optional[bytes]
     """
-    receiver_identity, _, bytes_object = socket.recv_multipart()
+    receiver_identity, header, bytes_object = socket.recv_multipart()
     if receiver_identity != sender_identity.encode("utf-8"):
         log.error(
             "sender_identity != receiver_identity",
@@ -134,22 +157,32 @@ def recv_bytes(
         )
         return None
     else:
-        return bytes_object
+        if with_header:
+            return header, bytes_object
+        else:
+            return bytes_object
 
 
-def recv_bytes_from_any_iden(socket: zmq.Socket) -> Optional[bytes]:
+def recv_bytes_from_any_iden(
+    socket: zmq.Socket, with_header: bool = False
+) -> Union[bytes, Tuple[bytes, bytes]]:
     """
     Receives data from a socket, returns just the data and strips off the identity
 
     :param      socket: Socket to recv from
     :type       socket: zmq.Socket
+    :param with_header: Flag to return message header
+    :type  with_header: bool
 
     :returns:   Received data
     :rtype:     Optional[bytes]
     """
 
-    _, _, bytes_object = socket.recv_multipart()
-    return bytes_object
+    _, header, bytes_object = socket.recv_multipart()
+    if with_header:
+        return header, bytes_object
+    else:
+        return bytes_object
 
 
 def send_bytes(
@@ -157,6 +190,7 @@ def send_bytes(
     receiver_identity: str,
     bytes_object: bytes,
     log: Optional[Any] = None,
+    header: Optional[str] = None,
 ):
     """Sends experiment to another identity.
 
@@ -168,6 +202,8 @@ def send_bytes(
     :type   bytes_object:       bytes
     :param  log:                A logging object
     :type   log:                Optional[Any]
+    :param  header:             An optional header for the message
+    :type   header:             str
     """
     if log:
         log.debug(
@@ -175,7 +211,11 @@ def send_bytes(
             sender=socket.get(zmq.IDENTITY),
             receiver=receiver_identity,
         )
-    frames = [receiver_identity.encode("utf-8"), b"", bytes_object]
+    if header is None:
+        header = b""
+    else:
+        header = header.encode("utf-8")
+    frames = [receiver_identity.encode("utf-8"), header, bytes_object]
     socket.send_multipart(frames)
 
 
@@ -184,6 +224,7 @@ def recv_pyobj(
     sender_identity: str,
     log: Optional[Any] = None,
     expected_type: Optional[Any] = None,
+    with_header: bool = False,
 ) -> Any:
     """
     Receive a pickled Python object.
@@ -198,13 +239,14 @@ def recv_pyobj(
     :type   log:                Optional[Any]
     :param  expected_type:      The data type expected when receiving
     :type   expected_type:      Optional[Any]
+    :param    with_header:      Flag to return message header
+    :type     with_header:      bool
 
     :returns: an object
     :rtype: Any
     """
     # TODO: Account for multiple expected types
-
-    bytes_packet = recv_bytes(socket, sender_identity, log)
+    header, bytes_packet = recv_bytes(socket, sender_identity, log, with_header=True)
     message = pickle.loads(bytes_packet)
     if expected_type is not None and not isinstance(message, expected_type):
         if log is not None:
@@ -216,11 +258,18 @@ def recv_pyobj(
         raise ValueError(
             f"Message data has type {type(message)}, expected {expected_type}"
         )
-    return message
+    if with_header:
+        return header, message
+    else:
+        return message
 
 
 def send_pyobj(
-    socket: zmq.Socket, receiver_identity: str, message: Any, log: Optional[Any] = None
+    socket: zmq.Socket,
+    receiver_identity: str,
+    message: Any,
+    log: Optional[Any] = None,
+    header: Optional[str] = None,
 ):
     """Pickles the message and passes it to send bytes to be communicated
     over the router.
@@ -233,6 +282,8 @@ def send_pyobj(
     :type   message:            Any
     :param  log:                A logging object
     :type   log:                Optional[Any]
+    :param  header:             Message header
+    :type   header:             Optional[str]
     """
     bytes_packet = pickle.dumps(message, protocol=pickle.HIGHEST_PROTOCOL)
-    send_bytes(socket, receiver_identity, bytes_packet, log)
+    send_bytes(socket, receiver_identity, bytes_packet, log, header=header)

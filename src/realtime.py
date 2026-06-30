@@ -8,11 +8,13 @@ Sends data to realtime applications.
 :copyright: 2019 SuperDARN Canada
 """
 
+import argparse
 import bz2
 import datetime as dt
 import inspect
 from pathlib import Path
 import pickle
+import sys
 
 from backscatter import fitacf
 import numpy as np
@@ -20,7 +22,8 @@ import pydarnio
 import structlog
 import zmq
 
-from src.utils.file_formats import SliceData
+sys.path.append(str(Path(__file__).resolve().parent))
+from utils.file_formats import SliceData
 
 
 def fit_record(rawacf_records):
@@ -48,54 +51,64 @@ def fit_record(rawacf_records):
     return fitted_records
 
 
-def realtime_server(recv_socket, server_socket):
+def realtime_server(
+    recv_socket,
+    server_socket,
+    stream_antennas_iq: bool = True,
+    stream_bfiq: bool = True,
+    stream_rawacf: bool = True,
+):
     """Receives data from a socket, dispatches to the appropriate handler, and serves over another socket.
 
-    :param    recv_socket: Socket to receive data over. Must be an appropriate zmq socket type for receiving.
-    :type     recv_socket: zmq.Socket
-    :param  server_socket: Socket to serve data over. Must be appropriate zmq socket type for sending.
-    :type   server_socket: zmq.Socket
+    :param         recv_socket: Socket to receive data over. Must be an appropriate zmq socket type for receiving.
+    :type          recv_socket: zmq.Socket
+    :param       server_socket: Socket to serve data over. Must be appropriate zmq socket type for sending.
+    :type        server_socket: zmq.Socket
+    :param  stream_antennas_iq: Flag to enable streaming antennas_iq data
+    :type   stream_antennas_iq: bool
+    :param         stream_bfiq: Flag to enable streaming bfiq data
+    :type          stream_bfiq: bool
+    :param       stream_rawacf: Flag to enable streaming rawacf data
+    :type        stream_rawacf: bool
     """
     while True:
         try:
-            sender_identity, _, data_bytes = (
-                recv_socket.recv_multipart()
+            msg_header, bytes_packet = so.recv_bytes_from_any_iden(
+                recv_socket, with_header=True
             )  # This is blocking
         except (zmq.ContextTerminated, zmq.ZMQError):  # No way to recover from this
             recv_socket.close()
             server_socket.close()
             return
-        sender_identity = sender_identity.decode("utf-8")
-        slice_data = pickle.loads(data_bytes)
-
-        if not isinstance(slice_data, SliceData):
+        slice_data = pickle.loads(bytes_packet)
+        if type(slice_data).__name__ != "SliceData":
             log.error(
-                "incorrect message type",
-                received_message=type(slice_data),
-                expected_message=SliceData,
+                "Expected SliceData message",
+                received_type=type(slice_data),
+                size=len(slice_data),
             )
             raise ValueError(
-                f"Message data has type {type(slice_data)}, expected SliceData"
+                f"Message data has type {type(slice_data).__name__}, expected `SliceData`"
             )
 
-        if sender_identity == options.dw_to_rt_fitacf_identity:
+        if msg_header == b"rawacf":
+            log.info("Received rawacf slice")
             serve_fitacf(slice_data, server_socket)
-        if sender_identity == options.dw_to_rt_rawacf_identity:
-            serve_fitacf(slice_data, server_socket)
-            serve_slice(slice_data, server_socket, "rawacf")
-        elif sender_identity == options.dw_to_rt_bfiq_identity:
+            if stream_rawacf:
+                serve_slice(slice_data, server_socket, "rawacf")
+        elif msg_header == b"bfiq" and stream_bfiq:
+            log.info("Received bfiq slice")
             serve_slice(slice_data, server_socket, "bfiq")
-        elif sender_identity == options.dw_to_rt_antennas_iq_identity:
+        elif msg_header == b"antennas_iq" and stream_antennas_iq:
+            log.info("Received antennas_iq slice")
             serve_slice(slice_data, server_socket, "antennas_iq")
         else:
             log.critical(
                 "Error receiving slice data",
-                sender_identity=sender_identity,
+                header=msg_header,
                 slice_data=slice_data,
             )
-            raise ValueError(
-                f"Received data from unexpected identity {sender_identity}"
-            )
+            raise ValueError(f"Received data with unexpected header {msg_header}")
 
 
 def serve_fitacf(rawacf_data, server_socket):
@@ -152,6 +165,24 @@ if __name__ == "__main__":
     from utils import log_config, socket_operations as so
     from utils.options import Options
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--disable-antennas-iq",
+        help="Disable antennas_iq data streaming",
+        action="store_false",
+    )
+    parser.add_argument(
+        "--disable-bfiq",
+        help="Disable bfiq data streaming",
+        action="store_false",
+    )
+    parser.add_argument(
+        "--disable-rawacf",
+        help="Disable rawacf streaming",
+        action="store_false",
+    )
+    args = parser.parse_args()
+
     log = log_config.log()
     log.info("REALTIME BOOTED")
 
@@ -181,7 +212,13 @@ if __name__ == "__main__":
         publish_socket.close()
 
     try:
-        realtime_server(data_write_socket, publish_socket)
+        realtime_server(
+            data_write_socket,
+            publish_socket,
+            args.disable_antennas_iq,
+            args.disable_bfiq,
+            args.disable_rawacf,
+        )
         log.info("REALTIME EXITED")
     except KeyboardInterrupt:
         log.critical("REALTIME INTERRUPTED")

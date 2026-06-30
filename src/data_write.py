@@ -71,9 +71,10 @@ class DataWrite:
         # Directory where output files are written
         self.dataset_directory = None
 
-        # Socket for sending rawacf data to realtime
+        # Socket for sending data to realtime
         self.realtime_socket = so.create_sockets(
-            self.options.router_address, self.options.dw_to_rt_identity
+            self.options.router_address,
+            self.options.dw_to_rt_identity,
         )
 
         # Format of file that rawacf data should be written to
@@ -149,9 +150,6 @@ class DataWrite:
         aveperiod_meta: AveperiodMetadataMessage,
         data_parsing: Aggregator,
         write_rawacf: bool = True,
-        stream_rawacf: bool = False,
-        stream_bfiq: bool = False,
-        stream_antennas_iq: bool = False,
     ):
         """
         Parse through samples and write to file.
@@ -170,12 +168,7 @@ class DataWrite:
         :type   data_parsing:       Aggregator
         :param  write_rawacf:       Should rawacfs be written to file? Defaults to True.
         :type   write_rawacf:       bool, optional
-        :param  stream_rawacf:      Flag to enable streaming rawacf data
-        :type   stream_rawacf:      bool
-        :param  stream_bfiq:        Flag to enable streaming bfiq data
-        :type   stream_bfiq:        bool
-        :param  stream_antennas_iq: Flag to enable streaming antennas_iq data
-        :type   stream_antennas_iq: bool
+
         """
 
         start = time.perf_counter()
@@ -336,19 +329,18 @@ class DataWrite:
 
         if len(data_parsing.main_acf_slices) > 0:
             self._package_write_stream(
-                all_slice_data, data_parsing, "rawacf", write_rawacf, stream_rawacf
+                all_slice_data, data_parsing, "rawacf", write_rawacf
             )
+        else:
+            log.warning("No ACF slices found")
         if data_parsing.bfiq_available:
-            self._package_write_stream(
-                all_slice_data, data_parsing, "bfiq", write_bfiq, stream_bfiq
-            )
+            self._package_write_stream(all_slice_data, data_parsing, "bfiq", write_bfiq)
         if data_parsing.antennas_iq_available:
             self._package_write_stream(
                 all_slice_data,
                 data_parsing,
                 "antennas_iq",
                 write_antennas_iq,
-                stream_antennas_iq,
             )
         if data_parsing.rawrf_available:
             if write_raw_rf:
@@ -378,25 +370,19 @@ class DataWrite:
         parsed_data: Aggregator,
         fmt: str,
         write: bool = True,
-        stream: bool = True,
     ):
         """
         Packages the data of type `fmt` for serialization, then writes to file and/or streams over the wire as specified
         """
-        if not write and not stream:  # nothing to do here
-            return
 
         package_fn = getattr(self, f"_package_{fmt}")
         write_fn = getattr(self, f"_write_{fmt}")
         stream_fn = getattr(self, f"_stream_{fmt}")
 
-        package_fn(self, aveperiod_data, parsed_data)
+        package_fn(aveperiod_data, parsed_data)
+        stream_fn(aveperiod_data)
         if write:
-            write_fn(self, aveperiod_data)
-        if stream:
-            stream_fn(self, aveperiod_data)
-        elif fmt == "rawacf":
-            stream_fn(self, aveperiod_data, "fitacf")
+            write_fn(aveperiod_data)
 
     def _package_rawacf(
         self, aveperiod_data: dict[int, SliceData], parsed_data: Aggregator
@@ -478,19 +464,19 @@ class DataWrite:
     def _write_rawacf(self, aveperiod_data):
         for slice_num, slice_data in aveperiod_data.items():
             if getattr(slice_data, "main_acfs", None) is None:
+                log.warning("No main ACFs in slice", slice_num=slice_num)
                 continue
             two_hr_file_with_type = self.slice_filenames[slice_num].format(ext="rawacf")
             self._write_file(slice_data, two_hr_file_with_type, "rawacf")
 
-    def _stream_rawacf(self, aveperiod_data, fmt: str = "rawacf"):
-        if fmt == "rawacf":
-            ident = self.options.dw_to_rt_rawacf_identity
-        elif fmt == "fitacf":
-            ident = self.options.dw_to_rt_fitacf_identity
-        else:
-            raise ValueError(f"Unknown fmt `{fmt}`")
+    def _stream_rawacf(self, aveperiod_data):
         for slice_data in aveperiod_data.values():
-            so.send_pyobj(self.realtime_socket, ident, slice_data)
+            so.send_pyobj(
+                self.realtime_socket,
+                self.options.rt_to_dw_identity,
+                slice_data,
+                header="rawacf",
+            )
 
     def _package_bfiq(
         self, aveperiod_data: dict[int, SliceData], parsed_data: Aggregator
@@ -536,7 +522,10 @@ class DataWrite:
     def _stream_bfiq(self, aveperiod_data):
         for slice_data in aveperiod_data.values():
             so.send_pyobj(
-                self.realtime_socket, self.options.rt_to_dw_identity, slice_data
+                self.realtime_socket,
+                self.options.rt_to_dw_identity,
+                slice_data,
+                header="bfiq",
             )
 
     def _package_antennas_iq(
@@ -594,7 +583,10 @@ class DataWrite:
             slice_data.antennas_iq_data = stage["data"]
             slice_data.sample_time = stage["sample_time"]
             so.send_pyobj(
-                self.realtime_socket, self.options.rt_to_dw_identity, slice_data
+                self.realtime_socket,
+                self.options.rt_to_dw_identity,
+                slice_data,
+                header="antennas_iq",
             )
 
     def _write_raw_rf_params(
@@ -673,21 +665,6 @@ def dw_parser():
         "--rawacf-format",
         choices=["hdf5", "dmap"],
         help="Format to store rawacf files in.",
-    )
-    parser.add_argument(
-        "--stream-antenna-iq",
-        help="Enable antennas_iq data streaming",
-        action="store_true",
-    )
-    parser.add_argument(
-        "--stream-bfiq",
-        help="Enable bfiq data streaming",
-        action="store_true",
-    )
-    parser.add_argument(
-        "--stream-rawacf",
-        help="Enable rawacf streaming",
-        action="store_true",
     )
     return parser
 
@@ -819,14 +796,11 @@ def main():
 
                         kwargs = dict(
                             write_bfiq=args.enable_bfiq,
-                            write_antenna_iq=args.enable_antenna_iq,
+                            write_antennas_iq=args.enable_antenna_iq,
                             write_raw_rf=args.enable_raw_rf,
                             aveperiod_meta=aveperiod_metadata,
                             data_parsing=aggregator,
                             write_rawacf=args.enable_raw_acfs,
-                            stream_antennas_iq=args.stream_antenna_iq,
-                            stream_bfiq=args.stream_bfiq,
-                            stream_rawacf=args.stream_rawacf,
                         )
                         thread = threading.Thread(
                             target=data_write.output_data, kwargs=kwargs
