@@ -126,11 +126,8 @@ frequency limits of the CFS band::
 
 Multiple experiment slices within an averaging period can be configured to set a transmit frequency
 from the CFS as long as each slice has the ``cfs_range`` set. Each slice can choose any band within the
-transmit and receive bandwidth of the system. Be aware when choosing a ``cfs_range`` that if the range
-has any part within +/- 50kHz around the ``txctrfreq`` or ``rxctrfreq`` a warning will be raised as
-no tx frequency can be chosen that is within 50kHz of the center frequencies. The user should be aware
-of any restricted bands within the desired range, as CFS will exclude restricted bands when selecting
-transmit frequencies.
+transmit and receive bandwidth of the system. The user should be aware of any restricted bands within
+the desired range, as CFS will exclude restricted bands when selecting transmit frequencies.
 
 Additionally, if a ``cfs_range`` with a band greater than 300kHz is desired, the user will need to
 design a custom decimation scheme for the CFS analysis, as the default is designed only for bands of

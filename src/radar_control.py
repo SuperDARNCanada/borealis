@@ -144,9 +144,7 @@ def create_driver_message(radctrl_params, pulse_transmit_data, pulse_buffer):
 
     :param radctrl_params: The current averaging period parameters dataclass.The parameters extracted are:
 
-        * ``sequence.txctrfreq`` - the transmit center frequency to tune to
-        * ``sequence.rxctrfreq`` - the receive center frequency to tune to. With rx_sample_rate from config.ini
-          file, this determines the received signal band
+        * ``sequence.current_tune`` - the center frequency to tune to, for both transmit and receive
         * ``experiment.txrate`` - the tx sampling rate (Hz)
         * ``experiment.rxrate`` - the rx sampling rate (Hz)
         * ``sequence.numberofreceivesamples`` - number of samples to receive at the rx_sample_rate from config.ini
@@ -175,12 +173,7 @@ def create_driver_message(radctrl_params, pulse_transmit_data, pulse_buffer):
 
     message = messages.DriverPacket()
 
-    message.txcenterfreq = (
-        radctrl_params.slice_dict[0].txctrfreq * 1000
-    )  # convert to Hz
-    message.rxcenterfreq = (
-        radctrl_params.slice_dict[0].rxctrfreq * 1000
-    )  # convert to Hz
+    message.tune_freq = radctrl_params.sequence.current_tune * 1000  # convert to Hz
     message.txrate = radctrl_params.experiment.txrate
     message.rxrate = radctrl_params.experiment.rxrate
 
@@ -258,7 +251,7 @@ def create_dsp_message(radctrl_params):
         * ``sequence.seqtime`` - entire duration of sequence, including receive time after all transmissions
         * ``sequence.first_rx_sample_start`` - The sample where the first rx sample will start relative to the
           tx data
-        * ``sequence.rxctrfreq`` - the center frequency of receiving
+        * ``sequence.current_tune`` - the center frequency of the band for received samples
         * ``sequence.output_encodings`` - Phase offsets (degrees) applied to each pulse in the sequence
         * ``decimation_scheme`` - object of type DecimationScheme that has all decimation and filtering data
         * ``cfs_scan_flag`` - flag indicating of sequence is a clear frequency search rx only sequence
@@ -272,7 +265,7 @@ def create_dsp_message(radctrl_params):
     message.offset_to_first_rx_sample = radctrl_params.sequence.first_rx_sample_start
     message.rx_rate = radctrl_params.experiment.rxrate
     message.output_sample_rate = radctrl_params.sequence.output_rx_rate
-    message.rx_ctr_freq = radctrl_params.sequence.rxctrfreq * 1.0e3
+    message.rx_ctr_freq = radctrl_params.sequence.current_tune * 1.0e3
     message.cfs_scan_flag = radctrl_params.cfs_scan_flag
     message.acf = radctrl_params.sequence.acf
     message.xcf = radctrl_params.sequence.xcf
@@ -433,11 +426,11 @@ def create_dw_message(radctrl_params):
         * ``experiment.comment_string`` - The comment string for the experiment, user-defined
         * ``decimation_scheme.filter_scaling_factors`` - The decimation scheme scaling factors used for the
           experiment, to get the scaling for the data for accurate power measurements between experiments
-        * ``experiment.slice_dict[0].rxctrfreq`` - The receive center frequency (kHz)
+        * ``sequence.current_tune`` - The receive center frequency (kHz)
         * ``debug_samples`` - the debug samples for this averaging period, to be written to the
           file if debug is set. This is a list of dictionaries for each Sequence in the
           AveragingPeriod. The dictionary is set up in the sample_building module function
-          create_debug_sequence_samples. The keys are ``txrate``, ``txctrfreq``, ``pulse_timing`,
+          create_debug_sequence_samples. The keys are ``txrate``, ``pulse_timing`,
           ``pulse_sample_start``, ``sequence_samples``, ``decimated_sequence``, and ``dmrate``.
           The ``sequence_samples`` and ``decimated_samples`` values are themselves dictionaries, where the
           keys are the antenna numbers (there is a sample set for each transmit antenna)
@@ -449,7 +442,7 @@ def create_dw_message(radctrl_params):
     message.experiment_id = radctrl_params.experiment.cpid
     message.experiment_name = radctrl_params.experiment.experiment_name
     message.experiment_comment = radctrl_params.experiment.comment_string
-    message.rx_ctr_freq = radctrl_params.experiment.slice_dict[0].rxctrfreq
+    message.center_freq = radctrl_params.sequence.current_tune
     if isinstance(radctrl_params.aveperiod, CFSAveragingPeriod):
         message.num_sequences = (
             radctrl_params.num_sequences - 1
