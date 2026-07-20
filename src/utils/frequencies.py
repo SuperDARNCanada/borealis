@@ -12,7 +12,7 @@ determination of tuning frequencies is somewhat complex as there are effectively
 
 where the total width (between the outer pipes) is the sampling rate.
 Regions 1 and 5 are each (sampling_rate * 0.15) wide, and unusable due to anti-aliasing filter distortion.
-Region 3 is 50 kHz wide, and unusable due to distortion around the tuning frequency.
+Region 3 is 50 kHz wide, and unusable due to distortion around the tuning frequency. This was determined empirically.
 Regions 2 and 4 are each ((sampling_rate / 2) - 25 kHz) wide, covering the remainder of the band.
 """
 
@@ -366,12 +366,12 @@ def determine_tuning_freqs(
 
     This function takes a list of frequencies or frequency ranges (e.g. [10500, 10800, [10900, 11200], 12200])
     and a sampling rate (e.g. 5 MHz) and resolves the tuning frequencies that minimize the number of retuning events
-    between adjacent frequencies/ranges.
+    between adjacent frequencies/ranges. No reordering of frequencies is done, to preserve order-of-operations for
+    experiments which use the `freq_order` keyword.
 
     :param freqs:   Frequencies under consideration. Either a plain frequency in kHz, or a Tuple[int, int] defining
-                    a band which must use one tuning frequency (e.g. for clear frequency search, or two frequencies
-                    from SEQUENCE- or CONCURRENT-interfaced slices which must share a tuning freq).
-    :type  freqs:   List[Union[FreqOrRange, List[F]]],
+                    a band which must use one tuning frequency (e.g. for clear frequency search).
+    :type  freqs:   List[Union[FreqOrRange, List[F]]]
     :param sampling_rate: Sampling rate of the experiment
     :type  sampling_rate: F
     :param master_clock_rate: Clock rate of the USRP devices

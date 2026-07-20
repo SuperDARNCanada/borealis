@@ -178,12 +178,15 @@ class AveragingPeriod(InterfaceClassBase):
         """
         Determine the tuning frequencies to use.
 
-        Tuning frequencies are shared amongst all slices that are SEQUENCE or CONCURRENT interfaced. Slices which
-        have `freq_order` set may have multiple tuning frequencies for their different frequencies.
+        Tuning frequencies are shared amongst all slices that are SEQUENCE or CONCURRENT interfaced.
+        Slices which have `freq_order` set may have multiple tuning frequencies for their different frequencies.
+        CONCURRENT slices run at the same time, so must share a band, while SEQUENCE-interfaced slices switch too
+        frequently to be re-tuning between each. However, for slices with `freq_order`, the switching is still between
+        averaging periods, so re-tuning is acceptable.
         """
         has_freq_order = False
         freqs = []
-        for slice_id in self.slice_ids:
+        for slice_id in slice_ids:
             exp_slice = self.slice_dict[slice_id]
             if exp_slice.cfs_range is not None:
                 freqs.append(exp_slice.cfs_range)
@@ -193,7 +196,7 @@ class AveragingPeriod(InterfaceClassBase):
             else:
                 freqs.append(exp_slice.freq)
 
-        if not has_freq_order or len(self.slice_ids) > 1:
+        if not has_freq_order or len(slice_ids) > 1:
             # If there are SEQUENCE or CONCURRENT interfaced slices, they must all share a tuning frequency, even if
             # one of the slices defines `freq_order`.
             tuning_freqs, groups = determine_tuning_freqs(
@@ -201,10 +204,10 @@ class AveragingPeriod(InterfaceClassBase):
             )
             if len(tuning_freqs) > 1:
                 raise ExperimentException(
-                    f"Slices {self.slice_ids} are SEQUENCE or CONCURRENT interfaced but cannot"
+                    f"Slices {slice_ids} are SEQUENCE or CONCURRENT interfaced but cannot"
                     f" be accommodated with one tuning frequency"
                 )
-            return {slice_id: tuning_freqs[0] for slice_id in self.slice_ids}
+            return {slice_id: tuning_freqs[0] for slice_id in slice_ids}
         else:
             # just one slice, which uses multiple frequencies with `freq_order`
             tuning_freqs, groups = determine_tuning_freqs(
@@ -213,7 +216,7 @@ class AveragingPeriod(InterfaceClassBase):
             tune_list = []
             for idx, g in enumerate(groups):
                 tune_list.extend([tuning_freqs[idx]] * len(g))
-            return {self.slice_ids[0]: tune_list}
+            return {slice_ids[0]: tune_list}
 
     def calculate_tuning_freqs(self):
         """

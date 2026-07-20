@@ -433,6 +433,39 @@ class TestDetermineTuningFreqs(unittest.TestCase):
         for actual, expected in zip(tuning_freqs, expected_tunes):
             self.assertEqual(actual, snap_to_usrp_clocks(expected, master_clock_rate))
 
+        # mix of single freqs and bands
+        freqs = [9690, [11500, 11800], 10440, [12080, 12280]]
+        expected_tunes = [11439]
+        expected_groups = [[0, 1, 2, 3]]
+        tuning_freqs, groups = determine_tuning_freqs(
+            freqs, sampling_rate, master_clock_rate
+        )
+        self.assertEqual(groups, expected_groups)
+        for actual, expected in zip(tuning_freqs, expected_tunes):
+            self.assertEqual(actual, snap_to_usrp_clocks(expected, master_clock_rate))
+
+        # only one frequency
+        freqs = [11675]
+        expected_tunes = [13424]
+        expected_groups = [[0]]
+        tuning_freqs, groups = determine_tuning_freqs(
+            freqs, sampling_rate, master_clock_rate
+        )
+        self.assertEqual(groups, expected_groups)
+        for actual, expected in zip(tuning_freqs, expected_tunes):
+            self.assertEqual(actual, snap_to_usrp_clocks(expected, master_clock_rate))
+
+        # only one frequency band
+        freqs = [[11675, 11750]]
+        expected_tunes = [13424]
+        expected_groups = [[0]]
+        tuning_freqs, groups = determine_tuning_freqs(
+            freqs, sampling_rate, master_clock_rate
+        )
+        self.assertEqual(groups, expected_groups)
+        for actual, expected in zip(tuning_freqs, expected_tunes):
+            self.assertEqual(actual, snap_to_usrp_clocks(expected, master_clock_rate))
+
 
 if __name__ == "__main__":
     unittest.main()
