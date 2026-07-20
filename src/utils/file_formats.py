@@ -936,6 +936,20 @@ class SliceData:
 
         return dmap_record
 
+    def to_dict(self, fmt: str):
+        """
+        Converts `self` to a plain dictionary, keeping only the fields required for `fmt`
+
+        Useful for serializing data for transit over the network (complex objects like this class
+        or h5py.Group instances cannot be pickled or reliably unpickled).
+        """
+        output = dict()
+        for k in self.all_fields(fmt):
+            v = getattr(self, k, None)
+            if v is not None:
+                output[k] = v
+        return output
+
     def __repr__(self):
         """Print all available fields"""
         return f"{vars(self)}"

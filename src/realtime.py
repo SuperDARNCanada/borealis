@@ -16,8 +16,7 @@ from pathlib import Path
 import pickle
 import sys
 
-from backscatter import fitacf
-import numpy as np
+from procdarn import fitacf3_recs
 import pydarnio
 import structlog
 import zmq
@@ -39,14 +38,7 @@ def fit_record(rawacf_records):
         first_rec["time.us"],
     )
     log.info("fitting record", timestamp=timestamp)
-
-    fitted_records = []
-    for rec in rawacf_records:
-        fit_data = fitacf._fit(rec)
-        fit_data["pwr0"] = np.array(
-            fit_data["pwr0"], dtype=np.float32
-        )  # backscatter returns float64, need float32
-        fitted_records.append(fit_data.copy())
+    fitted_records = fitacf3_recs(rawacf_records)
 
     return fitted_records
 
@@ -148,7 +140,7 @@ def serve_slice(slice_data: SliceData, server_socket: zmq.Socket, file_type: str
 
     # Use a message topic of FILE_TYPE/SLICE_ID to facilitate message filtering on the receiver end
     msg_topic = f"{file_type}/{slice_data.slice_id}".lower()
-    data_bytes = pickle.dumps(slice_data)
+    data_bytes = pickle.dumps(slice_data.to_dict(file_type))
     send_bytes(data_bytes, server_socket, msg_topic)
 
 

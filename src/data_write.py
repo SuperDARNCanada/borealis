@@ -129,9 +129,7 @@ class DataWrite:
                 full_two_hr_file = (
                     f"{self.dataset_directory}/{two_hr_file_with_type}.h5"
                 )
-            writer.write_record(
-                full_two_hr_file, aveperiod_data, self.timestamp, data_type
-            )
+            writer.write_record(full_two_hr_file, aveperiod_data, data_type)
         except Exception as e:
             if "No space left on device" in str(e):
                 log.critical("no space left on device", error=e)
