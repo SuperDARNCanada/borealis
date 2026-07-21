@@ -14,8 +14,7 @@ import inspect
 from pathlib import Path
 import pickle
 
-from backscatter import fitacf
-import numpy as np
+from procdarn import fitacf3_recs
 import pydarnio
 import structlog
 import zmq
@@ -25,21 +24,17 @@ def fit_record(rawacf_records):
     """Fits a list of DMAP-formatted rawacf records using backscatter, returning the results"""
     first_rec = rawacf_records[0]
     timestamp = dt.datetime(
-        first_rec['time.yr'],
-        first_rec['time.mo'],
-        first_rec['time.dy'],
-        first_rec['time.hr'],
-        first_rec['time.mt'],
-        first_rec['time.sc'],
-        first_rec['time.us'],
+        first_rec["time.yr"],
+        first_rec["time.mo"],
+        first_rec["time.dy"],
+        first_rec["time.hr"],
+        first_rec["time.mt"],
+        first_rec["time.sc"],
+        first_rec["time.us"],
     )
     log.info("fitting record", timestamp=timestamp)
 
-    fitted_records = []
-    for rec in rawacf_records:
-        fit_data = fitacf._fit(rec)
-        fit_data['pwr0'] = np.array(fit_data['pwr0'], dtype=np.float32)  # backscatter returns float64, need float32
-        fitted_records.append(fit_data.copy())
+    fitted_records = fitacf3_recs(rawacf_records)
 
     return fitted_records
 
@@ -57,31 +52,26 @@ def realtime_server(recv_socket, server_socket):
             rawacf_pickled = so.recv_bytes_from_any_iden(
                 recv_socket
             )  # This is blocking
+
+            rawacf_data = pickle.loads(rawacf_pickled)
+            # this will be a dict keyed by slice ID, values are dicts of (timestamp, [DMAP data dicts])
+            slice_ids = sorted(list(rawacf_data.keys()))
+            fitted_recs = fit_record(rawacf_data[slice_ids[0]])
+            # Only fit the first slice of any that are SEQUENCE or CONCURRENT interfaced.
+
+            data_to_send = pydarnio.write_fitacf(fitted_recs)
+            publishable_data = bz2.compress(data_to_send)
+
+            # Serve the data over the websocket. This is non-blocking in a background thread that zmq handles
+            server_socket.send(publishable_data)
+
         except (zmq.ContextTerminated, zmq.ZMQError):  # No way to recover from this
             recv_socket.close()
             server_socket.close()
             return
-
-        rawacf_data = pickle.loads(rawacf_pickled)
-        # this will be a dict keyed by slice ID, values are dicts of (timestamp, [DMAP data dicts])
-
-        slice_ids = sorted(list(rawacf_data.keys()))
-        try:
-            fitted_recs = fit_record(rawacf_data[slice_ids[0]])
-            # Only fit the first slice of any that are SEQUENCE or CONCURRENT interfaced.
         except Exception as err:
             log.critical("error processing record", exception=err)
             continue
-
-        data_to_send = pydarnio.write_fitacf(fitted_recs)
-        publishable_data = bz2.compress(data_to_send)
-        try:
-            # Serve the data over the websocket. This is non-blocking in a background thread that zmq handles
-            server_socket.send(publishable_data)
-        except (zmq.ContextTerminated, zmq.ZMQError):  # No way to recover from this
-            recv_socket.close()
-            server_socket.close()
-            return
 
 
 if __name__ == "__main__":
