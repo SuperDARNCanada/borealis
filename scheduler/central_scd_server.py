@@ -354,10 +354,7 @@ def main():
             if not errors:
                 success_msg = "All swg lines successfully scheduled.\n"
                 for site, site_scd in zip(sites, site_scds):
-                    yyyymmdd = today.strftime("%Y%m%d")
-                    hhmm = today.strftime("%H:%M")
-
-                    new_lines = site_scd.get_relevant_lines(yyyymmdd, hhmm)
+                    new_lines = site_scd.get_relevant_lines(today)
 
                     text_lines = [str(x) for x in new_lines]
 
