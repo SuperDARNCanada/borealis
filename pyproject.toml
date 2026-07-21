@@ -17,7 +17,7 @@ dependencies = [
     "inotify",
     "numpy<2",
     "posix_ipc",
-    "procdarn==0.1.0",
+    "procdarn==0.1.1",
     "pydantic>=2",
     "pyDARNio @ git+https://github.com/SuperDARN/pyDARNio.git@develop",
     "rich",
