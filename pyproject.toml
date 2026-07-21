@@ -11,13 +11,13 @@ authors = [{name = "SuperDARN Canada"}]
 license = {file = "LICENSE"}
 requires-python = ">=3.9"
 dependencies = [
-    "backscatter @ git+https://github.com/SuperDARNCanada/backscatter.git",
     "darn-dmap>=0.1.6",
     "graypy",
     "h5py>=3.3.0",
     "inotify",
     "numpy<2",
     "posix_ipc",
+    "procdarn==0.1.1",
     "pydantic>=2",
     "pyDARNio @ git+https://github.com/SuperDARN/pyDARNio.git@develop",
     "rich",

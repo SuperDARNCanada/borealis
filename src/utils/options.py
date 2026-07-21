@@ -552,13 +552,6 @@ class Options:
 
         # TODO: Test that realtime_address and router_address are valid addresses
 
-        if not os.path.exists(self.data_directory):
-            raise ValueError(f"data_directory {self.data_directory} does not exist")
-        if not os.path.exists(self.log_directory):
-            raise ValueError(f"log_directory {self.log_directory} does not exist")
-        if not os.path.exists(self.hdw_path):
-            raise ValueError(f"hdw_path directory {self.hdw_path} does not exist")
-
     def __str__(self):
         return_str = f"""    site_id = {self.site_id} \
                        \n    rx_main_antennas = {self.rx_main_antennas} \

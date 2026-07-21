@@ -672,6 +672,9 @@ def main():
     args = dw_parser().parse_args()
 
     options = Options()
+    if not os.path.exists(options.data_directory):
+        raise RuntimeError(f"data_directory {options.data_directory} does not exist")
+
     if args.rawacf_format is None:
         rawacf_format = options.rawacf_format
     else:
