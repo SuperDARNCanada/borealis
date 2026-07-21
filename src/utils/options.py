@@ -136,7 +136,9 @@ class Options:
     )  #: Minimum duration between pulses in a pulse sequence [μs]
     num_beams: int = field(init=False)  #: Default number of beam directions to scan
     num_ranges: int = field(init=False)  #: Default number of range gates
-    scan_direction: str = field(init=False)  #: Scan direction, "clockwise" or "counterclockwise"
+    scan_direction: str = field(
+        init=False
+    )  #: Scan direction, "clockwise" or "counterclockwise"
 
     n200_addrs: list[str] = field(init=False)
     n200_count: int = field(init=False)
@@ -544,16 +546,11 @@ class Options:
         if self.num_ranges <= 0:
             raise ValueError("num_ranges must be > 0")
         if self.scan_direction not in ["clockwise", "counterclockwise"]:
-            raise ValueError("scan_direction must be either `clockwise` or `counterclockwise`")
+            raise ValueError(
+                "scan_direction must be either `clockwise` or `counterclockwise`"
+            )
 
         # TODO: Test that realtime_address and router_address are valid addresses
-
-        if not os.path.exists(self.data_directory):
-            raise ValueError(f"data_directory {self.data_directory} does not exist")
-        if not os.path.exists(self.log_directory):
-            raise ValueError(f"log_directory {self.log_directory} does not exist")
-        if not os.path.exists(self.hdw_path):
-            raise ValueError(f"hdw_path directory {self.hdw_path} does not exist")
 
     def __str__(self):
         return_str = f"""    site_id = {self.site_id} \

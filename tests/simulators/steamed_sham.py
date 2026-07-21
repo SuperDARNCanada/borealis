@@ -87,7 +87,7 @@ def steamed_hams_parser():
         help="The name of the module in the experiments directory that contains your experiment class, e.g. `normalscan`",
     )
     parser.add_argument(
-        "runtime_mode",
+        "run_mode",
         help="""Runtime mode.
         `release`: runs Python modules with `-O -u` for faster performance, generates antennas_iq and rawacf files.
         `debug`: runs `usrp_driver` module with `gdb`, limits performance to at most one pulse sequence per second.
@@ -175,7 +175,7 @@ if __name__ == "__main__":
     # Configure python first, starting with options for each module
     options = {
         "brian": "",
-        "radar_control": f"{args.experiment_module} {args.scheduling_mode_type}",
+        "radar_control": f"{args.experiment_module} {args.scheduling_mode}",
         "data_write": f"{data_write_args}",
         "realtime": "",
         "rx_signal_processing": "",
