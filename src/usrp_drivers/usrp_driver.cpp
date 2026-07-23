@@ -68,8 +68,7 @@ typedef struct {
   uint32_t sequence_num{};
   double rxrate{};
   double txrate{};
-  double txcenterfreq{};
-  double rxcenterfreq{};
+  double tunefreq{};
   uint32_t num_rx_samps{};
   uint32_t num_tx_samps{};
   double seqtime{};
@@ -106,10 +105,8 @@ RadctrlPacket parse_radctrl_packet(std::string message) {
       val >> packet.rxrate;
     } else if (key == "txrate") {
       val >> packet.txrate;
-    } else if (key == "txcenterfreq") {
-      val >> packet.txcenterfreq;
-    } else if (key == "rxcenterfreq") {
-      val >> packet.rxcenterfreq;
+    } else if (key == "tunefreq") {
+      val >> packet.tunefreq;
     } else if (key == "num_rx_samps") {
       val >> packet.num_rx_samps;
     } else if (key == "num_tx_samps") {
@@ -344,28 +341,28 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
                 [&]() {
                   // If there is new center frequency data, set TX center
                   // frequency for each USRP TX channel.
-                  if (tx_center_freq != driver_packet.txcenterfreq) {
-                    if (driver_packet.txcenterfreq > 0.0 &&
+                  if (tx_center_freq != driver_packet.tunefreq) {
+                    if (driver_packet.tunefreq > 0.0 &&
                         driver_packet.burst_start) {
                       DEBUG_MSG(COLOR_BLUE("TRANSMIT")
                                 << " setting tx center freq to "
-                                << driver_packet.txcenterfreq);
+                                << driver_packet.tunefreq);
                       tx_center_freq = usrp_d.set_tx_center_freq(
-                          driver_packet.txcenterfreq, tx_channels,
+                          driver_packet.tunefreq, tx_channels,
                           uhd::time_spec_t(TUNING_DELAY));
                     }
                   }
 
                   // rxcenterfreq() will return 0 if it hasn't changed, so check
                   // for changes here
-                  if (rx_center_freq != driver_packet.rxcenterfreq) {
-                    if (driver_packet.rxcenterfreq > 0.0 &&
+                  if (rx_center_freq != driver_packet.tunefreq) {
+                    if (driver_packet.tunefreq > 0.0 &&
                         driver_packet.burst_start) {
                       DEBUG_MSG(COLOR_BLUE("TRANSMIT")
                                 << " setting rx center freq to "
-                                << driver_packet.rxcenterfreq);
+                                << driver_packet.tunefreq);
                       rx_center_freq = usrp_d.set_rx_center_freq(
-                          driver_packet.rxcenterfreq, receive_channels,
+                          driver_packet.tunefreq, receive_channels,
                           uhd::time_spec_t(TUNING_DELAY));
                     }
                   }
@@ -839,9 +836,9 @@ int32_t UHD_SAFE_MAIN(int32_t argc, char *argv[]) {
 
   USRP usrp_d(driver_options, driver_packet.txrate, driver_packet.rxrate);
   auto tune_delay = uhd::time_spec_t(TUNING_DELAY);
-  usrp_d.set_tx_center_freq(driver_packet.txcenterfreq,
+  usrp_d.set_tx_center_freq(driver_packet.tunefreq,
                             driver_options.get_transmit_channels(), tune_delay);
-  usrp_d.set_rx_center_freq(driver_packet.rxcenterfreq,
+  usrp_d.set_rx_center_freq(driver_packet.tunefreq,
                             driver_options.get_receive_channels(), tune_delay);
 
   driver_to_radar_control.close();

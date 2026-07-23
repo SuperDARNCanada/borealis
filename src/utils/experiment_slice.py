@@ -66,8 +66,6 @@ slice_key_set = frozenset(
         "comment",
         "cpid",
         "first_range",
-        "txctrfreq",
-        "rxctrfreq",
         "freq",
         "intn",
         "intt",
@@ -93,9 +91,7 @@ slice_key_set = frozenset(
         "xcf",
     ]
 )
-hidden_key_set = frozenset(
-    ["cfs_flag", "slice_interfacing", "tx_freq_bounds", "rx_freq_bounds"]
-)
+hidden_key_set = frozenset(["cfs_flag", "slice_interfacing"])
 """
 These are used by the build_scans method (called from the experiment_handler every time the
 experiment is run). If set by the user, the values will be overwritten and therefore ignored.
@@ -170,11 +166,15 @@ class ExperimentSlice:
         list. This is like a mapping of beam number (list index) to beam direction off boresight.
     cfs_range *required or freq required*
         range for clear frequency search, should be a list of length = 2, [min_freq, max_freq] in kHz.
+        Slices which are SEQUENCE or CONCURRENT interfaced must share a tuning frequency, so frequency
+        restrictions may exist due to other slices.
     first_range *required*
         first range gate, in km
     freq *required or cfs_range required*
         transmit/receive frequency, in kHz. Note if you specify cfs_range it won't be used. Can be either
         a single frequency or a list of frequencies. If a list, you must also specify `freq_order`.
+        Slices which are SEQUENCE or CONCURRENT interfaced must share a tuning frequency, so frequency
+        restrictions may exist due to other slices.
     intt *required or intn required*
         duration of an averaging period (integration), in ms. (maximum)
     intn *required or intt required*
@@ -274,11 +274,6 @@ class ExperimentSlice:
         a calculated value from pulse_len. If already set, it will be overwritten to be the correct
         value determined by the pulse_len. Used for acfs. This is the range gate separation, in the
         radial direction (away from the radar), in km.
-    rxctrfreq *defaults*
-        Center frequency, in kHz, used to mix to baseband.
-        Since this requires tuning time to set, it is the user's responsibility to ensure that the
-        re-tuning time does not detract from the experiment implementation. Tuning time is set in
-        the usrp_driver.cpp script and changes to the time will require recompiling of the code.
     rx_intf_antennas *defaults*
         The antennas to receive on in interferometer array, default is all antennas given max number
         from config.
@@ -297,11 +292,6 @@ class ExperimentSlice:
         intended for CONCURRENT interfacing, when you want multiple slice's pulses in one sequence you
         can offset one slice's sequence from the other by a certain time value so as to not run both
         frequencies in the same pulse, etc. Default is 0 offset.
-    txctrfreq *defaults*
-        Center frequency, in kHz, for the USRP to mix the samples with.
-        Since this requires tuning time to set, it is the user's responsibility to ensure that the
-        re-tuning time does not detract from the experiment implementation. Tuning time is set in
-        the usrp_driver.cpp script and changes to the time will require recompiling of the code.
     tx_antennas *defaults*
         The antennas to transmit on, default is all main antennas given max number from config.
     tx_antenna_pattern *defaults*
@@ -375,10 +365,6 @@ class ExperimentSlice:
 
     # Frequency rx and tx limits are dependent on the tx and rx center frequencies. Since the center freq
     # parameter is defined by slice, the max and min rx frequencies must be determined after center freq validation
-    txctrfreq: Optional[freq_khz] = None
-    rxctrfreq: Optional[freq_khz] = None
-    tx_freq_bounds: Optional[tuple] = (options.min_freq / 1000, options.max_freq / 1000)
-    rx_freq_bounds: Optional[tuple] = (options.min_freq / 1000, options.max_freq / 1000)
     rxonly: Optional[StrictBool] = False
     freq: Optional[Union[freq_khz, List[freq_khz]]] = None
     freq_order: Optional[List[non_neg_int]] = None
@@ -868,72 +854,6 @@ class ExperimentSlice:
                     )
         return ppo
 
-    @field_validator("txctrfreq", "rxctrfreq", mode="before")
-    @classmethod
-    def check_ctrfreq(cls, ctrfreq):
-        if isinstance(ctrfreq, (float, int)):
-            # convert from kHz to Hz to get correct clock divider. Return the result back in kHz.
-            clock_multiples = options.usrp_master_clock_rate / 2**32
-            clock_divider = math.ceil(ctrfreq * 1e3 / clock_multiples)
-            ctrfreq = (clock_divider * clock_multiples) / 1e3
-
-        return ctrfreq
-
-    @field_validator("tx_freq_bounds", mode="after")
-    @classmethod
-    def check_tx_freq_bounds(cls, _, info):
-        # max frequency is defined as [center freq] + [bandwidth / 2] - [bandwidth * 0.15]
-        # min frequency is defined as [center freq] - [bandwidth / 2] + [bandwidth * 0.15]
-        # [bandwidth * 0.15] is the transition bandwidth. This was set a 750 kHz originally
-        # but for smaller bandwidth this value is too large. For the typical operating
-        # bandwidth of 5 MHz, the calculated transition bandwidth here will be 750 kHz
-        if info.data.get("txctrfreq", None) is not None:
-            tx_center = info.data["txctrfreq"]
-
-            tx_maxfreq = (
-                tx_center * 1000
-                + (info.data["tx_bandwidth"] / 2.0)
-                - (info.data["tx_bandwidth"] * 0.15)
-            )
-            tx_minfreq = (
-                tx_center * 1000
-                - (info.data["tx_bandwidth"] / 2.0)
-                + (info.data["tx_bandwidth"] * 0.15)
-            )
-
-            tx_freq_bounds = (tx_minfreq / 1000, tx_maxfreq / 1000)
-        else:
-            tx_freq_bounds = (options.min_freq / 1000, options.max_freq / 1000)
-
-        return tx_freq_bounds
-
-    @field_validator("rx_freq_bounds", mode="after")
-    @classmethod
-    def check_rx_freq_bounds(cls, _, info):
-        # max frequency is defined as [center freq] + [bandwidth / 2] - [bandwidth * 0.15]
-        # min frequency is defined as [center freq] - [bandwidth / 2] + [bandwidth * 0.15]
-        # [bandwidth * 0.15] is the transition bandwidth. This was set a 750 kHz originally
-        # but for smaller bandwidth this value is too large. For the typical operating
-        # bandwidth of 5 MHz, the calculated transition bandwidth here will be 750 kHz
-        if info.data.get("rxctrfreq", None) is not None:
-            rx_center = info.data["rxctrfreq"]
-            rx_maxfreq = (
-                rx_center * 1000
-                + (info.data["rx_bandwidth"] / 2.0)
-                - (info.data["rx_bandwidth"] * 0.15)
-            )
-            rx_minfreq = (
-                rx_center * 1000
-                - (info.data["rx_bandwidth"] / 2.0)
-                + (info.data["rx_bandwidth"] * 0.15)
-            )
-
-            rx_freq_bounds = (rx_minfreq / 1000, rx_maxfreq / 1000)
-        else:
-            rx_freq_bounds = (options.min_freq / 1000, options.max_freq / 1000)
-
-        return rx_freq_bounds
-
     @field_validator("freq", mode="after")
     @classmethod
     def check_freq(cls, freq, info):
@@ -954,62 +874,11 @@ class ExperimentSlice:
                     f"freq is within a restricted frequency range {freq_range}"
                 )
 
-        # Frequency must be within bandwidth of rx and tx center frequency
-        if (freq > info.data["rx_freq_bounds"][1]) or (
-            freq < info.data["rx_freq_bounds"][0]
-        ):
-            raise ValueError(
-                f"Slice frequency is outside rx frequency bounds {info.data['rx_freq_bounds']}"
-            )
-        if info.data.get("rxctrfreq", None) is not None:
-            rx_center = info.data["rxctrfreq"]
-            # Frequency cannot be set to the rx or tx center frequency (100kHz bandwidth around center freqs)
-            if abs(freq - rx_center) < 50:
-                raise ValueError(
-                    f"Slice frequency cannot be within 50kHz of rx center frequency {rx_center:.3f}"
-                )
-
-        # TODO review issue #195 - Characterize transmit waveforms near edge of tx bandwidth
-        if info.data["rxonly"] is False:
-            if (freq > info.data["tx_freq_bounds"][1]) or (
-                freq < info.data["tx_freq_bounds"][0]
-            ):
-                raise ValueError(
-                    f"Slice frequency is outside tx frequency bounds {info.data['tx_freq_bounds']}"
-                )
-
-            tx_center = info.data.get("txctrfreq", None)
-            if tx_center is not None and abs(freq - tx_center) < 50:
-                raise ValueError(
-                    f"Slice frequency cannot be within 50kHz of tx center frequency {tx_center:.3f}"
-                )
-
     @field_validator("cfs_range", mode="after")
     @classmethod
     def check_cfs_range(cls, cfs_range, info):
         if cfs_range is None:
             return cfs_range
-
-        # Need to prevent the cfs_range from being outside the tx and rx operating ranges.
-        if (
-            cfs_range[0] < info.data["tx_freq_bounds"][0]
-            or cfs_range[0] < info.data["rx_freq_bounds"][0]
-        ):
-            raise ValueError(
-                f"Slice {info.data['slice_id']} cfs_range minimum value needs to be equal to "
-                f"or greater than the tx and rx minimum operating frequencies: "
-                f"{info.data['tx_freq_bounds'][0]} and {info.data['rx_freq_bounds'][0]}"
-            )
-
-        if (
-            cfs_range[1] > info.data["tx_freq_bounds"][1]
-            or cfs_range[1] > info.data["rx_freq_bounds"][1]
-        ):
-            raise ValueError(
-                f"Slice {info.data['slice_id']} cfs_range maximum value needs to be equal to "
-                f"or less than the tx and rx maximum operating frequencies: "
-                f"{info.data['tx_freq_bounds'][1]} and {info.data['rx_freq_bounds'][1]}"
-            )
 
         for freq_range in options.restricted_ranges:
             if freq_range[0] <= cfs_range[0] <= freq_range[1]:
@@ -1019,26 +888,6 @@ class ExperimentSlice:
                         f"cfs_range is entirely within restricted range {freq_range}. Slice: "
                         f"{info.data['slice_id']}"
                     )
-
-        if info.data.get("txctrfreq", None) is not None:
-            tx_band = (info.data["txctrfreq"] - 50, info.data["txctrfreq"] + 50)
-            if cfs_range[0] <= tx_band[1] and cfs_range[1] >= tx_band[0]:
-                log.warning(
-                    f"Slice {info.data['slice_id']} cfs range {cfs_range} is close to the "
-                    f"tx center frequency {info.data['txctrfreq']}. The cfs frequency "
-                    f"selection cannot chose a frequency within 50kHz of the center freq. "
-                    f"Frequencies within {tx_band} will not be used for transmission"
-                )
-
-        if info.data.get("rxctrfreq", None) is not None:
-            rx_band = (info.data["rxctrfreq"] - 50, info.data["rxctrfreq"] + 50)
-            if cfs_range[0] <= rx_band[1] and cfs_range[1] >= rx_band[0]:
-                log.warning(
-                    f"Slice {info.data['slice_id']} cfs range {cfs_range} is close to the "
-                    f"rx center frequency {info.data['rxctrfreq']}. The cfs frequency "
-                    f"selection cannot chose a frequency within 50kHz of the center freq. "
-                    f"Frequencies within {rx_band} will not be used for transmission"
-                )
 
         return cfs_range
 

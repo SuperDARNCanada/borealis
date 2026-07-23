@@ -183,7 +183,7 @@ class AveperiodMetadataMessage:
     experiment_id: int = None
     experiment_name: str = None
     experiment_comment: str = None
-    rx_ctr_freq: float = None
+    center_freq: float = None
     num_sequences: int = None
     last_sqn_num: int = None
     scan_flag: bool = None
@@ -259,8 +259,7 @@ class DriverPacket(CustomSerialization):
     sequence_num: int = 0
     rxrate: float = 0.0
     txrate: float = 0.0
-    txcenterfreq: float = 0.0
-    rxcenterfreq: float = 0.0
+    tune_freq: float = 0.0
     num_rx_samps: int = 0
     num_tx_samps: int = 0
     seqtime: float = 0.0

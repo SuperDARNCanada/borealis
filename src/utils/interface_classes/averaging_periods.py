@@ -30,6 +30,7 @@ from utils.interface_classes.interface_class_base import (
 )
 from utils.exceptions import ExperimentException
 from utils.experiment_slice import ExperimentSlice
+from utils.frequencies import determine_tuning_freqs
 
 # Obtain the module name that imported this log_config
 caller = Path(inspect.stack()[-1].filename)
@@ -97,8 +98,7 @@ class AveragingPeriod(InterfaceClassBase):
 
         self.intt = self.slice_dict[self.slice_ids[0]].intt
         self.intn = self.slice_dict[self.slice_ids[0]].intn
-        self.txctrfreq = self.slice_dict[self.slice_ids[0]].txctrfreq
-        self.rxctrfreq = self.slice_dict[self.slice_ids[0]].rxctrfreq
+
         if self.intt is not None:  # intt has priority over intn
             for slice_id in self.slice_ids:
                 if self.slice_dict[slice_id].intt != self.intt:
@@ -124,20 +124,6 @@ class AveragingPeriod(InterfaceClassBase):
                     f"Slices {self.slice_ids[0]} and {slice_id} are SEQUENCE or CONCURRENT"
                     " interfaced but do not have the same number of averaging periods in"
                     " their beam order"
-                )
-                raise ExperimentException(errmsg)
-
-        for slice_id in self.slice_ids:
-            if self.slice_dict[slice_id].txctrfreq != self.txctrfreq:
-                errmsg = (
-                    f"Slices {self.slice_ids[0]} and {slice_id} are SEQUENCE or CONCURRENT"
-                    " interfaced and do not have the same txctrfreq"
-                )
-                raise ExperimentException(errmsg)
-            if self.slice_dict[slice_id].rxctrfreq != self.rxctrfreq:
-                errmsg = (
-                    f"Slices {self.slice_ids[0]} and {slice_id} are SEQUENCE or CONCURRENT"
-                    " interfaced and do not have the same rxctrfreq"
                 )
                 raise ExperimentException(errmsg)
 
@@ -176,8 +162,7 @@ class AveragingPeriod(InterfaceClassBase):
             for slice_id in self.slice_ids:
                 beam_number = self.slice_to_beamorder[slice_id][beamiter]
                 if isinstance(beam_number, int):
-                    beamdir = []
-                    beamdir.append(self.slice_to_beamdir[slice_id][beam_number])
+                    beamdir = [self.slice_to_beamdir[slice_id][beam_number]]
                 else:  # is a list
                     beamdir = [
                         self.slice_to_beamdir[slice_id][bmnum] for bmnum in beam_number
@@ -188,6 +173,68 @@ class AveragingPeriod(InterfaceClassBase):
             raise ExperimentException(errmsg)
 
         return slice_to_beamdir_dict
+
+    def _determine_tuning_freqs(self, slice_ids):
+        """
+        Determine the tuning frequencies to use.
+
+        Tuning frequencies are shared amongst all slices that are SEQUENCE or CONCURRENT interfaced.
+        Slices which have `freq_order` set may have multiple tuning frequencies for their different frequencies.
+        CONCURRENT slices run at the same time, so must share a band, while SEQUENCE-interfaced slices switch too
+        frequently to be re-tuning between each. However, for slices with `freq_order`, the switching is still between
+        averaging periods, so re-tuning is acceptable.
+        """
+        has_freq_order = False
+        freqs = []
+        for slice_id in slice_ids:
+            exp_slice = self.slice_dict[slice_id]
+            if exp_slice.cfs_range is not None:
+                freqs.append(exp_slice.cfs_range)
+            elif isinstance(exp_slice.freq, list):
+                has_freq_order = True
+                freqs.extend(exp_slice.freq)
+            else:
+                freqs.append(exp_slice.freq)
+
+        if not has_freq_order or len(slice_ids) > 1:
+            # If there are SEQUENCE or CONCURRENT interfaced slices, they must all share a tuning frequency, even if
+            # one of the slices defines `freq_order`.
+            tuning_freqs, groups = determine_tuning_freqs(
+                freqs, self.transmit_metadata["txrate"], options.usrp_master_clock_rate
+            )
+            if len(tuning_freqs) > 1:
+                raise ExperimentException(
+                    f"Slices {slice_ids} are SEQUENCE or CONCURRENT interfaced but cannot"
+                    f" be accommodated with one tuning frequency"
+                )
+            return {slice_id: tuning_freqs[0] for slice_id in slice_ids}
+        else:
+            # just one slice, which uses multiple frequencies with `freq_order`
+            tuning_freqs, groups = determine_tuning_freqs(
+                freqs, self.transmit_metadata["txrate"], options.usrp_master_clock_rate
+            )
+            tune_list = []
+            for idx, g in enumerate(groups):
+                tune_list.extend([tuning_freqs[idx]] * len(g))
+            return {slice_ids[0]: tune_list}
+
+    def calculate_tuning_freqs(self):
+        """
+        Calculates the tuning frequencies for all slices in this AveragingPeriod.
+        """
+        return self._determine_tuning_freqs(self.slice_ids)
+
+    def params_for_nested(self):
+        """
+        Override of base method to give more information about tuning / center frequencies.
+        """
+        params_list = InterfaceClassBase.params_for_nested(self)
+        tuning_freqs = self.calculate_tuning_freqs()
+        for params, sequences in zip(params_list, self.nested_slice_list):
+            # Any SEQUENCE or CONCURRENT interfaced slices must share a tuning frequency,
+            # so we take the first one arbitrarily
+            params.append(tuning_freqs[sequences[0]])
+        return params_list
 
 
 class CFSAveragingPeriod(AveragingPeriod):
@@ -487,8 +534,6 @@ class CFSAveragingPeriod(AveragingPeriod):
             "transition_bandwidth": self.slice_dict[slice_id].transition_bandwidth,
             "rx_bandwidth": self.slice_dict[slice_id].rx_bandwidth,
             "tx_bandwidth": self.slice_dict[slice_id].tx_bandwidth,
-            "txctrfreq": self.txctrfreq,
-            "rxctrfreq": self.rxctrfreq,
             "rxonly": True,
             "pulse_sequence": [0],
             "tau_spacing": scf.TAU_SPACING_7P,
@@ -520,6 +565,12 @@ class CFSAveragingPeriod(AveragingPeriod):
             # combinations([1, 3, 5], 2) --> [1,3], [1,5], [3,5]
             interface_dict[tuple(i)] = "CONCURRENT"
 
+        tuning_freqs = self._determine_tuning_freqs(self.cfs_slice_ids)
+
         self.cfs_sequence = Sequence(
-            self.cfs_slice_ids, cfs_slices, interface_dict, self.transmit_metadata
+            self.cfs_slice_ids,
+            cfs_slices,
+            interface_dict,
+            self.transmit_metadata,
+            tuning_freqs[self.cfs_slice_ids[0]],
         )

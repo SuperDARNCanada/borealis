@@ -97,10 +97,17 @@ class Sequence(InterfaceClassBase):
     :type   sequence_interface:     dict
     :param  transmit_metadata:      metadata from the config file that is useful here.
     :type   transmit_metadata:      dict
+    :param  tuning_freq:            Frequency or list of frequencies to tune the USRPs to
+    :type   tuning_freq:            Union[float, List[float]]
     """
 
     def __init__(
-        self, seqn_keys, sequence_slice_dict, sequence_interface, transmit_metadata
+        self,
+        seqn_keys,
+        sequence_slice_dict,
+        sequence_interface,
+        transmit_metadata,
+        tuning_freq,
     ):
         InterfaceClassBase.__init__(
             self, seqn_keys, sequence_slice_dict, sequence_interface, transmit_metadata
@@ -157,8 +164,11 @@ class Sequence(InterfaceClassBase):
         self.rx_main_antenna_indices = {}
         self.rx_intf_antenna_indices = {}
         self.tx_antenna_indices = {}
-        self.txctrfreq = self.slice_dict[self.slice_ids[0]].txctrfreq
-        self.rxctrfreq = self.slice_dict[self.slice_ids[0]].rxctrfreq
+        self.tuning_freq = tuning_freq
+        if isinstance(tuning_freq, list):
+            self.current_tune = tuning_freq[0]  # will be updated in `make_sequence()`
+        else:
+            self.current_tune = tuning_freq
 
         # if any slice has cfs flag set, set the sequence cfs_flag to true
         self.cfs_flag = any([self.slice_dict[x].cfs_flag for x in self.slice_ids])
@@ -561,6 +571,11 @@ class Sequence(InterfaceClassBase):
         if not isinstance(freqs, list):
             freqs = [freqs]
 
+        if not isinstance(self.tuning_freq, list):
+            tuning_freqs = [self.tuning_freq]
+        else:
+            tuning_freqs = self.tuning_freq
+
         if exp_slice.rxonly:
             self.basic_slice_pulses[slice_id] = []
             tx_phases = np.zeros(
@@ -578,8 +593,8 @@ class Sequence(InterfaceClassBase):
         pulse_ramp_time = self.transmit_metadata["pulse_ramp_time"]
 
         pulse_samples = []
-        for freq_khz in freqs:
-            wave_freq_hz = (freq_khz - self.txctrfreq) * 1000
+        for freq_khz, tuning_freq_khz in zip(freqs, tuning_freqs):
+            wave_freq_hz = (freq_khz - tuning_freq_khz) * 1000
 
             basic_samples = get_samples(
                 txrate,
@@ -678,10 +693,16 @@ class Sequence(InterfaceClassBase):
 
         for slice_id in self.slice_ids:
             exp_slice = self.slice_dict[slice_id]
+            freq_idx = exp_slice.freq_order[beam_iter]
+
+            if isinstance(self.tuning_freq, list):
+                self.current_tune = self.tuning_freq[freq_idx]
+            else:
+                self.current_tune = self.tuning_freq
+
             if exp_slice.rxonly:
                 continue
             beam_num = exp_slice.tx_beam_order[beam_iter]
-            freq_idx = exp_slice.freq_order[beam_iter]
             basic_samples = self.basic_slice_pulses[slice_id][freq_idx, beam_num]
             # basic_samples: [num_tx_channels, num_samps]
 
