@@ -2,10 +2,11 @@
 Classes for writing Borealis data to disk in different file formats.
 """
 
+import datetime as dt
 import dmap
 import h5py
 
-from utils.file_formats import SliceData
+from .file_formats import SliceData
 
 
 class DMAPWriter:
@@ -16,7 +17,7 @@ class DMAPWriter:
     """
 
     @staticmethod
-    def write_record(filename: str, slice_data: SliceData, _: str, file_type: str):
+    def write_record(filename: str, slice_data: SliceData, file_type: str):
         """
         Write out data to a DMAP file.
 
@@ -24,8 +25,6 @@ class DMAPWriter:
         :type   filename:   str
         :param  slice_data: Data to write out to the file
         :type   slice_data: SliceData
-        :param  _:          unused
-        :type   _:          str
         :param  file_type:  Type of file to write
         :type   file_type:  str
         """
@@ -43,7 +42,7 @@ class HDF5Writer:
     """
 
     @staticmethod
-    def write_record(filename: str, slice_data: SliceData, dt_str: str, file_type: str):
+    def write_record(filename: str, slice_data: SliceData, file_type: str):
         """
         Write out data to an HDF5 file.
 
@@ -51,12 +50,14 @@ class HDF5Writer:
         :type   filename:   str
         :param  slice_data: Data to write out to the HDF5 file
         :type   slice_data: SliceData
-        :param  dt_str:     A datetime timestamp of the first transmission time in the record
-        :type   dt_str:     str
         :param  file_type:  Type of file to write
         :type   file_type:  str
         """
         with h5py.File(filename, "a") as f:
+            timestamp = dt.datetime.fromtimestamp(
+                slice_data.sqn_timestamps[0], dt.timezone.utc
+            )
+            dt_str = timestamp.strftime("%Y%m%d-%H%M-%S.%f")
             group = f.create_group(dt_str)
             if "metadata" in f.keys():
                 metadata = f.get("metadata")

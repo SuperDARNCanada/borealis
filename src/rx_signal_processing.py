@@ -203,6 +203,7 @@ def sequence_worker(options, ringbuffer):
         msg = pickle.dumps(reply_packet, protocol=pickle.HIGHEST_PROTOCOL)
         so.recv_bytes(dspbegin_to_brian, options.brian_to_dspbegin_identity, log)
         so.send_bytes(dspbegin_to_brian, options.brian_to_dspbegin_identity, msg)
+        dspbegin_to_brian.close()
         log_dict["dsp_begin_msg_time"] = (time.perf_counter() - mark_timer) * 1e3
 
         if rx_params.cfs_scan_flag:
@@ -312,6 +313,8 @@ def sequence_worker(options, ringbuffer):
         msg = pickle.dumps(reply_packet, protocol=pickle.HIGHEST_PROTOCOL)
         so.recv_bytes(dspend_to_brian, options.brian_to_dspend_identity, log)
         so.send_bytes(dspend_to_brian, options.brian_to_dspend_identity, msg)
+        dspend_to_brian.close()
+
         log_dict["dsp_end_msg_time"] = (time.perf_counter() - mark_timer) * 1e3
 
         total_processing_time = (time.perf_counter() - start_timer) * 1e3
@@ -487,6 +490,7 @@ def sequence_worker(options, ringbuffer):
         so.send_pyobj(
             processed_socket, recipient_iden, rx_params.processed_data, log=log
         )
+        processed_socket.close()
 
         log_dict["total_serialize_send_time"] = (
             time.perf_counter() - start_timer

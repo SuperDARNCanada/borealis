@@ -7,6 +7,7 @@ data, rawacf data, etc. and write that data to HDF5 or DMAP files.
 
 # built-in
 import argparse as ap
+from collections import defaultdict
 import datetime
 import faulthandler
 from multiprocessing import shared_memory
@@ -70,13 +71,17 @@ class DataWrite:
         # Directory where output files are written
         self.dataset_directory = None
 
-        # Socket for sending rawacf data to realtime
+        # Socket for sending data to realtime
         self.realtime_socket = so.create_sockets(
-            self.options.router_address, self.options.dw_to_rt_identity
+            self.options.router_address,
+            self.options.dw_to_rt_identity,
         )
 
         # Format of file that rawacf data should be written to
         self.rawacf_format = rawacf_format
+
+        # List of filter stage names for each slice
+        self.iq_stages_for_slice = defaultdict(dict)
 
     @staticmethod
     def two_hr_ceiling(dt):
@@ -124,9 +129,7 @@ class DataWrite:
                 full_two_hr_file = (
                     f"{self.dataset_directory}/{two_hr_file_with_type}.h5"
                 )
-            writer.write_record(
-                full_two_hr_file, aveperiod_data, self.timestamp, data_type
-            )
+            writer.write_record(full_two_hr_file, aveperiod_data, data_type)
         except Exception as e:
             if "No space left on device" in str(e):
                 log.critical("no space left on device", error=e)
@@ -140,7 +143,7 @@ class DataWrite:
     def output_data(
         self,
         write_bfiq: bool,
-        write_antenna_iq: bool,
+        write_antennas_iq: bool,
         write_raw_rf: bool,
         aveperiod_meta: AveperiodMetadataMessage,
         data_parsing: Aggregator,
@@ -153,8 +156,8 @@ class DataWrite:
 
         :param  write_bfiq:         Should beamformed IQ be written to file?
         :type   write_bfiq:         bool
-        :param  write_antenna_iq:   Should pre-beamformed IQ be written to file?
-        :type   write_antenna_iq:   bool
+        :param  write_antennas_iq:   Should pre-beamformed IQ be written to file?
+        :type   write_antennas_iq:   bool
         :param  write_raw_rf:       Should raw rf samples be written to file?
         :type   write_raw_rf:       bool
         :param  aveperiod_meta:     Metadata from radar control about averaging period
@@ -163,6 +166,7 @@ class DataWrite:
         :type   data_parsing:       Aggregator
         :param  write_rawacf:       Should rawacfs be written to file? Defaults to True.
         :type   write_rawacf:       bool, optional
+
         """
 
         start = time.perf_counter()
@@ -321,12 +325,21 @@ class DataWrite:
 
                 all_slice_data[rx_channel.slice_id] = parameters
 
-        if write_rawacf and len(data_parsing.main_acf_slices) > 0:
-            self._write_correlations(all_slice_data, data_parsing)
-        if write_bfiq and data_parsing.bfiq_available:
-            self._write_bfiq_params(all_slice_data, data_parsing)
-        if write_antenna_iq and data_parsing.antennas_iq_available:
-            self._write_antenna_iq_params(all_slice_data, data_parsing)
+        if len(data_parsing.main_acf_slices) > 0:
+            self._package_write_stream(
+                all_slice_data, data_parsing, "rawacf", write_rawacf
+            )
+        else:
+            log.warning("No ACF slices found")
+        if data_parsing.bfiq_available:
+            self._package_write_stream(all_slice_data, data_parsing, "bfiq", write_bfiq)
+        if data_parsing.antennas_iq_available:
+            self._package_write_stream(
+                all_slice_data,
+                data_parsing,
+                "antennas_iq",
+                write_antennas_iq,
+            )
         if data_parsing.rawrf_available:
             if write_raw_rf:
                 # Just need first available slice parameters.
@@ -349,7 +362,27 @@ class DataWrite:
             dataset_name=self.timestamp,
         )
 
-    def _write_correlations(
+    def _package_write_stream(
+        self,
+        aveperiod_data: dict[int, SliceData],
+        parsed_data: Aggregator,
+        fmt: str,
+        write: bool = True,
+    ):
+        """
+        Packages the data of type `fmt` for serialization, then writes to file and/or streams over the wire as specified
+        """
+
+        package_fn = getattr(self, f"_package_{fmt}")
+        write_fn = getattr(self, f"_write_{fmt}")
+        stream_fn = getattr(self, f"_stream_{fmt}")
+
+        package_fn(aveperiod_data, parsed_data)
+        stream_fn(aveperiod_data)
+        if write:
+            write_fn(aveperiod_data)
+
+    def _package_rawacf(
         self, aveperiod_data: dict[int, SliceData], parsed_data: Aggregator
     ):
         """
@@ -426,20 +459,24 @@ class DataWrite:
             if slice_num in parsed_data.intf_acf_slices:
                 slice_data.intf_acfs = find_expectation_value(intf_acfs[slice_num])
 
-        all_slice_data = {}
+    def _write_rawacf(self, aveperiod_data):
         for slice_num, slice_data in aveperiod_data.items():
             if getattr(slice_data, "main_acfs", None) is None:
+                log.warning("No main ACFs in slice", slice_num=slice_num)
                 continue
             two_hr_file_with_type = self.slice_filenames[slice_num].format(ext="rawacf")
             self._write_file(slice_data, two_hr_file_with_type, "rawacf")
 
-            # Send rawacf data to realtime (if there is any)
-            all_slice_data[slice_num] = slice_data.to_dmap()
-        so.send_pyobj(
-            self.realtime_socket, self.options.rt_to_dw_identity, all_slice_data
-        )
+    def _stream_rawacf(self, aveperiod_data):
+        for slice_data in aveperiod_data.values():
+            so.send_pyobj(
+                self.realtime_socket,
+                self.options.rt_to_dw_identity,
+                slice_data,
+                header="rawacf",
+            )
 
-    def _write_bfiq_params(
+    def _package_bfiq(
         self, aveperiod_data: dict[int, SliceData], parsed_data: Aggregator
     ):
         """
@@ -475,11 +512,21 @@ class DataWrite:
             )
             slice_data.sample_time = np.round(sample_timing_s * 1e6).astype(np.int32)
 
+    def _write_bfiq(self, aveperiod_data):
         for slice_num, slice_data in aveperiod_data.items():
             two_hr_file_with_type = self.slice_filenames[slice_num].format(ext="bfiq")
             self._write_file(slice_data, two_hr_file_with_type, "bfiq")
 
-    def _write_antenna_iq_params(
+    def _stream_bfiq(self, aveperiod_data):
+        for slice_data in aveperiod_data.values():
+            so.send_pyobj(
+                self.realtime_socket,
+                self.options.rt_to_dw_identity,
+                slice_data,
+                header="bfiq",
+            )
+
+    def _package_antennas_iq(
         self,
         aveperiod_data: dict[int, SliceData],
         parsed_data: Aggregator,
@@ -496,31 +543,49 @@ class DataWrite:
         """
 
         antenna_iq = parsed_data.antenna_iq_accumulator
-        slice_id_list = [x for x in antenna_iq.keys() if isinstance(x, int)]
 
-        final_data_params = {}
-        for slice_num in slice_id_list:
-            final_data_params[slice_num] = {}
-
+        for slice_num in antenna_iq.keys():
             for stage in antenna_iq[slice_num]:
-                stage_data = aveperiod_data[slice_num]
+                slice_data = aveperiod_data[slice_num]
 
                 data = []
                 for k, data_array in antenna_iq[slice_num][stage].items():
-                    if np.any(stage_data.rx_antennas == k):
+                    if np.any(slice_data.rx_antennas == k):
                         data.append(data_array)
+                data = np.stack(data, axis=0)
 
-                stage_data.antennas_iq_data = np.stack(data, axis=0)
+                stage_data = dict()
+                stage_data["data"] = data
                 sample_timing_s = (
-                    np.arange(stage_data.antennas_iq_data.shape[-1], dtype=np.float32)
-                    / stage_data.rx_sample_rate
+                    np.arange(data.shape[-1], dtype=np.float32)
+                    / slice_data.rx_sample_rate
                 )
-                stage_data.sample_time = sample_timing_s * 1e6
+                stage_data["sample_time"] = sample_timing_s * 1e6
+                self.iq_stages_for_slice[slice_num][stage] = stage_data
 
+    def _write_antennas_iq(self, aveperiod_data):
+        for slice_num in aveperiod_data.keys():
+            for stage_name, stage_data in self.iq_stages_for_slice[slice_num].items():
+                slice_data = aveperiod_data[slice_num]
+                slice_data.antennas_iq_data = stage_data["data"]
+                slice_data.sample_time = stage_data["sample_time"]
                 two_hr_file_with_type = self.slice_filenames[slice_num].format(
-                    ext=f"{stage}_iq"
+                    ext=f"{stage_name}_iq"
                 )
-                self._write_file(stage_data, two_hr_file_with_type, "antennas_iq")
+                self._write_file(slice_data, two_hr_file_with_type, "antennas_iq")
+
+    def _stream_antennas_iq(self, aveperiod_data):
+        for slice_num, slice_data in aveperiod_data.items():
+            stage = self.iq_stages_for_slice[slice_num]["antennas"]
+            slice_data = aveperiod_data[slice_num]
+            slice_data.antennas_iq_data = stage["data"]
+            slice_data.sample_time = stage["sample_time"]
+            so.send_pyobj(
+                self.realtime_socket,
+                self.options.rt_to_dw_identity,
+                slice_data,
+                header="antennas_iq",
+            )
 
     def _write_raw_rf_params(
         self, slice_data: SliceData, parsed_data: Aggregator, sample_rate: float
@@ -732,7 +797,7 @@ def main():
 
                         kwargs = dict(
                             write_bfiq=args.enable_bfiq,
-                            write_antenna_iq=args.enable_antenna_iq,
+                            write_antennas_iq=args.enable_antenna_iq,
                             write_raw_rf=args.enable_raw_rf,
                             aveperiod_meta=aveperiod_metadata,
                             data_parsing=aggregator,

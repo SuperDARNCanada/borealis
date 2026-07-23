@@ -79,7 +79,7 @@ def steamed_hams_parser():
     """
 
     parser = argparse.ArgumentParser(
-        usage="""steamed_sham.py experiment_module runtime_mode scheduling_mode [-h] [--embargo] [--rawacf-format {hdf5,dmap}] [--realtime-off] [--kwargs ...]""",
+        usage="""steamed_sham.py experiment_module run_mode scheduling_mode [-h] [--embargo] [--rawacf-format {hdf5,dmap}] [--realtime-off] [--kwargs ...]""",
         formatter_class=argparse.RawTextHelpFormatter,
     )
     parser.add_argument(
