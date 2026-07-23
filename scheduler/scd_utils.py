@@ -132,16 +132,19 @@ class ScheduleLine:
         try:
             sp.run(
                 [
-                    f"{os.environ['BOREALISPATH']}/borealis_env{os.environ['PYTHON_VERSION']}/bin/python3",
+                    f"{os.environ['VIRTUAL_ENV']}/bin/python3",
                     f"{os.environ['BOREALISPATH']}/tests/experiments/test_as_site.py",
                 ]
                 + args,
                 check=True,
+                stderr=sp.PIPE,
             )
         except sp.CalledProcessError as e:
             raise ScheduleError(
                 "Experiment could not be scheduled due to errors in experiment.\n"
                 + str(e)
+                + "\n\n"
+                + e.stderr.decode("utf-8")
             )
 
     @classmethod
@@ -267,7 +270,7 @@ class SCDUtils:
         ).stdout
         if retval is None:
             retval = b""
-        return retval.decode('utf-8')
+        return retval.decode("utf-8")
 
     def create_line(
         self,
@@ -401,6 +404,9 @@ class SCDUtils:
 
         :raises ValueError: If line parameters are invalid or if line is a duplicate.
         """
+        if kwargs is None:
+            kwargs = list()
+
         new_line = self.create_line(
             yyyymmdd,
             hhmm,

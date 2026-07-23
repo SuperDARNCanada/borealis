@@ -25,11 +25,11 @@ def realtime_sim(ctx: zmq.Context):
     rawacf_recv_socket = ctx.socket(zmq.PAIR)
     rawacf_recv_socket.connect("inproc://rt_simulator")
 
-    fitacf_server = ctx.socket(zmq.PUB)
-    fitacf_server.bind("inproc://fitacf_server")
-    fitacf_server.setsockopt(zmq.LINGER, 0)
+    data_server = ctx.socket(zmq.PUB)
+    data_server.bind("inproc://data_server")
+    data_server.setsockopt(zmq.LINGER, 0)
 
-    realtime_server(rawacf_recv_socket, fitacf_server)  # Runs indefinitely
+    realtime_server(rawacf_recv_socket, data_server)  # Runs indefinitely
 
 
 if __name__ == "__main__":
@@ -39,38 +39,161 @@ if __name__ == "__main__":
 
     context = zmq.Context().instance()
 
-    # This socket is for sending rawacf data to the simulator
-    rawacf_send_socket = context.socket(zmq.PAIR)
-    rawacf_send_socket.bind("inproc://rt_simulator")
+    # This socket is for sending data to the simulator
+    realtime_sock = context.socket(zmq.PAIR)
+    realtime_sock.bind("inproc://rt_simulator")
 
-    # This socket is for getting the fitacf data back from realtime_sim()
-    fitacf_sink = context.socket(zmq.SUB)
-    fitacf_sink.connect("inproc://fitacf_server")
-    fitacf_sink.setsockopt(zmq.SUBSCRIBE, b"")  # Receive all messages
+    # This socket is for getting the data back from realtime_sim()
+    sink = context.socket(zmq.SUB)
+    sink.connect("inproc://data_server")
+    sink.setsockopt(zmq.SUBSCRIBE, b"")  # Receive all messages
+    sink.setsockopt(zmq.RCVTIMEO, 2000)  # timeout after 2000 ms
 
     log.info("Starting simulator thread...")
     thread = threading.Thread(target=realtime_sim, args=(context,), daemon=True)
     thread.start()
 
     # Load in a record of data
-    infile = str(Path(__file__).resolve().parent) + "/20240912.1905.41.sas.a.rawacf"
-    rawacf_data = {0: pydarnio.read_rawacf(infile, mode='strict')}
+    data_dir = str(Path(__file__).resolve().parent)
+    with open(data_dir + "/antennas_iq-0.pkl", "rb") as f:
+        antennas_iq_data = pickle.load(f)
+    with open(data_dir + "/bfiq-0.pkl", "rb") as f:
+        bfiq_data = pickle.load(f)
+    with open(data_dir + "/rawacf-0.pkl", "rb") as f:
+        rawacf_data = pickle.load(f)
 
+    log.info("Subscribing to all messages")
     for i in range(
-        5
+        3
     ):  # Change this loop if you want to simulate sending multiple data packets
-        # Send rawacf data to the realtime_sim thread
         log.info("Sending rawacf data")
-        so.send_bytes(rawacf_send_socket, "sim", pickle.dumps(rawacf_data))
+        so.send_pyobj(realtime_sock, "sim", rawacf_data, header="rawacf")
 
-        # Get the fitacf data back from realtime_sim
-        recvd_data = fitacf_sink.recv()
-        fitacf_data = pydarnio.read_fitacf(recvd_data, mode='strict')
-
-        # Log the data to the console
+        fitacf_recvd = sink.recv_multipart(copy=True)
+        try:
+            fitacf_data = pydarnio.read_fitacf(fitacf_recvd[1], mode="strict")
+        except Exception as e:
+            log.error("Could not interpret as fitacf", error=e)
+            raise
         log.info("fitacf data received")
+
+        rawacf_recvd = sink.recv_multipart(copy=True)
+        log.info("rawacf data received")
+
+        log.info("Sending bfiq data")
+        so.send_pyobj(realtime_sock, "sim", bfiq_data, header="bfiq")
+        bfiq_recvd = sink.recv_multipart(copy=True)
+        log.info("bfiq data received")
+
+        log.info("Sending antennas_iq data")
+        so.send_pyobj(realtime_sock, "sim", antennas_iq_data, header="antennas_iq")
+        antiq_recvd = sink.recv_multipart(copy=True)
+        log.info("antennas_iq data received")
+
         time.sleep(1)
 
-    rawacf_send_socket.close()
-    fitacf_sink.close()
+    sink.setsockopt(zmq.UNSUBSCRIBE, b"")
+    sink.setsockopt(zmq.SUBSCRIBE, b"antennas_iq")  # only receive antennas_iq packets
+    log.info("Subscribing to antennas_iq")
+    time.sleep(1)
+
+    for i in range(
+        3
+    ):  # Change this loop if you want to simulate sending multiple data packets
+        log.info("Sending rawacf data")
+        so.send_pyobj(realtime_sock, "sim", rawacf_data, header="rawacf")
+
+        try:
+            packet_recvd = sink.recv_multipart()
+        except zmq.ZMQError as err:
+            if err.errno != zmq.EAGAIN:
+                log.warning(
+                    "Received unexpected error when subscribed to antennas_iq",
+                    error=err,
+                )
+        else:
+            log.warning("Received unexpected packet when subscribed to antennas_iq")
+
+        log.info("Sending bfiq data")
+        so.send_pyobj(realtime_sock, "sim", bfiq_data, header="bfiq")
+        try:
+            packet_recvd = sink.recv_multipart()
+        except zmq.ZMQError as err:
+            if err.errno != zmq.EAGAIN:
+                log.warning(
+                    "Received unexpected error when subscribed to antennas_iq",
+                    error=err,
+                )
+        else:
+            log.warning("Received unexpected packet when subscribed to antennas_iq")
+
+        log.info("Sending antennas_iq data")
+        so.send_pyobj(realtime_sock, "sim", antennas_iq_data, header="antennas_iq")
+        try:
+            antiq_recvd = sink.recv_multipart(copy=True)
+        except zmq.ZMQError as err:
+            log.warning("Unexpected error when subscribed to antennas_iq", error=err)
+            raise
+        log.info("antennas_iq data received")
+
+        time.sleep(1)
+
+    # Rebuild the socket to reset the subscription filter
+    sink.setsockopt(zmq.UNSUBSCRIBE, b"antennas_iq")
+    sink.setsockopt(zmq.SUBSCRIBE, b"fitacf")  # Receive all messages
+    log.info("Subscribing to fitacf")
+    time.sleep(1)
+
+    for i in range(
+        3
+    ):  # Change this loop if you want to simulate sending multiple data packets
+        log.info("Sending bfiq data")
+        so.send_pyobj(realtime_sock, "sim", bfiq_data, header="bfiq")
+        try:
+            packet_recvd = sink.recv_multipart()
+        except zmq.ZMQError as err:
+            if err.errno != zmq.EAGAIN:
+                log.warning(
+                    "Received unexpected error when subscribed to fitacf", error=err
+                )
+        else:
+            log.warning("Received unexpected packet when subscribed to fitacf")
+
+        log.info("Sending antennas_iq data")
+        so.send_pyobj(realtime_sock, "sim", antennas_iq_data, header="antennas_iq")
+        try:
+            packet_recvd = sink.recv_multipart()
+        except zmq.ZMQError as err:
+            if err.errno != zmq.EAGAIN:
+                log.warning(
+                    "Received unexpected error when subscribed to fitacf", error=err
+                )
+        else:
+            log.warning("Received unexpected packet when subscribed to fitacf")
+
+        log.info("Sending rawacf data")
+        so.send_pyobj(realtime_sock, "sim", rawacf_data, header="rawacf")
+        try:
+            fitacf_recvd = sink.recv_multipart(copy=True)
+        except zmq.ZMQError as err:
+            log.warning("Unexpected error when subscribed to fitacf", error=err)
+            raise
+        fitacf_data = pydarnio.read_fitacf(fitacf_recvd[1], mode="strict")
+        log.info("fitacf data received")
+
+        # Assert that a rawacf packet is not also received (only subscribed to fitacf)
+        try:
+            packet_recvd = sink.recv_multipart()
+        except zmq.ZMQError as err:
+            if err.errno != zmq.EAGAIN:
+                log.warning(
+                    "Received unexpected error when subscribed to fitacf", error=err
+                )
+        else:
+            log.warning("Received unexpected packet when subscribed to fitacf")
+
+        time.sleep(1)
+
+    realtime_sock.close()
+    sink.close()
     context.term()  # This will kill the thread

@@ -696,6 +696,8 @@ def main(exp_name, scheduling_mode, embargo, **kwargs):
 
     # Get config options
     options = Options()
+    if not os.path.exists(options.hdw_path):
+        raise ValueError(f"hdw_path directory {options.hdw_path} does not exist")
 
     # Setup sockets
     # Socket to send pulse samples over
