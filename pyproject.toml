@@ -32,7 +32,7 @@ version = {attr = "src.__version__"}
 [project.optional-dependencies]
 gpu = ["cupy"]
 dev = [
-    "ruff",
+    "ruff==0.14.3",
     "pre-commit",
     "jupyter",
 ]
@@ -72,6 +72,11 @@ include = [
 ]
 extend-exclude = [
     "tests/archive/**/*",
+    "tests/testing_utils/**/*",
+    "tests/test_rx_tx/*",
+    "tests/parallel_reduce/*",
+    "tests/NTP/*",
+    "tests/NEC/*",
     "src/borealis_experiments/archive/*.py"
 ]
 

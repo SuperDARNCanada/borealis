@@ -65,14 +65,14 @@ class TestConfigFile(unittest.TestCase):
 
     def setUp(self):
         """Create a new directory `$BOREALISPATH/config/test/`."""
-        if not os.path.exists(f'{os.environ["BOREALISPATH"]}/config/test'):
-            os.mkdir(f'{os.environ["BOREALISPATH"]}/config/test')
+        if not os.path.exists(f"{os.environ['BOREALISPATH']}/config/test"):
+            os.mkdir(f"{os.environ['BOREALISPATH']}/config/test")
 
     def tearDown(self):
         """Delete the `$BOREALISPATH/config/test directory and all contained files."""
-        for f in os.listdir(f'{os.environ["BOREALISPATH"]}/config/test/'):
-            os.remove(f'{os.environ["BOREALISPATH"]}/config/test/{f}')
-        os.rmdir(f'{os.environ["BOREALISPATH"]}/config/test/')
+        for f in os.listdir(f"{os.environ['BOREALISPATH']}/config/test/"):
+            os.remove(f"{os.environ['BOREALISPATH']}/config/test/{f}")
+        os.rmdir(f"{os.environ['BOREALISPATH']}/config/test/")
 
 
 class TestConfig(unittest.TestCase):
@@ -82,9 +82,9 @@ class TestConfig(unittest.TestCase):
 
     def setUp(self):
         """Create a new directory `$BOREALISPATH/config/test/`."""
-        os.makedirs(f'{os.environ["BOREALISPATH"]}/config/test', exist_ok=True)
-        for f in os.listdir(f'{os.environ["BOREALISPATH"]}/config/test/'):
-            os.remove(f'{os.environ["BOREALISPATH"]}/config/test/{f}')
+        os.makedirs(f"{os.environ['BOREALISPATH']}/config/test", exist_ok=True)
+        for f in os.listdir(f"{os.environ['BOREALISPATH']}/config/test/"):
+            os.remove(f"{os.environ['BOREALISPATH']}/config/test/{f}")
         infile = Path(__file__).with_name("base_config.ini")
         # strip everything after a # and any trailing whitespace
         subprocess.run(
@@ -94,9 +94,9 @@ class TestConfig(unittest.TestCase):
 
     def tearDown(self):
         """Delete the `$BOREALISPATH/config/test directory and all contained files."""
-        for f in os.listdir(f'{os.environ["BOREALISPATH"]}/config/test/'):
-            os.remove(f'{os.environ["BOREALISPATH"]}/config/test/{f}')
-        os.rmdir(f'{os.environ["BOREALISPATH"]}/config/test/')
+        for f in os.listdir(f"{os.environ['BOREALISPATH']}/config/test/"):
+            os.remove(f"{os.environ['BOREALISPATH']}/config/test/{f}")
+        os.rmdir(f"{os.environ['BOREALISPATH']}/config/test/")
 
     def testBaseConfig(self):
         """Test the parameters of the base_config.ini file"""
@@ -336,7 +336,7 @@ class TestConfig(unittest.TestCase):
         n200["rx_channel_1"] = "i0"
         n200["tx_channel_0"] = ""
         with open(
-            f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
+            f"{os.environ['BOREALISPATH']}/config/test/test_config.ini", "w"
         ) as f:
             json.dump(config, f)
 
@@ -894,10 +894,10 @@ if __name__ == "__main__":
             def test_method(self):
                 with open(config, "r") as f:
                     config_data = json.load(f)
-                if not os.path.exists(f'{os.environ["BOREALISPATH"]}/config/test'):
-                    os.mkdir(f'{os.environ["BOREALISPATH"]}/config/test')
+                if not os.path.exists(f"{os.environ['BOREALISPATH']}/config/test"):
+                    os.mkdir(f"{os.environ['BOREALISPATH']}/config/test")
                 with open(
-                    f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', "w"
+                    f"{os.environ['BOREALISPATH']}/config/test/test_config.ini", "w"
                 ) as f:
                     json.dump(config_data, f)
                 try:

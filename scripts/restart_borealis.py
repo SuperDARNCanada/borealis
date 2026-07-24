@@ -59,7 +59,7 @@ def get_args():
         required=False,
         dest="borealis_path",
         default=BOREALISPATH,
-        help="Path to Borealis directory. Default " "BOREALISPATH environment variable",
+        help="Path to Borealis directory. Default BOREALISPATH environment variable",
     )
     parser.add_argument(
         "-d",
