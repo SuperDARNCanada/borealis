@@ -32,7 +32,7 @@ version = {attr = "src.__version__"}
 [project.optional-dependencies]
 gpu = ["cupy"]
 dev = [
-    "ruff==0.16.0",
+    "ruff==0.14.3",
     "pre-commit",
     "jupyter",
 ]
