@@ -243,9 +243,9 @@ class Options:
     def _parse_config(self):
         # Read in config.ini file for current site
         path = (
-            f'{os.environ["BOREALISPATH"]}/config/'
-            f'{os.environ["RADAR_ID"]}/'
-            f'{os.environ["RADAR_ID"]}_config.ini'
+            f"{os.environ['BOREALISPATH']}/config/"
+            f"{os.environ['RADAR_ID']}/"
+            f"{os.environ['RADAR_ID']}_config.ini"
         )
         try:
             with open(path, "r") as data:
@@ -425,7 +425,7 @@ class Options:
 
     def _parse_hdw(self):
         # Load information from the hardware file
-        hdw_dat_file = f'{self.hdw_path}/hdw.dat.{os.environ["RADAR_ID"]}'
+        hdw_dat_file = f"{self.hdw_path}/hdw.dat.{os.environ['RADAR_ID']}"
 
         try:
             with open(hdw_dat_file) as hdwdata:
@@ -481,9 +481,9 @@ class Options:
     def _parse_restrict(self):
         # Read in restrict.dat
         path = (
-            f'{os.environ["BOREALISPATH"]}/config/'
-            f'{os.environ["RADAR_ID"]}/'
-            f'restrict.dat.{os.environ["RADAR_ID"]}'
+            f"{os.environ['BOREALISPATH']}/config/"
+            f"{os.environ['RADAR_ID']}/"
+            f"restrict.dat.{os.environ['RADAR_ID']}"
         )
         try:
             with open(path) as data:
@@ -525,7 +525,7 @@ class Options:
 
     def _verify_options(self):
         if self.site_id != os.environ["RADAR_ID"]:
-            errmsg = f'site_id {self.site_id} is different from RADAR_ID {os.environ["RADAR_ID"]}'
+            errmsg = f"site_id {self.site_id} is different from RADAR_ID {os.environ['RADAR_ID']}"
             raise ValueError(errmsg)
 
         if len(self.n200_addrs) != len(set(self.n200_addrs)):

@@ -749,7 +749,7 @@ class ExperimentSlice:
                 )
             if not all([0 <= x < len(list(freqs)) for x in freq_order]):
                 raise ValueError(
-                    f"freq_order entries must be in range [0, # frequencies - 1] ([0, {len(list(freqs))-1}])"
+                    f"freq_order entries must be in range [0, # frequencies - 1] ([0, {len(list(freqs)) - 1}])"
                 )
 
         return freq_order
