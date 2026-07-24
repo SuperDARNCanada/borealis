@@ -59,8 +59,8 @@ class InterfaceClassBase:
                                 - 'intf_antenna_spacing' [m],
                                 - 'pulse_ramp_time' [s],
                                 - 'max_usrp_dac_amplitude' [V peak],
-                                - 'rx_sample_rate' [Hz],
                                 - 'min_pulse_separation' [us],
+                                - 'rxrate' [Hz],
                                 - 'txrate' [Hz],
                                 - 'intf_offset' [m,m,m],
                                 - 'dm_rate'

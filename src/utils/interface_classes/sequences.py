@@ -163,7 +163,6 @@ class Sequence(InterfaceClassBase):
         self.tx_main_phase_shifts = {}
         self.rx_main_antenna_indices = {}
         self.rx_intf_antenna_indices = {}
-        self.tx_antenna_indices = {}
         self.tuning_freq = tuning_freq
         if isinstance(tuning_freq, list):
             self.current_tune = tuning_freq[0]  # will be updated in `make_sequence()`
@@ -437,7 +436,7 @@ class Sequence(InterfaceClassBase):
         # sync delay which is there for the amount of time necessary to get the echoes from the
         # specified number of ranges.
         self.numberofreceivesamples = int(
-            self.transmit_metadata["rx_sample_rate"] * self.sstime * 1e-6
+            self.transmit_metadata["rxrate"] * self.sstime * 1e-6
         )
 
         self.output_encodings = collections.defaultdict(list)
@@ -530,7 +529,8 @@ class Sequence(InterfaceClassBase):
             )
         # rx_phase_shift has shape [num_freqs, num_beam_angles, num_antennas]
 
-        # channel_indices = the index of the antennas for this slice within the list of all physical antennas.
+        # The index of the antennas for this slice, within the list of all antennas from the config file
+        # antenna_indices = the index of the antennas for this slice within the list of all physical antennas.
         # E.g. all_antennas = [1, 2, 3]
         #      slice_antennas = [1, 3]
         #      channel_indices = [0, 2]
@@ -554,8 +554,8 @@ class Sequence(InterfaceClassBase):
         freqs: Union[float, list[float]],
     ):
         """
-        Builds the basic pulse IQ samples for this slice, and the complex phases
-        for each beam and antenna.
+        Builds the basic pulse IQ samples for this slice, and the complex phases for each beam and tx channel
+        of the experiment.
 
         :param  slice_id: Unique identifier for the slice
         :type   slice_id: int
@@ -564,7 +564,7 @@ class Sequence(InterfaceClassBase):
         :param     freqs: Frequencies to build phases for
         :type      freqs: Union[float, list[float]]
 
-        :returns: Phase shifts as complex numbers with magnitude <= 1, with shape [num_freqs, num_beams, num_antennas]
+        :returns: Phase shifts as complex numbers with magnitude <= 1, with shape [num_freqs, num_beams, num_tx_channels]
         :rtype:   np.ndarray
         """
 
@@ -609,7 +609,7 @@ class Sequence(InterfaceClassBase):
         if exp_slice.tx_antenna_pattern is not None:
             tx_main_phase_shift = []
             for freq in freqs:
-                # tx_antenna_pattern returns an array of size [tx_antennas] of complex numbers of magnitude <= 1
+                # tx_antenna_pattern returns an array of size [num_antennas] of complex numbers of magnitude <= 1
                 phase_shift = exp_slice.tx_antenna_pattern(
                     float(freq),
                     exp_slice.tx_antennas,
