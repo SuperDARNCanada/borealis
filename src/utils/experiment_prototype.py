@@ -275,6 +275,9 @@ class ExperimentPrototype:
             "rxrate": self.rxrate,
             "txrate": self.txrate,
             "intf_offset": self.options.intf_offset,
+            "tx_cals": ...,
+            "rx_cals": ...,
+            "antenna_cals": ...,
         }
 
         # Dictionary of how each exp_slice interacts with the other slices.
