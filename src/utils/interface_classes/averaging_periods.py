@@ -339,6 +339,8 @@ class CFSAveragingPeriod(AveragingPeriod):
 
         self.cfs_sequences = [sqn for sqn in self.sequences if sqn.cfs_flag]
 
+        self.tuning_freqs = self._determine_tuning_freqs(self.cfs_slice_ids)
+
     def select_cfs_freqs(self, cfs_packet):
         """
         Accepts the analysis results of the clear frequency search and uses the passed frequencies and powers
@@ -418,7 +420,7 @@ class CFSAveragingPeriod(AveragingPeriod):
                 ] = False
                 # Mask pulse width around all used frequencies
 
-            for ctr_freq in [self.txctrfreq, self.rxctrfreq]:
+            for ctr_freq in self.tuning_freqs:
                 mask[
                     np.argwhere(
                         np.logical_and(
@@ -565,12 +567,10 @@ class CFSAveragingPeriod(AveragingPeriod):
             # combinations([1, 3, 5], 2) --> [1,3], [1,5], [3,5]
             interface_dict[tuple(i)] = "CONCURRENT"
 
-        tuning_freqs = self._determine_tuning_freqs(self.cfs_slice_ids)
-
         self.cfs_sequence = Sequence(
             self.cfs_slice_ids,
             cfs_slices,
             interface_dict,
             self.transmit_metadata,
-            tuning_freqs[self.cfs_slice_ids[0]],
+            self.tuning_freqs[self.cfs_slice_ids[0]],
         )
