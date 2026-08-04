@@ -501,7 +501,7 @@ class ExperimentPrototype:
         :type  embargo_flag:    bool
         """
         if embargo_flag:
-            self.__cpid = -1 * self.__cpid
+            self.cpid = -1 * self.cpid
 
     def _set_scheduling_mode(self, scheduling_mode):
         """
