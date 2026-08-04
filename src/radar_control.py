@@ -173,7 +173,7 @@ def create_driver_message(radctrl_params, pulse_transmit_data, pulse_buffer):
 
     message = messages.DriverPacket()
 
-    message.tune_freq = radctrl_params.sequence.current_tune * 1000  # convert to Hz
+    message.tunefreq = radctrl_params.sequence.current_tune * 1000  # convert to Hz
     message.txrate = radctrl_params.experiment.txrate
     message.rxrate = radctrl_params.experiment.rxrate
 
