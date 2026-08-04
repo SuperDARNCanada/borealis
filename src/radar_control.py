@@ -734,11 +734,14 @@ def main(exp_name, scheduling_mode, embargo, **kwargs):
     # Flag for starting the radar on the minute boundary
     wait_for_first_scanbound = experiment.slice_dict.get("wait_for_first_scanbound")
 
-    # Send driver initial setup data - rates and center frequency from experiment.
+    # Send driver initial setup data. Rates from experiment, center frequency from sequence
     # Wait for acknowledgment that USRP object is set up.
 
+    # Grab the first sequence to get the starting center frequency
+    initial_scan = experiment.scan_objects[0]
+    initial_sequence = initial_scan.aveperiods[initial_scan.aveperiod_iter].sequences[0]
     start_up_params = RadctrlParameters(
-        experiment, None, None, options, seqnum_start, True
+        experiment, None, initial_sequence, options, seqnum_start, True
     )
     driver_start_message = create_driver_message(start_up_params, None, None)
 
