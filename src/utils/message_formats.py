@@ -259,7 +259,7 @@ class DriverPacket(CustomSerialization):
     sequence_num: int = 0
     rxrate: float = 0.0
     txrate: float = 0.0
-    tune_freq: float = 0.0
+    tunefreq: float = 0.0
     num_rx_samps: int = 0
     num_tx_samps: int = 0
     seqtime: float = 0.0
