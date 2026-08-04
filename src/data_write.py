@@ -290,7 +290,7 @@ class DataWrite:
                     rx_channel.num_ranges, dtype=np.uint32
                 )
                 parameters.range_sep = np.float32(rx_channel.range_sep)
-                parameters.rx_center_freq = aveperiod_meta.rx_ctr_freq
+                parameters.rx_center_freq = aveperiod_meta.center_freq
                 parameters.rx_sample_rate = sqn_meta.output_sample_rate
                 parameters.rx_main_excitations = rx_channel.rx_main_excitations
                 parameters.rx_intf_excitations = rx_channel.rx_intf_excitations
