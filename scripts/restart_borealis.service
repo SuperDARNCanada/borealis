@@ -1,4 +1,4 @@
-# Place me at /usr/lib/systemd/system/restart_borealis.service
+# This file should be placed in /etc/systemd/system/
 # Modify the `User` field as necessary to match your system.
 [Unit]
 Description=Restart borealis daemon

@@ -1,46 +1,21 @@
 """
 make_atq.py
 ~~~~~~~~~~~
-This script takes the Borealis schedule file (ending in .scd) and converts the schedule into commands
-that are scheduled using the system ``at`` service.
+This script takes the Borealis schedule file (ending in .scd) and converts the schedule into
+commands that are scheduled using the system ``at`` service.
 
-Logs are printed to stdout. Specific logs for each time the schedule is updated are also created
-in ``borealis_schedules/logs/``.
+Logs are printed to stdout. Specific logs for each time the schedule is updated are also created in
+``${HOME}/logs/make_atq/``.
 
-This script can be configured to run automatically when the .scd file is modified, using Linux services.
-Specifically, a ``.path`` and ``.service`` file are required, and templates for each given below. A pre-requisite
-for this setup is a file called ``.borealis.env`` defined in the user's home directory, containing the following::
-
-   BOREALISPATH=/path/to/borealis/
-   RADAR_ID=sas  # or whatever you define it as
-   PYTHON_VERSION=3.12  # or whatever version you use
-
-monitor-schedule.path::
-
-   [Unit]
-   Description="Monitor schedule file and update schedule when changed."
-
-   [Path]
-   PathChanged=/home/radar/borealis_schedules/lab.scd
-   Unit=schedule-radar.service
-
-   [Install]
-   WantedBy=multi-user.target
-
-schedule-radar.service::
-
-   [Unit]
-   Description="Run script to schedule the Borealis radar"
-
-   [Service]
-   User=radar
-   Group=users
-   EnvironmentFile=/home/radar/.borealis.env
-   ExecStart=/bin/bash -c '${BOREALISPATH}/borealis_env${PYTHON_VERSION}/bin/python${PYTHON_VERSION} ${BOREALISPATH}/scheduler/make_atq.py /home/radar/borealis_schedules/'
-
-   [Install]
-   WantedBy=multi-user.target
-
+This script can be configured to run automatically when the .scd file is modified, using Linux
+system services. The following files are required for this:
+    - A file called ``.borealis.env`` defining the following variables
+        - BOREALISPATH (example: /home/radar/borealis/)
+        - RADAR_ID (example: sas)
+        - PYTHON_VERSION (example: 3.12)
+        - VIRTUAL_ENV (example: /home/radar/borealis/borealis_env3.12)
+    - ``monitor-schedule.path`` located in ``/etc/systemd/system/``
+    - ``schedule-radar.service`` located in ``/etc/systemd/system/``
 """
 
 import argparse
