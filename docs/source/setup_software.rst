@@ -6,7 +6,7 @@ Software
 
 SuperDARN Canada uses OpenSUSE Leap as the operating system for Boreals, but any Linux system that
 can support the NVIDIA drivers for the graphics card should work. The latest version of OpenSUSE that
-this installation has been tested on is **OpenSUSE Leap 15.6**.
+this installation has been tested on is **OpenSUSE Leap 16.0**.
 
 **NOTE:** Commands that require root privileges will have a ``sudo`` or ``su`` command ahead of
 them, or explicitly say 'as root', all others should be executed as the normal user that will run
@@ -246,6 +246,8 @@ Borealis (recommended name: radar).
       - If UHD does not configure correctly, an improper Boost installation or library naming
         convention is the likely reason. This script makes an attempt to correctly install Boost and
         create symbolic links to the Boost C++ libraries UHD (USRP Hardware Driver) understands.
+      - If ``uhd_find_devices`` incorrectly states "No UHD Devices Found", you may need to configure 
+        ``firewalld`` to add the 10G network interface to the ``trusted`` zone
       - If you do not have CUDA installed, pass the ``--no-cuda`` flag as an option.
 
 #. Once all dependencies are resolved, use ``scons`` to compile the C++ code and build the system.
@@ -256,12 +258,12 @@ Borealis (recommended name: radar).
     scons -c          # If first time building, run to reset project state.
     scons release     # Can also run `scons debug`
 
-#. Edit ``/etc/security/limits.conf`` (as root) to add the following lines.
-   The first line allows UHD to set thread priority. UHD automatically tries to boost its thread scheduling priority, so it will fail
-   if the user executing UHD doesn't have permission.
-   The second line removes limits on the amount of page-locked memory and shared memory that a process can allocate
-   for the ``radar`` user, which we use to prevent the ringbuffer from being swapped to disk. Switch ``radar`` with the user that
-   will run borealis on your computer::
+#. Edit ``/etc/security/limits.conf`` (as root) to add the following lines. The first line allows 
+   UHD to set thread priority. UHD automatically tries to boost its thread scheduling priority, so 
+   it will fail if the user executing UHD doesn't have permission. The second line removes limits 
+   on the amount of page-locked memory and shared memory that a process can allocate for the 
+   ``radar`` user, which we use to prevent the ringbuffer from being swapped to disk. Switch 
+   ``radar`` with the user that will run borealis on your computer::
 
       radar - rtprio 99
       radar - memlock unlimited
@@ -273,9 +275,10 @@ Borealis (recommended name: radar).
 
    #. Find out which tty device is physically connected to your PPS signal. It may not be ttyS0,
       especially if you have a PCIe expansion card. It may be ttyS1, ttyS2, ttyS3 or higher. To do
-      this, search the system log for 'tty' (either ``dmesg`` or the ``syslog``). An example output
-      with a PCIe expansion card is below. The output shows the first two (ttyS0 and ttyS1) built-in
-      to the motherboard chipset are not accessible on this x299 PRO from MSI. The next two (ttyS4
+      this, run the following command: ``sudo dmesg | grep -i tty``, or search the system log for 
+      'tty'. An example output with a PCIe expansion card is below. The output shows the first two 
+      (ttyS0 and ttyS1) built-in to the motherboard chipset are not accessible on this x299 PRO from 
+         MSI. The next two (ttyS4
       and ttyS5) are located on the XR17V35X chip which is located on the Rosewill card:
 
         .. code-block:: text
@@ -349,7 +352,7 @@ Borealis (recommended name: radar).
             log measurements statistics tracking
 
    #. *Optional:* To configure chrony with PPS, add the following lines to the ``chronyd.service``
-      file: ::
+      file using ``systemctl edit chronyd``: ::
 
         [Service]
         DeviceAllow=/dev/ttyS[X] rwm
@@ -430,6 +433,9 @@ Borealis (recommended name: radar).
 
    #. To check that the radar is operating, run ``screen -r borealis`` to view the live output of
       all Borealis processes.
+
+   #. Configure ``monitor-schedule.path`` and ``schedule-radar.service`` to automatically update the
+      radar schedule when changes occur.
 
 #. Configure and install the automatic Borealis restart daemon, ``restart_borealis.service``. Follow
    the steps outlined here to install and start the system service: :ref:`Automated Restarts <automated-restarts>`.
