@@ -5,8 +5,8 @@ Software
 ========
 
 SuperDARN Canada uses OpenSUSE Leap as the operating system for Boreals, but any Linux system that
-can support the NVIDIA drivers for the graphics card should work. The latest version of OpenSUSE that
-this installation has been tested on is **OpenSUSE Leap 16.0**.
+can support the NVIDIA drivers for the graphics card should work. The latest version of OpenSUSE
+that this installation has been tested on is **OpenSUSE Leap 16.0**.
 
 **NOTE:** Commands that require root privileges will have a ``sudo`` or ``su`` command ahead of
 them, or explicitly say 'as root', all others should be executed as the normal user that will run
@@ -23,8 +23,8 @@ Borealis (recommended name: radar).
 
       Ensure IP routing is set up for each respective interface and subnet.
 
-   #. **Hard Drive Partition:** The recommended hard drive partitions are shown below, given a single
-      SSD and two HDDs. Adjust your partition sizes to match your hardware:
+   #. **Hard Drive Partition:** The recommended hard drive partitions are shown below, given a
+      single SSD and two HDDs. Adjust your partition sizes to match your hardware:
 
       - Split SSD into the following partitions:
 
@@ -38,7 +38,8 @@ Borealis (recommended name: radar).
          - Data partition (mounted to ``/data``)
 
    #. **System Update**: Update all software packages via the package manager before proceeding with
-      installation of other packages. This will limit issues when installing NVIDIA and CUDA drivers. ::
+      installation of other packages. This will limit issues when installing NVIDIA and CUDA
+      drivers. ::
 
        sudo zypper update
 
@@ -64,10 +65,10 @@ Borealis (recommended name: radar).
    Reboot the computer. To verify that the drivers have been installed correctly, run
    ``sudo nvidia-smi`` - the output of this command should show the GPU installed on the computer.
 
-   **NOTE:** It is possible to run Borealis on the CPU, that is, without using your graphics card for
-   parallel computations. This will severely slow down the system, but may be useful in some cases. If
-   this is desired, you can skip the step of installing NVIDIA drivers on your machine, and see
-   the note when running ``install_radar_deps.py``.
+   **NOTE:** It is possible to run Borealis on the CPU, that is, without using your graphics card
+   for parallel computations. This will severely slow down the system, but may be useful in some
+   cases. If this is desired, you can skip the step of installing NVIDIA drivers on your machine,
+   and see the note when running ``install_radar_deps.py``.
 
 #. Install the latest NVIDIA CUDA drivers (see
    https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html). The radar software uses
@@ -101,13 +102,13 @@ Borealis (recommended name: radar).
 #. Configure the computer to always remain powered on. This is done in two ways:
 
    #. Within BIOS configure the computer to always boot when connected to power. The computer should
-      come back online when AC power is restored to the computer following a power outage. This setting
-      is typically referred to as *Restore on AC/Power Loss* or *AC Power Recovery* or something
-      similar.
+      come back online when AC power is restored to the computer following a power outage. This
+      setting is typically referred to as *Restore on AC/Power Loss* or *AC Power Recovery* or
+      something similar.
 
    #. Ensure that the computer doesn't automatically hibernate or go to sleep. In OpenSUSE 16.0, the
       default setting when a user isn't actively logged in is to hibernate, after which the computer
-      cannot be accessed via ``ssh``. To prevent this, create a ``sleep.conf`` file within 
+      cannot be accessed via ``ssh``. To prevent this, create a ``sleep.conf`` file within
       ``/etc/systemd/sleep.conf.d/`` (or wherever your ``sleep.conf.d/`` is located) containing the
       following lines: ::
 
@@ -192,8 +193,8 @@ Borealis (recommended name: radar).
 
     sudo tuned-adm profile_info
 
-#. Create a .env file for the relevant Borealis environment variables. For example, in the home directory we define
-   ``.borealis.env`` **(NOTE the extra '/' in BOREALISPATH)** ::
+#. Create a .env file for the relevant Borealis environment variables. For example, in the home
+   directory we define ``.borealis.env`` **(NOTE the extra '/' in BOREALISPATH)** ::
 
     BOREALISPATH=/home/radar/borealis/
     RADAR_ID=sas
@@ -246,7 +247,7 @@ Borealis (recommended name: radar).
       - If UHD does not configure correctly, an improper Boost installation or library naming
         convention is the likely reason. This script makes an attempt to correctly install Boost and
         create symbolic links to the Boost C++ libraries UHD (USRP Hardware Driver) understands.
-      - If ``uhd_find_devices`` incorrectly states "No UHD Devices Found", you may need to configure 
+      - If ``uhd_find_devices`` incorrectly states "No UHD Devices Found", you may need to configure
         ``firewalld`` to add the 10G network interface to the ``trusted`` zone
       - If you do not have CUDA installed, pass the ``--no-cuda`` flag as an option.
 
@@ -258,11 +259,11 @@ Borealis (recommended name: radar).
     scons -c          # If first time building, run to reset project state.
     scons release     # Can also run `scons debug`
 
-#. Edit ``/etc/security/limits.conf`` (as root) to add the following lines. The first line allows 
-   UHD to set thread priority. UHD automatically tries to boost its thread scheduling priority, so 
-   it will fail if the user executing UHD doesn't have permission. The second line removes limits 
-   on the amount of page-locked memory and shared memory that a process can allocate for the 
-   ``radar`` user, which we use to prevent the ringbuffer from being swapped to disk. Switch 
+#. Edit ``/etc/security/limits.conf`` (as root) to add the following lines. The first line allows
+   UHD to set thread priority. UHD automatically tries to boost its thread scheduling priority, so
+   it will fail if the user executing UHD doesn't have permission. The second line removes limits
+   on the amount of page-locked memory and shared memory that a process can allocate for the
+   ``radar`` user, which we use to prevent the ringbuffer from being swapped to disk. Switch
    ``radar`` with the user that will run borealis on your computer::
 
       radar - rtprio 99
@@ -275,11 +276,11 @@ Borealis (recommended name: radar).
 
    #. Find out which tty device is physically connected to your PPS signal. It may not be ttyS0,
       especially if you have a PCIe expansion card. It may be ttyS1, ttyS2, ttyS3 or higher. To do
-      this, run the following command: ``sudo dmesg | grep -i tty``, or search the system log for 
-      'tty'. An example output with a PCIe expansion card is below. The output shows the first two 
-      (ttyS0 and ttyS1) built-in to the motherboard chipset are not accessible on this x299 PRO from 
-         MSI. The next two (ttyS4
-      and ttyS5) are located on the XR17V35X chip which is located on the Rosewill card:
+      this, run the following command: ``sudo dmesg | grep -i tty``, or search the system log for
+      'tty'. An example output with a PCIe expansion card is below. The output shows the first two
+      (ttyS0 and ttyS1) built-in to the motherboard chipset are not accessible on this x299 PRO from
+      MSI. The next two (ttyS4 and ttyS5) are located on the XR17V35X chip which is located on the
+      Rosewill card:
 
         .. code-block:: text
 
@@ -314,9 +315,9 @@ Borealis (recommended name: radar).
         radar@sasbore206:~> cat /sys/class/pps/pps0/path
         /dev/ttyS0
 
-   #. Now create a small bash script that contains all commands needed to connect the GPS disciplined NTP line to
-      the /dev/pps[X] line. This script will be used by chrony to configure the PPS line automatically when the 
-      computer is turned on. Example script:
+   #. Now create a small bash script that contains all commands needed to connect the GPS
+      disciplined NTP line to the /dev/pps[X] line. This script will be used by chrony to configure
+      the PPS line automatically when the computer is turned on. Example script:
 
         .. code-block:: bash
 
@@ -325,9 +326,9 @@ Borealis (recommended name: radar).
              /usr/sbin/ldattach PPS /dev/ttyS[X]
              sleep 1
 
-      Save this file as ``/usr/local/bin/pps-init.sh`` (for example) and ensure the file is executable. The 
-      ``sleep 1`` command ensures that the correct `/dev/pps[X]` device is created before chrony tries to connect 
-      to it.
+      Save this file as ``/usr/local/bin/pps-init.sh`` (for example) and ensure the file is
+      executable. The ``sleep 1`` command ensures that the correct `/dev/pps[X]` device is created
+      before chrony tries to connect to it.
 
 #. Install and configure Network Time Protocol (NTP) via the built-in chrony package. chrony
    is an implementation of NTP native to OpenSUSE and Ubuntu that can be disciplined by an external
@@ -375,7 +376,7 @@ Borealis (recommended name: radar).
         ^- tock.usask.ca                 1  10   377   554   -795us[ -788us] +/-   15ms
         ^- ntp1.yyz.ca.hojmark.net       2  10   377   228  -7684us[-7680us] +/-   62ms
 
-   #. *Optional:* If PPS is not working with chrony, ``chronyc sources`` will look similar to below, 
+   #. *Optional:* If PPS is not working with chrony, ``chronyc sources`` will look similar to below,
       with an "x" next to PPS: ::
 
         MS Name/IP address         Stratum Poll Reach LastRx Last sample
@@ -384,7 +385,7 @@ Borealis (recommended name: radar).
         ^- tick.usask.ca                 1  10   377   493   +921us[ +929us] +/-   16ms
         ^* tock.usask.ca                 1  10   377   554   -795us[ -788us] +/-   15ms
 
-      In this situation, the PPS signal is offset from the expected clock by 465 ms. To account for 
+      In this situation, the PPS signal is offset from the expected clock by 465 ms. To account for
       this, modify the PPS line in ``/etc/chrony.conf`` as shown below. Adjust the offset to match
       what is shown in the ``chronyc sources`` table. ::
 
