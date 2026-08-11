@@ -199,6 +199,7 @@ Borealis (recommended name: radar).
     BOREALISPATH=/home/radar/borealis/
     RADAR_ID=sas
     PYTHON_VERSION=3.13
+    VIRTUAL_ENV=/home/radar/borealis/borealis_env3.13
 
 #. Modify ``~/.profile`` to load the .env file with::
 
