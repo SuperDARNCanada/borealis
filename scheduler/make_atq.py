@@ -9,11 +9,14 @@ Logs are printed to stdout. Specific logs for each time the schedule is updated 
 
 This script can be configured to run automatically when the .scd file is modified, using Linux
 system services. The following files are required for this:
+
 - A file called ``.borealis.env`` defining the following variables
+
     - BOREALISPATH (example: /home/radar/borealis/)
     - RADAR_ID (example: sas)
     - PYTHON_VERSION (example: 3.12)
     - VIRTUAL_ENV (example: /home/radar/borealis/borealis_env3.12)
+
 - ``monitor-schedule.path`` located in ``/etc/systemd/system/``
 - ``schedule-radar.service`` located in ``/etc/systemd/system/``
 """
