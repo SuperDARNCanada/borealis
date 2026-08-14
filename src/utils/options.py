@@ -171,6 +171,9 @@ class Options:
         init=False
     )  #: Duration to window on either side of TX pulse for T/R signal [s]
     usrp_master_clock_rate: float = field(init=False)  #: E.g. ``"1.00E+08"``
+    default_freqs: dict = field(
+         init = False
+    )  #: Common-mode and Sounding operating frequencies [kHz]
 
     # hdw.dat options
     altitude: float = field(init=False)
@@ -381,6 +384,7 @@ class Options:
 
         self.min_freq = float(raw_config["min_freq"])  # Hz
         self.max_freq = float(raw_config["max_freq"])  # Hz
+        self.default_freqs = raw_config["default_freqs"] # {"common": [...], "sounding": [...]} kHz
         self.min_pulse_length = float(raw_config["min_pulse_length"])  # us
         self.min_tau_spacing_length = float(raw_config["min_tau_spacing_length"])  # us
         self.num_beams = int(raw_config["num_beams"])
