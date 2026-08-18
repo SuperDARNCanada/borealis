@@ -5,7 +5,7 @@ Description=Scheduler synchronization daemon for %i
 
 [Service]
 User=radman
-ExecStart=%h/borealis/scheduler/scheduler_sync.daemon %i
+ExecStart=/usr/local/bin/scheduler_sync.daemon %i
 Restart=always
 
 [Install]

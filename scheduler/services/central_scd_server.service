@@ -4,7 +4,7 @@ Description=Central Borealis scheduling server
 
 [Service]
 User=radman
-ExecStart=%h/borealis/scheduler/central_scd_server.daemon
+ExecStart=/usr/local/bin/central_scd_server.daemon
 Restart=always
 
 [Install]
