@@ -1,0 +1,12 @@
+# This service file should be placed in /etc/systemd/system/
+# %i will be replaced by the radar ID specified after the @ character when enabling the service
+[Unit]
+Description=Scheduler synchronization daemon for %i
+
+[Service]
+User=radman
+ExecStart=/usr/local/bin/scheduler_sync.daemon %i
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
