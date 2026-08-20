@@ -195,7 +195,6 @@ class Options:
     velocity_sign: int = field(init=False)
 
     # restrict.dat options
-    default_freq: int = field(init=False)
     restricted_ranges: list[tuple[int, int]] = field(init=False)
 
     # ZMQ Identities
@@ -503,16 +502,6 @@ class Options:
             line for line in restricted if len(line.split()) != 0
         ]  # remove blanks
 
-        for line in restricted:
-            splitup = line.split("=")
-            if len(splitup) == 2:
-                if splitup[0].strip() == "default":
-                    self.default_freq = int(splitup[1])  # kHz
-                    restricted.remove(line)
-                    break
-        else:  # no break
-            raise ValueError("No default frequency found in restrict.dat")
-
         self.restricted_ranges = []
         for line in restricted:
             splitup = line.split()
@@ -596,7 +585,7 @@ class Options:
                        \n    analog_atten_stages = {self.analog_atten_stages} \
                        \n    max_range_gates = {self.max_range_gates} \
                        \n    max_beams = {self.max_beams} \
-                       \n    default_freq = {self.default_freq} kHz \
+                       \n    default_freqs = {self.default_freqs} kHz \
                        \n    restricted_ranges = {self.restricted_ranges} kHz \
                        \n    rawacf_format = {self.rawacf_format}
                        \n"""

@@ -24,6 +24,10 @@ is present in ``superdarn_common_fields.py``. To use this function, set ::
 
 in your experiment slice dictionary.
 
+``easy_widebeam`` only accepts the antenna counts and frequencies listed in
+``widebeam_cached_phases.json``, next to ``superdarn_common_fields.py``. Frequencies must match a
+key exactly, and antenna spacing must be 15.24 m.
+
 More generally, you can define your own power- and phase-modulation across the transmitting
 antennas. Define a function with the following signature
 
@@ -60,7 +64,7 @@ experiment. A custom function can be written in the experiment and passed to bor
 
     ...
 
-    slice_dict['tx_antenna_pattern'] = beamforming_function
+    slice_dict['rx_antenna_pattern'] = beamforming_function
 
 The function should expect to receive beam angles, operating frequencies, and antenna locations,
 This function will be called for both the rx signals from the main array and the interferometer array.
@@ -99,6 +103,11 @@ both endpoints. Therefore, for this example, beams used would be 0, 1, 2, 3, 4, 
 Repeated beams are valid.
 
 The arguments ``beam_order`` and ``listen_to`` are mutually exclusive.
+
+Note that ``listen_to`` only works for sites whose configuration files are stored locally on the
+computer running the experiment. Frequencies are read from each site's config file at startup, so
+a site with no config file present is not available to listen to, even if the radar itself is
+operating.
 
 You can define your own bistatic experiment, with very few restrictions. It is highly recommended
 that the field ``align_sequences`` is set to ``True`` in your experiment slice dictionary, which
