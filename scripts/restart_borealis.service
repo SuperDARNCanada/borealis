@@ -7,6 +7,8 @@ Description=Restart borealis daemon
 User=radar
 ExecStart=/usr/local/bin/restart_borealis.daemon
 Restart=always
+# Needed for OpenSUSE Leap 16.0
+SELinuxContext=unconfined_u:unconfined_r:unconfined_t:s0
 
 [Install]
 WantedBy=multi-user.target
