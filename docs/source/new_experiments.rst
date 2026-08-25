@@ -63,8 +63,8 @@ experiment. A custom function can be written in the experiment and passed to bor
     beamforming_function(beam_angle, freq, antenna_locations):
 
     ...
-
-    slice_dict['rx_antenna_pattern'] = beamforming_function
+    slice_dict['tx_antenna_pattern'] = tx_beamforming_function
+    slice_dict['rx_antenna_pattern'] = rx_beamforming_function
 
 The function should expect to receive beam angles, operating frequencies, and antenna locations,
 This function will be called for both the rx signals from the main array and the interferometer array.
