@@ -1100,20 +1100,25 @@ class TTFD(object):
         mid_segment = self.middlewire.get_mid_segment()
         self.excitation = Source(wire_num, mid_segment, current_real, current_imag)
 
+        # antenna to small support tower guy lines
         if guylines:
-            self.ant_to_tower_guy = Wire(-(antenna_spacing - mid_width) / 2, 0.0, height,
-                                            (antenna_spacing - mid_width) / 2, 0.0, height)
-            self.ant_to_tower_guy.translate(global_x - (antenna_spacing / 2), global_y, global_z)
+            self.ant_to_tower_guy1 = Wire(-(antenna_spacing - mid_width) / 2, 0.0, height,
+                                          0.0, 0.0, height)
+            self.ant_to_tower_guy1.translate(global_x - (mid_width / 2), global_y, global_z)
+            self.ant_to_tower_guy2 = Wire(0.0, 0.0, height,
+                                          (antenna_spacing - mid_width) / 2, 0.0, height)
+            self.ant_to_tower_guy2.translate(global_x + (mid_width / 2), global_y, global_z)
 
     def repr_geometry(self):
         """
         :return: A NEC string representation of the geometry of the TTFD for simulation
         """
-        if hasattr(self, 'ant_to_tower_guy'):
-            value = "{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n".format(self.topleftwire, self.topwire,
+        if hasattr(self, 'ant_to_tower_guy1'):
+            value = "{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n".format(self.topleftwire, self.topwire,
                                                       self.toprightwire, self.middlewire,
                                                       self.bottomleftwire, self.bottomwire,
-                                                      self.bottomrightwire, self.ant_to_tower_guy)
+                                                      self.bottomrightwire, self.ant_to_tower_guy1,
+                                                      self.ant_to_tower_guy2)
         else:
             value = "{}\n{}\n{}\n{}\n{}\n{}\n{}\n".format(self.topleftwire, self.topwire,
                                                       self.toprightwire, self.middlewire,
