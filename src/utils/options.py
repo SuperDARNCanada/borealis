@@ -171,6 +171,9 @@ class Options:
         init=False
     )  #: Duration to window on either side of TX pulse for T/R signal [s]
     usrp_master_clock_rate: float = field(init=False)  #: E.g. ``"1.00E+08"``
+    default_freqs: dict = field(
+        init=False
+    )  #: Common-mode and Sounding operating frequencies [kHz]
 
     # hdw.dat options
     altitude: float = field(init=False)
@@ -192,7 +195,6 @@ class Options:
     velocity_sign: int = field(init=False)
 
     # restrict.dat options
-    default_freq: int = field(init=False)
     restricted_ranges: list[tuple[int, int]] = field(init=False)
 
     # ZMQ Identities
@@ -381,6 +383,9 @@ class Options:
 
         self.min_freq = float(raw_config["min_freq"])  # Hz
         self.max_freq = float(raw_config["max_freq"])  # Hz
+        self.default_freqs = raw_config[
+            "default_freqs"
+        ]  # {"common": [...], "sounding": [...]} kHz
         self.min_pulse_length = float(raw_config["min_pulse_length"])  # us
         self.min_tau_spacing_length = float(raw_config["min_tau_spacing_length"])  # us
         self.num_beams = int(raw_config["num_beams"])
@@ -499,16 +504,6 @@ class Options:
             line for line in restricted if len(line.split()) != 0
         ]  # remove blanks
 
-        for line in restricted:
-            splitup = line.split("=")
-            if len(splitup) == 2:
-                if splitup[0].strip() == "default":
-                    self.default_freq = int(splitup[1])  # kHz
-                    restricted.remove(line)
-                    break
-        else:  # no break
-            raise ValueError("No default frequency found in restrict.dat")
-
         self.restricted_ranges = []
         for line in restricted:
             splitup = line.split()
@@ -548,6 +543,11 @@ class Options:
         if self.scan_direction not in ["clockwise", "counterclockwise"]:
             raise ValueError(
                 "scan_direction must be either `clockwise` or `counterclockwise`"
+            )
+        if len(self.default_freqs["common"]) < 2:
+            raise ValueError(
+                f"Site '{self.site_id}' must define at least two common-mode "
+                f"frequencies in 'default_freqs'. Found: {self.default_freqs['common']}"
             )
 
         # TODO: Test that realtime_address and router_address are valid addresses
@@ -592,7 +592,7 @@ class Options:
                        \n    analog_atten_stages = {self.analog_atten_stages} \
                        \n    max_range_gates = {self.max_range_gates} \
                        \n    max_beams = {self.max_beams} \
-                       \n    default_freq = {self.default_freq} kHz \
+                       \n    default_freqs = {self.default_freqs} kHz \
                        \n    restricted_ranges = {self.restricted_ranges} kHz \
                        \n    rawacf_format = {self.rawacf_format}
                        \n"""

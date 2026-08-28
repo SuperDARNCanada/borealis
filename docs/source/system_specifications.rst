@@ -68,12 +68,12 @@ Below is the current network setup for the SuperDARN Canada radar sites:
 - 2x SFP+ 15ft Optical cables (for Borealis computer)
 - Various Cat5e cables for peripheral network connected devices
 
-Borealis requires at least Cat6a cables for connecting the N200s. Using less-shielded cables will 
+Borealis requires at least Cat6a cables for connecting the N200s. Using less-shielded cables will
 cause communication errors between the N200s. Cat5e and non-SSTP cables were tried during testing
-and shown to **not** work - network cables need to be tested as not all cables seem to work 
-reliably. 
+and shown to **not** work - network cables need to be tested as not all cables seem to work
+reliably.
 
-This is just one network setup that works for Borealis, not the only one that works - other network 
+This is just one network setup that works for Borealis, not the only one that works - other network
 switches and cables can be used instead.
 
 ----------------
