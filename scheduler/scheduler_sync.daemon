@@ -8,19 +8,7 @@
 # Rsync sync's to all remote sites, utilizing the autossh link between the computer and all site
 # computers.
 #
-# This script should be run via a systemd daemon with the following service file:
-# /usr/lib/systemd/system/scheduler_sync@.service
-#    [Unit]
-#    Description=Scheduler synchronization daemon for %i
-#
-#    [Service]
-#    User=radman
-#    ExecStart=/home/radman/borealis/scheduler/scheduler_sync.daemon %i
-#    RuntimeMaxSec=3600s
-#    Restart=always
-#
-#    [Install]
-#    WantedBy=multi-user.target
+# This script should be run via a systemd daemon configured by the scheduler_sync@.service file.
 #
 # The site to sync to can be specified by calling the daemon with the following syntax:
 #       systemctl [command] scheduler_sync@[RADAR_NAME]

@@ -5,8 +5,8 @@ Software
 ========
 
 SuperDARN Canada uses OpenSUSE Leap as the operating system for Boreals, but any Linux system that
-can support the NVIDIA drivers for the graphics card should work. The latest version of OpenSUSE that
-this installation has been tested on is **OpenSUSE Leap 15.6**.
+can support the NVIDIA drivers for the graphics card should work. The latest version of OpenSUSE
+that this installation has been tested on is **OpenSUSE Leap 16.0**.
 
 **NOTE:** Commands that require root privileges will have a ``sudo`` or ``su`` command ahead of
 them, or explicitly say 'as root', all others should be executed as the normal user that will run
@@ -23,8 +23,8 @@ Borealis (recommended name: radar).
 
       Ensure IP routing is set up for each respective interface and subnet.
 
-   #. **Hard Drive Partition:** The recommended hard drive partitions are shown below, given a single
-      SSD and two HDDs. Adjust your partition sizes to match your hardware:
+   #. **Hard Drive Partition:** The recommended hard drive partitions are shown below, given a
+      single SSD and two HDDs. Adjust your partition sizes to match your hardware:
 
       - Split SSD into the following partitions:
 
@@ -38,7 +38,8 @@ Borealis (recommended name: radar).
          - Data partition (mounted to ``/data``)
 
    #. **System Update**: Update all software packages via the package manager before proceeding with
-      installation of other packages. This will limit issues when installing NVIDIA and CUDA drivers. ::
+      installation of other packages. This will limit issues when installing NVIDIA and CUDA
+      drivers. ::
 
        sudo zypper update
 
@@ -64,10 +65,10 @@ Borealis (recommended name: radar).
    Reboot the computer. To verify that the drivers have been installed correctly, run
    ``sudo nvidia-smi`` - the output of this command should show the GPU installed on the computer.
 
-   **NOTE:** It is possible to run Borealis on the CPU, that is, without using your graphics card for
-   parallel computations. This will severely slow down the system, but may be useful in some cases. If
-   this is desired, you can skip the step of installing NVIDIA drivers on your machine, and see
-   the note when running ``install_radar_deps.py``.
+   **NOTE:** It is possible to run Borealis on the CPU, that is, without using your graphics card
+   for parallel computations. This will severely slow down the system, but may be useful in some
+   cases. If this is desired, you can skip the step of installing NVIDIA drivers on your machine,
+   and see the note when running ``install_radar_deps.py``.
 
 #. Install the latest NVIDIA CUDA drivers (see
    https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html). The radar software uses
@@ -101,9 +102,9 @@ Borealis (recommended name: radar).
 #. Configure the computer to always remain powered on. This is done in two ways:
 
    #. Within BIOS configure the computer to always boot when connected to power. The computer should
-      come back online when AC power is restored to the computer following a power outage. This setting
-      is typically referred to as *Restore on AC/Power Loss* or *AC Power Recovery* or something
-      similar.
+      come back online when AC power is restored to the computer following a power outage. This
+      setting is typically referred to as *Restore on AC/Power Loss* or *AC Power Recovery* or
+      something similar.
 
    #. Ensure that the computer doesn't automatically hibernate or go to sleep. In OpenSUSE 16.0, the
       default setting when a user isn't actively logged in is to hibernate, after which the computer
@@ -192,12 +193,13 @@ Borealis (recommended name: radar).
 
     sudo tuned-adm profile_info
 
-#. Create a .env file for the relevant Borealis environment variables. For example, in the home directory we define
-   ``.borealis.env`` **(NOTE the extra '/' in BOREALISPATH)** ::
+#. Create a .env file for the relevant Borealis environment variables. For example, in the home
+   directory we define ``.borealis.env`` **(NOTE the extra '/' in BOREALISPATH)** ::
 
     BOREALISPATH=/home/radar/borealis/
     RADAR_ID=sas
     PYTHON_VERSION=3.13
+    VIRTUAL_ENV=/home/radar/borealis/borealis_env3.13
 
 #. Modify ``~/.profile`` to load the .env file with::
 
@@ -246,6 +248,8 @@ Borealis (recommended name: radar).
       - If UHD does not configure correctly, an improper Boost installation or library naming
         convention is the likely reason. This script makes an attempt to correctly install Boost and
         create symbolic links to the Boost C++ libraries UHD (USRP Hardware Driver) understands.
+      - If ``uhd_find_devices`` incorrectly states "No UHD Devices Found", you may need to configure
+        ``firewalld`` to add the 10G network interface to the ``trusted`` zone
       - If you do not have CUDA installed, pass the ``--no-cuda`` flag as an option.
 
 #. Once all dependencies are resolved, use ``scons`` to compile the C++ code and build the system.
@@ -256,12 +260,12 @@ Borealis (recommended name: radar).
     scons -c          # If first time building, run to reset project state.
     scons release     # Can also run `scons debug`
 
-#. Edit ``/etc/security/limits.conf`` (as root) to add the following lines.
-   The first line allows UHD to set thread priority. UHD automatically tries to boost its thread scheduling priority, so it will fail
-   if the user executing UHD doesn't have permission.
-   The second line removes limits on the amount of page-locked memory and shared memory that a process can allocate
-   for the ``radar`` user, which we use to prevent the ringbuffer from being swapped to disk. Switch ``radar`` with the user that
-   will run borealis on your computer::
+#. Edit ``/etc/security/limits.conf`` (as root) to add the following lines. The first line allows
+   UHD to set thread priority. UHD automatically tries to boost its thread scheduling priority, so
+   it will fail if the user executing UHD doesn't have permission. The second line removes limits
+   on the amount of page-locked memory and shared memory that a process can allocate for the
+   ``radar`` user, which we use to prevent the ringbuffer from being swapped to disk. Switch
+   ``radar`` with the user that will run borealis on your computer::
 
       radar - rtprio 99
       radar - memlock unlimited
@@ -273,10 +277,11 @@ Borealis (recommended name: radar).
 
    #. Find out which tty device is physically connected to your PPS signal. It may not be ttyS0,
       especially if you have a PCIe expansion card. It may be ttyS1, ttyS2, ttyS3 or higher. To do
-      this, search the system log for 'tty' (either ``dmesg`` or the ``syslog``). An example output
-      with a PCIe expansion card is below. The output shows the first two (ttyS0 and ttyS1) built-in
-      to the motherboard chipset are not accessible on this x299 PRO from MSI. The next two (ttyS4
-      and ttyS5) are located on the XR17V35X chip which is located on the Rosewill card:
+      this, run the following command: ``sudo dmesg | grep -i tty``, or search the system log for
+      'tty'. An example output with a PCIe expansion card is below. The output shows the first two
+      (ttyS0 and ttyS1) built-in to the motherboard chipset are not accessible on this x299 PRO from
+      MSI. The next two (ttyS4 and ttyS5) are located on the XR17V35X chip which is located on the
+      Rosewill card:
 
         .. code-block:: text
 
@@ -311,9 +316,9 @@ Borealis (recommended name: radar).
         radar@sasbore206:~> cat /sys/class/pps/pps0/path
         /dev/ttyS0
 
-   #. Now create a small bash script that contains all commands needed to connect the GPS disciplined NTP line to
-      the /dev/pps[X] line. This script will be used by chrony to configure the PPS line automatically when the
-      computer is turned on. Example script:
+   #. Now create a small bash script that contains all commands needed to connect the GPS
+      disciplined NTP line to the /dev/pps[X] line. This script will be used by chrony to configure
+      the PPS line automatically when the computer is turned on. Example script:
 
         .. code-block:: bash
 
@@ -322,9 +327,9 @@ Borealis (recommended name: radar).
              /usr/sbin/ldattach PPS /dev/ttyS[X]
              sleep 1
 
-      Save this file as ``/usr/local/bin/pps-init.sh`` (for example) and ensure the file is executable. The
-      ``sleep 1`` command ensures that the correct `/dev/pps[X]` device is created before chrony tries to connect
-      to it.
+      Save this file as ``/usr/local/bin/pps-init.sh`` (for example) and ensure the file is
+      executable. The ``sleep 1`` command ensures that the correct `/dev/pps[X]` device is created
+      before chrony tries to connect to it.
 
 #. Install and configure Network Time Protocol (NTP) via the built-in chrony package. chrony
    is an implementation of NTP native to OpenSUSE and Ubuntu that can be disciplined by an external
@@ -349,7 +354,7 @@ Borealis (recommended name: radar).
             log measurements statistics tracking
 
    #. *Optional:* To configure chrony with PPS, add the following lines to the ``chronyd.service``
-      file: ::
+      file using ``systemctl edit chronyd``: ::
 
         [Service]
         DeviceAllow=/dev/ttyS[X] rwm
@@ -430,6 +435,9 @@ Borealis (recommended name: radar).
 
    #. To check that the radar is operating, run ``screen -r borealis`` to view the live output of
       all Borealis processes.
+
+   #. Configure ``monitor-schedule.path`` and ``schedule-radar.service`` to automatically update the
+      radar schedule when changes occur.
 
 #. Configure and install the automatic Borealis restart daemon, ``restart_borealis.service``. Follow
    the steps outlined here to install and start the system service: :ref:`Automated Restarts <automated-restarts>`.

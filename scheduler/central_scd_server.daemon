@@ -14,8 +14,7 @@
 #       - SCHEDULING_ENV (example: /home/radman/scheduling-env)
 #   - variable ${BOREALISPATH} defined in either ${HOME}/.profile or ${HOME}/.bashrc
 #
-# This script should be run via a systemd service in the following location:
-# `/usr/lib/systemd/system/central_scd_server.service`
+# This script should be run via the central_scd_server.service systemd service file.
 
 # Source our environment
 source "${HOME}/.scheduler"
