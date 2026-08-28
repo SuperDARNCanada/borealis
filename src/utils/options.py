@@ -172,7 +172,7 @@ class Options:
     )  #: Duration to window on either side of TX pulse for T/R signal [s]
     usrp_master_clock_rate: float = field(init=False)  #: E.g. ``"1.00E+08"``
     default_freqs: dict = field(
-         init = False
+        init=False
     )  #: Common-mode and Sounding operating frequencies [kHz]
 
     # hdw.dat options
@@ -383,7 +383,9 @@ class Options:
 
         self.min_freq = float(raw_config["min_freq"])  # Hz
         self.max_freq = float(raw_config["max_freq"])  # Hz
-        self.default_freqs = raw_config["default_freqs"] # {"common": [...], "sounding": [...]} kHz
+        self.default_freqs = raw_config[
+            "default_freqs"
+        ]  # {"common": [...], "sounding": [...]} kHz
         self.min_pulse_length = float(raw_config["min_pulse_length"])  # us
         self.min_tau_spacing_length = float(raw_config["min_tau_spacing_length"])  # us
         self.num_beams = int(raw_config["num_beams"])
@@ -541,6 +543,11 @@ class Options:
         if self.scan_direction not in ["clockwise", "counterclockwise"]:
             raise ValueError(
                 "scan_direction must be either `clockwise` or `counterclockwise`"
+            )
+        if len(self.default_freqs["common"]) < 2:
+            raise ValueError(
+                f"Site '{self.site_id}' must define at least two common-mode "
+                f"frequencies in 'default_freqs'. Found: {self.default_freqs['common']}"
             )
 
         # TODO: Test that realtime_address and router_address are valid addresses

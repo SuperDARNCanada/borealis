@@ -79,7 +79,7 @@ integrating Slack alerts, see `here
 To set up the daemon using ``systemd``:
 
 #. Copy ``borealis/scripts/restart_borealis.daemon`` to ``/usr/local/bin/``. Ensure the file can be
-   executed by the radar operating user (i.e. ``radar``). 
+   executed by the radar operating user (i.e. ``radar``).
 
 #. Copy ``borealis/scripts/restart_borealis.service`` to ``/usr/lib/systemd/system/``. Modify the user specified
    in the service file to match the radar operating user. The service file is shown below:

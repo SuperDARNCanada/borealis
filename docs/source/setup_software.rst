@@ -107,7 +107,7 @@ Borealis (recommended name: radar).
 
    #. Ensure that the computer doesn't automatically hibernate or go to sleep. In OpenSUSE 16.0, the
       default setting when a user isn't actively logged in is to hibernate, after which the computer
-      cannot be accessed via ``ssh``. To prevent this, create a ``sleep.conf`` file within 
+      cannot be accessed via ``ssh``. To prevent this, create a ``sleep.conf`` file within
       ``/etc/systemd/sleep.conf.d/`` (or wherever your ``sleep.conf.d/`` is located) containing the
       following lines: ::
 
@@ -312,7 +312,7 @@ Borealis (recommended name: radar).
         /dev/ttyS0
 
    #. Now create a small bash script that contains all commands needed to connect the GPS disciplined NTP line to
-      the /dev/pps[X] line. This script will be used by chrony to configure the PPS line automatically when the 
+      the /dev/pps[X] line. This script will be used by chrony to configure the PPS line automatically when the
       computer is turned on. Example script:
 
         .. code-block:: bash
@@ -322,8 +322,8 @@ Borealis (recommended name: radar).
              /usr/sbin/ldattach PPS /dev/ttyS[X]
              sleep 1
 
-      Save this file as ``/usr/local/bin/pps-init.sh`` (for example) and ensure the file is executable. The 
-      ``sleep 1`` command ensures that the correct `/dev/pps[X]` device is created before chrony tries to connect 
+      Save this file as ``/usr/local/bin/pps-init.sh`` (for example) and ensure the file is executable. The
+      ``sleep 1`` command ensures that the correct `/dev/pps[X]` device is created before chrony tries to connect
       to it.
 
 #. Install and configure Network Time Protocol (NTP) via the built-in chrony package. chrony
@@ -372,7 +372,7 @@ Borealis (recommended name: radar).
         ^- tock.usask.ca                 1  10   377   554   -795us[ -788us] +/-   15ms
         ^- ntp1.yyz.ca.hojmark.net       2  10   377   228  -7684us[-7680us] +/-   62ms
 
-   #. *Optional:* If PPS is not working with chrony, ``chronyc sources`` will look similar to below, 
+   #. *Optional:* If PPS is not working with chrony, ``chronyc sources`` will look similar to below,
       with an "x" next to PPS: ::
 
         MS Name/IP address         Stratum Poll Reach LastRx Last sample
@@ -381,7 +381,7 @@ Borealis (recommended name: radar).
         ^- tick.usask.ca                 1  10   377   493   +921us[ +929us] +/-   16ms
         ^* tock.usask.ca                 1  10   377   554   -795us[ -788us] +/-   15ms
 
-      In this situation, the PPS signal is offset from the expected clock by 465 ms. To account for 
+      In this situation, the PPS signal is offset from the expected clock by 465 ms. To account for
       this, modify the PPS line in ``/etc/chrony.conf`` as shown below. Adjust the offset to match
       what is shown in the ``chronyc sources`` table. ::
 
