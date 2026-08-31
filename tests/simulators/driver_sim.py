@@ -155,7 +155,9 @@ def driver_thread():
                 pulse_len=len(pulse_sent[0, :]),
                 pulse_duration=pulse_durations[i],
             )
-            mock_samples[:16, start_samp : start_samp + pulse_len] += pulse_sent
+            mock_samples[
+                options.tx_main_antennas, start_samp : start_samp + pulse_len
+            ] += pulse_sent
 
         seed_mod += 1
 

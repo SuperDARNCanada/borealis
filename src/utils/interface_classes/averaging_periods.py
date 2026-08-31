@@ -418,7 +418,8 @@ class CFSAveragingPeriod(AveragingPeriod):
                 ] = False
                 # Mask pulse width around all used frequencies
 
-            for ctr_freq in [self.txctrfreq, self.rxctrfreq]:
+            tuning_freqs = self._determine_tuning_freqs(self.cfs_slice_ids)
+            for ctr_freq in tuning_freqs:
                 mask[
                     np.argwhere(
                         np.logical_and(

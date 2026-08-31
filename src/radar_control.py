@@ -173,7 +173,7 @@ def create_driver_message(radctrl_params, pulse_transmit_data, pulse_buffer):
 
     message = messages.DriverPacket()
 
-    message.tune_freq = radctrl_params.sequence.current_tune * 1000  # convert to Hz
+    message.tunefreq = radctrl_params.sequence.current_tune * 1000  # convert to Hz
     message.txrate = radctrl_params.experiment.txrate
     message.rxrate = radctrl_params.experiment.rxrate
 
@@ -500,11 +500,15 @@ def create_dw_message(radctrl_params):
 
             rxchannel.rx_main_antennas = sqn_slice.rx_main_antennas
             rxchannel.rx_intf_antennas = sqn_slice.rx_intf_antennas
-            rxchannel.tx_antennas = sqn_slice.tx_antennas
-            rxchannel.tx_excitations = sequence.tx_main_phase_shifts[slice_id][
-                freq_idx, sqn_slice.tx_beam_order[radctrl_params.aveperiod.beam_iter]
-            ]
-
+            if sqn_slice.rxonly:
+                rxchannel.tx_antennas = []
+                rxchannel.tx_excitations = []
+            else:
+                rxchannel.tx_antennas = sqn_slice.tx_antennas
+                rxchannel.tx_excitations = sequence.tx_main_phase_shifts[slice_id][
+                    freq_idx,
+                    sqn_slice.tx_beam_order[radctrl_params.aveperiod.beam_iter],
+                ]
             beams = sqn_slice.rx_beam_order[radctrl_params.aveperiod.beam_iter]
             if isinstance(beams, int):
                 beams = [beams]
@@ -734,11 +738,14 @@ def main(exp_name, scheduling_mode, embargo, **kwargs):
     # Flag for starting the radar on the minute boundary
     wait_for_first_scanbound = experiment.slice_dict.get("wait_for_first_scanbound")
 
-    # Send driver initial setup data - rates and center frequency from experiment.
+    # Send driver initial setup data. Rates from experiment, center frequency from sequence
     # Wait for acknowledgment that USRP object is set up.
 
+    # Grab the first sequence to get the starting center frequency
+    initial_scan = experiment.scan_objects[0]
+    initial_sequence = initial_scan.aveperiods[initial_scan.aveperiod_iter].sequences[0]
     start_up_params = RadctrlParameters(
-        experiment, None, None, options, seqnum_start, True
+        experiment, None, initial_sequence, options, seqnum_start, True
     )
     driver_start_message = create_driver_message(start_up_params, None, None)
 

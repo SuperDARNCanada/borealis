@@ -1,0 +1,11 @@
+# This file should be placed in /etc/systemd/system/
+# Whenever the PathChanged is modified, schedule-radar.service is executed
+[Unit]
+Description="Monitor schedule file and update schedule when changed."
+
+[Path]
+PathChanged=/home/radar/borealis_schedules/lab.scd
+Unit=schedule-radar.service
+
+[Install]
+WantedBy=multi-user.target
