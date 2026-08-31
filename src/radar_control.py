@@ -500,11 +500,15 @@ def create_dw_message(radctrl_params):
 
             rxchannel.rx_main_antennas = sqn_slice.rx_main_antennas
             rxchannel.rx_intf_antennas = sqn_slice.rx_intf_antennas
-            rxchannel.tx_antennas = sqn_slice.tx_antennas
-            rxchannel.tx_excitations = sequence.tx_main_phase_shifts[slice_id][
-                freq_idx, sqn_slice.tx_beam_order[radctrl_params.aveperiod.beam_iter]
-            ]
-
+            if sqn_slice.rxonly:
+                rxchannel.tx_antennas = []
+                rxchannel.tx_excitations = []
+            else:
+                rxchannel.tx_antennas = sqn_slice.tx_antennas
+                rxchannel.tx_excitations = sequence.tx_main_phase_shifts[slice_id][
+                    freq_idx,
+                    sqn_slice.tx_beam_order[radctrl_params.aveperiod.beam_iter],
+                ]
             beams = sqn_slice.rx_beam_order[radctrl_params.aveperiod.beam_iter]
             if isinstance(beams, int):
                 beams = [beams]
