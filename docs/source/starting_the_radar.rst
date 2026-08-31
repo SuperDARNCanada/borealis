@@ -6,30 +6,27 @@ Starting and Stopping the Radar
 Manual Start-up
 ---------------
 
-To more easily start the radar, there is a script called ``steamed_hams.py``. The name of this
-script is a goofy reference to a scene in an episode of The Simpsons in which Principal Skinner
-claims there is an aurora happening in his house. The script takes two arguments and can be invoked
-as follows::
+To start the radar, there is a script called ``steamed_hams.py``. The name of this
+script is a reference to a scene in an episode of The Simpsons in which Principal Skinner
+claims there is an aurora happening in his house.
 
-    $BOREALISPATH/scripts/steamed_hams.py experiment_name code_environment scheduling_mode
+Usage
+~~~~~
+
+.. argparse::
+   :module: scripts.steamed_hams
+   :func: steamed_hams_parser
+   :prog: steamed_hams.py
 
 An example invocation to run ``twofsound`` in ``release`` mode during ``common`` time would be::
 
-    /home/radar/borealis/scripts/steamed_hams.py twofsound release common
+    $BOREALISPATH/scripts/steamed_hams.py twofsound release common
 
-Another example invocation running ``normalscan`` in ``debug`` mode during ``discretionary`` time::
-
-    /home/radar/borealis/scripts/steamed_hams.py normalscan debug discretionary
-
-Another example invocation running epopsound in debug mode during special time would be::
-
-    /home/radar/borealis/scripts/steamed_hams.py epopsound debug special
+.. note:: This script will kill the Borealis software if it is currently running, before it starts it anew.
 
 The experiment name must match to an experiment in the ``src/borealis_experiments`` folder, and does
-not include the ``.py`` extension. The code environment is the type of compilation environment that
-was compiled using ``scons`` such as ``release``, ``debug``, etc. **NOTE** This script will kill the
-Borealis software if it is currently running, before it starts it anew. The scheduling mode is one
-of ``common``, ``special``, or ``discretionary`` depending upon the DARN-SWG schedule (see the
+not include the ``.py`` extension. The scheduling mode is one
+of ``common``, ``special``, or ``discretionary``, depending upon the DARN-SWG schedule (see the
 scheduling working group page `here <http://superdarn.thayer.dartmouth.edu/WG-sched/charter.html>`_)
 
 The script will boot all the radar processes in a detached ``screen`` window that runs in the
@@ -42,7 +39,7 @@ module will not be run. For example::
     /home/radar/borealis/scripts/steamed_hams.py normalscan release discretionary --realtime-off
 
 If starting the radar in normal operation according to the schedule, there is a helper script called
-``start_radar.sh``, shown :ref:`below <start_radar-sh>`.
+``scripts/start_radar.sh``.
 
 ------------------
 Automated Start-up
@@ -52,9 +49,8 @@ In order to start the radar automatically, the script ``start_radar.sh`` should 
 startup script of the Borealis computer. It can also be called manually by the non-root user
 (typically ``radar``).
 
-The scheduling Python script, ``remote_server.py``, is responsible for automating the control of the
-radar to follow the schedule, and is started via the ``start_radar.sh`` script (shown :ref:`below
-<start_radar-sh>`) with the appropriate arguments.
+The scheduling Python script, ``make_atq.py``, is responsible for automating the control of the
+radar to follow the schedule, and is started via the ``start_radar.sh`` script with the appropriate arguments.
 
 This script should be added to the control computer boot-up scripts so that it generates a new set
 of scheduled commands.
@@ -80,21 +76,24 @@ us that the radar likely has a problem requiring manual intervention. For more i
 integrating Slack alerts, see `here
 <https://www.howtogeek.com/devops/how-to-send-a-message-to-slack-from-a-bash-script/>`__.
 
-To set up the daemon using ``systemd``, add a ``.service`` file within ``/usr/lib/systemd/system/``
-(for openSUSE). For example, ::
+To set up the daemon using ``systemd``:
 
-    [Unit]
-    Description=Restart borealis daemon
+#. Copy ``borealis/scripts/restart_borealis.daemon`` to ``/usr/local/bin/``. Ensure the file can be
+   executed by the radar operating user (i.e. ``radar``).
 
-    [Service]
-    User=radar
-    ExecStart=/home/radar/borealis/scripts/restart_borealis.daemon
-    Restart=always
+#. Copy ``borealis/scripts/restart_borealis.service`` to ``/etc/systemd/system/``. Modify the user specified
+   in the service file to match the radar operating user. The service file is shown below:
 
-    [Install]
-    WantedBy=multi-user.target
+   ..  literalinclude:: ../../scripts/restart_borealis.service
+       :linenos:
+       :language: ini
+       :caption: restart_borealis.service
 
-Then, ``enable`` and ``start`` the daemon using the ``systemctl`` commands.
+#. Enable and start the service: ::
+
+      sudo systemctl enable restart_borealis.service
+      sudo systemctl start restart_borealis.service
+      systemctl status restart_borealis.service
 
 Alternatively, ``restart_borealis.py`` can be run via ``crontab``, as shown below: ::
 
@@ -109,8 +108,7 @@ last-resort:
 
 #. Run the script ``stop_radar.sh`` from the Borealis ``scripts/`` directory. This script kills the
    scheduling server, removes all scheduled entries from the ``at`` queue and kills the screen
-   session running the Borealis software modules. ``stop_radar.sh`` is shown :ref:`below
-   <stop_radar-sh>`.
+   session running the Borealis software modules.
 
 #. While viewing the screen session running the Borealis software modules, type ``ctrl-A, ctrl-\\``.
    This will kill the screen session and all software modules running within it.
@@ -120,6 +118,7 @@ last-resort:
 
 #. Shut down the Borealis computer.
 
+.. _ups-power-outages:
 
 -------------------
 UPS & Power Outages
@@ -143,20 +142,3 @@ outage (since the transmitters will be powered off). This can be done as follows
       radar doesn't restart during the power outage.
    2. ``offbattery``: This occurs when the power outage ends. This script will cancel the scheduled
       ``stop_radar.sh`` script call, and restart the ``restart_borealis.service`` daemon.
-
-
--------
-Scripts
--------
-
-..  literalinclude:: ../../scripts/start_radar.sh
-    :language: bash
-    :linenos:
-    :caption: start_radar.sh
-    :name: start_radar-sh
-
-..  literalinclude:: ../../scripts/stop_radar.sh
-    :language: bash
-    :linenos:
-    :caption: stop_radar.sh
-    :name: stop_radar-sh

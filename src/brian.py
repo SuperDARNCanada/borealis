@@ -1,11 +1,7 @@
-#!/usr/bin/python
-
 """
 brian process
 ~~~~~~~~~~~~~
-This program communicates with all processes to administrate the Borealis software
-
-:copyright: 2017 SuperDARN Canada
+This program communicates with all processes to administrate the Borealis software.
 """
 
 import os
@@ -49,13 +45,10 @@ def router(options, realtime_off):
             dd = router.recv_multipart()
             sender, receiver, empty, data = dd
             log.debug(
-                "router input: sender->receiver", sender=sender, receiver=receiver
+                "routing message", sender=sender, receiver=receiver, size=len(data)
             )
             frames_received = [receiver, sender, empty, data]
             frames_to_send.append(frames_received)
-            log.debug(
-                "router output: receiver->sender", sender=sender, receiver=receiver
-            )
 
         non_sent = []
         retry_logs = []
@@ -69,7 +62,7 @@ def router(options, realtime_off):
                 log_dict = {"sender": sender, "receiver": receiver, "error": str(e)}
 
                 # Check if message was intended for realtime, and drop the message if so
-                if sender.decode("utf-8") == options.dw_to_rt_identity:
+                if receiver.decode("utf-8") == options.rt_to_dw_identity:
                     if realtime_off:
                         log.debug("dropping message", **log_dict)
                     else:
@@ -268,16 +261,24 @@ def sequence_timing(options):
             )
 
 
-def main():
+def brian_parser():
     parser = argparse.ArgumentParser()
     help_msg = "Run only the router. Do not run any of the other threads or functions."
     parser.add_argument("--router-only", action="store_true", help=help_msg)
     parser.add_argument(
         "--realtime-off", action="store_true", help="Flag if realtime is disabled"
     )
+    return parser
+
+
+def main():
+    parser = brian_parser()
     args = parser.parse_args()
 
     options = Options()
+    if not os.path.exists(options.log_directory):
+        raise RuntimeError(f"log_directory {options.log_directory} does not exist")
+
     threads = [
         threading.Thread(
             target=router, args=(options,), kwargs={"realtime_off": args.realtime_off}

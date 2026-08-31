@@ -1,5 +1,3 @@
-#!/usr/bin/python
-
 """
 options
 ~~~~~~~
@@ -10,9 +8,6 @@ configuration information.
 
 See https://borealis.readthedocs.io/en/latest/source/config_options.html for
 detailed descriptions of each configuration option.
-
-:copyright: 2023 SuperDARN Canada
-:author: Theodore Kolkman
 """
 
 import os
@@ -24,56 +19,161 @@ from dataclasses import dataclass, field
 @dataclass
 class Options:
     """
-    Parses all configuration options from the config.ini file for the current site.
-    Additionally, parses the hdw.dat and restrict.dat files of the current site for other
-    configuration information.
+    Parses all configuration options from the ``config.ini``, ``hdw.dat``, and ``restrict.dat`` files for the
+    current site.
+
+    .. note:
+
+        Reads ``BOREALISPATH`` and ``RADAR_ID`` from the environment to determine the paths to the configuration files.
+        If these are not found in the environment, instantiation will fail.
+
+    Raises errors if invalid configuration options are detected, e.g. two TX channels connected to the same antenna,
+    or two USRPs have the same IP address.
     """
 
     # config.ini options
-    data_directory: str = field(init=False)
-    hdw_path: str = field(init=False)
-    rx_intf_antennas: list[int] = field(init=False)
+    data_directory: str = field(
+        init=False
+    )  #: Location of output data files, e.g. ``"/data/borealis_data"``
+    hdw_path: str = field(
+        init=False
+    )  #: Path to SuperDARN hardware files, e.g. ``"/usr/local/hdw"``
+    rx_intf_antennas: list[int] = field(
+        init=False
+    )  #: Interferometer antennas connected to USRP RX channels.
     intf_antenna_locations: np.ndarray = field(init=False)
-    intf_antenna_count: int = field(init=False)
-    intf_antenna_spacing: float = field(init=False)
-    log_aggregator_addr: str = field(init=False)
-    log_aggregator_bool: bool = field(init=False)
-    log_aggregator_port: int = field(init=False)
-    log_console_bool: bool = field(init=False)
+    """
+    ``[x, y, z]`` coordinates for each antenna in the interferometer array, relative to the center-point of the main
+    array, in meters. Example::
+
+        {
+            "0": [-22.86, 0.0, 0.0],
+            "1": [-7.62, 0.0, 0.0],
+            "2": [7.62, 0.0, 0.0],
+            "3": [22.86, 0.0, 0.0]
+        }
+    """
+    intf_antenna_count: int = field(
+        init=False
+    )  #: Total number of interferometer array antennas
+    intf_antenna_spacing: float = field(
+        init=False
+    )  #: Distance between adjacent antennas in interferometer array [m]
+    log_aggregator_addr: str = field(
+        init=False
+    )  #: Network address of remote log aggregator
+    log_aggregator_bool: bool = field(
+        init=False
+    )  #: Flag to enable remote log aggregation
+    log_aggregator_port: int = field(init=False)  #: Port of remote log aggregator
+    log_console_bool: bool = field(init=False)  #: Flag to enable console logging
     log_directory: str = field(init=False)
+    """Directory in which to store JSON log files, e.g. ``"/data/borealis_logs"``"""
     console_log_level: str = field(init=False)
+    """Level for console logging.
+
+    Supported levels are ``DEBUG``, ``VERBOSE``, ``INFO``, ``WARNING``, ``ERROR``, ``CRITICAL``, and ``NOTSET``,
+    or a numeric value between 0 and 50.
+    """
     logfile_log_level: str = field(init=False)
+    """Level for JSON logfile logging.
+
+    Supported levels are ``DEBUG``, ``VERBOSE``, ``INFO``, ``WARNING``, ``ERROR``, ``CRITICAL``, and ``NOTSET``,
+    or a numeric value between 0 and 50.
+    """
     aggregator_log_level: str = field(init=False)
-    log_logfile_bool: bool = field(init=False)
-    rx_main_antennas: list[int] = field(init=False)
-    tx_main_antennas: list[int] = field(init=False)
+    """Level for remote aggregator logging.
+
+    Supported levels are ``DEBUG``, ``VERBOSE``, ``INFO``, ``WARNING``, ``ERROR``, ``CRITICAL``, and ``NOTSET``,
+    or a numeric value between 0 and 50.
+    """
+    log_logfile_bool: bool = field(init=False)  #: Flag to enable JSON file logging
+    rx_main_antennas: list[int] = field(
+        init=False
+    )  #: Main antennas connected to RX channels
+    tx_main_antennas: list[int] = field(
+        init=False
+    )  #: Main antennas connected to TX channels
     main_antenna_locations: np.ndarray = field(init=False)
-    main_antenna_count: int = field(init=False)
-    main_antenna_spacing: float = field(init=False)
+    """
+    ``[x, y, z]`` coordinates for each antenna in the main array, relative to the center-point of the main
+    array, in meters. Example::
+
+        {
+            "0": [-114.3, 0.0, 0.0],
+            "1": [-99.06, 0.0, 0.0],
+            ...,
+            "14": [99.06, 0.0, 0.0],
+            "15": [114.3, 0.0, 0.0]
+        }
+    """
+    main_antenna_count: int = field(init=False)  #: Total number of main array antennas
+    main_antenna_spacing: float = field(
+        init=False
+    )  #: Distance between adjacent antennas in main array [m]
     max_filtering_stages: int = field(init=False)
+    """Maximum number of filter stages allowed in a :class:`DecimationScheme`"""
     max_filter_taps_per_stage: int = field(init=False)
-    max_freq: float = field(init=False)
-    max_output_sample_rate: float = field(init=False)
-    max_rx_sample_rate: float = field(init=False)
-    max_tx_sample_rate: float = field(init=False)
-    max_usrp_dac_amplitude: float = field(init=False)
-    min_freq: float = field(init=False)
-    min_pulse_length: float = field(init=False)
-    min_pulse_separation: float = field(init=False)
-    min_tau_spacing_length: float = field(init=False)
+    """Maximum number of filter taps allowed in any :class:`DecimationStage` of a :class:`DecimationScheme`"""
+    max_freq: float = field(init=False)  #: Maximum operating frequency [Hz]
+    max_output_sample_rate: float = field(
+        init=False
+    )  #: Maximum output sampling rate [Hz]
+    max_rx_sample_rate: float = field(init=False)  #: Maximum USRP RX sampling rate [Hz]
+    max_tx_sample_rate: float = field(init=False)  #: Maximum USRP TX sample rate [Hz]
+    max_usrp_dac_amplitude: float = field(
+        init=False
+    )  #: Max amplitude of USRP TX samples [V]
+    min_freq: float = field(init=False)  #: Minimum operating frequency [Hz]
+    min_pulse_length: float = field(
+        init=False
+    )  #: Minimum pulse duration [μs]. Dependent on AGC hold time
+    min_pulse_separation: float = field(
+        init=False
+    )  #: Minimum separation before pulses are digitally combined [μs]
+    min_tau_spacing_length: float = field(
+        init=False
+    )  #: Minimum duration between pulses in a pulse sequence [μs]
+    num_beams: int = field(init=False)  #: Default number of beam directions to scan
+    num_ranges: int = field(init=False)  #: Default number of range gates
+    scan_direction: str = field(
+        init=False
+    )  #: Scan direction, "clockwise" or "counterclockwise"
+
     n200_addrs: list[str] = field(init=False)
     n200_count: int = field(init=False)
-    pulse_ramp_time: float = field(init=False)
-    rawacf_format: str = field(init=False)
-    realtime_address: str = field(init=False)
-    ringbuffer_name: str = field(init=False)
-    pulse_buffer_name: str = field(init=False)
-    pulse_buffer_size: int = field(init=False)
-    router_address: str = field(init=False)
-    site_id: str = field(init=False)
-    standard_antenna_positions: bool = field(init=False)
-    tr_window_time: float = field(init=False)
-    usrp_master_clock_rate: float = field(init=False)
+    pulse_ramp_time: float = field(init=False)  #: Linear ramp time for the pulse [s]
+    rawacf_format: str = field(
+        init=False
+    )  #: Output format for rawacf files. Either ``"hdf5"`` or ``"dmap"``
+    realtime_address: str = field(
+        init=False
+    )  #: Network address to serve DMAP data over, e.g. ``tcp://eth0:9696``
+    ringbuffer_name: str = field(
+        init=False
+    )  #: Shared memory name for the RX sample buffer
+    pulse_buffer_name: str = field(
+        init=False
+    )  #: Shared memory name for the TX sample buffer
+    pulse_buffer_size: int = field(
+        init=False
+    )  #: Size of TX pulse buffer, per TX channel [bytes]
+    router_address: str = field(
+        init=False
+    )  #: Internal network address used for IPC, e.g. ``tcp://127.0.0.1:9696``
+    site_id: str = field(
+        init=False
+    )  #: Standard 3-letter ID of the radar, e.g. ``"sas"``
+    standard_antenna_positions: bool = field(
+        init=False
+    )  #: Flag for standard (uniformly spaced) antennas
+    tr_window_time: float = field(
+        init=False
+    )  #: Duration to window on either side of TX pulse for T/R signal [s]
+    usrp_master_clock_rate: float = field(init=False)  #: E.g. ``"1.00E+08"``
+    default_freqs: dict = field(
+        init=False
+    )  #: Common-mode and Sounding operating frequencies [kHz]
 
     # hdw.dat options
     altitude: float = field(init=False)
@@ -95,8 +195,7 @@ class Options:
     velocity_sign: int = field(init=False)
 
     # restrict.dat options
-    default_freq: int = field(init=False)
-    restricted_ranges: list[tuple[int]] = field(init=False)
+    restricted_ranges: list[tuple[int, int]] = field(init=False)
 
     # ZMQ Identities
     brian_to_driver_identity: str = "BRIAN_DRIVER_IDEN"
@@ -138,17 +237,17 @@ class Options:
             raise ValueError("BOREALISPATH env variable not set")
         if not os.environ["RADAR_ID"]:
             raise ValueError("RADAR_ID env variable not set")
-        self.parse_config()  # Parse info from config file
-        self.parse_hdw()  # Parse info from hdw file
-        self.parse_restrict()  # Parse info from restrict.dat file
-        self.verify_options()  # Check that all parsed values are valid
+        self._parse_config()  # Parse info from config file
+        self._parse_hdw()  # Parse info from hdw file
+        self._parse_restrict()  # Parse info from restrict.dat file
+        self._verify_options()  # Check that all parsed values are valid
 
-    def parse_config(self):
+    def _parse_config(self):
         # Read in config.ini file for current site
         path = (
-            f'{os.environ["BOREALISPATH"]}/config/'
-            f'{os.environ["RADAR_ID"]}/'
-            f'{os.environ["RADAR_ID"]}_config.ini'
+            f"{os.environ['BOREALISPATH']}/config/"
+            f"{os.environ['RADAR_ID']}/"
+            f"{os.environ['RADAR_ID']}_config.ini"
         )
         try:
             with open(path, "r") as data:
@@ -284,8 +383,15 @@ class Options:
 
         self.min_freq = float(raw_config["min_freq"])  # Hz
         self.max_freq = float(raw_config["max_freq"])  # Hz
+        self.default_freqs = raw_config[
+            "default_freqs"
+        ]  # {"common": [...], "sounding": [...]} kHz
         self.min_pulse_length = float(raw_config["min_pulse_length"])  # us
         self.min_tau_spacing_length = float(raw_config["min_tau_spacing_length"])  # us
+        self.num_beams = int(raw_config["num_beams"])
+        self.num_ranges = int(raw_config["num_ranges"])
+        self.scan_direction = raw_config["scan_direction"]
+
         # Minimum pulse separation is the minimum before the experiment treats it as a single pulse
         # (transmitting zeroes or no receiving between the pulses) 125 us is approx two TX/RX times
         self.min_pulse_separation = float(raw_config["min_pulse_separation"])  # us
@@ -322,9 +428,9 @@ class Options:
         self.log_aggregator_addr = raw_config["log_handlers"]["aggregator"]["addr"]
         self.log_aggregator_port = int(raw_config["log_handlers"]["aggregator"]["port"])
 
-    def parse_hdw(self):
+    def _parse_hdw(self):
         # Load information from the hardware file
-        hdw_dat_file = f'{self.hdw_path}/hdw.dat.{os.environ["RADAR_ID"]}'
+        hdw_dat_file = f"{self.hdw_path}/hdw.dat.{os.environ['RADAR_ID']}"
 
         try:
             with open(hdw_dat_file) as hdwdata:
@@ -377,12 +483,12 @@ class Options:
             params[21]
         )  # so a beam number always points in a certain direction
 
-    def parse_restrict(self):
+    def _parse_restrict(self):
         # Read in restrict.dat
         path = (
-            f'{os.environ["BOREALISPATH"]}/config/'
-            f'{os.environ["RADAR_ID"]}/'
-            f'restrict.dat.{os.environ["RADAR_ID"]}'
+            f"{os.environ['BOREALISPATH']}/config/"
+            f"{os.environ['RADAR_ID']}/"
+            f"restrict.dat.{os.environ['RADAR_ID']}"
         )
         try:
             with open(path) as data:
@@ -398,16 +504,6 @@ class Options:
             line for line in restricted if len(line.split()) != 0
         ]  # remove blanks
 
-        for line in restricted:
-            splitup = line.split("=")
-            if len(splitup) == 2:
-                if splitup[0].strip() == "default":
-                    self.default_freq = int(splitup[1])  # kHz
-                    restricted.remove(line)
-                    break
-        else:  # no break
-            raise ValueError("No default frequency found in restrict.dat")
-
         self.restricted_ranges = []
         for line in restricted:
             splitup = line.split()
@@ -422,9 +518,9 @@ class Options:
             restricted_range = tuple(splitup)
             self.restricted_ranges.append(restricted_range)
 
-    def verify_options(self):
+    def _verify_options(self):
         if self.site_id != os.environ["RADAR_ID"]:
-            errmsg = f'site_id {self.site_id} is different from RADAR_ID {os.environ["RADAR_ID"]}'
+            errmsg = f"site_id {self.site_id} is different from RADAR_ID {os.environ['RADAR_ID']}"
             raise ValueError(errmsg)
 
         if len(self.n200_addrs) != len(set(self.n200_addrs)):
@@ -440,14 +536,21 @@ class Options:
             if len(self.rx_intf_antennas) != len(set(self.rx_intf_antennas)):
                 raise ValueError("rx_intf_antennas has duplicate values")
 
-        # TODO: Test that realtime_address and router_address are valid addresses
+        if self.num_beams <= 0:
+            raise ValueError("num_beams must be > 0")
+        if self.num_ranges <= 0:
+            raise ValueError("num_ranges must be > 0")
+        if self.scan_direction not in ["clockwise", "counterclockwise"]:
+            raise ValueError(
+                "scan_direction must be either `clockwise` or `counterclockwise`"
+            )
+        if len(self.default_freqs["common"]) < 2:
+            raise ValueError(
+                f"Site '{self.site_id}' must define at least two common-mode "
+                f"frequencies in 'default_freqs'. Found: {self.default_freqs['common']}"
+            )
 
-        if not os.path.exists(self.data_directory):
-            raise ValueError(f"data_directory {self.data_directory} does not exist")
-        if not os.path.exists(self.log_directory):
-            raise ValueError(f"log_directory {self.log_directory} does not exist")
-        if not os.path.exists(self.hdw_path):
-            raise ValueError(f"hdw_path directory {self.hdw_path} does not exist")
+        # TODO: Test that realtime_address and router_address are valid addresses
 
     def __str__(self):
         return_str = f"""    site_id = {self.site_id} \
@@ -489,7 +592,7 @@ class Options:
                        \n    analog_atten_stages = {self.analog_atten_stages} \
                        \n    max_range_gates = {self.max_range_gates} \
                        \n    max_beams = {self.max_beams} \
-                       \n    default_freq = {self.default_freq} kHz \
+                       \n    default_freqs = {self.default_freqs} kHz \
                        \n    restricted_ranges = {self.restricted_ranges} kHz \
                        \n    rawacf_format = {self.rawacf_format}
                        \n"""

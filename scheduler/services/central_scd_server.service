@@ -1,0 +1,11 @@
+# This service file should be placed in /etc/systemd/system/
+[Unit]
+Description=Central Borealis scheduling server
+
+[Service]
+User=radman
+ExecStart=/usr/local/bin/central_scd_server.daemon
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

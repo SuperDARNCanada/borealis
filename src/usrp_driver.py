@@ -19,6 +19,19 @@ import re
 import time
 
 
+def driver_parser():
+    parser = ap.ArgumentParser(description="Wrapper to the USRP driver")
+    parser.add_argument(
+        "run_mode",
+        help="The mode to run, switches scons builds and some arguments to "
+        "modules based on this mode. Commonly 'release'.",
+    )
+    parser.add_argument(
+        "--c_debug_opts", help="A C debug run options string", default=""
+    )
+    return parser
+
+
 def main():
     """
     Given the parsed arguments this runs the USRP driver in a subproccess.
@@ -29,19 +42,10 @@ def main():
     # TODO (Adam): - console should not clear on crash
     #              - debug mode does not work
     faulthandler.enable()
-    parser = ap.ArgumentParser(description="Wrapper to the USRP driver")
-    parser.add_argument(
-        "run_mode",
-        help="The mode to run, switches scons builds and some arguments to "
-        "modules based on this mode. Commonly 'release'.",
-    )
-    parser.add_argument(
-        "--c_debug_opts", help="A C debug run options string", default=""
-    )
-    args = parser.parse_args()
+    args = driver_parser().parse_args()
 
     path = os.environ["BOREALISPATH"]
-    cmd = f"source {path}/mode {args.run_mode}; {args.c_debug_opts} usrp_driver"
+    cmd = f"{args.c_debug_opts} {path}/build/{args.run_mode}/bin/usrp_driver"
     log.debug("usrp_driver start command", command=cmd)
 
     # If you are here to work on the code below this comment I bid you good luck!
@@ -87,7 +91,7 @@ def main():
             else:
                 # Split result by enclosed brackets [...] to get log level and device
                 # Example: "[INFO] [GPS] No gps lock..." becomes ["", "INFO", " ", "GPS", "No gps lock..."]
-                result = re.split("\[|\]", result)
+                result = re.split("[][]", result)
                 # Remove "" and whitespace
                 result = [x for x in result if x.strip() != ""]
                 if len(result) == 0:

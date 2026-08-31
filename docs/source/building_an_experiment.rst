@@ -63,16 +63,25 @@ East, depending upon the radar.
 Interfacing Types Between Slices
 --------------------------------
 
-.. autodata:: src.experiment_prototype.experiment_prototype.interface_types
+.. autodata:: src.utils.experiment_prototype.interface_types
     :noindex:
 
-If the ``txctrfreq`` and ``rxctrfreq`` parameters are not set by the user, then borealis will attempt
-to calculate centre frequencies for each slice of the experiment. It will aim to have as many slices
-on the same centre frequency as possible, and will ensure that any SEQUENCE or CONCURRENT interfaced
-slices have the same centre frequencies. It is not guaranteed that borealis will pick the best
-centre frequencies for the experiment and users should set these parameters manually if the
-experiment does not perform as expected or if they have performance concerns due to the tuning time
-required to switch between slices with different centre frequencies.
+Borealis will attempt to calculate USRP tuning frequencies for each slice of the experiment.
+It will aim to minimize re-tunes between averaging periods, and will ensure that any SEQUENCE or CONCURRENT interfaced
+slices have the same centre frequencies.
+
+----------
+normalscan
+----------
+
+Normalscan is a very common experiment for SuperDARN. It only has a single slice, as there is only one
+frequency, pulse_len, beam_order, etc. Since there is only one slice there is no need
+for an interface dictionary.
+
+..  literalinclude:: ../../src/borealis_experiments/normalscan.py
+    :linenos:
+    :language: python
+    :caption: normalsound.py
 
 --------------------------
 Slice Interfacing Examples
@@ -89,7 +98,7 @@ interfaced. The pulses from both slices are combined into a single set of transm
 that sequence and samples received from those sequences are used for both slices (filtering the raw
 data separates the frequencies).
 
-.. figure:: img/cutlass.png
+.. figure:: img/experiments/cutlass.png
    :width: 100%
    :alt: CUTLASS-style experiment slice interfacing
    :align: center
@@ -100,7 +109,7 @@ beam data from the full scan, if desired. With AVEPERIOD interfacing, one averag
 slice will be followed by an averaging period of another, and so on. The averaging periods are
 interleaved. The resulting experiment runs beams 0, 7, 1, 7, etc.
 
-.. figure:: img/themisscan.png
+.. figure:: img/experiments/themisscan.png
    :width: 100%
    :alt: THEMISSCAN slice interfacing
    :align: center
@@ -110,7 +119,7 @@ frequency. The txfreq are unique between the slices. In this experiment, the sli
 interfaced. A full scan of slice 0 runs followed by a full scan of slice 1, and then the process
 repeats.
 
-.. figure:: img/twofsound.png
+.. figure:: img/experiments/twofsound.png
    :width: 100%
    :alt: TWOFSOUND slice interfacing
    :align: center
@@ -124,7 +133,7 @@ AVEPERIOD interfaced, additionally that slices 2 and 3 are AVEPERIOD interfaced)
 SCAN interfaced (finally, to really drive home this point, this implies that slices 1 and 4 are SCAN
 interfaced, slices 2 and 4 are SCAN interfaced, and slices 3 and 4 are SCAN interfaced).
 
-.. figure:: img/one-experiment-all-interfacing-types.png
+.. figure:: img/experiments/one-experiment-all-interfacing-types.png
    :width: 100%
    :alt: An example showing all types of slice interfacing
    :align: center
@@ -138,7 +147,7 @@ ExperimentPrototype class.
 
 This means the ExperimentPrototype class must be imported at the start of the experiment file ::
 
-    from experiment_prototype.experiment_prototype import ExperimentPrototype
+    from utils.experiment_prototype import ExperimentPrototype
 
 Please name the class within the experiment file in a similar fashion to the file, as the class name
 is written to the datasets produced.
@@ -176,11 +185,7 @@ Below is an example of properly inheriting the prototype class and defining your
                 comment_string='My experiment explanation')
 
 The experiment handler will create an instance of your experiment when your experiment is scheduled
-to start running. Your class is a child class of ExperimentPrototype and because of this, the parent
-class needs to be instantiated when the experiment is instantiated. This is important because the
-experiment_handler will build the scans required by your class in a way that is easily readable and
-iterable by the radar control program. This is done by methods that are set up in the
-ExperimentPrototype parent class.
+to start running.
 
 The next step is to add slices to your experiment. An experiment is defined by the slices in the
 class, and how the slices interface. As mentioned above, slices are just python dictionaries, with a
@@ -191,7 +196,7 @@ dictionary are described below.
 Slice Keys
 ----------
 
-.. autoclass:: src.experiment_prototype.experiment_slice.ExperimentSlice()
+.. autoclass:: src.utils.experiment_slice.ExperimentSlice()
     :noindex:
 
 ------------------
@@ -236,7 +241,7 @@ Notice that you must specify interfacing to an existing slice when you add a sec
 slice to the experiment. To see the types of interfacing that can be used, see the above section
 `Interfacing Types Between Slices`_.
 
-This experiment is very similar to the twofsound experiment. To see examples of common experiments,
+This experiment is very similar to the twofsound experiment. To see examples of experiments,
 look at :doc:`experiments`.
 
 -----------------------------------
@@ -250,7 +255,7 @@ by the following command::
         python3 BOREALISPATH/tests/experiments/experiment_unittests.py
 
 This will test all experiments within the ``borealis_experiments`` directory, and run all
-exception-checking unit tests within the testing_archive directory of the experiments directory.
+exception-checking unit tests within the tests/ directory of the experiments directory.
 At the end, the results of all tests will be summarized, showing how many tests passed and failed.
 
 This testing script can also be used to check specific experiments are written correctly. To do
@@ -265,4 +270,4 @@ your experiment, the test will fail and the exception will describe the error.
 ..  toctree::
     :glob:
 
-    experiment_unittests.rst
+    /source/api/experiment_unittests

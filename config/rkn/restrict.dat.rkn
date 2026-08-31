@@ -1,6 +1,5 @@
 # Restricted frequency table for Rankin Inlet.
 # Restricted HAM exclusive frequencies 14.000 MHz to 14.350 MHz with a 0.205 MHz buffer.
-default=13500
 8005  8017
 8071  8082
 8112  8122

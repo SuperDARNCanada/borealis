@@ -14,7 +14,7 @@ import argparse
 import os
 import sys
 import json
-from datetime import datetime as dt
+from datetime import datetime as dt, timezone
 import glob
 import subprocess
 import time
@@ -59,7 +59,7 @@ def get_args():
         required=False,
         dest="borealis_path",
         default=BOREALISPATH,
-        help="Path to Borealis directory. Default " "BOREALISPATH environment variable",
+        help="Path to Borealis directory. Default BOREALISPATH environment variable",
     )
     parser.add_argument(
         "-d",
@@ -82,24 +82,24 @@ def main():
     data_directory = args.data_directory
 
     # Get today's date and look for the current data file being written
-    today = dt.utcnow().strftime("%Y%m%d")
+    today = dt.now(timezone.utc).strftime("%Y%m%d")
     today_data_files = glob.glob(f"{data_directory}/{today}/*")
     # If there are no files yet today, then just use the start of the day as the newest file write time
     if len(today_data_files) == 0:
-        new_file_write_time = dt.utcnow().replace(
+        new_file_write_time = dt.now(timezone.utc).replace(
             hour=0, minute=0, second=0, microsecond=0
         )
         new_file_write_time = float(new_file_write_time.strftime("%s"))
     else:
         newest_file = max(today_data_files, key=os.path.getmtime)
         new_file_write_time = os.path.getmtime(newest_file)
-    now_utc_seconds = float(dt.utcnow().strftime("%s"))
+    now_utc_seconds = float(dt.now(timezone.utc).strftime("%s"))
 
     # How many seconds ago was the last write to a data file?
-    last_data_write = now_utc_seconds - new_file_write_time
+    last_data_write = round(now_utc_seconds - new_file_write_time, 2)
     print(
-        f"Last write time: {dt.utcfromtimestamp(new_file_write_time).strftime('%Y-%m-%dT%H:%M:%S')}, "
-        f"Current time: {dt.utcfromtimestamp(now_utc_seconds).strftime('%Y-%m-%dT%H:%M:%S')}, "
+        f"Last write time: {dt.fromtimestamp(new_file_write_time, timezone.utc).strftime('%Y-%m-%dT%H:%M:%S')}, "
+        f"Current time: {dt.fromtimestamp(now_utc_seconds, timezone.utc).strftime('%Y-%m-%dT%H:%M:%S')}, "
         f"Difference: {last_data_write} s"
     )
 

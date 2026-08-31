@@ -16,7 +16,7 @@ It is a substantial upgrade to existing SuperDARN systems. Features of Borealis 
   :ref:`realtime package <realtime-package>`)
 - Flexible and easy-to-implement experiments (see :ref:`experiments`)
 - Direct sampling of each antenna receive path in the standard SuperDARN array, resulting in flexible
-  post-processing of data if the samples from each antenna are stored (see :ref:`antennas_iq`)
+  post-processing of data if the samples from each antenna are stored (see :ref:`antennas_iq <current_file_types>`)
 
 A paper has been published for the Borealis system and can be found
 `here <https://doi.org/10.1029/2022RS007591>`_.
@@ -24,14 +24,14 @@ A paper has been published for the Borealis system and can be found
 This documentation attempts to capture all information required for a new user to Borealis to start
 from nothing and eventually have a Borealis system running. The information includes:
 
-- What :ref:`parts` to buy
+- What :ref:`parts <parts>` to buy
 - How to interface with :ref:`existing transmitters <transmitter-interface>` and how the
   :ref:`Canadian radars do it <txio-board>`
 - What :ref:`hardware` and :ref:`software` modifications are required
-- What :ref:`options <config-options>` there are within the Borealis system and how to configure them
-- How to set up :ref:`tests <lab-testing>` in order to verify a working system
+- What :ref:`configuration options <config-options>` there are within the Borealis system and how to tweak them
+- How to test the :ref:`hardware <hardware-verification>` and :ref:`software <software-verification>`
 - How to write your own custom :ref:`experiments <building-experiments>`
-- How data produced by Borealis :ref:`map <rawacf-sdarn-mapping>` to formats
+- How data produced by Borealis :ref:`map <dmap-equivalents>` to formats
   agreed upon by the SuperDARN community
 - How to simulate a SuperDARN antenna array with :ref:`NEC` using our custom python script
 - And of course no documentation is complete without a list of :ref:`common issues <failure-modes>`
@@ -45,33 +45,33 @@ Version 1.0
 -----------
 The latest release of Borealis includes several major software changes. These include:
 
-* Clear frequency search: This new capability is highly configurable, both in operation and analysis. The frequency
+* **Clear frequency search**: This new capability is highly configurable, both in operation and analysis. The frequency
   spectrum measured in the search is saved in the HDF5 files, presenting a more detailed look at the noise/interference
   environment than was previously possible.
-* HDF5 file structure: gone are ``site`` and ``array`` structured files. HDF5 files are now structured similarly to
+* **HDF5 file structure**: gone are ``site`` and ``array`` structured files. HDF5 files are now structured similarly to
   the old ``site`` structured files, and can be converted in-memory to ``array`` structured data using pyDARNio.
   pyDARNio also supports loading in both structures as ``xarray`` DataSets, easing data exploration for new users.
   In general, the HDF5 files contain much more metadata.
-* Protobuf: this dependency has been removed. Large arrays that were previously transferred using protobuf are now
+* **Protobuf**: this dependency has been removed. Large arrays that were previously transferred using protobuf are now
   put in shared memory, with the shared memory address shared instead. A simple bespoke message protocol is used for
   all interprocess communication.
-* Pydantic: this dependency has been version bumped to v2.
-* Testing: simulator scripts were created for testing the entire system without N200 communication, and for isolated
+* **Pydantic**: this dependency has been version bumped to v2.
+* **Testing**: simulator scripts were created for testing the entire system without N200 communication, and for isolated
   testing of the realtime module.
-* Default ``DecimationScheme``: a new default was created, consisting of two stages with larger downsampling factors
+* **Default** ``DecimationScheme``: a new default was created, consisting of two stages with larger downsampling factors
   between each. This scheme uses significantly less GPU memory and runs significantly faster.
-* ``apcupsd`` scripts: these new scripts handle stopping the radar when a power outage occurs, and restarting the radar
+* ``apcupsd`` **scripts**: these new scripts handle stopping the radar when a power outage occurs, and restarting the radar
   when power is restored.
-* Frequency bug: operating at frequencies that are not a multiple of 10 kHz would produce garbage rawacfs in prior
+* **Frequency bug**: operating at frequencies that are not a multiple of 10 kHz would produce garbage rawacfs in prior
   versions. This bug was identified and fixed. Affected rawacfs can be fixed if the ``antennas_iq`` is still present.
-* Config files: new ``antennas`` field created, with the relative locations of each physical antenna. These values are
+* **Config files**: new ``antennas`` field created, with the relative locations of each physical antenna. These values are
   used for beamforming. Also new ``rawacf_format`` field, for specifying whether ``rawacf`` fields should be written in
   HDF5 or DMAP format.
 * ``txdata``: this data product is no longer supported.
-* Pulse sequence timing: the first pulse in each sequence now will always start on a millisecond boundary.
-* RX/TX center frequencies: these can be automatically determined based on the slices of an experiment.
-* Scheduling daemon: for running ``local_scd_server.py`` persistently.
-* Code style: ``ruff`` tool used for linting/formatting.
+* **Pulse sequence timing**: the first pulse in each sequence now will always start on a millisecond boundary.
+* **RX/TX center frequencies**: these can be automatically determined based on the slices of an experiment.
+* **Scheduling daemon**: for running ``central_scd_server.py`` persistently.
+* **Code style**: ``ruff`` tool used for linting/formatting.
 
 Limitations
 ^^^^^^^^^^^
@@ -95,23 +95,16 @@ In the next release, we plan to implement:
     :hidden:
     :glob:
 
-    /source/system_specifications
-    /source/system_setup
-    /source/config_options
-    /source/starting_the_radar
-    /source/lab_testing
-    /source/transmitter_interface
-    /source/txio_board
-    /source/scheduling
-    /source/monitoring
+    /source/building_borealis
     /source/building_an_experiment
-    /source/new_experiments
-    /source/borealis_processes
+    /source/starting_the_radar
+    /source/scheduling
+    /source/dsp_chain_in_detail
     /source/borealis_data
     /source/postprocessing
-    /source/tools
+    /source/monitoring
     /source/failure_modes
-    /source/development
+    /source/api
     /source/glossary
 
 Indices and tables

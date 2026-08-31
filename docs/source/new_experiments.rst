@@ -24,6 +24,10 @@ is present in ``superdarn_common_fields.py``. To use this function, set ::
 
 in your experiment slice dictionary.
 
+``easy_widebeam`` only accepts the antenna counts and frequencies listed in
+``widebeam_cached_phases.json``, next to ``superdarn_common_fields.py``. Frequencies must match a
+key exactly, and antenna spacing must be 15.24 m.
+
 More generally, you can define your own power- and phase-modulation across the transmitting
 antennas. Define a function with the following signature
 
@@ -59,8 +63,8 @@ experiment. A custom function can be written in the experiment and passed to bor
     beamforming_function(beam_angle, freq, antenna_locations):
 
     ...
-
-    slice_dict['tx_antenna_pattern'] = beamforming_function
+    slice_dict['tx_antenna_pattern'] = tx_beamforming_function
+    slice_dict['rx_antenna_pattern'] = rx_beamforming_function
 
 The function should expect to receive beam angles, operating frequencies, and antenna locations,
 This function will be called for both the rx signals from the main array and the interferometer array.
@@ -80,7 +84,7 @@ configurable.
 
 By default, the ``bistatic_test`` experiment will transmit a full FOV pattern like ``full_fov.py``
 on a single frequency. To operate a radar in a bistatic listening mode, the argument
-``listen_to=[three-letter radar code]`` must be passed to the experiment handler via
+``listen_to=[three-letter radar code]`` must be passed to radar_control via
 ``steamed_hams.py``. This will look something like this ::
 
     radar@borealis~$ ./steamed_hams.py bistatic_test release discretionary --kwargs_string "listen_to=rkn"
@@ -99,6 +103,11 @@ both endpoints. Therefore, for this example, beams used would be 0, 1, 2, 3, 4, 
 Repeated beams are valid.
 
 The arguments ``beam_order`` and ``listen_to`` are mutually exclusive.
+
+Note that ``listen_to`` only works for sites whose configuration files are stored locally on the
+computer running the experiment. Frequencies are read from each site's config file at startup, so
+a site with no config file present is not available to listen to, even if the radar itself is
+operating.
 
 You can define your own bistatic experiment, with very few restrictions. It is highly recommended
 that the field ``align_sequences`` is set to ``True`` in your experiment slice dictionary, which
@@ -126,11 +135,8 @@ frequency limits of the CFS band::
 
 Multiple experiment slices within an averaging period can be configured to set a transmit frequency
 from the CFS as long as each slice has the ``cfs_range`` set. Each slice can choose any band within the
-transmit and receive bandwidth of the system. Be aware when choosing a ``cfs_range`` that if the range
-has any part within +/- 50kHz around the ``txctrfreq`` or ``rxctrfreq`` a warning will be raised as
-no tx frequency can be chosen that is within 50kHz of the center frequencies. The user should be aware
-of any restricted bands within the desired range, as CFS will exclude restricted bands when selecting
-transmit frequencies.
+transmit and receive bandwidth of the system. The user should be aware of any restricted bands within
+the desired range, as CFS will exclude restricted bands when selecting transmit frequencies.
 
 Additionally, if a ``cfs_range`` with a band greater than 300kHz is desired, the user will need to
 design a custom decimation scheme for the CFS analysis, as the default is designed only for bands of

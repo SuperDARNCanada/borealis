@@ -5,7 +5,7 @@ install_radar_deps
 ~~~~~~~~~~~~~~~~~~
 Installation script for Borealis utilities.
 NOTE: This script has been tested on:
-    OpenSUSE Leap 15.5
+    OpenSUSE Leap 16.0
     Ubuntu 19.10
     Ubuntu 20.04
 
@@ -120,6 +120,7 @@ def install_packages(distro: str, dev: bool = True):
         "python3-mako",  # Required for UHD
         "cmake",
         "pps-tools",
+        "cronie",  # Required for crontab
     ]
 
     variant_packages = [
@@ -144,6 +145,7 @@ def install_packages(distro: str, dev: bool = True):
     opensuse_packages = [
         "kernel-devel",
         "libboost_*_66_0",
+        "libboost_system-devel",
         "uhd-devel",
         "uhd-utils",
         "uhd-firmware",
@@ -208,25 +210,6 @@ def install_zmq():
     )
 
     execute_cmd(zmq_cmd)
-
-
-def install_ntp():
-    """
-    Install NTP with PPS support.
-    """
-    print("### Installing NTP ###")
-    ntp_cmd = (
-        "cd ${IDIR};"
-        "cp -v /usr/include/sys/timepps.h /usr/include/ || exit;"
-        "wget -N http://www.eecis.udel.edu/~ntp/ntp_spool/ntp4/ntp-4.2/ntp-4.2.8p13.tar.gz;"
-        "tar xvf ntp-4.2.8p13.tar.gz;"
-        "cd ntp-4.2.8p13/ || exit;"
-        "./configure --enable-atom;"
-        "make -j${CORES};"
-        "make install;"
-    )
-
-    execute_cmd(ntp_cmd)
 
 
 def install_uhd(distro: str):
@@ -341,11 +324,7 @@ def install_borealis_env(
 
     optional_deps = []
     if not no_cupy:
-        cuda_check = execute_cmd("nvcc --version")
-        if "nvcc: command not found" in cuda_check:
-            print("WARNING: CUDA not installed; skipping cupy installation")
-        else:
-            optional_deps.append("gpu")
+        optional_deps.append("gpu")
     if dev:
         optional_deps.append("dev")
     if len(optional_deps) > 0:
@@ -429,8 +408,8 @@ def main():
     )
     parser.add_argument(
         "--python-version",
-        help="The version of Python to use for the installation. Default 3.9",
-        default="3.9",
+        help="The version of Python to use for the installation. Default 3.13",
+        default="3.13",
     )
     parser.add_argument(
         "--no-cuda",
@@ -504,7 +483,6 @@ def main():
     install_packages(distro, args.dev)
     install_python(distro, args.python_version)
     install_zmq()
-    install_ntp()
     install_uhd(distro)
     install_hdw_dat()
     install_borealis_env(

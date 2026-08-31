@@ -6,9 +6,9 @@ Common Failure Modes
 
 Certain failures of the Borealis system can be generally attributed to a short list of common
 issues. If your system fails and you are unsure why, it is a good idea to check the computer system
-logs for any clues. The log can be found at /var/log/messages on openSUSE, or /var/log/syslog on
-Ubuntu. Often there will be some indication within 10 seconds of when the radar stopped as to why it
-stopped.
+logs for any clues. The log can be found at ``/var/log/messages`` on openSUSE, or ``/var/log/syslog`` 
+on Ubuntu. Often there will be some indication within 10 seconds of when the radar stopped as to why 
+it stopped.
 
 It is also possible to have the radar stop for no discernible reason, with nothing noteworthy in the
 system log files or the Borealis log files. This is not uncommon for SuperDARN Canada radars, and
@@ -152,6 +152,25 @@ To fix this issue, ensure that all connectors are secured.
 Software Problems
 -----------------
 
+**USRP driver initializes very slowly**
+
+Occasionally, the USRP driver will initialize very slowly, taking several minutes instead of
+less than a minute. This behaviour can be tested by  the following command: ::
+
+ time uhd_usrp_probe --args="addr=192.168.10.100"
+
+This command typically takes 2-3 seconds to run - if it takes significantly longer this problem
+is present. To resolve the issue, try the following fixes:
+
+#. Temporarily change the MTU of the 10G network card from 9000 to 1500. This should speed up the
+   connection when running ``uhd_usrp_probe``. If it does, change the MTU back to 9000 and verify
+   that the USRP connection time is still fast.
+#. Run ``uhd_usrp_probe`` with explicit frame sizes: ::
+
+    time uhd_usrp_probe --args="addr=192.168.10.100,recv_frame_size=1472,send_frame_size=1472"
+
+   After running this, the connection speeds with the USRPs should be resolved.
+
 **remote_server.py Segfaults, other programs segfault (core-dump)**
 
 This behaviour has been seen several times at the Saskatoon Borealis radar.
@@ -178,39 +197,6 @@ The root cause is unknown, but symptoms are:
 
 To fix this issue and restart the radar:
 - Power cycle the machine
-
-**Protobuf library is not working**
-
-Symptoms: The following error in one or more screens when attempting to run the radar.::
-
-  Traceback (most recent call last):
-    File "brian/brian.py", line 24, in <module>
-      import driverpacket_pb2
-    File "/home/radar/borealis//build/release/utils/protobuf/driverpacket_pb2.py", line 5, in <module>
-      from google.protobuf.internal import builder as _builder
-  ImportError: cannot import name 'builder'
-
-Reason: There are two components to the protobuf installation - the package and the protoc compiler.
-Starting with version 3.20.0, the builder.py file was made for consolidation with this library,
-'Protobuf python generated codes are simplified. Descriptors and message classes' definitions are
-now dynamic created in internal/builder.py.' See
-https://github.com/protocolbuffers/protobuf/releases?page=2 We have had troubles installing versions
-newer than this, so we recommend using previous versions.
-
-Solution:
-Either upgrade your protobuf version or install an older version of the protoc compiler.
-
-**Update since v1.0:** protobuf is no longer a dependency, so this issue should no longer exist.
-
-**Number of sequences per integration time decreasing over time**
-
-This behaviour has been seen when setting up Borealis on new computers. Typically the radar starts
-and records 30-32 sequences per integration, but over the span of a half hour or more may decrease
-down to 10-20 sequences per integration.
-
-This is caused by a communication error between the brian and realtime modules, likely due to the
-value of ``realtime_address`` in config.ini. Make sure that the realtime_address uses a configured
-interface that is "UP". See Software Setup for instructions.
 
 **Borealis only runs one integration time then stops**
 
