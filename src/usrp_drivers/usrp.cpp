@@ -305,9 +305,11 @@ double USRP::set_rx_center_freq(double freq, std::vector<size_t> chs,
     auto freq_1 = usrp_->get_rx_freq(chs[0]);
 
     if (actual_freq != freq) {
-      // TODO(keith): throw error.
+      std::cout << "RX tune mismatch ch " << channel << " requested "
+                << std::fixed << freq << " actual " << actual_freq << std::endl;
     } else if (actual_freq != freq_1) {
-      // TODO(keith): throw error.
+      std::cout << "RX tune differs across channels: ch " << channel << " "
+                << actual_freq << " vs ch0 " << freq_1 << std::endl;
     }
   }
 
