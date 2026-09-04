@@ -28,6 +28,7 @@ from scipy.constants import speed_of_light
 
 # Very important that this global variable is kept up-to-date and
 # consistent throughout. It is a unique id for each wire structure
+# TODO: could add temperature dependency for the conductivities (might change radiation pattern I don't know)
 wire_number = 0
 wire_conductivity = []
 min_frequency = 8e6  # Use to calculate min # of segments per wire
@@ -35,10 +36,18 @@ aluminum_conductivity = 3.5e7  # Siemen's per meter at 20 degrees C
 copper_conductivity = 5.96e7  # Siemen's per meter at 20 degrees C
 annealed_copper_conductivity = 5.8e7  # Siemen's per meter at 20 degrees C
 galvanized_steel_conductivity = 1.0e7  # Siemen's per meter at 20 degrees C
+nylon_rope_conductivity = 10e-12 # Siemen's per meter Wikipedia
 max_num_beams = 16  # Max number of beams? Some radars use 24
 BORESIGHT_BEAM = (max_num_beams - 1.0) / 2.0  # What would the boresight beam number be?
 
+# Color code definitions to print nicely
+RED = '\033[31m'
+GREEN = '\033[32m'
+YELLOW = '\033[33m'
+BLUE = '\033[34m'
+RESET = '\033[0m' # Resets the terminal color back to default
 
+# TODO: make sure this user message is updated
 def usage_msg():
     """
     Return the usage message for this process.
@@ -48,38 +57,41 @@ def usage_msg():
     :returns: the usage message
     """
 
-    usage_message = """ nec_sd_generator.py [-h] [options]
+    usage_message = f""" nec_sd_generator.py [-h] [options]
 
     This script can be used to generate some common orientations of the SuperDARN antenna arrays
-    for use with a NEC engine. Some programs that can read NEC inputs are 4nec2 or eznec. This
-    script has been tested with the free, latest version of 4nec2, 5.8.17, updated January 2020 and
-    available here: https://www.qsl.net/4nec2/.
+    for use with the NEC engine xnec2c. Some programs that can read NEC inputs are 4nec2 or eznec but
+    they require windows emulators if you are on Linux. This script has been tested with the free,
+    latest version of xnec2c, 4.4.18, updated December 18th 2025 and available here:
+    {GREEN}https://github.com/KJ7LNW/xnec2c.git{RESET}.
 
-    In order to use this with 4nec2, simply open 4nec2 and go to 'File->Open 4nec2 in/out file' and
-    select the file (it must end in '.nec'). Then hit F7 or go to the 'Calculate->NEC Output-data'
-    option. Interpretations of the results are beyond the scope of this help message. Note that
-    4nec2 requires DOS line-endings, which is why this script outputs DOS line endings.
+    In order to use this with xnec2c, simply run this script with any options desired, example:
+    {BLUE}python3 xnec2c_sd_generator.py -t -g -o "my_superdarn_antenna_example.nec"{RESET}
+
+    or for more options/description:
+    {BLUE}python3 xnec2c_sd_generator.py -h{RESET}
 
     By default, if you run this script with no options, it will create TTFD main and interferometer
     arrays with 21-wire reflectors, oriented like the Rankin Inlet radar with the main array in
-    front of the interferometer array. This can be changed with the --int-x-spacing, --int-y-spacing
-    and --int-z-spacing options which take in a floating point number of meters to offset the
+    front of the interferometer array. This can be changed with the {BLUE}--int-x-spacing{RESET}, {BLUE}--int-y-spacing{RESET}
+    and {BLUE}--int-z-spacing{RESET} options which take in a floating point number of meters to offset the
     interferometer from the main array in 3d space. By default, it is 100m behind (y == -100)
-    and centered in both x and z dimensions. Turn off the reflector via the --without-fence flag.
+    and centered in both x and z dimensions. Turn off the reflector via the {BLUE}--without-fence{RESET} flag.
     In summary, the boresight is in the +y direction, the arrays are typically along the x axis,
     and the +z axis is distance from the ground.
 
     The number of antennas in both the main and interferometer arrays are controlled via the
-    --antennas and --int_antennas options. Defaults are 16 and 4, like the Rankin Inlet array. Set
-    the --int_antennas value to 0 to remove the interferometer array.
+    {BLUE}--antennas{RESET} and {BLUE}--int_antennas{RESET} options. Defaults are 16 and 4, like the Rankin Inlet array. Set
+    the {BLUE}--int_antennas{RESET} value to 0 to remove the interferometer array.
 
-    The antenna spacing can be modified from the 15.24m default via the --antenna_spacing option.
+    The antenna spacing can be modified from the 15.24m default via the {BLUE}--antenna_spacing{RESET} option.
 
     The beam and frequency used can be changed from the defaults of boresight and 10.5MHz via the
-    --beam and --frequency options, which take floating point values.
+    {BLUE}--beam{RESET}, which takes a floating point value, and {BLUE}--frequency{RESET}, {BLUE}--freq_range{RESET},
+    and {BLUE}--freq_list{RESET} options, which take string values.
 
     Finally, you can provide a custom name for the file generated by this script using the
-    --output_file option. Just be aware that 4nec2 input file naming requirements are strict, no
+    {BLUE}--output_file{RESET} option. Just be aware that xnec2c input file naming requirements are strict, no
     periods, and it must end in '.nec'.
 
     ** NOTE ** There are some options that are not supported yet, like log periodic arrays, yagi
@@ -110,6 +122,10 @@ class Tower(object):
         """
         # Build tower upright, cross braces, and guylines.
         # Also wires cannot lay along the ground plane, this produces segment errors.
+        # TODO: vertical tower poles are 1-1/4" and hollow, not 13 awg, could add
+        # radius option for it or hard code it. Note that coductivity changes if it is
+        # hollow as compared to filled in (I dont know how to make a hollow "wire" in xnec2c)
+        # Note towers are Wade Antenna GN16S 10ft towers (these are the sections used to make towers)
         self.tower_wires = []
 
         x_offset = side_length / 2.0
@@ -145,8 +161,11 @@ class Tower(object):
                                          vertical_left_beam[0],  vertical_left_beam[1],  global_z + height_m,
                                          radius=radius, segments=0, conductivity=galvanized_steel_conductivity))
 
-        crossbrace_spacing_m = 10.0      # Vertical distance between cross braces
-        num_braces = int(start_height_m / crossbrace_spacing_m)
+        # TODO: cross bracing is not in the exact correct locations, hell may even have the wrong
+        # total number of braces per tower. If changing to be 100% accurate to our site towers
+        # you may have to change the guy line tie off points as some may become floating wires.
+        crossbrace_spacing_m = 0.48768      # Vertical distance between cross braces in meters (1.6 ft)
+        num_braces = int(start_height_m / crossbrace_spacing_m) + 1
         for i in range(num_braces):
             pass
             create_crossbrace(global_z + start_height_m - i * crossbrace_spacing_m)
@@ -154,26 +173,25 @@ class Tower(object):
         # Add the guylines
         # guylines are in the direction of boresite and 120 deg either way
         # this creates a tetrahedron of support structure
-        ## TODO: conductivity option, most likely the guy lines are rope
         if guylines:
             # Guy lines for top of every tower
             # Pointing down boresight
             wire = Wire(vertical_front_beam[0], vertical_front_beam[1], global_z + start_height_m,
                                          vertical_front_beam[0], vertical_front_beam[1] + guyline_span, global_z,
-                                         radius=radius, segments=0, conductivity=galvanized_steel_conductivity)
+                                         radius=radius, segments=0, conductivity=nylon_rope_conductivity)
             self.tower_wires.append(wire)
 
             # Pointing left of boresight
             wire = Wire(vertical_left_beam[0], vertical_left_beam[1], global_z + start_height_m,
                                          vertical_left_beam[0] - guyline_span, vertical_left_beam[1] - 0.01, global_z,
-                                         radius=radius, segments=0, conductivity=galvanized_steel_conductivity)
+                                         radius=radius, segments=0, conductivity=nylon_rope_conductivity)
             wire = wire.rotate(0, 0, 30)
             self.tower_wires.append(wire)
 
             # Pointing right of boresight
             wire = Wire(vertical_right_beam[0], vertical_right_beam[1], global_z + start_height_m,
                                          vertical_right_beam[0] + guyline_span, vertical_right_beam[1] + 0.01, global_z,
-                                         radius=radius, segments=0, conductivity=galvanized_steel_conductivity)
+                                         radius=radius, segments=0, conductivity=nylon_rope_conductivity)
             wire = wire.rotate(0, 0, -30)
             self.tower_wires.append(wire)
 
@@ -182,28 +200,28 @@ class Tower(object):
                 # Pointing down boresight
                 wire = Wire(vertical_front_beam[0], vertical_front_beam[1], global_z + 9.144,
                                              vertical_front_beam[0], vertical_front_beam[1] + guyline_span, global_z,
-                                             radius=radius, segments=0, conductivity=galvanized_steel_conductivity)
+                                             radius=radius, segments=0, conductivity=nylon_rope_conductivity)
                 self.tower_wires.append(wire)
 
                 # Pointing left of boresight
                 wire = Wire(vertical_left_beam[0], vertical_left_beam[1], global_z + 9.144,
                                              vertical_left_beam[0] - guyline_span, vertical_left_beam[1] - 0.01, global_z,
-                                             radius=radius, segments=0, conductivity=galvanized_steel_conductivity)
+                                             radius=radius, segments=0, conductivity=nylon_rope_conductivity)
                 wire = wire.rotate(0, 0, 30)
                 self.tower_wires.append(wire)
 
                 # Pointing right of boresight
                 wire = Wire(vertical_right_beam[0], vertical_right_beam[1], global_z + 9.144,
                                              vertical_right_beam[0] + guyline_span, vertical_right_beam[1] + 0.01, global_z,
-                                             radius=radius, segments=0, conductivity=galvanized_steel_conductivity)
+                                             radius=radius, segments=0, conductivity=nylon_rope_conductivity)
                 wire = wire.rotate(0, 0, -30)
                 self.tower_wires.append(wire)
 
-        if not without_fence:
-            # Pointing opposite boresight for reflector fence support
+        if (not without_fence) and (tower_height == 1) and (guylines):
+            # Pointing opposite boresight for reflector fence support, only 50ft towers
             wire = Wire(vertical_front_beam[0], vertical_right_beam[1], global_z + start_height_m,
                                          vertical_front_beam[0], vertical_front_beam[1] + guyline_span, global_z,
-                                         radius=radius, segments=0, conductivity=galvanized_steel_conductivity)
+                                         radius=radius, segments=0, conductivity=nylon_rope_conductivity)
             wire = wire.rotate(0, 0, 180)
             self.tower_wires.append(wire)
 
@@ -470,7 +488,7 @@ class Source(object):
     Source class used to describe NEC sources in the antenna array system (excitations)
     """
 
-    def __init__(self, tag, segment, excitation_real=1.0, excitation_imag=0.0, current_source=True):
+    def __init__(self, tag, segment, excitation_real=1.0, excitation_imag=0.0, current_source=False):
         """
         Create a NEC source excitation. Either create a current source if current_source is True
         or create a voltage source otherwise. Defaults to current_source, only change this if you
@@ -728,20 +746,20 @@ class LogPeriodic(object):
     Log Periodic antenna, used in many SuperDARN installations across the world.
     See https://www.antenna.be/sab-610.html
 
-Element #        (+)feed point(-)        radius (m)  Total length (m)    separation from next (m)
-1                 -----| |-----         0.005       6.04                0.725
-2                ------ x ------        0.0065      6.7                 0.86
-3               ------- x -------       0.01        7.57                1.005
-4              -------- x --------      0.0125      8.46                1.175
-5             --------- x ---------     0.0125      9.49                1.4
-6            ---------- x ----------    0.16        10.55               1.515
-7           ----------- x -----------   0.16        11.87               1.705
-8          ------------ x ------------  0.19        13.37               1.94
-9        -------------- x --------------0.19        15.38               1.305
-10       -------------- x --------------0.19        15.4
-                       | |
-                       ~~~
-                    Stub Coil
+    Element #        (+)feed point(-)        radius (m)  Total length (m)    separation from next (m)
+    1                 -----| |-----         0.005       6.04                0.725
+    2                ------ x ------        0.0065      6.7                 0.86
+    3               ------- x -------       0.01        7.57                1.005
+    4              -------- x --------      0.0125      8.46                1.175
+    5             --------- x ---------     0.0125      9.49                1.4
+    6            ---------- x ----------    0.16        10.55               1.515
+    7           ----------- x -----------   0.16        11.87               1.705
+    8          ------------ x ------------  0.19        13.37               1.94
+    9        -------------- x --------------0.19        15.38               1.305
+    10       -------------- x --------------0.19        15.4
+                           | |
+                           ~~~
+                        Stub Coil
 
     """
 
@@ -1017,7 +1035,7 @@ class TTFD(object):
     """
     Class to describe a TTFD (Twin-Terminated Folded Dipole) antenna frequently used in
     SuperDARN radar arrays. Typically consists of 7 wire structures, 2 loads and 1 balun.
-    Nominal dimensions are: 8m for the top wire and bottom wires, 12m for the width,  100Ohms for
+    Nominal dimensions are: 8m for the top wire and bottom wires, 12m for the width, 100Ohms for
     the loads, and 1.5m for the spacing between the top to middle wires.
 
                     top wire
@@ -1062,6 +1080,8 @@ class TTFD(object):
                               "CM Wire spacing: {} m\r\n" \
                               "CE\r\n".format(height, wire_gauge, termination,
                                               mid_width, top_width, wire_spacing)
+
+        # Build antenna
         self.topleftwire = Wire(-mid_width / 2.0, 0.0, height,
                                 -top_width / 2.0, 0.0, wire_spacing + height,
                                 self.wire_radius_m)
@@ -1102,11 +1122,11 @@ class TTFD(object):
 
         # antenna to small support tower guy lines
         if guylines:
-            self.ant_to_tower_guy1 = Wire(-(antenna_spacing - mid_width) / 2, 0.0, height,
-                                          0.0, 0.0, height)
+            self.ant_to_tower_guy1 = Wire(-(antenna_spacing - mid_width) / 2, -0.1, height,
+                                          0.0, 0.0, height, conductivity=nylon_rope_conductivity)
             self.ant_to_tower_guy1.translate(global_x - (mid_width / 2), global_y, global_z)
             self.ant_to_tower_guy2 = Wire(0.0, 0.0, height,
-                                          (antenna_spacing - mid_width) / 2, 0.0, height)
+                                          (antenna_spacing - mid_width) / 2, -0.1, height, conductivity=nylon_rope_conductivity)
             self.ant_to_tower_guy2.translate(global_x + (mid_width / 2), global_y, global_z)
 
     def repr_geometry(self):
@@ -1424,6 +1444,8 @@ def frequency_card(num_freq_steps=1, start_frequency=8.0, freq_step_size=0.5):
 def radiation_pattern_card(theta_start=45.0, theta_increment=0.0, theta_steps=1,
                            phi_start=0.0, phi_increment=1.0, phi_steps=361):
     """
+    XNEC2C DOES NOT SUPPORT I1 OPTION (surface wave)
+
     :param theta_start: Start elevation angle in degrees. Default 45.0
     :param theta_increment: Elevation increment angle in degrees. Default 0.0
     :param theta_steps: How many steps in elevation to calculate. Default 1
@@ -1448,7 +1470,9 @@ def ground_card(ground_type=2, epse=13, conductivity=0.005):
 
 def extended_kernel_card():
     """
-    :return: The extended kernel card NEC compatible string
+    NOT SUPPORTED BY XNEC2C
+
+    :return: The extended kernel card NEC compatible string.
     """
     return "EK\r\n"
 
@@ -1462,6 +1486,7 @@ def end_of_run_card():
 
 def max_coupling_card(*segment_pairs):
     """
+    NOT SUPPORTED BY XNEC2C
     Build a NEC2 CP (maximum coupling) card.
 
     NEC2 has no wildcard syntax for this card -- the fields must be explicit
@@ -1543,12 +1568,6 @@ if __name__ == '__main__':
 #-----------------------------------------------------------------------------#
 ### Input Validation and ERROR messages #######################################
 #-----------------------------------------------------------------------------#
-    # Color code definitions to print nicely
-    RED = '\033[31m'
-    GREEN = '\033[32m'
-    YELLOW = '\033[33m'
-    BLUE = '\033[34m'
-    RESET = '\033[0m' # Resets the terminal color back to default
 
     # Validate -f / --frequency
     if args.frequency is not None:
@@ -1737,17 +1756,17 @@ if __name__ == '__main__':
     int_antenna_magnitudes = []
     int_antenna_phases = []
 
-    if args.circular_phase: # Not implimented
+    if args.circular_phase: # Not implemented
         antenna_phases = calculate_circular_phase(args.frequency * 1e6, args.antenna_spacing,
                                                   args.antennas)
         int_antenna_phases = calculate_circular_phase(args.frequency * 1e6, args.antenna_spacing,
                                                       args.int_antennas)
-    elif args.parabolic_phase: # Not implimented
+    elif args.parabolic_phase: # Not implemented
         antenna_phases = calculate_parabolic_phase(args.frequency * 1e6, args.antenna_spacing,
                                                    args.antennas)
         int_antenna_phases = calculate_parabolic_phase(args.frequency * 1e6, args.antenna_spacing,
                                                        args.int_antennas)
-    elif args.broadened_beam: # Not implimented
+    elif args.broadened_beam: # Not implemented
         antenna_phases = calculate_broadened_phase(args.frequency * 1e6, args.antenna_spacing,
                                                    args.antennas, num_sub_arrays=4)
         int_antenna_phases = calculate_broadened_phase(args.frequency * 1e6, args.antenna_spacing,
