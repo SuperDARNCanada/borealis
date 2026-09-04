@@ -4,7 +4,7 @@ Description="Run make_atq.py to schedule the Borealis radar"
 
 [Service]
 User=radar
-EnvironmentFile=/home/radar/.borealis.env
+EnvironmentFile=/etc/sysconfig/borealis
 ExecStart=/bin/bash -c '${BOREALISPATH}/borealis_env${PYTHON_VERSION}/bin/python${PYTHON_VERSION} ${BOREALISPATH}/scheduler/make_atq.py /home/radar/borealis_schedules/'
 
 [Install]
