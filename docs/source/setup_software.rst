@@ -193,8 +193,7 @@ Borealis (recommended name: radar).
 
     sudo tuned-adm profile_info
 
-#. Create a .env file for the relevant Borealis environment variables. For example, in the home
-   directory we define ``.borealis.env`` **(NOTE the extra '/' in BOREALISPATH)** ::
+#. Create a Borealis environment file for relevant Borealis variables. For example, in ``/etc/sysconfig/borealis`` define: ::
 
     BOREALISPATH=/home/radar/borealis/
     RADAR_ID=sas
@@ -204,7 +203,7 @@ Borealis (recommended name: radar).
 #. Modify ``~/.profile`` to load the .env file with::
 
     set -a  # automatically export all variables
-    source .borealis.env
+    source /etc/sysconfig/borealis
     set +a
 
    Then, source the variables into your environment with ``source .profile``. Verify the ``BOREALISPATH`` environment
