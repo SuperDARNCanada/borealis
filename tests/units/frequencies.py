@@ -466,6 +466,17 @@ class TestDetermineTuningFreqs(unittest.TestCase):
         for actual, expected in zip(tuning_freqs, expected_tunes):
             self.assertEqual(actual, snap_to_usrp_clocks(expected, master_clock_rate))
 
+        # a frequency band that cannot share a tuning frequency with the previous frequency
+        freqs = [10500, [14000, 14300]]
+        expected_tunes = [12249, 15749]
+        expected_groups = [[0], [1]]
+        tuning_freqs, groups = determine_tuning_freqs(
+            freqs, sampling_rate, master_clock_rate
+        )
+        self.assertEqual(groups, expected_groups)
+        for actual, expected in zip(tuning_freqs, expected_tunes):
+            self.assertEqual(actual, snap_to_usrp_clocks(expected, master_clock_rate))
+
 
 if __name__ == "__main__":
     unittest.main()
