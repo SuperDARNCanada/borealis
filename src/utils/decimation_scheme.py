@@ -73,7 +73,6 @@ class DecimationScheme:
         :param  stages:             a list of DecimationStages. Defaults to None
         :type   stages:             list or None
         """
-        self.stages = stages
         if stages is None:
             # create the default filters according to default scheme. Currently only creating
             # default filters if sampling rate and output rate are set up as per original design.
@@ -87,8 +86,9 @@ class DecimationScheme:
 
             # set up defaults as per design.
             scheme = create_default_scheme()
-            self.stages = scheme.stages
+            stages = scheme.stages
 
+        self.stages: list = stages
         self.rxrate = rxrate
         self.output_sample_rate = output_sample_rate
         self.dm_rates = []

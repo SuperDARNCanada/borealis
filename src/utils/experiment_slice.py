@@ -108,14 +108,14 @@ def _validate_unique_list(v: list[T]) -> list[T]:
     return v
 
 
-def check_list_increasing(v: list[T]):
+def check_list_increasing(v: list):
     """Validates that a list has increasing entries"""
     if not all(x < y for x, y in zip(v, v[1:])):
         raise ValueError("List must have increasing values")
     return v
 
 
-def check_list_sorted(v: list[T]):
+def check_list_sorted(v: list):
     """Validates that a list is sorted"""
     if not all(x <= y for x, y in zip(v, v[1:])):
         raise ValueError("List must be sorted in increasing order")
@@ -381,8 +381,10 @@ class ExperimentSlice:
     # e.g. one of intt or intn must be specified.
     tx_antennas: Optional[
         Annotated[
-            conlist(
-                Annotated[int, Field(ge=0, lt=options.main_antenna_count, strict=True)],
+            conlist(  # ty: ignore[invalid-type-form]
+                Annotated[
+                    int, Field(ge=0, lt=options.main_antenna_count, strict=True)
+                ],  # ty: ignore[invalid-argument-type]
                 max_length=options.main_antenna_count,
             ),
             AfterValidator(_validate_unique_list),
@@ -390,8 +392,10 @@ class ExperimentSlice:
     ] = None
     rx_main_antennas: Optional[
         Annotated[
-            conlist(
-                Annotated[int, Field(ge=0, lt=options.main_antenna_count, strict=True)],
+            conlist(  # ty: ignore[invalid-type-form]
+                Annotated[
+                    int, Field(ge=0, lt=options.main_antenna_count, strict=True)
+                ],  # ty: ignore[invalid-argument-type]
                 max_length=options.main_antenna_count,
             ),
             AfterValidator(_validate_unique_list),
@@ -399,8 +403,10 @@ class ExperimentSlice:
     ] = None
     rx_intf_antennas: Optional[
         Annotated[
-            conlist(
-                Annotated[int, Field(ge=0, lt=options.main_antenna_count, strict=True)],
+            conlist(  # ty: ignore[invalid-type-form]
+                Annotated[
+                    int, Field(ge=0, lt=options.main_antenna_count, strict=True)
+                ],  # ty: ignore[invalid-argument-type]
                 max_length=options.intf_antenna_count,
             ),
             AfterValidator(_validate_unique_list),
@@ -418,7 +424,11 @@ class ExperimentSlice:
 
     cfs_range: Optional[
         Annotated[
-            conlist(freq_int_khz, min_length=2, max_length=2),
+            conlist(
+                freq_int_khz,  # ty: ignore[invalid-argument-type]
+                min_length=2,
+                max_length=2,
+            ),  # ty: ignore[invalid-type-form]
             AfterValidator(check_list_increasing),
         ]
     ] = None

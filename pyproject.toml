@@ -82,3 +82,44 @@ extend-exclude = [
 
 [tool.ruff.lint]
 ignore = ["E402"]   # Module level import not at top of file (required for sys.path.append() before import)
+
+[tool.uv]
+environments = ["python_full_version >= '3.11'"]
+
+[tool.ty.environment]
+root = [".", "src", "scheduler"]
+
+[tool.ty.src]
+include = ["src", "scheduler", "scripts", "tests"]
+exclude = [
+    "tests/archive", "tests/testing_utils", "tests/test_rx_tx",
+    "tests/parallel_reduce", "tests/NTP", "tests/NEC",
+    "src/borealis_experiments/", "src/usrp_drivers",
+]
+
+[tool.ty.terminal]
+error-on-warning = false
+
+[tool.ty.analysis]
+allowed-unresolved-imports = ["uhd", "cupy", "ijson", "saleae", "matplotlib.pyplot", "posix_ipc"]
+
+[[tool.ty.overrides]]
+include = ["tests/**"]
+
+[tool.ty.overrides.rules]
+invalid-argument-type = "ignore"
+
+[[tool.ty.overrides]]
+include = ["src/utils/message_formats.py"]
+
+[tool.ty.overrides.rules]
+invalid-assignment = "ignore"
+
+[tool.ty.rules]
+invalid-argument-type = "warn"
+invalid-assignment = "warn"
+unresolved-attribute = "warn"
+not-subscriptable = "warn"
+unsupported-operator = "warn"
+not-iterable = "warn"
+no-matching-overload = "warn"

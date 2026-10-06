@@ -54,7 +54,7 @@ class SliceData:
        Units for the data.
     """
 
-    agc_status_word: int = field(
+    agc_status_word: np.uint32 = field(
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "record",
@@ -221,7 +221,7 @@ class SliceData:
             "required_for": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
         }
     )
-    experiment_id: int = field(
+    experiment_id: np.int16 = field(
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "file",
@@ -237,7 +237,7 @@ class SliceData:
             "required_for": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
         }
     )
-    first_range: int = field(
+    first_range: np.float32 = field(
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf"],
             "level": "file",
@@ -246,7 +246,7 @@ class SliceData:
             "required_for": ["antennas_iq", "bfiq", "rawacf"],
         }
     )
-    first_range_rtt: float = field(
+    first_range_rtt: np.float32 = field(
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf"],
             "level": "file",
@@ -255,7 +255,7 @@ class SliceData:
             "required_for": ["antennas_iq", "bfiq", "rawacf"],
         }
     )
-    freq: float = field(
+    freq: np.uint32 = field(
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "record",
@@ -292,7 +292,7 @@ class SliceData:
             "required_for": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
         }
     )
-    int_time: float = field(
+    int_time: np.float32 = field(
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "record",
@@ -360,7 +360,7 @@ class SliceData:
             "required_for": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
         }
     )
-    lp_status_word: int = field(
+    lp_status_word: np.uint32 = field(
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "record",
@@ -426,7 +426,7 @@ class SliceData:
             "required_for": ["antennas_iq", "bfiq", "rawacf"],
         }
     )
-    range_sep: int = field(
+    range_sep: np.float32 = field(
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf"],
             "level": "file",
@@ -459,7 +459,7 @@ class SliceData:
             "required_for": ["antennas_iq", "rawrf"],
         }
     )
-    rx_intf_antennas: list[int] = field(
+    rx_intf_antennas: np.ndarray = field(
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "file",
@@ -467,7 +467,7 @@ class SliceData:
             "required_for": [],
         }
     )
-    rx_main_antennas: list[int] = field(
+    rx_main_antennas: np.ndarray = field(
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "file",
@@ -555,7 +555,7 @@ class SliceData:
             "required_for": ["antennas_iq", "bfiq", "rawacf"],
         }
     )
-    slice_id: int = field(
+    slice_id: np.uint32 = field(
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf"],
             "level": "file",
@@ -563,7 +563,7 @@ class SliceData:
             "required_for": ["antennas_iq", "bfiq", "rawacf"],
         }
     )
-    slice_interfacing: dict = field(
+    slice_interfacing: str = field(
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf"],
             "level": "file",
@@ -600,7 +600,7 @@ class SliceData:
             "required_for": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
         }
     )
-    tau_spacing: float = field(
+    tau_spacing: np.uint32 = field(
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf"],
             "level": "file",
@@ -609,7 +609,7 @@ class SliceData:
             "required_for": ["antennas_iq", "bfiq", "rawacf"],
         }
     )
-    tx_antennas: list[int] = field(
+    tx_antennas: np.ndarray = field(
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "file",
@@ -629,7 +629,7 @@ class SliceData:
             "required_for": [],
         }
     )
-    tx_pulse_len: float = field(
+    tx_pulse_len: np.uint32 = field(
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf"],
             "level": "file",
@@ -655,16 +655,14 @@ class SliceData:
         """
         Returns a list of names for all fields which belong in 'file_type' files.
         """
-        return [f.name for f in fields(cls) if file_type in f.metadata.get("groups")]
+        return [f.name for f in fields(cls) if file_type in f.metadata["groups"]]
 
     @classmethod
     def required_fields(cls, file_type: str):
         """
         Returns a list of names for all fields which are required for ``file_type`` files.
         """
-        return [
-            f.name for f in fields(cls) if file_type in f.metadata.get("required_for")
-        ]
+        return [f.name for f in fields(cls) if file_type in f.metadata["required_for"]]
 
     @classmethod
     def optional_fields(cls, file_type: str):
@@ -675,8 +673,8 @@ class SliceData:
             f.name
             for f in fields(cls)
             if (
-                file_type in f.metadata.get("groups")
-                and file_type not in f.metadata.get("required_for")
+                file_type in f.metadata["groups"]
+                and file_type not in f.metadata["required_for"]
             )
         ]
 
@@ -716,7 +714,7 @@ class SliceData:
         """
         dim_scale_fields = set()
         for f in fields(self):
-            if file_type not in f.metadata.get("groups"):
+            if file_type not in f.metadata["groups"]:
                 continue
             dim_scales = f.metadata.get("dim_scales", None)
             if dim_scales is None:

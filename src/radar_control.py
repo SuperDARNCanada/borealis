@@ -11,6 +11,8 @@ import argparse
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from functools import reduce
+from typing import Any
+
 import mmap
 import os
 import sys
@@ -68,11 +70,12 @@ class RadctrlParameters:
     operation.
     """
 
-    experiment: ...
-    aveperiod: ...
-    sequence: ...
-    options: ...
-    decimation_scheme: ... = field(init=False)
+    # TODO: replace Any with the real classes (ExperimentPrototype, AveragingPeriod, Sequence)
+    experiment: Any
+    aveperiod: Any
+    sequence: Any
+    options: Any
+    decimation_scheme: Any = field(init=False)
     seqnum_start: int
     startup_flag: bool
     num_beams: int = 0
