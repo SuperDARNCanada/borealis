@@ -1,0 +1,11 @@
+name: ty
+on: [push, pull_request]
+jobs:
+  ty:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: astral-sh/setup-uv@v6
+      - run: uvx pre-commit run ty --all-files

@@ -16,6 +16,7 @@ import sys
 import threading
 import time
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 import posix_ipc as ipc
@@ -51,16 +52,16 @@ class RxProcessingParameters:
     """
 
     sequence_num: int
-    main_beam_angles: list
-    intf_beam_angles: list
-    mixing_freqs: list
+    main_beam_angles: np.ndarray
+    intf_beam_angles: np.ndarray
+    mixing_freqs: np.ndarray
     slice_details: list
     start_sample: int
     end_sample: int
-    processed_data: list
-    intf_antennas: list
+    processed_data: ProcessedSequenceMessage
+    intf_antennas: set
     filter_taps: list
-    downsample_rates: list
+    downsample_rates: np.ndarray
     acf: bool
     xcf: bool
     acfint: bool
@@ -170,7 +171,7 @@ def sequence_worker(options, ringbuffer):
         processed_socket = sequence_worker_sockets[2]
 
         # Generate a timer dict for a uniform log
-        log_dict = {"time_unit": "ms"}
+        log_dict: dict[str, Any] = {"time_unit": "ms"}
         start_timer = time.perf_counter()
 
         # Copy samples from ring buffer

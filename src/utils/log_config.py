@@ -35,7 +35,7 @@ import sys
 
 import structlog
 import graypy
-import rich
+import rich.pretty
 
 from .options import Options
 

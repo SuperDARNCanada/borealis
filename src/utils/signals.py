@@ -471,8 +471,8 @@ def get_phase_shift(
         freq_khz = [freq_khz]
     # freq_khz: [num_freqs]
 
-    freq_khz = np.array(freq_khz, dtype=np.float32)
-    freq_hz = freq_khz * 1000.0  # convert to Hz.
+    freq_khz_array = np.array(freq_khz, dtype=np.float32)
+    freq_hz = freq_khz_array * 1000.0  # convert to Hz.
     k = 2 * np.pi * freq_hz / speed_of_light  # 2pi / wavelength
     beam_rads = np.deg2rad(np.array(beam_angle, dtype=np.float32))
     # beam_rads: [num_angles]
@@ -544,7 +544,7 @@ def get_samples(
     return samples
 
 
-def basic_pulse_phase_offset(exp_slice: ExperimentSlice, beam_iter: iter):
+def basic_pulse_phase_offset(exp_slice: ExperimentSlice, beam_iter: int):
     """
     Calculate the phase difference of each pulse with respect to the first
     pulse based on the transmit frequency and the pulse separation.

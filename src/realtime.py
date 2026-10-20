@@ -16,7 +16,7 @@ from pathlib import Path
 import pickle
 import sys
 
-from procdarn import fitacf3_recs
+from procdarn import fitacf3_recs  # ty: ignore[unresolved-import]
 import pydarnio
 import structlog
 import zmq

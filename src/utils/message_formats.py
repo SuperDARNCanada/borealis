@@ -1,3 +1,4 @@
+from typing import Optional
 from dataclasses import dataclass, field, fields
 import numpy as np
 
@@ -12,7 +13,7 @@ class DebugDataStage:
 
     stage_name: str = None
     main_shm: str = None
-    intf_shm: str = None
+    intf_shm: Optional[str] = None
     num_samps: int = None
 
 
@@ -26,9 +27,9 @@ class OutputDataset:
     num_beams: int = None
     num_ranges: int = None
     num_lags: int = None
-    main_acf_shm: str = None
-    intf_acf_shm: str = None
-    xcf_shm: str = None
+    main_acf_shm: Optional[str] = None
+    intf_acf_shm: Optional[str] = None
+    xcf_shm: Optional[str] = None
     cfs_data: list = field(default_factory=list)
 
 
@@ -50,15 +51,15 @@ class ProcessedSequenceMessage:
     agc_status_bank_l: int = None
     lp_status_bank_l: int = None
     gps_locked: bool = None
-    bfiq_main_shm: str = None
-    bfiq_intf_shm: str = None
-    max_num_beams: int = None
-    num_samps: int = None
-    main_corrs_shm: str = None
-    intf_corrs_shm: str = None
-    cross_corrs_shm: str = None
-    rawrf_shm: str = None
-    rawrf_num_samps: int = None
+    bfiq_main_shm: Optional[str] = None
+    bfiq_intf_shm: Optional[str] = None
+    max_num_beams: Optional[int] = None
+    num_samps: Optional[int] = None
+    main_corrs_shm: Optional[str] = None
+    intf_corrs_shm: Optional[str] = None
+    cross_corrs_shm: Optional[str] = None
+    rawrf_shm: Optional[str] = None
+    rawrf_num_samps: Optional[int] = None
     debug_data: list[DebugDataStage] = field(default_factory=list)
     output_datasets: list[OutputDataset] = field(default_factory=list)
     cfs_freq: list = field(default_factory=list)
@@ -82,7 +83,7 @@ class RxChannel:
     slice_id: int = None
     tau_spacing: int = None
     rx_freq: float = None
-    cfs_flag: bool = None
+    cfs_flag: Optional[bool] = None
     num_ranges: int = None
     first_range: int = None
     range_sep: float = None
@@ -109,13 +110,13 @@ class SequenceMetadataMessage:
     rx_rate: float = None
     output_sample_rate: float = None
     rx_ctr_freq: float = None
-    decimation_scheme: DecimationScheme = None
+    decimation_scheme: Optional[DecimationScheme] = None
     rx_channels: list[RxChannel] = field(default_factory=list)
     acf: bool = False
     xcf: bool = False
     acfint: bool = False
     cfs_scan_flag: bool = False
-    cfs_fft_n: int = None
+    cfs_fft_n: Optional[int] = None
 
 
 @dataclass
@@ -157,11 +158,11 @@ class RxChannelMetadata:
     first_range: float = None
     num_ranges: int = None
     range_sep: int = None
-    acf: bool = None
-    xcf: bool = None
-    acfint: bool = None
+    acf: Optional[bool] = None
+    xcf: Optional[bool] = None
+    acfint: Optional[bool] = None
     ltabs: list[LagTable] = field(default_factory=list)
-    averaging_method: str = None
+    averaging_method: Optional[str] = None
 
 
 @dataclass

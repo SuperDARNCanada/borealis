@@ -30,11 +30,17 @@ In another process::
 :todo: log.debug all functions
 """
 
-from typing import Any, Optional, Union, Tuple
+from typing import Any, Literal, Optional, Union, Tuple, overload
 import zmq
 import pickle
 
 
+@overload
+def create_sockets(router_addr: str, identity: str, /) -> zmq.Socket: ...
+@overload
+def create_sockets(
+    router_addr: str, identity: str, identity2: str, /, *identities: str
+) -> list[zmq.Socket]: ...
 def create_sockets(
     router_addr: str, *identities: str
 ) -> Union[zmq.Socket, list[zmq.Socket]]:
@@ -120,13 +126,28 @@ def send_string(
     :type   header:             str
     """
     if header is None:
-        header = b""
+        header_bytes = b""
     else:
-        header = header.encode("utf-8")
-    frames = [receiver_identity.encode("utf-8"), header, msg.encode("utf-8")]
+        header_bytes = header.encode("utf-8")
+    frames = [receiver_identity.encode("utf-8"), header_bytes, msg.encode("utf-8")]
     socket.send_multipart(frames)
 
 
+@overload
+def recv_bytes(
+    socket: zmq.Socket,
+    sender_identity: str,
+    log: Optional[Any] = None,
+    with_header: Literal[False] = False,
+) -> Optional[bytes]: ...
+@overload
+def recv_bytes(
+    socket: zmq.Socket,
+    sender_identity: str,
+    log: Optional[Any] = None,
+    *,
+    with_header: Literal[True],
+) -> Optional[Tuple[bytes, bytes]]: ...
 def recv_bytes(
     socket: zmq.Socket,
     sender_identity: str,
@@ -150,11 +171,12 @@ def recv_bytes(
     """
     receiver_identity, header, bytes_object = socket.recv_multipart()
     if receiver_identity != sender_identity.encode("utf-8"):
-        log.error(
-            "sender_identity != receiver_identity",
-            sender_identity=sender_identity,
-            receiver_identity=receiver_identity,
-        )
+        if log is not None:
+            log.error(
+                "sender_identity != receiver_identity",
+                sender_identity=sender_identity,
+                receiver_identity=receiver_identity,
+            )
         return None
     else:
         if with_header:
@@ -163,6 +185,14 @@ def recv_bytes(
             return bytes_object
 
 
+@overload
+def recv_bytes_from_any_iden(
+    socket: zmq.Socket, with_header: Literal[False] = False
+) -> bytes: ...
+@overload
+def recv_bytes_from_any_iden(
+    socket: zmq.Socket, with_header: Literal[True]
+) -> Tuple[bytes, bytes]: ...
 def recv_bytes_from_any_iden(
     socket: zmq.Socket, with_header: bool = False
 ) -> Union[bytes, Tuple[bytes, bytes]]:
@@ -212,10 +242,10 @@ def send_bytes(
             receiver=receiver_identity,
         )
     if header is None:
-        header = b""
+        header_bytes = b""
     else:
-        header = header.encode("utf-8")
-    frames = [receiver_identity.encode("utf-8"), header, bytes_object]
+        header_bytes = header.encode("utf-8")
+    frames = [receiver_identity.encode("utf-8"), header_bytes, bytes_object]
     socket.send_multipart(frames)
 
 
