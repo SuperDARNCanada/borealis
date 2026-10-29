@@ -14,7 +14,7 @@ import inspect
 from pathlib import Path
 import pickle
 
-from procdarn import fitacf3_recs
+from procdarn import raw2fit
 import pydarnio
 import structlog
 import zmq
@@ -34,7 +34,7 @@ def fit_record(rawacf_records):
     )
     log.info("fitting record", timestamp=timestamp)
 
-    fitted_records = fitacf3_recs(rawacf_records)
+    fitted_records = raw2fit(rawacf_records)
 
     return fitted_records
 

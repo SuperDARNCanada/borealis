@@ -401,6 +401,8 @@ class SCDUtils:
 
         :raises ValueError: If line parameters are invalid or if line is a duplicate.
         """
+        if kwargs is None:
+            kwargs = list()
         new_line = self.create_line(
             yyyymmdd,
             hhmm,

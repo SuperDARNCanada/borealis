@@ -24,62 +24,7 @@ SWG_GIT_REPO_DIR = "schedules"
 SWG_GIT_REPO = "https://github.com/SuperDARN/schedules.git"
 
 EXPERIMENTS = {
-    "sas": {
-        "common_time": "twofsound",
-        "discretionary_time": "twofsound",
-        "htr_common_time": "twofsound",
-        "themis_time": "themisscan",
-        "special_time_normal": "twofsound",
-        "rbsp_time": "rbspscan",
-        "no_switching_time": "normalscan",
-        "interleaved_time": "interleavedscan",
-        "normalsound_time": "normalsound",
-    },
-    "pgr": {
-        "common_time": "twofsound",
-        "discretionary_time": "twofsound",
-        "htr_common_time": "twofsound",
-        "themis_time": "themisscan",
-        "special_time_normal": "twofsound",
-        "rbsp_time": "rbspscan",
-        "no_switching_time": "normalscan",
-        "interleaved_time": "interleavedscan",
-        "normalsound_time": "normalsound",
-    },
-    "rkn": {
-        "common_time": "twofsound",
-        "discretionary_time": "twofsound",
-        "htr_common_time": "twofsound",
-        "themis_time": "themisscan",
-        "special_time_normal": "twofsound",
-        "rbsp_time": "rbspscan",
-        "no_switching_time": "normalscan",
-        "interleaved_time": "interleavedscan",
-        "normalsound_time": "normalsound",
-    },
-    "inv": {
-        "common_time": "twofsound",
-        "discretionary_time": "twofsound",
-        "htr_common_time": "twofsound",
-        "themis_time": "themisscan",
-        "special_time_normal": "twofsound",
-        "rbsp_time": "rbspscan",
-        "no_switching_time": "normalscan",
-        "interleaved_time": "interleavedscan",
-        "normalsound_time": "normalsound",
-    },
-    "cly": {
-        "common_time": "twofsound",
-        "discretionary_time": "twofsound",
-        "htr_common_time": "twofsound",
-        "themis_time": "themisscan",
-        "special_time_normal": "twofsound",
-        "rbsp_time": "rbspscan",
-        "no_switching_time": "normalscan",
-        "interleaved_time": "interleavedscan",
-        "normalsound_time": "normalsound",
-    },
-    "lab": {
+    "cyp": {
         "common_time": "twofsound",
         "discretionary_time": "twofsound",
         "htr_common_time": "twofsound",
@@ -357,7 +302,7 @@ def main():
                     yyyymmdd = today.strftime("%Y%m%d")
                     hhmm = today.strftime("%H:%M")
 
-                    new_lines = site_scd.get_relevant_lines(yyyymmdd, hhmm)
+                    new_lines = site_scd.get_relevant_lines(today)
 
                     text_lines = [str(x) for x in new_lines]
 

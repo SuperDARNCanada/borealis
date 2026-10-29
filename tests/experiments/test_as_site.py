@@ -11,7 +11,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "site_id",
-        choices=["sas", "pgr", "inv", "rkn", "cly", "lab"],
+        choices=["sas", "pgr", "inv", "rkn", "cly", "lab", "cyp"],
         help="Site ID of site to test experiments as.",
     )
     parser.add_argument(
