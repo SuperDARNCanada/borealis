@@ -17,7 +17,7 @@ import inspect
 import os
 import pkgutil
 from pathlib import Path
-from typing import Type
+from typing import Type, cast
 
 # third-party
 import numpy as np
@@ -901,7 +901,7 @@ def retrieve_experiment(experiment_module_name: str) -> Type[ExperimentPrototype
         experiment_module=experiment_mod,
     )
 
-    return experiment
+    return cast(Type[ExperimentPrototype], experiment)
 
 
 def experiment_handler(

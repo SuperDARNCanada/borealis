@@ -54,6 +54,7 @@ if __name__ == "__main__":
                 if len(nest_list) > 0:
                     add_item(nest_list[-1], prefix, current_entry)
                 else:
+                    assert isinstance(current_entry, dict)
                     level = current_entry.pop("level", None)
                     msg = current_entry.pop("event", "")
                     if level == "info":

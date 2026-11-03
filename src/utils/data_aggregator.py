@@ -10,7 +10,7 @@ import collections
 import copy
 from dataclasses import dataclass, fields, field
 from multiprocessing import shared_memory
-from typing import Union
+from typing import Union, cast
 
 import numpy as np
 
@@ -301,7 +301,7 @@ class Aggregator:
 
     @staticmethod
     def _accumulate_iq(
-        stage_data: DebugDataStage,
+        stage_data: list[DebugDataStage],
         num_slices: int,
         num_main_antennas: int,
         num_intf_antennas: int,
@@ -312,18 +312,18 @@ class Aggregator:
         stages = []
         for filter_stage in stage_data:
             stage_samps = filter_stage.num_samps
-            stage_data = Aggregator._extract_from_shm(
+            stage_samples = Aggregator._extract_from_shm(
                 filter_stage.main_shm, (num_slices, num_main_antennas, stage_samps)
             )
             if filter_stage.intf_shm:
                 intf_data = Aggregator._extract_from_shm(
                     filter_stage.intf_shm, (num_slices, num_intf_antennas, stage_samps)
                 )
-                stage_data = np.hstack((stage_data, intf_data))
+                stage_samples = np.hstack((stage_samples, intf_data))
 
             stage_dict = {
                 "name": filter_stage.stage_name,
-                "data": stage_data,
+                "data": stage_samples,
             }
             stages.append(stage_dict)
         return stages
@@ -380,7 +380,9 @@ class Aggregator:
                     if ant_name not in antenna_iq_stage:
                         antenna_iq_stage[ant_name] = []
 
-                    antenna_iq_stage[ant_name].append(antennas_data[ant_num, :])
+                    cast(list, antenna_iq_stage[ant_name]).append(
+                        antennas_data[ant_num, :]
+                    )
 
     def finalize(self):
         """
@@ -423,7 +425,8 @@ class Aggregator:
             #     if data_set.slice_id not in accumulator.keys():
             #         accumulator[data_set.slice_id] = {}
 
-        if sqn.rawrf_shm != "":
+        if sqn.rawrf_shm is not None:
+            assert sqn.rawrf_num_samps is not None
             self.rawrf_available = True
             self.rawrf_num_samps = sqn.rawrf_num_samps
             self.rawrf_locations.append(sqn.rawrf_shm)

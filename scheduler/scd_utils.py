@@ -180,15 +180,15 @@ class ScheduleLine:
             f"{fields[0]} {fields[1]}", "%Y%m%d %H:%M"
         )
         line_timestamp = line_timestamp.replace(tzinfo=dt.timezone.utc)
-        scd_line = ScheduleLine(
+        scd_line = cls(
             timestamp=line_timestamp,
             duration=duration,
             priority=int(fields[3]),
             experiment=fields[4],
-            scheduling_mode=fields[5],
+            scheduling_mode=fields[5],  # ty: ignore[invalid-argument-type]
             embargo=embargo,
             kwargs=kwargs,
-            rawacf_format=raw_format,
+            rawacf_format=raw_format,  # ty: ignore[invalid-argument-type]
         )
         return scd_line
 
@@ -699,7 +699,7 @@ class SCDUtils:
 
         return cls.get_atq()
 
-    def parse_and_schedule(self, time_of_interest: dt.datetime = None):
+    def parse_and_schedule(self, time_of_interest: Optional[dt.datetime] = None):
         """
         Parses the schedule file, and schedules all relevant lines using ``at``.
 

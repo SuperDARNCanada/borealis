@@ -515,7 +515,7 @@ class Options:
             except ValueError:
                 errmsg = "Error parsing restrict.dat: frequencies must be valid numbers"
                 raise ValueError(errmsg)
-            restricted_range = tuple(splitup)
+            restricted_range = (splitup[0], splitup[1])
             self.restricted_ranges.append(restricted_range)
 
     def _verify_options(self):

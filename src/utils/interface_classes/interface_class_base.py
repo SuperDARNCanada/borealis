@@ -200,10 +200,10 @@ class InterfaceClassBase:
                         f"The following slices do not interface well with other slices: "
                         f"{bad_slices}"
                     )
-            disjoint_sets[i] = sorted(list(disjoint_sets[i]))  # Convert to a list
 
-        disjoint_sets.sort(key=lambda x: x[0])  # Sort by the first key in each list
-        return disjoint_sets
+        result = [sorted(s) for s in disjoint_sets]  # Convert each set to a sorted list
+        result.sort(key=lambda x: x[0])  # Sort by the first key in each list
+        return result
 
     def get_nested_slice_ids(self) -> list[list[int]]:
         """

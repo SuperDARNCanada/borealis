@@ -384,20 +384,21 @@ def determine_tuning_freqs(
     if len(freqs) == 0:
         return [], []
 
-    for i, f in enumerate(freqs):
-        if isinstance(f, list):
-            freqs[i] = Band(f[0], f[1])
+    # Convert any [min, max] pairs into Bands
+    bands: List[FreqOrRange] = [
+        Band(f[0], f[1]) if isinstance(f, list) else f for f in freqs
+    ]
 
     tuning_freqs = []
     freq_groups = []
-    proposed_bands = create_bands(freqs[0], sampling_rate)
+    proposed_bands = create_bands(bands[0], sampling_rate)
 
     # Begin calculating the tuning frequencies
     freq_idx = 0
     current_group = [0]
 
-    while freq_idx < len(freqs) - 1:
-        next_freq = freqs[freq_idx + 1]
+    while freq_idx < len(bands) - 1:
+        next_freq = bands[freq_idx + 1]
         if proposed_bands.contains_freq_or_range(next_freq):
             # no problem sharing a tuning frequency with this new freq
             current_group.append(freq_idx + 1)
@@ -411,9 +412,11 @@ def determine_tuning_freqs(
             tuning_freqs.append(find_tune_freq(proposed_bands))
             freq_groups.append(c_group)
 
-            return [f_idx + 1], f_idx + 1, create_bands(freqs[f_idx + 1], sampling_rate)
+            return [f_idx + 1], f_idx + 1, create_bands(bands[f_idx + 1], sampling_rate)
 
-        if next_freq > proposed_bands.upper.max:
+        # A range cannot be compared to a number directly, so compare the top of the range
+        next_freq_top = next_freq.max if isinstance(next_freq, Band) else next_freq
+        if next_freq_top > proposed_bands.upper.max:
             # Cannot shift bands up since we always start as high as possible
             current_group, freq_idx, proposed_bands = start_new_tune_group(
                 current_group, freq_idx
@@ -424,7 +427,7 @@ def determine_tuning_freqs(
         # from current_group is removed from the band
         shift_ranges = [Band(0, sampling_rate / 1000)]
         for idx in current_group:
-            shifts_for_freq = proposed_bands.allowed_shifts(freqs[idx])
+            shifts_for_freq = proposed_bands.allowed_shifts(bands[idx])
             shift_ranges = find_overlap(shift_ranges, shifts_for_freq)
 
         shift_for_next_freq = proposed_bands.shift_to_accommodate(next_freq)

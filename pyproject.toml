@@ -9,7 +9,7 @@ description = "SuperDARN Digital Radar System"
 readme = "README.md"
 authors = [{name = "SuperDARN Canada"}]
 license = {file = "LICENSE"}
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 dependencies = [
     "darn-dmap>=0.1.6",
     "graypy",
@@ -82,3 +82,30 @@ extend-exclude = [
 
 [tool.ruff.lint]
 ignore = ["E402"]   # Module level import not at top of file (required for sys.path.append() before import)
+
+[tool.ty.environment]
+root = [".", "src", "scheduler"]
+
+[tool.ty.src]
+include = ["src", "scheduler", "scripts", "tests"]
+exclude = [
+    "tests/archive", "tests/testing_utils", "tests/test_rx_tx",
+    "tests/parallel_reduce", "tests/NTP", "tests/NEC",
+    "src/borealis_experiments/", "src/usrp_drivers",
+    "tests/dsp_testing",
+]
+
+[tool.ty.analysis]
+allowed-unresolved-imports = ["uhd", "cupy", "ijson", "saleae", "matplotlib.pyplot", "posix_ipc"]
+
+[[tool.ty.overrides]]
+include = ["tests/**"]
+
+[tool.ty.overrides.rules]
+invalid-argument-type = "ignore"
+
+[[tool.ty.overrides]]
+include = ["src/utils/message_formats.py"]
+
+[tool.ty.overrides.rules]
+invalid-assignment = "ignore"

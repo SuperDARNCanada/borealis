@@ -38,8 +38,8 @@ def get_args():
     try:
         with open(path, "r") as data:
             raw_config = json.load(data)
-    except IOError:
-        raise (f"IOError on config file at {path}")
+    except IOError as e:
+        raise IOError(f"IOError on config file at {path}") from e
 
     parser = argparse.ArgumentParser(
         description="Python script to check data being written and "

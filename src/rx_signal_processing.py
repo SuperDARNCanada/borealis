@@ -16,21 +16,23 @@ import sys
 import threading
 import time
 from dataclasses import dataclass
+from typing import Any, cast
 
 import numpy as np
 import posix_ipc as ipc
 import zmq
 
 try:
-    import cupy as xp
+    import cupy as _xp_module
 
-    mempool = xp.get_default_memory_pool()
+    mempool = _xp_module.get_default_memory_pool()
 except ImportError:
     cupy_available = False
-    import numpy as xp
+    import numpy as _xp_module
 else:
     cupy_available = True
 
+xp: Any = _xp_module
 
 sys.path.append(os.environ["BOREALISPATH"])
 
@@ -51,16 +53,16 @@ class RxProcessingParameters:
     """
 
     sequence_num: int
-    main_beam_angles: list
-    intf_beam_angles: list
-    mixing_freqs: list
+    main_beam_angles: np.ndarray
+    intf_beam_angles: np.ndarray
+    mixing_freqs: np.ndarray
     slice_details: list
     start_sample: int
     end_sample: int
-    processed_data: list
-    intf_antennas: list
+    processed_data: ProcessedSequenceMessage
+    intf_antennas: set
     filter_taps: list
-    downsample_rates: list
+    downsample_rates: np.ndarray
     acf: bool
     xcf: bool
     acfint: bool
@@ -170,7 +172,7 @@ def sequence_worker(options, ringbuffer):
         processed_socket = sequence_worker_sockets[2]
 
         # Generate a timer dict for a uniform log
-        log_dict = {"time_unit": "ms"}
+        log_dict: dict[str, Any] = {"time_unit": "ms"}
         start_timer = time.perf_counter()
 
         # Copy samples from ring buffer
@@ -253,6 +255,7 @@ def sequence_worker(options, ringbuffer):
             main_processor.apply_filters(main_sequence_samples)
             main_processor.move_filter_results()
             main_processor.beamform(rx_params.main_beam_angles)
+            assert main_processor.beamformed_samples is not None
             if rx_params.acf:
                 for slice_info in rx_params.slice_details:
                     slice_info["skip"] = not slice_info["acf"]
@@ -282,6 +285,7 @@ def sequence_worker(options, ringbuffer):
                 intf_processor.apply_filters(intf_sequence_samples)
                 intf_processor.move_filter_results()
                 intf_processor.beamform(rx_params.intf_beam_angles)
+                assert intf_processor.beamformed_samples is not None
                 if rx_params.acfint:
                     for slice_info in rx_params.slice_details:
                         slice_info["skip"] = not slice_info["acfint"]
@@ -409,6 +413,7 @@ def sequence_worker(options, ringbuffer):
             stage.stage_name = "antennas"
             main_shm = main_processor.shared_mem["antennas_iq"]
             stage.main_shm = main_shm.name
+            assert main_processor.antennas_iq_samples is not None
             stage.num_samps = main_processor.antennas_iq_samples.shape[-1]
             main_shm.close()
             if len(rx_params.intf_antennas) > 0:
@@ -447,6 +452,7 @@ def sequence_worker(options, ringbuffer):
             mark_timer = time.perf_counter()
             # beamformed_m: [num_slices, num_beams, num_samps]
             beamformed_m = main_processor.beamformed_samples
+            assert beamformed_m is not None
             rx_params.processed_data.bfiq_main_shm = main_processor.shared_mem[
                 "bfiq"
             ].name
@@ -540,8 +546,10 @@ def main():
         log.debug("ACK sent")
         # Let radar_control know that the metadata was received
 
-        rx_rate = np.float64(sqn_meta_message.rx_rate)
-        output_sample_rate = np.float64(sqn_meta_message.output_sample_rate)
+        rx_rate = cast(float, np.float64(sqn_meta_message.rx_rate))
+        output_sample_rate = cast(
+            float, np.float64(sqn_meta_message.output_sample_rate)
+        )
         first_rx_sample_off = sqn_meta_message.offset_to_first_rx_sample
         rx_center_freq = sqn_meta_message.rx_ctr_freq
         cfs_scan_flag = sqn_meta_message.cfs_scan_flag
@@ -645,6 +653,7 @@ def main():
         log.debug("Received data from driver")
 
         # parse the message from usrp_driver into a dataclass
+        assert reply is not None
         rx_metadata = RxSamplesMetadata.parse(reply.decode("utf-8"))
 
         if sqn_meta_message.sequence_num != rx_metadata.sequence_num:
@@ -705,6 +714,7 @@ def main():
         sample_in_time = (
             (sample_time_diff * rx_rate) + first_rx_sample_off - extra_samples
         )
+        assert ringbuffer is not None
         start_sample = int(math.fmod(sample_in_time, ringbuffer.shape[1]))
         end_sample = start_sample + samples_needed
 

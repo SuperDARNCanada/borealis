@@ -16,6 +16,7 @@ import inspect
 import itertools
 from pathlib import Path
 import copy
+from typing import Any
 
 # third party
 import numpy as np
@@ -529,7 +530,7 @@ class CFSAveragingPeriod(AveragingPeriod):
         # calculate number of ranges (cfs_duration is in ms)
 
         # Create a CFS slice for the pulse
-        default_slice = {
+        default_slice: dict[str, Any] = {
             "cpid": self.slice_dict[slice_id].cpid,
             "slice_id": 0,
             "transition_bandwidth": self.slice_dict[slice_id].transition_bandwidth,

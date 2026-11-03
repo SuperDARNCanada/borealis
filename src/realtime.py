@@ -16,7 +16,7 @@ from pathlib import Path
 import pickle
 import sys
 
-from procdarn import fitacf3_recs
+from procdarn import fitacf3_recs  # ty: ignore[unresolved-import]
 import pydarnio
 import structlog
 import zmq
@@ -121,6 +121,7 @@ def serve_fitacf(rawacf_data, server_socket):
         return
 
     data_to_send = pydarnio.write_fitacf(fitted_recs)
+    assert data_to_send is not None
     publishable_data = bz2.compress(data_to_send)
 
     msg_topic = f"fitacf/{slice_id}".lower()

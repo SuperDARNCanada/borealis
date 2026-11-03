@@ -12,19 +12,21 @@ samples.
 from functools import reduce
 import math
 from multiprocessing import shared_memory
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 from scipy.constants import speed_of_light
 import numpy as np
 import numpy.fft as fft
 
 try:
-    import cupy as xp
+    import cupy as _xp_module
 except ImportError:
     cupy_available = False
-    import numpy as xp
+    import numpy as _xp_module
 else:
     cupy_available = True
+
+xp: Any = _xp_module
 
 from .experiment_slice import ExperimentSlice
 
@@ -142,6 +144,7 @@ class DSP:
         """
         # beam_phases: [num_slices, num_beams, num_channels]
         beam_phases = beam_phases
+        assert self.antennas_iq_samples is not None
 
         # Create shared memory for result of beamforming
         # final_shape: [num_slices, num_beams, num_samples]
@@ -190,10 +193,12 @@ class DSP:
         if len(pulses_in_samples) > 1:
             end_sample = int(round(pulses_in_samples[1] - pulse_dur / 2))
         else:
+            assert self.antennas_iq_samples is not None
             end_sample = self.antennas_iq_samples.shape[-1]
 
         num_intervals = int((end_sample - start_sample) / num_fft_points)
         end_sample = start_sample + num_intervals * num_fft_points
+        assert self.beamformed_samples is not None
         data = self.beamformed_samples[:, :, start_sample:end_sample]
         data_chunks = np.reshape(
             data, data.shape[:-1] + (num_intervals, num_fft_points)
@@ -471,8 +476,8 @@ def get_phase_shift(
         freq_khz = [freq_khz]
     # freq_khz: [num_freqs]
 
-    freq_khz = np.array(freq_khz, dtype=np.float32)
-    freq_hz = freq_khz * 1000.0  # convert to Hz.
+    freq_khz_array = np.array(freq_khz, dtype=np.float32)
+    freq_hz = freq_khz_array * 1000.0  # convert to Hz.
     k = 2 * np.pi * freq_hz / speed_of_light  # 2pi / wavelength
     beam_rads = np.deg2rad(np.array(beam_angle, dtype=np.float32))
     # beam_rads: [num_angles]
@@ -544,7 +549,7 @@ def get_samples(
     return samples
 
 
-def basic_pulse_phase_offset(exp_slice: ExperimentSlice, beam_iter: iter):
+def basic_pulse_phase_offset(exp_slice: ExperimentSlice, beam_iter: int):
     """
     Calculate the phase difference of each pulse with respect to the first
     pulse based on the transmit frequency and the pulse separation.
@@ -558,7 +563,9 @@ def basic_pulse_phase_offset(exp_slice: ExperimentSlice, beam_iter: iter):
     :rtype:     np.ndarray
     """
     freq = exp_slice.freq
+    assert freq is not None
     if isinstance(freq, list):
+        assert exp_slice.freq_order is not None
         freq = freq[exp_slice.freq_order[beam_iter]]
     freq_hz = freq * 1e3
     tau_s = exp_slice.tau_spacing / 1e6

@@ -66,7 +66,7 @@ def handler(in_ports: list[int], topic: str, write_to: str = ""):
     for port in in_ports:
         sock = connect_socket(context, port, topic)
         poller.register(sock, zmq.POLLIN)
-        sockets[port] = [sock, dt.datetime.now(dt.timezone.utc)]
+        sockets[port] = (sock, dt.datetime.now(dt.timezone.utc))
 
     while True:
         # Refresh any sockets that are no longer working
@@ -77,7 +77,7 @@ def handler(in_ports: list[int], topic: str, write_to: str = ""):
                 sock.close()
                 new_sock = connect_socket(context, port, topic)
                 poller.register(new_sock, zmq.POLLIN)
-                sockets[port] = [new_sock, dt.datetime.now(dt.timezone.utc)]
+                sockets[port] = (new_sock, dt.datetime.now(dt.timezone.utc))
 
         # Get new messages from sockets
         socks = dict(poller.poll(10000))
