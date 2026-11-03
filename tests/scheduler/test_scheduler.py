@@ -17,6 +17,7 @@ import datetime as dt
 import re
 
 from pydantic import ValidationError
+from typing import Any
 
 if "BOREALISPATH" not in os.environ:
     BOREALISPATH = (
@@ -286,7 +287,7 @@ class TestSchedulerUtils(unittest.TestCase):
                 self.dur,
                 self.kwargs,
             )
-            scdu.test_line(line)
+            line.test(scdu.site_id)
 
     def test_invalid_mode(self):
         """
@@ -304,7 +305,7 @@ class TestSchedulerUtils(unittest.TestCase):
                 self.dur,
                 self.kwargs,
             )
-            scdu.test_line(line)
+            line.test(scdu.site_id)
         mode = None
         with self.assertRaises(ValueError):
             line = scdu.create_line(
@@ -316,7 +317,7 @@ class TestSchedulerUtils(unittest.TestCase):
                 self.dur,
                 self.kwargs,
             )
-            scdu.test_line(line)
+            line.test(scdu.site_id)
         mode = 0
         with self.assertRaises(ValueError):
             line = scdu.create_line(
@@ -328,7 +329,7 @@ class TestSchedulerUtils(unittest.TestCase):
                 self.dur,
                 self.kwargs,
             )
-            scdu.test_line(line)
+            line.test(scdu.site_id)
 
     def test_invalid_prio(self):
         """
@@ -346,7 +347,7 @@ class TestSchedulerUtils(unittest.TestCase):
                 self.dur,
                 self.kwargs,
             )
-            scdu.test_line(line)
+            line.test(scdu.site_id)
         prio = None
         with self.assertRaises(ValueError):
             line = scdu.create_line(
@@ -358,7 +359,7 @@ class TestSchedulerUtils(unittest.TestCase):
                 self.dur,
                 self.kwargs,
             )
-            scdu.test_line(line)
+            line.test(scdu.site_id)
         prio = -1
         with self.assertRaises(ValueError):
             line = scdu.create_line(
@@ -370,7 +371,7 @@ class TestSchedulerUtils(unittest.TestCase):
                 self.dur,
                 self.kwargs,
             )
-            scdu.test_line(line)
+            line.test(scdu.site_id)
         prio = 21
         with self.assertRaises(ValueError):
             line = scdu.create_line(
@@ -382,7 +383,7 @@ class TestSchedulerUtils(unittest.TestCase):
                 self.dur,
                 self.kwargs,
             )
-            scdu.test_line(line)
+            line.test(scdu.site_id)
 
     def test_invalid_duration(self):
         """
@@ -400,7 +401,7 @@ class TestSchedulerUtils(unittest.TestCase):
                 dur,
                 self.kwargs,
             )
-            scdu.test_line(line)
+            line.test(scdu.site_id)
         dur = -1
         with self.assertRaises(ValueError):
             line = scdu.create_line(
@@ -412,7 +413,7 @@ class TestSchedulerUtils(unittest.TestCase):
                 dur,
                 self.kwargs,
             )
-            scdu.test_line(line)
+            line.test(scdu.site_id)
         dur = -50
         with self.assertRaises(ValueError):
             line = scdu.create_line(
@@ -424,7 +425,7 @@ class TestSchedulerUtils(unittest.TestCase):
                 dur,
                 self.kwargs,
             )
-            scdu.test_line(line)
+            line.test(scdu.site_id)
         dur = 53.09
         with self.assertRaises(ValueError):
             scdu.create_line(
@@ -475,7 +476,7 @@ class TestSchedulerUtils(unittest.TestCase):
                 self.dur,
                 kwargs_str,
             )
-            scdu.test_line(line)
+            line.test(scdu.site_id)
         kwargs_str = 0
         with self.assertRaises(ValueError):
             line = scdu.create_line(
@@ -487,7 +488,7 @@ class TestSchedulerUtils(unittest.TestCase):
                 self.dur,
                 kwargs_str,
             )
-            scdu.test_line(line)
+            line.test(scdu.site_id)
         kwargs_str = -1
         with self.assertRaises(ValueError):
             line = scdu.create_line(
@@ -499,7 +500,7 @@ class TestSchedulerUtils(unittest.TestCase):
                 self.dur,
                 kwargs_str,
             )
-            scdu.test_line(line)
+            line.test(scdu.site_id)
         kwargs_str = 56.9
         with self.assertRaises(ValueError):
             line = scdu.create_line(
@@ -511,7 +512,7 @@ class TestSchedulerUtils(unittest.TestCase):
                 self.dur,
                 kwargs_str,
             )
-            scdu.test_line(line)
+            line.test(scdu.site_id)
         kwargs_str = None
         with self.assertRaises(ValueError):
             line = scdu.create_line(
@@ -529,7 +530,7 @@ class TestSchedulerUtils(unittest.TestCase):
         """
         Test getting the next month from a given date with wrong type
         """
-        line_dict = copy.deepcopy(self.linedict)
+        line_dict: dict[str, Any] = copy.deepcopy(self.linedict)
         formats = ["hdf5", "dmap", None]
         lines = [
             "20000101 06:30 60 0 normalscan common --rawacf_format=hdf5\n",

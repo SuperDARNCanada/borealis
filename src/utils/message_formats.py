@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union
 from dataclasses import dataclass, field, fields
 import numpy as np
 
@@ -53,8 +53,8 @@ class ProcessedSequenceMessage:
     gps_locked: bool = None
     bfiq_main_shm: Optional[str] = None
     bfiq_intf_shm: Optional[str] = None
-    max_num_beams: Optional[int] = None
-    num_samps: Optional[int] = None
+    max_num_beams: int = None
+    num_samps: int = None
     main_corrs_shm: Optional[str] = None
     intf_corrs_shm: Optional[str] = None
     cross_corrs_shm: Optional[str] = None
@@ -150,8 +150,8 @@ class RxChannelMetadata:
     sequence_encodings: list = field(default_factory=list)
     rx_main_antennas: list[int] = field(default_factory=list)
     rx_intf_antennas: list[int] = field(default_factory=list)
-    rx_main_excitations: list[complex] = field(default_factory=list)
-    rx_intf_excitations: list[complex] = field(default_factory=list)
+    rx_main_excitations: Union[list[complex], np.ndarray] = field(default_factory=list)
+    rx_intf_excitations: Union[list[complex], np.ndarray] = field(default_factory=list)
     tx_antennas: list[int] = field(default_factory=list)
     tx_excitations: list[complex] = field(default_factory=list)
     beams: list[Beam] = field(default_factory=list)
@@ -194,9 +194,9 @@ class AveperiodMetadataMessage:
     scheduling_mode: str = None
     sequences: list[Sequence] = field(default_factory=list)
     cfs_freqs: list = field(default_factory=list)
-    cfs_noise: dict = field(default_factory=dict)
+    cfs_noise: list = field(default_factory=list)
     cfs_range: dict = field(default_factory=dict)
-    cfs_masks: dict = field(default_factory=dict)
+    cfs_masks: list = field(default_factory=list)
     cfs_slice_ids: list = field(default_factory=list)
 
 

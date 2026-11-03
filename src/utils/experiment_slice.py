@@ -433,7 +433,7 @@ class ExperimentSlice:
         ]
     ] = None
     cfs_flag: StrictBool = False
-    cfs_duration: Optional[non_neg_int] = 90  # ms
+    cfs_duration: non_neg_int = 90  # ms
     cfs_scheme: DecimationScheme = Field(default_factory=create_default_cfs_scheme)
     cfs_stable_time: Optional[non_neg_int] = 0  # seconds
     cfs_pwr_threshold: Optional[NonNegativeFloat] = None  # dB
@@ -1011,7 +1011,10 @@ class ExperimentSlice:
                         )
             else:
                 # build lag table from pulse_sequence
-                lag_table = list(itertools.combinations(info.data["pulse_sequence"], 2))
+                lag_table = [
+                    list(lag)
+                    for lag in itertools.combinations(info.data["pulse_sequence"], 2)
+                ]
                 lag_table.append(
                     [info.data["pulse_sequence"][0], info.data["pulse_sequence"][0]]
                 )  # lag 0

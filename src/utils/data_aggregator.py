@@ -10,7 +10,7 @@ import collections
 import copy
 from dataclasses import dataclass, fields, field
 from multiprocessing import shared_memory
-from typing import Union
+from typing import Union, cast
 
 import numpy as np
 
@@ -380,7 +380,9 @@ class Aggregator:
                     if ant_name not in antenna_iq_stage:
                         antenna_iq_stage[ant_name] = []
 
-                    antenna_iq_stage[ant_name].append(antennas_data[ant_num, :])
+                    cast(list, antenna_iq_stage[ant_name]).append(
+                        antennas_data[ant_num, :]
+                    )
 
     def finalize(self):
         """
@@ -423,7 +425,8 @@ class Aggregator:
             #     if data_set.slice_id not in accumulator.keys():
             #         accumulator[data_set.slice_id] = {}
 
-        if sqn.rawrf_shm != "":
+        if sqn.rawrf_shm is not None:
+            assert sqn.rawrf_num_samps is not None
             self.rawrf_available = True
             self.rawrf_num_samps = sqn.rawrf_num_samps
             self.rawrf_locations.append(sqn.rawrf_shm)

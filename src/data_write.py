@@ -114,6 +114,7 @@ class DataWrite:
         :type   data_type:              str
         """
 
+        assert self.dataset_directory is not None
         os.makedirs(self.dataset_directory, exist_ok=True)
 
         try:
@@ -195,6 +196,7 @@ class DataWrite:
                 )
                 self.slice_filenames[slice_id] = two_hr_str
 
+        assert self.next_boundary is not None
         if time_now > self.next_boundary:
             self.raw_rf_two_hr_name = self.raw_rf_two_hr_format.format(
                 dt=time_now.strftime("%Y%m%d.%H%M.%S"), site=self.options.site_id
@@ -292,8 +294,12 @@ class DataWrite:
                 parameters.range_sep = np.float32(rx_channel.range_sep)
                 parameters.rx_center_freq = aveperiod_meta.center_freq
                 parameters.rx_sample_rate = sqn_meta.output_sample_rate
-                parameters.rx_main_excitations = rx_channel.rx_main_excitations
-                parameters.rx_intf_excitations = rx_channel.rx_intf_excitations
+                parameters.rx_main_excitations = np.asarray(
+                    rx_channel.rx_main_excitations
+                )
+                parameters.rx_intf_excitations = np.asarray(
+                    rx_channel.rx_intf_excitations
+                )
                 parameters.rx_main_antennas = np.array(rx_channel.rx_main_antennas)
                 parameters.rx_intf_antennas = (
                     np.array(rx_channel.rx_intf_antennas)
@@ -319,7 +325,9 @@ class DataWrite:
                     dtype=np.float32,
                 )
                 parameters.tau_spacing = np.uint32(rx_channel.tau_spacing)
-                parameters.tx_excitations = np.complex64(rx_channel.tx_excitations)
+                parameters.tx_excitations = np.array(
+                    rx_channel.tx_excitations, dtype=np.complex64
+                )
                 parameters.tx_antennas = np.array(rx_channel.tx_antennas)
                 parameters.tx_pulse_len = np.uint32(rx_channel.pulse_len)
 
@@ -494,7 +502,6 @@ class DataWrite:
 
         for slice_num in slice_id_list:
             slice_data = aveperiod_data[slice_num]
-            slice_data.channels = []
 
             all_data = []
             num_antenna_arrays = 1
@@ -803,6 +810,7 @@ def main():
                             data_parsing=aggregator,
                             write_rawacf=args.enable_raw_acfs,
                         )
+                        assert data_write is not None
                         thread = threading.Thread(
                             target=data_write.output_data, kwargs=kwargs
                         )

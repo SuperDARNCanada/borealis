@@ -76,6 +76,7 @@ def driver_thread():
 
     # On startup, radar_control sends some preliminary data to help the driver set up
     radctrl_msg = so.recv_bytes(radctrl_socket, options.radctrl_to_driver_identity, log)
+    assert radctrl_msg is not None
     driver_packet = DriverPacket.parse(radctrl_msg.decode("utf-8"))
     rx_rate = driver_packet.rxrate
     # tx_rate = driver_packet.txrate
@@ -99,6 +100,7 @@ def driver_thread():
             radctrl_msg = so.recv_bytes(
                 radctrl_socket, options.radctrl_to_driver_identity, log
             )
+            assert radctrl_msg is not None
             driver_packet = DriverPacket.parse(radctrl_msg.decode("utf-8"))
             sqn_num = driver_packet.sequence_num
             if sqn_num != expected_sqn_num:
@@ -196,10 +198,10 @@ def driver_thread():
         rx_metadata.sequence_time = (
             dt.datetime.now(dt.timezone.utc) - starting_pulses
         ).total_seconds()
-        rx_metadata.agc_status_bank_h = np.int16(0)
-        rx_metadata.agc_status_bank_l = np.int16(0)
-        rx_metadata.lp_status_bank_h = np.int16(0)
-        rx_metadata.lp_status_bank_l = np.int16(0)
+        rx_metadata.agc_status_bank_h = 0
+        rx_metadata.agc_status_bank_l = 0
+        rx_metadata.lp_status_bank_h = 0
+        rx_metadata.lp_status_bank_l = 0
         rx_metadata.gps_locked = True
         rx_metadata.gps_to_system_time_diff = 2.0e-8
         metadata_msg = rx_metadata.format_for_ipc()

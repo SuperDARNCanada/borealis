@@ -185,6 +185,7 @@ def sequence_timing(options):
             reply = so.recv_bytes(
                 brian_to_driver, options.driver_to_brian_identity, log
             )
+            assert reply is not None
             meta = RxSamplesMetadata.parse(reply.decode("utf-8"))
 
             log.debug(

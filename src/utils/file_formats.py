@@ -12,6 +12,7 @@ for that averaging period.
 """
 
 from dataclasses import dataclass, field, fields
+from typing import Optional, Union
 
 import h5py
 import numpy as np
@@ -102,7 +103,7 @@ class SliceData:
             "required_for": ["antennas_iq"],
         }
     )
-    averaging_method: str = field(
+    averaging_method: Optional[str] = field(
         metadata={
             "groups": ["rawacf"],
             "level": "file",
@@ -121,7 +122,7 @@ class SliceData:
             "required_for": ["antennas_iq", "bfiq", "rawacf"],
         }
     )
-    beam_nums: list[int] = field(
+    beam_nums: list[np.uint32] = field(
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf"],
             "level": "record",
@@ -484,7 +485,7 @@ class SliceData:
             "required_for": ["rawrf"],
         }
     )
-    rx_sample_rate: float = field(
+    rx_sample_rate: Union[float, np.floating] = field(
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "file",
@@ -493,7 +494,7 @@ class SliceData:
             "required_for": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
         }
     )
-    rx_main_excitations: list[complex] = field(
+    rx_main_excitations: np.ndarray = field(
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "record",
@@ -503,7 +504,7 @@ class SliceData:
             "required_for": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
         }
     )
-    rx_intf_excitations: list[complex] = field(
+    rx_intf_excitations: np.ndarray = field(
         metadata={
             "groups": ["antennas_iq", "bfiq", "rawacf", "rawrf"],
             "level": "record",
@@ -753,7 +754,7 @@ class SliceData:
         Converts ``field_data`` to supported types for a Borealis HDF5 file.
         """
         if isinstance(field_data, dict):
-            return np.bytes_(str(field_data))
+            return np.bytes_(str(field_data).encode("ascii"))
         elif isinstance(field_data, str):
             return np.bytes_(field_data)
         elif isinstance(field_data, bool):

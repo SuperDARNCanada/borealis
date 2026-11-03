@@ -6,8 +6,8 @@ Common Failure Modes
 
 Certain failures of the Borealis system can be generally attributed to a short list of common
 issues. If your system fails and you are unsure why, it is a good idea to check the computer system
-logs for any clues. The log can be found at ``/var/log/messages`` on openSUSE, or ``/var/log/syslog`` 
-on Ubuntu. Often there will be some indication within 10 seconds of when the radar stopped as to why 
+logs for any clues. The log can be found at ``/var/log/messages`` on openSUSE, or ``/var/log/syslog``
+on Ubuntu. Often there will be some indication within 10 seconds of when the radar stopped as to why
 it stopped.
 
 It is also possible to have the radar stop for no discernible reason, with nothing noteworthy in the

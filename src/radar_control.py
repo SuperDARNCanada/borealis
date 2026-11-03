@@ -11,7 +11,7 @@ import argparse
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from functools import reduce
-from typing import Any
+from typing import TYPE_CHECKING, Optional
 
 import mmap
 import os
@@ -28,6 +28,12 @@ from utils.interface_classes.averaging_periods import CFSAveragingPeriod
 from utils.options import Options
 import utils.message_formats as messages
 from utils import socket_operations as so
+
+if TYPE_CHECKING:
+    from utils.decimation_scheme import DecimationScheme
+    from utils.experiment_prototype import ExperimentPrototype
+    from utils.interface_classes.averaging_periods import AveragingPeriod
+    from utils.interface_classes.sequences import Sequence
 
 sys.path.append(os.environ["BOREALISPATH"])
 
@@ -70,12 +76,11 @@ class RadctrlParameters:
     operation.
     """
 
-    # TODO: replace Any with the real classes (ExperimentPrototype, AveragingPeriod, Sequence)
-    experiment: Any
-    aveperiod: Any
-    sequence: Any
-    options: Any
-    decimation_scheme: Any = field(init=False)
+    experiment: "ExperimentPrototype"
+    aveperiod: "Optional[AveragingPeriod]"
+    sequence: "Sequence"
+    options: "Options"
+    decimation_scheme: "Optional[DecimationScheme]" = field(init=False)
     seqnum_start: int
     startup_flag: bool
     num_beams: int = 0
@@ -185,11 +190,11 @@ def create_driver_message(radctrl_params, pulse_transmit_data, pulse_buffer):
         return message.format_for_ipc()
 
     message.sample_timing = pulse_transmit_data["timing"]
-    message.burst_start = int(pulse_transmit_data["startofburst"])
-    message.burst_end = int(pulse_transmit_data["endofburst"])
+    message.burst_start = bool(pulse_transmit_data["startofburst"])
+    message.burst_end = bool(pulse_transmit_data["endofburst"])
     message.sequence_num = radctrl_params.seqnum_start + radctrl_params.num_sequences
     message.seqtime = radctrl_params.sequence.seqtime
-    message.align_sequences = int(radctrl_params.sequence.align_sequences)
+    message.align_sequences = bool(radctrl_params.sequence.align_sequences)
 
     samples_array = pulse_transmit_data["samples_array"]
     num_samps = samples_array.shape[1]
@@ -363,8 +368,8 @@ def create_dsp_message(radctrl_params):
             else:
                 phase_offset = 1.0 + 0.0j
 
-            lag_add.phase_offset_real = np.real(phase_offset)
-            lag_add.phase_offset_imag = np.imag(phase_offset)
+            lag_add.phase_offset_real = float(np.real(phase_offset))
+            lag_add.phase_offset_imag = float(np.imag(phase_offset))
             rx_chan.lags.append(lag_add)
         message.rx_channels.append(rx_chan)
 
@@ -855,6 +860,7 @@ def main(exp_name, scheduling_mode, embargo, **kwargs):
                 else:
                     # At the start of a scan object that has scanbound, recalculate the start minute to the
                     # previously calculated next_scan_start
+                    assert next_scan_start is not None
                     start_minute = next_scan_start.replace(second=0, microsecond=0)
 
                 # Find the modulus of the number of aveperiod times to run in the scan and the number
@@ -964,6 +970,7 @@ def main(exp_name, scheduling_mode, embargo, **kwargs):
                                 scanbound_time - time_elapsed.total_seconds()
                             )
                         else:
+                            assert next_scan_start is not None
                             bound_time_remaining = (
                                 next_scan_start - averaging_period_start_time
                             )

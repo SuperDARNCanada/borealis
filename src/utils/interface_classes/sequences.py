@@ -507,6 +507,7 @@ class Sequence(InterfaceClassBase):
         slice_antennas = getattr(exp_slice, f"rx_{array}_antennas")
 
         freqs = exp_slice.freq
+        assert freqs is not None
         if not isinstance(freqs, list):
             freqs = [freqs]
 
@@ -627,6 +628,7 @@ class Sequence(InterfaceClassBase):
 
         # The antennas used for transmitting this slice
         slice_tx_antennas = exp_slice.tx_antennas
+        assert slice_tx_antennas is not None
 
         # has shape [num_freqs, num_beams, num_tx_channels]
         tx_phases = np.zeros(

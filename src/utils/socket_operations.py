@@ -166,8 +166,8 @@ def recv_bytes(
     :param      with_header:        Flag to return message header
     :type       with_header:        bool
 
-    :returns:   Received data
-    :rtype:     Optional[bytes]
+    :returns:   Received data. If 'with_header' is True, return tuple of '(header, bytes)' instead. None if the message does not come from correct sender.
+    :rtype:     Optional[Union[bytes, Tuple[bytes, bytes]]]
     """
     receiver_identity, header, bytes_object = socket.recv_multipart()
     if receiver_identity != sender_identity.encode("utf-8"):
@@ -276,7 +276,9 @@ def recv_pyobj(
     :rtype: Any
     """
     # TODO: Account for multiple expected types
-    header, bytes_packet = recv_bytes(socket, sender_identity, log, with_header=True)
+    result = recv_bytes(socket, sender_identity, log, with_header=True)
+    assert result is not None
+    header, bytes_packet = result
     message = pickle.loads(bytes_packet)
     if expected_type is not None and not isinstance(message, expected_type):
         if log is not None:
