@@ -88,6 +88,7 @@ slice_key_set = frozenset(
         "tx_antenna_pattern",
         "tx_beam_order",
         "wait_for_first_scanbound",
+        "widetx",
         "xcf",
     ]
 )
@@ -318,6 +319,8 @@ class ExperimentSlice:
         means an experiment will not wait for the first averaging period, but will instead start
         transmitting at the nearest averaging period. Note: for multi-slice experiments, the first slice
         is the only one impacted by this parameter.
+    widetx *defaults*
+        flag for indicating that this slice transmits a widebeam. Default is False.
     xcf *defaults*
         flag for cross-correlation data. The default is True if acf is True, otherwise False.
 
@@ -376,6 +379,7 @@ class ExperimentSlice:
     intn: Optional[non_neg_int] = None
     seqoffset: Optional[non_neg_int] = 0
     wait_for_first_scanbound: Optional[StrictBool] = False
+    widetx: Optional[StrictBool] = False
 
     # These fields have default values. Some have specification requirements in conjunction with each other
     # e.g. one of intt or intn must be specified.

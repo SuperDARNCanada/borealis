@@ -517,6 +517,7 @@ def create_dw_message(radctrl_params):
                     freq_idx,
                     sqn_slice.tx_beam_order[radctrl_params.aveperiod.beam_iter],
                 ]
+            rxchannel.widetx = sqn_slice.widetx
             beams = sqn_slice.rx_beam_order[radctrl_params.aveperiod.beam_iter]
             if isinstance(beams, int):
                 beams = [beams]

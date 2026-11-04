@@ -245,7 +245,7 @@ gpu = [
 requires-dist = [
     { name = "breathe", marker = "extra == 'doc'" },
     { name = "cupy", marker = "extra == 'gpu'" },
-    { name = "darn-dmap", specifier = ">=0.1.6" },
+    { name = "darn-dmap", specifier = ">=0.8.2" },
     { name = "docutils", marker = "extra == 'doc'", specifier = "==0.21" },
     { name = "furo", marker = "extra == 'doc'", specifier = "==2025.9.25" },
     { name = "graypy" },

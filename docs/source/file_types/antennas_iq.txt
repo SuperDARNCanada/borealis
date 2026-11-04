@@ -420,3 +420,8 @@
    * level: ``file``
    * required_for: ``['antennas_iq', 'bfiq', 'rawacf']``
    * units: ``μs``
+
+:widetx: Flag indicating if slice transmits widebeam pattern
+
+  * level: ``file``
+  * required_for: ``['antennas_iq', 'bfiq', 'rawacf']``
