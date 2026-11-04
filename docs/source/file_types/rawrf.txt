@@ -264,8 +264,3 @@
    * level: ``record``
    * required_for: ``[]``
    * units: ``a.u.``
-
-:widetx: Flag indicating if slice transmits widebeam pattern
-
-  * level: ``file``
-  * required_for: ``['antennas_iq', 'bfiq', 'rawacf']``
