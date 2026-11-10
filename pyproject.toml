@@ -11,7 +11,7 @@ authors = [{name = "SuperDARN Canada"}]
 license = {file = "LICENSE"}
 requires-python = ">=3.11"
 dependencies = [
-    "darn-dmap>=0.1.6",
+    "darn-dmap>=0.8.2",
     "graypy",
     "h5py>=3.3.0",
     "inotify",

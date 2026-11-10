@@ -21,8 +21,11 @@ To create your own Full FOV experiment using 8- or 16-antenna phase modulation, 
 is present in ``superdarn_common_fields.py``. To use this function, set ::
 
     slice_dict['tx_antenna_pattern'] = scf.easy_widebeam
+    slice_dict['widetx'] = True
 
 in your experiment slice dictionary.
+
+Set ``widetx`` to ``True`` on every slice that transmits a widebeam pattern, including those using a custom ``tx_antenna_pattern``. This flag is written to the data files and the ``widetx`` DMAP field. It defaults to ``False`` if not set.
 
 ``easy_widebeam`` only accepts the antenna counts and frequencies listed in
 ``widebeam_cached_phases.json``, next to ``superdarn_common_fields.py``. Frequencies must match a

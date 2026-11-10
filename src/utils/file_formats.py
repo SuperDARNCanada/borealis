@@ -639,6 +639,16 @@ class SliceData:
             "required_for": ["antennas_iq", "bfiq", "rawacf"],
         }
     )
+
+    widetx: bool = field(
+        metadata={
+            "groups": ["antennas_iq", "bfiq", "rawacf"],
+            "level": "file",
+            "description": "Flag indicating if slice transmits widebeam pattern",
+            "required_for": ["antennas_iq", "bfiq", "rawacf"],
+        }
+    )
+
     xcfs: np.ndarray = field(
         metadata={
             "groups": ["rawacf"],

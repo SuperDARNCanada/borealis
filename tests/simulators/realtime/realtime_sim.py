@@ -62,6 +62,11 @@ if __name__ == "__main__":
     with open(data_dir + "/rawacf-0.pkl", "rb") as f:
         rawacf_data = pickle.load(f)
 
+    # TODO Regenerate the .pkl test data with a current Borealis version and remove this. Currently predates widetx field.
+    for data in (antennas_iq_data, bfiq_data, rawacf_data):
+        if not hasattr(data, "widetx"):
+            data.widetx = False
+
     log.info("Subscribing to all messages")
     for i in range(
         3

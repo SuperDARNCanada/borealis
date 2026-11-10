@@ -154,6 +154,7 @@ class RxChannelMetadata:
     rx_intf_excitations: Union[list[complex], np.ndarray] = field(default_factory=list)
     tx_antennas: list[int] = field(default_factory=list)
     tx_excitations: list[complex] = field(default_factory=list)
+    widetx: bool = False
     beams: list[Beam] = field(default_factory=list)
     first_range: float = None
     num_ranges: int = None

@@ -188,6 +188,10 @@ This conversion is done in pyDARNio here in the __convert_bfiq_record method: `L
 | | *short*                         | |                                           |
 | | Transmitted frequency           | |                                           |
 +-----------------------------------+---------------------------------------------+
+| | **widetx**                      | | *widetx* (0 or 1)                         |
+| | *short*                         | |                                           |
+| | Widebeam TX pattern flag        | |                                           |
++-----------------------------------+---------------------------------------------+
 | | **mxpwr**                       | | = -1 (filler)                             |
 | | *int*                           | |                                           |
 | | Maximum power (kHz)             | |                                           |

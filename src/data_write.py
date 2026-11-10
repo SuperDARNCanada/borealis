@@ -330,6 +330,7 @@ class DataWrite:
                 )
                 parameters.tx_antennas = np.array(rx_channel.tx_antennas)
                 parameters.tx_pulse_len = np.uint32(rx_channel.pulse_len)
+                parameters.widetx = bool(rx_channel.widetx)
 
                 all_slice_data[rx_channel.slice_id] = parameters
 
