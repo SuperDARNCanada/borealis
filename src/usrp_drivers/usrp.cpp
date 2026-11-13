@@ -11,6 +11,7 @@ See LICENSE for details.
 
 #include <chrono>
 #include <cmath>
+#include <ctime>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -267,6 +268,24 @@ double USRP::set_rx_rate(std::vector<size_t> rx_chs) {
 double USRP::get_rx_rate(uint32_t channel) {
   return usrp_->get_rx_rate(channel);
 }
+
+// the loop must finish before the deadline, or late channels tune out of step.
+static void log_tune(const char *dir, std::chrono::steady_clock::time_point t0,
+                     uhd::time_spec_t tune_delay, size_t n) {
+  double loop_ms = std::chrono::duration<double, std::milli>(
+                       std::chrono::steady_clock::now() - t0)
+                       .count();
+  double deadline_ms = tune_delay.get_real_secs() * 1e3;
+  RUNTIME_MSG("TUNE " << dir << " t=" << std::time(nullptr)
+                      << " loop_ms=" << loop_ms
+                      << " deadline_ms=" << deadline_ms << " channels=" << n);
+  if (loop_ms > 0.7 * deadline_ms) {
+    RUNTIME_MSG(COLOR_RED("WARNING")
+                << " TUNE " << dir << ": retune loop took " << loop_ms
+                << " ms of a " << deadline_ms << " ms deadline");
+  }
+}
+
 /**
  * @brief      Sets the receive center frequency.
  *
@@ -288,6 +307,11 @@ double USRP::get_rx_rate(uint32_t channel) {
 double USRP::set_rx_center_freq(double freq, std::vector<size_t> chs,
                                 uhd::time_spec_t tune_delay) {
   uhd::tune_request_t tune_request(freq);
+  tune_request.rf_freq_policy = uhd::tune_request_t::POLICY_NONE;
+  tune_request.dsp_freq_policy = uhd::tune_request_t::POLICY_MANUAL;
+  tune_request.dsp_freq = -freq;
+
+  auto t0 = std::chrono::steady_clock::now();
 
   set_command_time(get_current_usrp_time() + tune_delay);
   for (auto &channel : chs) {
@@ -295,6 +319,8 @@ double USRP::set_rx_center_freq(double freq, std::vector<size_t> chs,
                        channel);  // TODO(keith): test tune request.
   }
   clear_command_time();
+
+  log_tune("rx", t0, tune_delay, chs.size());
 
   auto duration = std::chrono::duration<double>(tune_delay.get_real_secs());
   std::this_thread::sleep_for(duration);
