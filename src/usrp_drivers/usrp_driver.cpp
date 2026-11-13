@@ -44,7 +44,7 @@
 // chosen below was determined via trial and error, and has been
 // set small enough that the delay is less than the time required
 // to execute the tuning request.
-#define TUNING_DELAY 1e-3  // seconds
+#define TUNING_DELAY 5e-3  // seconds
 
 // struct containing clocks: one for usrp_time (from the N200s, supplied by
 // Octoclock-G) as well as one for the operating system time (by NTP). Updated
