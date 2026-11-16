@@ -317,6 +317,7 @@ static double log_tune(const char *dir,
 double USRP::set_rx_center_freq(double freq, std::vector<size_t> chs,
                                 uhd::time_spec_t tune_delay,
                                 bool meet_deadline) {
+  uhd::tune_request_t tune_request(freq);
   tune_request.rf_freq_policy = uhd::tune_request_t::POLICY_NONE;
   tune_request.dsp_freq_policy = uhd::tune_request_t::POLICY_MANUAL;
   tune_request.dsp_freq = -freq;
