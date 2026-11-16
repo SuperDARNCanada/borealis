@@ -11,6 +11,7 @@ See LICENSE for details.
 
 #include <chrono>
 #include <cmath>
+#include <cstdlib>
 #include <ctime>
 #include <memory>
 #include <sstream>
@@ -269,9 +270,14 @@ double USRP::get_rx_rate(uint32_t channel) {
   return usrp_->get_rx_rate(channel);
 }
 
+// On the bench, channels still failed with up to 0.1 ms of host margin. Treat
+// anything within 0.4 ms of the deadline as missed.
+static constexpr double TUNE_GUARD_MS = 0.4;
+
 // the loop must finish before the deadline, or late channels tune out of step.
-static void log_tune(const char *dir, std::chrono::steady_clock::time_point t0,
-                     uhd::time_spec_t tune_delay, size_t n) {
+static double log_tune(const char *dir,
+                       std::chrono::steady_clock::time_point t0,
+                       uhd::time_spec_t tune_delay, size_t n) {
   double loop_ms = std::chrono::duration<double, std::milli>(
                        std::chrono::steady_clock::now() - t0)
                        .count();
@@ -284,6 +290,7 @@ static void log_tune(const char *dir, std::chrono::steady_clock::time_point t0,
                 << " TUNE " << dir << ": retune loop took " << loop_ms
                 << " ms of a " << deadline_ms << " ms deadline");
   }
+  return loop_ms;
 }
 
 /**
@@ -293,6 +300,8 @@ static void log_tune(const char *dir, std::chrono::steady_clock::time_point t0,
  * @param[in]  chs          A vector of which USRP channels to set a center
  * frequency.
  * @param[in]  tune_delay   The amount of time in future to tune the devices.
+ * @param[in]  meet_deadline  Exit if the retune misses its deadline. Off for
+ * start-up, which runs before streaming starts.
  *
  * @return     The actual center frequency that the USRPs are tuned to.
  *
@@ -304,9 +313,10 @@ static void log_tune(const char *dir, std::chrono::steady_clock::time_point t0,
  * synchronize tuning of all boxes, timed commands are used so that everything
  * is done at once.
  */
+
 double USRP::set_rx_center_freq(double freq, std::vector<size_t> chs,
-                                uhd::time_spec_t tune_delay) {
-  uhd::tune_request_t tune_request(freq);
+                                uhd::time_spec_t tune_delay,
+                                bool meet_deadline) {
   tune_request.rf_freq_policy = uhd::tune_request_t::POLICY_NONE;
   tune_request.dsp_freq_policy = uhd::tune_request_t::POLICY_MANUAL;
   tune_request.dsp_freq = -freq;
@@ -320,7 +330,19 @@ double USRP::set_rx_center_freq(double freq, std::vector<size_t> chs,
   }
   clear_command_time();
 
-  log_tune("rx", t0, tune_delay, chs.size());
+  double loop_ms = log_tune("rx", t0, tune_delay, chs.size());
+  if (meet_deadline &&
+      loop_ms > tune_delay.get_real_secs() * 1e3 - TUNE_GUARD_MS) {
+    // Late channels now hold a random phase offset. The DDC phase only resets
+    // when streaming starts. Exit so restart_borealis restarts the radar
+    // instead of recording bad data.
+    RUNTIME_MSG(COLOR_RED("TUNE FAILED")
+                << " rx: loop " << loop_ms << " ms vs deadline "
+                << tune_delay.get_real_secs() * 1e3
+                << " ms. RX phase no longer aligned, exiting.");
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    exit(1);
+  }
 
   auto duration = std::chrono::duration<double>(tune_delay.get_real_secs());
   std::this_thread::sleep_for(duration);

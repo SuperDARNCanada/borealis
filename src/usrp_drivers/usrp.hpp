@@ -39,7 +39,8 @@ class USRP {
   double set_rx_rate(std::vector<size_t> rx_chs);
   double get_rx_rate(uint32_t channel = 0);
   double set_rx_center_freq(double freq, std::vector<size_t> chs,
-                            uhd::time_spec_t tune_delay);
+                            uhd::time_spec_t tune_delay,
+                            bool meet_deadline = true);
   double get_rx_center_freq(uint32_t channel = 0);
   void set_time_source(std::string source, std::string clk_addr);
   void check_ref_locked();

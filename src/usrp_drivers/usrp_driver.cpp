@@ -839,7 +839,8 @@ int32_t UHD_SAFE_MAIN(int32_t argc, char *argv[]) {
   usrp_d.set_tx_center_freq(driver_packet.tunefreq,
                             driver_options.get_transmit_channels(), tune_delay);
   usrp_d.set_rx_center_freq(driver_packet.tunefreq,
-                            driver_options.get_receive_channels(), tune_delay);
+                            driver_options.get_receive_channels(), tune_delay,
+                            false);
 
   driver_to_radar_control.close();
   std::vector<std::thread> threads;
