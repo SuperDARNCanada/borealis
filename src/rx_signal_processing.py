@@ -9,7 +9,6 @@ This process handles the digital signal processing side of Borealis
 
 import math
 import mmap
-from multiprocessing import shared_memory
 import os
 import pickle
 import sys
@@ -41,7 +40,7 @@ from utils.message_formats import (
     SequenceMetadataMessage,
     RxSamplesMetadata,
 )
-from utils.signals import DSP
+from utils.signals import DSP, create_shm
 
 
 @dataclass
@@ -100,7 +99,7 @@ def fill_datawrite_message(processed_data, slice_details, data_outputs, cfs_scan
             :rtype:     str
             """
             if ndarray.size != 0:
-                shm = shared_memory.SharedMemory(create=True, size=ndarray.nbytes)
+                shm = create_shm(ndarray.nbytes)
                 shared_array = np.ndarray(
                     ndarray.shape, dtype=ndarray.dtype, buffer=shm.buf
                 )
@@ -373,7 +372,7 @@ def sequence_worker(options, ringbuffer):
                 :type   array_name: str
                 """
 
-                shm = shared_memory.SharedMemory(create=True, size=data_array.nbytes)
+                shm = create_shm(data_array.nbytes)
                 data = np.ndarray(data_array.shape, dtype=np.complex64, buffer=shm.buf)
                 if cupy_available:
                     data[...] = xp.asnumpy(data_array)
@@ -429,7 +428,7 @@ def sequence_worker(options, ringbuffer):
                     * ringbuffer.shape[0]
                     * indices.shape[-1]
                 )
-                rawrf_shm = shared_memory.SharedMemory(create=True, size=rawrf_size)
+                rawrf_shm = create_shm(rawrf_size)
                 rawrf_array = np.ndarray(
                     (ringbuffer.shape[0], indices.shape[-1]),
                     dtype=np.complex64,
