@@ -34,6 +34,9 @@ def router(options, realtime_off):
     context = zmq.Context().instance()
     router = context.socket(zmq.ROUTER)
     router.setsockopt(zmq.ROUTER_MANDATORY, 1)
+    router.setsockopt(
+        zmq.ROUTER_HANDOVER, 1
+    )  # Socket reconnecting with an identity used by an old connection takes it over
     router.bind(options.router_address)
 
     log.info("booting router")
