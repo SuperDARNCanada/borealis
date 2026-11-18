@@ -11,7 +11,7 @@ samples.
 
 from functools import reduce
 import math
-from multiprocessing import shared_memory
+from multiprocessing import resource_tracker, shared_memory
 from typing import Optional, Union
 
 from scipy.constants import speed_of_light
@@ -27,6 +27,23 @@ else:
     cupy_available = True
 
 from .experiment_slice import ExperimentSlice
+
+
+def create_shm(size: int) -> shared_memory.SharedMemory:
+    """
+    Create a SharedMemory block the resource tracker does not track in this process.
+    data_write, as a separate process, will unlink each block after writing it.
+    See issue #603.
+
+    :param  size: Size of the block in bytes
+    :type   size: int
+    :returns:  The new block
+    :rtype:    multiprocessing.shared_memory.SharedMemory
+    """
+
+    shm = shared_memory.SharedMemory(create=True, size=size)
+    resource_tracker.unregister(shm._name, "shared_memory")
+    return shm
 
 
 class DSP:
@@ -114,9 +131,7 @@ class DSP:
         # Create an array on the CPU for antennas_iq data
         antennas_iq_samples = self.filter_outputs[-1]
         if self.use_shared_mem:
-            ant_shm = shared_memory.SharedMemory(
-                create=True, size=antennas_iq_samples.nbytes
-            )
+            ant_shm = create_shm(antennas_iq_samples.nbytes)
             buffer = ant_shm.buf
             self.shared_mem["antennas_iq"] = ant_shm
         else:
@@ -155,7 +170,7 @@ class DSP:
         )
 
         if self.use_shared_mem:
-            bf_shm = shared_memory.SharedMemory(create=True, size=final_size)
+            bf_shm = create_shm(final_size)
             buffer = bf_shm.buf
             self.shared_mem["bfiq"] = bf_shm
         else:
