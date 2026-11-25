@@ -1891,7 +1891,7 @@ if __name__ == '__main__':
             f.write(m_ant.repr_transmissionlines())
         if args.int_antennas > 0:
             for i_ant in int_antenna_objects:
-                f.write(i_ant.repr_excitations())
+                # f.write(i_ant.repr_excitations())
                 f.write(i_ant.repr_transmissionlines())
 
         # In order for NEC to know what to calculate, we write out a frequency card and and
