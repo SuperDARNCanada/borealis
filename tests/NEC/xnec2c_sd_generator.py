@@ -1514,7 +1514,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(usage=usage_msg())
     parser.add_argument("-t", "--towers", help="Should antenna support towers be included?",
                         action='store_true')
-    parser.add_argument("-g", "--guylines", help="Should antenna support tower guylines be included?",
+    parser.add_argument("-g", "--guylines", help="Should antenna support tower guylines be included? For visualization only, slows compute time and dramatically increases ram usage",
                         action='store_true')
     parser.add_argument("-m", "--antennas", help="How many antennas in the main array?", default=16, type=int)
     parser.add_argument("-i", "--int_antennas", help="How many antennas in the interferometer array?", default=4,
