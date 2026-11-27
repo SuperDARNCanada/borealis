@@ -36,14 +36,16 @@
 
 // Delay needed for before any set_time_commands will work.
 #define SET_TIME_COMMAND_DELAY 5e-3  // seconds
+
 // Tuning delay time provides how long the USRP device will
 // wait for the device to settle after sending a tuning request.
 // If the device retunes a local oscillator, this should be on the
-// order of 1-2 seconds. The LF daughter boards do not have a lo
-// and therefore can have a much smaller tuning delay. The value
-// chosen below was determined via trial and error, and has been
-// set small enough that the delay is less than the time required
-// to execute the tuning request.
+// order of 1-2 seconds. The LF daughter boards do not have a LO
+// and therefore can have a much smaller tuning delay.
+//
+// Though this must be considered: the RX retune loop
+// in USRP::set_rx_center_freq must finish well inside this time (it exits
+// if not).
 #define TUNING_DELAY 5e-3  // seconds
 
 // struct containing clocks: one for usrp_time (from the N200s, supplied by
@@ -839,8 +841,7 @@ int32_t UHD_SAFE_MAIN(int32_t argc, char *argv[]) {
   usrp_d.set_tx_center_freq(driver_packet.tunefreq,
                             driver_options.get_transmit_channels(), tune_delay);
   usrp_d.set_rx_center_freq(driver_packet.tunefreq,
-                            driver_options.get_receive_channels(), tune_delay,
-                            false);
+                            driver_options.get_receive_channels(), tune_delay);
 
   driver_to_radar_control.close();
   std::vector<std::thread> threads;
